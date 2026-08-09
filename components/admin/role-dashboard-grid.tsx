@@ -3,12 +3,39 @@
 import Link from 'next/link'
 import { CONSTRUCTION_ROLES } from '@/lib/admin/construction-roles'
 import { getRoleDashboardRoute } from '@/lib/admin/role-dashboard-routes'
+import { getPositionLabel } from '@/lib/i18n/position-labels'
 import type { ProjectMember } from '@/types/admin'
 import { cn } from '@/lib/utils'
 
+const DUTY_FA: Record<string, string> = {
+  project_manager: 'برنامه‌ریزی کلی، هماهنگی و تحویل پروژه.',
+  site_manager: 'رهبری روزانه کارگاه، نیروی کار و هماهنگی میدان.',
+  site_supervisor: 'نظارت بر عملیات روزانه و پیشرفت کارگاه.',
+  technical_office: 'تکمیل مقادیر، تجزیه کوتاه‌مدت و پرچم آمادگی پرداخت.',
+  civil_engineer: 'نظارت بر کارهای عمرانی و سازه‌ای.',
+  architect: 'انطباق طراحی و هماهنگی معماری.',
+  structural_engineer: 'بررسی طراحی سازه و انطباق در میدان.',
+  mep_engineer: 'سیستم‌های مکانیک، برق و لوله‌کشی.',
+  hse_officer: 'ایمنی، بهداشت و انطباق زیست‌محیطی.',
+  qa_qc_inspector: 'بازرسی تضمین و کنترل کیفیت.',
+  surveyor: 'اندازه‌گیری، پیاده‌سازی و تأیید ازبیلت.',
+  storekeeper: 'دریافت مصالح، موجودی و انبارداری.',
+  procurement_officer: 'خرید، هماهنگی تأمین‌کننده و زنجیره تأمین.',
+  project_accountant: 'هزینه‌ها، فاکتورها، وصول و گزارش مالی پروژه.',
+  planning_engineer: 'برنامه‌زمانی، نگاه‌به‌جلو و بهره‌وری.',
+  document_controller: 'نقشه‌ها، مستندات و مدیریت مدارک.',
+  foreman: 'سرپرستی اکیپ‌های میدان در جبهه‌های کاری.',
+  contractor: 'نماینده پیمانکار خارجی در کارگاه.',
+  subcontractor: 'دسترسی میدان پیمانکار تخصصی.',
+  finance_admin: 'پیگیری بودجه، فاکتورها و پشتیبانی اداری.',
+  equipment_manager: 'تخصیص ماشین‌آلات و تجهیزات.',
+  security: 'دسترسی گیت، ورود/خروج و امنیت کارگاه.',
+  worker: 'کارگر میدان با وظایف و آموزش ایمنی.',
+  visitor: 'دسترسی موقت محدود به کارگاه.',
+}
+
 function dutySummary(positionKey: string, positionTitle: string): string {
-  const role = CONSTRUCTION_ROLES.find((r) => r.key === positionKey)
-  return role?.description ?? positionTitle
+  return DUTY_FA[positionKey] ?? CONSTRUCTION_ROLES.find((r) => r.key === positionKey)?.description ?? positionTitle
 }
 
 function initials(name: string): string {
@@ -42,9 +69,10 @@ export function RoleDashboardGrid({ members }: { members: ProjectMember[] }) {
           const positions = member.positions ?? []
           const primary = positions[0]
           const duty = primary
-            ? dutySummary(primary.key, primary.title)
+            ? dutySummary(primary.key, getPositionLabel(primary, 'fa'))
             : 'سمت تعریف نشده'
-          const roleTitles = positions.map((p) => p.title).join(' · ') || '—'
+          const roleTitles =
+            positions.map((p) => getPositionLabel(p, 'fa')).join(' · ') || '—'
           const dashboardHref = primary ? getRoleDashboardRoute(primary.key) : null
           const memberHref = `/admin/projects/${member.project_id}/members`
           const href = dashboardHref ?? memberHref

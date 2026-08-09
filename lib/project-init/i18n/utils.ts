@@ -8,8 +8,8 @@ import { fa } from './locales/fa'
 const dictionaries: Record<FormLocale, FormDictionary> = { en, de, fr, ar, fa }
 
 export function normalizeLocale(value?: string): FormLocale {
-  if (value === 'de' || value === 'fr' || value === 'ar' || value === 'fa') return value
-  return 'en'
+  if (value === 'de' || value === 'fr' || value === 'ar' || value === 'en') return value
+  return 'fa'
 }
 
 export function getDictionary(locale?: string): FormDictionary {

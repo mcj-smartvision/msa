@@ -95,7 +95,7 @@ export function ScheduleCatchUpPanel({
         body: JSON.stringify({ project_id: projectId, updates }),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Save failed')
+      if (!response.ok) throw new Error(data.error || (fa ? 'ذخیره ناموفق بود' : 'Save failed'))
       if (Array.isArray(data.tasks) && data.tasks.length > 0) {
         onTasksUpdated(data.tasks as ProjectTask[])
       }
@@ -106,7 +106,7 @@ export function ScheduleCatchUpPanel({
           : `Progress saved for ${data.updated} activities. Compliance report updated.`
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      setError(err instanceof Error ? err.message : fa ? 'ذخیره ناموفق بود' : 'Save failed')
     } finally {
       setSaving(false)
     }

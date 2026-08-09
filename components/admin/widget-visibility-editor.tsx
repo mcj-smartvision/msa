@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -57,11 +56,11 @@ export function WidgetVisibilityEditor({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Widget visibility by position</CardTitle>
+          <CardTitle>نمایش ویجت بر اساس سمت</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2 max-w-md">
-            <Label htmlFor="widget-position">Position</Label>
+            <Label htmlFor="widget-position">سمت</Label>
             <select
               id="widget-position"
               value={positionId}
@@ -82,7 +81,7 @@ export function WidgetVisibilityEditor({
                 </div>
                 <Checkbox
                   id={`widget-${widget.id}`}
-                  label="Visible"
+                  label="قابل‌نمایش"
                   checked={isVisible(widget)}
                   disabled={loadingKey === `${positionId}:${widget.id}`}
                   onChange={(e) => toggleWidget(widget, e.target.checked)}
@@ -95,13 +94,13 @@ export function WidgetVisibilityEditor({
 
       <Card>
         <CardHeader>
-          <CardTitle>Visibility matrix</CardTitle>
+          <CardTitle>ماتریس نمایش</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b text-left">
-                <th className="py-2 pr-4">Widget</th>
+                <th className="py-2 pr-4">ویجت</th>
                 {positions.map((position) => (
                   <th key={position.id} className="py-2 px-2 whitespace-nowrap">{position.title}</th>
                 ))}
@@ -116,7 +115,7 @@ export function WidgetVisibilityEditor({
                     const visible = existing ? existing.is_visible : widget.default_visible
                     return (
                       <td key={position.id} className="py-2 px-2 text-center">
-                        {visible ? 'Yes' : 'No'}
+                        {visible ? 'بله' : 'خیر'}
                       </td>
                     )
                   })}

@@ -35,7 +35,7 @@ export function ExceptionsClient() {
     const res = await fetch(`/api/site-ops/packages/${id}/acknowledge`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ note: 'PM acknowledged payment/scope risk' }),
+      body: JSON.stringify({ note: 'مدیر پروژه ریسک پرداخت/محدوده را تأیید کرد' }),
     })
     const body = await res.json()
     if (!res.ok) {
@@ -46,7 +46,7 @@ export function ExceptionsClient() {
     load()
   }
 
-  if (!projectId) return <p className="text-sm text-muted-foreground">Select a project.</p>
+  if (!projectId) return <p className="text-sm text-muted-foreground">یک پروژه انتخاب کنید.</p>
   if (!data) return <p className="text-sm text-muted-foreground">{t.loading}</p>
 
   return (
@@ -54,15 +54,15 @@ export function ExceptionsClient() {
       <div>
         <h2 className="text-xl font-semibold">{t.exceptions}</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          PM / Project Controls — acknowledge sensitive quantity/payment gaps only.
+          مدیر پروژه / کنترل پروژه — فقط شکاف‌های حساس مقدار/پرداخت را تأیید کنید.
         </p>
       </div>
       {message && <p className="text-sm">{message}</p>}
 
       <section className="rounded-2xl border bg-white p-5 space-y-3">
-        <h3 className="font-medium">Payment / quantity risk</h3>
+        <h3 className="font-medium">ریسک پرداخت / مقدار</h3>
         {(data.paymentRiskPackages ?? []).length === 0 ? (
-          <p className="text-sm text-muted-foreground">No open payment risk flags.</p>
+          <p className="text-sm text-muted-foreground">پرچم باز ریسک پرداخت وجود ندارد.</p>
         ) : (
           <ul className="space-y-2">
             {data.paymentRiskPackages.map((pkg) => (
@@ -74,7 +74,7 @@ export function ExceptionsClient() {
                     <p className="text-muted-foreground mt-1">{String(pkg.payment_flag_reason)}</p>
                   ) : null}
                   {pkg.pm_risk_acknowledged ? (
-                    <p className="text-emerald-700 text-xs mt-1">Risk acknowledged</p>
+                    <p className="text-emerald-700 text-xs mt-1">ریسک تأیید شد</p>
                   ) : null}
                 </div>
                 {!pkg.pm_risk_acknowledged && (
@@ -93,9 +93,9 @@ export function ExceptionsClient() {
       </section>
 
       <section className="rounded-2xl border bg-white p-5 space-y-3">
-        <h3 className="font-medium">Open blockers</h3>
+        <h3 className="font-medium">موانع باز</h3>
         {(data.openBlockers ?? []).length === 0 ? (
-          <p className="text-sm text-muted-foreground">No open blockers.</p>
+          <p className="text-sm text-muted-foreground">مانع بازی وجود ندارد.</p>
         ) : (
           <ul className="space-y-2 text-sm">
             {data.openBlockers.map((b) => {

@@ -21,7 +21,7 @@ export function FaceRecognitionMethodModal({
       title={FACE_RECOGNITION_METHOD_TITLE}
       className="sm:max-w-2xl"
     >
-      <div className="space-y-5 text-start" dir="ltr" lang="en">
+      <div className="space-y-5 text-start" dir="rtl" lang="fa">
         <p className="text-sm text-muted-foreground leading-relaxed">
           {FACE_RECOGNITION_METHOD_SUBTITLE}
         </p>

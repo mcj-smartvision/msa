@@ -19,7 +19,7 @@ const ADVANCED = [
   { href: '/site-ops/cre-runs', label: 'اجراهای CRE' },
   { href: '/site-ops/daily-plans', label: 'برنامه روزانه (پیشرفته)' },
   { href: '/site-ops/reports/daily', label: 'گزارش روزانه' },
-  { href: '/site-ops/exceptions', label: 'Exceptions' },
+  { href: '/site-ops/exceptions', label: 'استثناها' },
   { href: '/dashboard/technical-office', label: 'دفتر فنی (پیشرفته)' },
 ]
 

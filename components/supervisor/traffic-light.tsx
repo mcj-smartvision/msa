@@ -27,7 +27,7 @@ export function ReadinessDots({
     <div className="flex flex-wrap gap-2">
       <TrafficLight level={readiness.materials} label={labels.materials} />
       <TrafficLight level={readiness.manpower} label={labels.manpower} />
-      <TrafficLight level={readiness.access} label="Access" />
+      <TrafficLight level={readiness.access} label={labels.access} />
     </div>
   )
 }

@@ -9,11 +9,11 @@ export const FINANCIAL_COST_TYPES = [
 export type FinancialCostType = (typeof FINANCIAL_COST_TYPES)[number]
 
 export const FINANCIAL_COST_TYPE_LABELS: Record<FinancialCostType, string> = {
-  materials: 'Materials',
-  labor: 'Labor',
-  equipment: 'Equipment',
-  subcontractor: 'Subcontractors',
-  overhead: 'Overhead',
+  materials: 'مصالح',
+  labor: 'نیروی کار',
+  equipment: 'تجهیزات',
+  subcontractor: 'پیمانکاران',
+  overhead: 'سربار',
 }
 
 export {

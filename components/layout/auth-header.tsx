@@ -1,10 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { HeaderLanguageSwitcher } from '@/components/i18n/header-language-switcher'
 import { APP_NAME } from '@/lib/brand'
 
-/** Minimal auth pages header with global language switcher */
+/** Minimal auth pages header (language switcher hidden while UI is forced to Persian) */
 export function AuthHeader() {
   return (
     <header className="border-b bg-background">
@@ -12,7 +11,6 @@ export function AuthHeader() {
         <Link href="/login" className="font-bold text-lg">
           {APP_NAME}
         </Link>
-        <HeaderLanguageSwitcher />
       </div>
     </header>
   )

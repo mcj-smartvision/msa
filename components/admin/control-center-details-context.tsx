@@ -64,7 +64,7 @@ export function ControlCenterDataProvider({ children }: { children: ReactNode })
           setError(null)
         }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load dashboard')
+        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری داشبورد ناموفق بود')
       } finally {
         if (!cancelled) setLoading(false)
       }

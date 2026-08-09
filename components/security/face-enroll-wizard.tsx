@@ -169,7 +169,7 @@ export function FaceEnrollWizardPage({
       `/api/attendance/enrollments?projectId=${encodeURIComponent(projectId)}`
     )
     const json = await res.json()
-    if (!res.ok) throw new Error(json.error || 'Failed to load enrollments')
+    if (!res.ok) throw new Error(json.error || 'بارگذاری ثبت‌نام‌ها ناموفق بود')
     setEnrollments(json.enrollments as AttendanceEnrollment[])
   }, [projectId])
 
@@ -195,7 +195,7 @@ export function FaceEnrollWizardPage({
 
   useEffect(() => {
     void loadEnrollments().catch((e) =>
-      setError(e instanceof Error ? e.message : 'Load error')
+      setError(e instanceof Error ? e.message : 'خطای بارگذاری')
     )
     void warmFaceEmbedder().catch(() => undefined)
     void listBrowserCameras()
@@ -754,7 +754,7 @@ export function FaceEnrollWizardPage({
                               id: 'primary',
                               pose: 'straight',
                               labelFa: 'اصلی',
-                              labelEn: 'Primary',
+                              labelEn: 'اصلی',
                               imageUrl: e.imageUrl,
                             },
                           ]

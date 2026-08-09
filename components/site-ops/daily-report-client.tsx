@@ -81,7 +81,7 @@ export function DailyReportClient() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-slate-500">
-                <th className="py-2">Task</th>
+                <th className="py-2">فعالیت</th>
                 <th className="py-2">{t.planned}</th>
                 <th className="py-2">{t.actual}</th>
                 <th className="py-2">{t.variance}</th>

@@ -77,7 +77,7 @@ export default function AdminMembersPage() {
         setLoading(true)
         await loadData()
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load members')
+        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری اعضا ناموفق بود')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -124,7 +124,7 @@ export default function AdminMembersPage() {
     })
 
     const data = await response.json()
-    if (!response.ok) throw new Error(data.error || 'Failed to create member')
+    if (!response.ok) throw new Error(data.error || 'ایجاد عضو ناموفق بود')
     await loadData(selectedProjectId)
     setShowForm(false)
   }
@@ -244,8 +244,8 @@ export default function AdminMembersPage() {
                     <th className="text-left font-medium text-muted-foreground px-4 py-3">{t.username}</th>
                     <th className="text-left font-medium text-muted-foreground px-4 py-3">{t.email}</th>
                     <th className="text-left font-medium text-muted-foreground px-4 py-3">{t.initialPassword}</th>
-                    <th className="text-left font-medium text-muted-foreground px-4 py-3">Status</th>
-                    <th className="text-right font-medium text-muted-foreground px-4 py-3">Actions</th>
+                    <th className="text-left font-medium text-muted-foreground px-4 py-3">وضعیت</th>
+                    <th className="text-right font-medium text-muted-foreground px-4 py-3">عملیات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -282,7 +282,7 @@ export default function AdminMembersPage() {
                         <Button asChild variant="ghost" size="sm">
                           <Link href={`/admin/projects/${member.project_id}/members/${member.id}`}>
                             <Pencil className="h-3.5 w-3.5 mr-1" />
-                            Edit
+                            ویرایش
                           </Link>
                         </Button>
                       </td>

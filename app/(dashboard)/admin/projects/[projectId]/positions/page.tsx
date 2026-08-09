@@ -27,7 +27,7 @@ export default function ProjectPositionsPage({ params }: { params: { projectId: 
         setLoading(true)
         await loadPositions()
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load positions')
+        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری سمت‌ها ناموفق بود')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -47,25 +47,25 @@ export default function ProjectPositionsPage({ params }: { params: { projectId: 
     await loadPositions()
   }
 
-  if (loading) return <LoadingBlock label="Loading positions..." />
+  if (loading) return <LoadingBlock label="در حال بارگذاری سمت‌ها..." />
   if (error) return <ErrorBlock message={error} onRetry={() => window.location.reload()} />
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Positions"
-        description="Define project-scoped positions used for access control, notifications, and dashboard personalization."
+        title="سمت‌ها"
+        description="سمت‌های مخصوص پروژه را برای کنترل دسترسی، اعلان‌ها و شخصی‌سازی داشبورد تعریف کنید."
       />
 
-      <PositionForm submitLabel="Create position" onSubmit={handleCreate} />
+      <PositionForm submitLabel="ایجاد سمت" onSubmit={handleCreate} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Project positions</CardTitle>
+          <CardTitle>سمت‌های پروژه</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {positions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No positions created yet.</p>
+            <p className="text-sm text-muted-foreground">هنوز سمتی ایجاد نشده است.</p>
           ) : (
             positions.map((position) => (
               <div key={position.id} className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -78,7 +78,7 @@ export default function ProjectPositionsPage({ params }: { params: { projectId: 
                   {position.description ? <p className="text-sm mt-1">{position.description}</p> : null}
                 </div>
                 <Button variant="outline" size="sm" onClick={() => toggleActive(position)}>
-                  {position.is_active ? 'Deactivate' : 'Activate'}
+                  {position.is_active ? 'غیرفعال‌سازی' : 'فعال‌سازی'}
                 </Button>
               </div>
             ))

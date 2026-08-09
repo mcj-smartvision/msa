@@ -14,7 +14,7 @@ export function PositionMultiSelect({
   positions,
   selectedIds,
   onChange,
-  emptyMessage = 'Create positions before assigning members.',
+  emptyMessage = 'قبل از تخصیص اعضا، ابتدا سمت‌ها را بسازید.',
 }: PositionMultiSelectProps) {
   if (positions.length === 0) {
     return <p className="text-sm text-muted-foreground">{emptyMessage}</p>

@@ -23,7 +23,7 @@ export function SecurityAlertsWidget({ context }: { context: WidgetRenderContext
     fetch(`/api/attendance/dashboard?projectId=${encodeURIComponent(context.projectId)}`)
       .then(async (res) => {
         const json = await res.json()
-        if (!res.ok) throw new Error(json.error || 'Failed to load')
+        if (!res.ok) throw new Error(json.error || 'بارگذاری ناموفق بود')
         const snap = json.snapshot as AttendanceDashboardSnapshot
         if (!cancelled) {
           setFailed(snap.failedTransits)
@@ -31,7 +31,7 @@ export function SecurityAlertsWidget({ context }: { context: WidgetRenderContext
         }
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Error')
+        if (!cancelled) setError(e instanceof Error ? e.message : 'خطا')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -42,21 +42,21 @@ export function SecurityAlertsWidget({ context }: { context: WidgetRenderContext
   }, [context.projectId])
 
   return (
-    <WidgetShell title="Security Alerts" description="Failed IDs and live presence">
+    <WidgetShell title="هشدارهای امنیتی" description="شناسایی‌های ناموفق و حضور لحظه‌ای">
       {!context.projectId ? (
-        <p className="text-sm text-muted-foreground">No project selected.</p>
+        <p className="text-sm text-muted-foreground">پروژه‌ای انتخاب نشده است.</p>
       ) : loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">در حال بارگذاری…</p>
       ) : error ? (
         <p className="text-sm text-destructive">{error}</p>
       ) : (
         <div className="space-y-3">
           <p className="text-sm">
-            Currently on site:{' '}
+            هم‌اکنون در سایت:{' '}
             <span className="font-semibold">{insideCount ?? 0}</span>
           </p>
           {failed.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No failed identifications today.</p>
+            <p className="text-sm text-muted-foreground">امروز شناسایی ناموفقی ثبت نشده است.</p>
           ) : (
             <ul className="space-y-2">
               {failed.slice(0, 6).map((alert) => (
@@ -64,8 +64,8 @@ export function SecurityAlertsWidget({ context }: { context: WidgetRenderContext
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">
                       {alert.identificationStatus === 'unauthorized'
-                        ? 'Unauthorized'
-                        : 'ID failed'}
+                        ? 'غیرمجاز'
+                        : 'شناسایی ناموفق'}
                       {alert.personName ? ` — ${alert.personName}` : ''}
                     </span>
                     <span className="text-xs text-muted-foreground shrink-0">

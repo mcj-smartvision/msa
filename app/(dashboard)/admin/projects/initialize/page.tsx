@@ -9,11 +9,11 @@ export default function ProjectInitializePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Project Initialization"
-        description="Complete all 8 sections to initialize a new construction project. Hidden system IDs are assigned automatically on submit."
+        title="راه‌اندازی پروژه"
+        description="هر ۸ بخش را تکمیل کنید تا پروژه عمرانی جدید راه‌اندازی شود. شناسه‌های سیستمی پنهان هنگام ثبت به‌صورت خودکار اختصاص داده می‌شوند."
         actions={
           <Button asChild variant="outline">
-            <Link href="/admin/projects">Back to Projects</Link>
+            <Link href="/admin/projects">بازگشت به پروژه‌ها</Link>
           </Button>
         }
       />

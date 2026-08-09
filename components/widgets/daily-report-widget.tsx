@@ -45,15 +45,15 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
 
   async function handleAnalyze() {
     if (!projectId) {
-      setError('No project assigned.')
+      setError('پروژه‌ای اختصاص داده نشده است.')
       return
     }
     if (!description.trim()) {
-      setError('Please enter a report description.')
+      setError('لطفاً شرح گزارش را وارد کنید.')
       return
     }
     if (!imageFile) {
-      setError('Please upload a site photo.')
+      setError('لطفاً عکس سایت را بارگذاری کنید.')
       return
     }
 
@@ -66,7 +66,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
     setError(null)
     setLoading(true)
     setProgress(20)
-    setMessage('Uploading photo...')
+    setMessage('در حال بارگذاری عکس...')
 
     try {
       const uploaded = await uploadReportImage(supabase, imageFile, projectId)
@@ -74,7 +74,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
       setStoragePath(uploaded.path)
 
       setProgress(55)
-      setMessage('Analyzing with AI...')
+      setMessage('در حال تحلیل با هوش مصنوعی...')
       const result = await analyzeReportImage(supabase, uploaded.publicUrl)
       setAnalysis(result)
       setActivityType(result.activity_type)
@@ -82,9 +82,9 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
       setSupervisorSummary(result.extended_analysis_json?.supervisor_summary_fa ?? '')
       setStep('review')
       setProgress(100)
-      setMessage('Review AI results and edit before finalizing.')
+      setMessage('نتایج هوش مصنوعی را بررسی و قبل از نهایی‌سازی ویرایش کنید.')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Analysis failed')
+      setError(err instanceof Error ? err.message : 'تحلیل ناموفق بود')
     } finally {
       setLoading(false)
     }
@@ -95,13 +95,13 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
 
     setLoading(true)
     setError(null)
-    setMessage('Saving report...')
+    setMessage('در حال ذخیره گزارش...')
 
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser()
-      if (!user) throw new Error('Not authenticated')
+      if (!user) throw new Error('احراز هویت نشده‌اید')
 
       const finalizedAnalysis: AIAnalysisResponse = {
         ...analysis,
@@ -146,9 +146,9 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
       }
 
       setStep('done')
-      setMessage('Daily report finalized successfully.')
+      setMessage('گزارش روزانه با موفقیت نهایی شد.')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      setError(err instanceof Error ? err.message : 'ذخیره ناموفق بود')
     } finally {
       setLoading(false)
     }
@@ -172,33 +172,33 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
 
   return (
     <WidgetShell
-      title="Daily Report"
-      description="Describe site work, attach a photo, review AI output, then finalize"
+      title="گزارش روزانه"
+      description="کار سایت را شرح دهید، عکس پیوست کنید، خروجی هوش مصنوعی را بررسی و سپس نهایی کنید"
     >
       {!projectId ? (
-        <p className="text-sm text-muted-foreground">You need an assigned project to submit daily reports.</p>
+        <p className="text-sm text-muted-foreground">برای ثبت گزارش روزانه باید پروژه اختصاص‌یافته داشته باشید.</p>
       ) : step === 'done' ? (
         <div className="space-y-4">
           <Alert>
             <AlertDescription>{message}</AlertDescription>
           </Alert>
-          <Button onClick={resetForm}>Submit another report</Button>
+          <Button onClick={resetForm}>ثبت گزارش دیگر</Button>
         </div>
       ) : step === 'compose' ? (
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="daily-description">Report description</Label>
+            <Label htmlFor="daily-description">شرح گزارش</Label>
             <Textarea
               id="daily-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe today&apos;s site activities, progress, and issues..."
+              placeholder="فعالیت‌ها، پیشرفت و مسائل امروز سایت را شرح دهید..."
               rows={4}
               disabled={loading}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="daily-photo">Site photo</Label>
+            <Label htmlFor="daily-photo">عکس سایت</Label>
             <Input
               ref={fileRef}
               id="daily-photo"
@@ -210,7 +210,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
             />
             {previewUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={previewUrl} alt="Preview" className="mt-2 max-h-40 rounded-md border object-cover" />
+              <img src={previewUrl} alt="پیش‌نمایش" className="mt-2 max-h-40 rounded-md border object-cover" />
             ) : null}
           </div>
           {loading ? (
@@ -225,17 +225,17 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
             </Alert>
           ) : null}
           <Button onClick={handleAnalyze} disabled={loading}>
-            Analyze &amp; review
+            تحلیل و بررسی
           </Button>
         </div>
       ) : (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Edit the AI-generated fields below, then finalize the report.
+            فیلدهای تولیدشده توسط هوش مصنوعی را ویرایش کنید، سپس گزارش را نهایی کنید.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="activity-type">Activity type</Label>
+              <Label htmlFor="activity-type">نوع فعالیت</Label>
               <Input
                 id="activity-type"
                 value={activityType}
@@ -244,7 +244,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="workforce-count">Workforce count</Label>
+              <Label htmlFor="workforce-count">تعداد نیروی کار</Label>
               <Input
                 id="workforce-count"
                 type="number"
@@ -256,7 +256,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="supervisor-summary">Supervisor summary</Label>
+            <Label htmlFor="supervisor-summary">خلاصه سرپرست</Label>
             <Textarea
               id="supervisor-summary"
               value={supervisorSummary}
@@ -266,7 +266,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description-review">Report description (editable)</Label>
+            <Label htmlFor="description-review">شرح گزارش (قابل ویرایش)</Label>
             <Textarea
               id="description-review"
               value={description}
@@ -282,10 +282,10 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
           ) : null}
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setStep('compose')} disabled={loading}>
-              Back
+              بازگشت
             </Button>
             <Button onClick={handleFinalize} disabled={loading}>
-              {loading ? 'Saving...' : 'Finalize report'}
+              {loading ? 'در حال ذخیره...' : 'نهایی‌سازی گزارش'}
             </Button>
           </div>
         </div>

@@ -75,7 +75,7 @@ export function ActualStartPanel({
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Reschedule failed')
+      if (!response.ok) throw new Error(data.error || 'زمان‌بندی مجدد ناموفق بود')
 
       const newStart = data.actual_start ?? actualStart
       setAppliedStart(newStart)
@@ -87,7 +87,7 @@ export function ActualStartPanel({
         analysis: data.analysis,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Reschedule failed')
+      setError(err instanceof Error ? err.message : 'زمان‌بندی مجدد ناموفق بود')
     } finally {
       setLoading(false)
     }

@@ -26,10 +26,10 @@ export function AdminPasswordPanel({ member, onReset }: AdminPasswordPanelProps)
     setError(null)
     try {
       await onReset(password)
-      setMessage('Password updated successfully.')
+      setMessage('رمز عبور با موفقیت به‌روزرسانی شد.')
       setPassword('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to reset password')
+      setError(err instanceof Error ? err.message : 'بازنشانی رمز عبور ناموفق بود')
     } finally {
       setLoading(false)
     }
@@ -38,20 +38,20 @@ export function AdminPasswordPanel({ member, onReset }: AdminPasswordPanelProps)
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Login credentials (admin view)</CardTitle>
+        <CardTitle>اطلاعات ورود (نمای ادمین)</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="rounded-md border bg-muted/40 p-4 space-y-2">
           <p className="text-sm">
-            <span className="font-medium">Username:</span> {formatLoginDisplay(member.email)}
+            <span className="font-medium">نام کاربری:</span> {formatLoginDisplay(member.email)}
           </p>
           {member.contact_email ? (
             <p className="text-sm">
-              <span className="font-medium">Email:</span> {member.contact_email}
+              <span className="font-medium">ایمیل:</span> {member.contact_email}
             </p>
           ) : !member.email?.toLowerCase().endsWith('@site.local') ? (
             <p className="text-sm">
-              <span className="font-medium">Email:</span> {member.email}
+              <span className="font-medium">ایمیل:</span> {member.email}
             </p>
           ) : (
             <p className="text-xs text-amber-700">
@@ -59,35 +59,35 @@ export function AdminPasswordPanel({ member, onReset }: AdminPasswordPanelProps)
             </p>
           )}
           <p className="text-sm">
-            <span className="font-medium">Current admin-visible password:</span>{' '}
+            <span className="font-medium">آخرین رمز قابل‌مشاهده برای ادمین:</span>{' '}
             {member.admin_visible_password || '—'}
           </p>
           {member.password_changed_by_member ? (
             <p className="text-xs text-amber-700">
-              This member changed their password in Settings. Admin sees the last password set by admin above.
+              این عضو رمز خود را در تنظیمات تغییر داده است. ادمین آخرین رمزی را می‌بیند که خودش تنظیم کرده.
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground">Member has not changed the password yet.</p>
+            <p className="text-xs text-muted-foreground">عضو هنوز رمز عبور را تغییر نداده است.</p>
           )}
         </div>
 
         <form onSubmit={handleReset} className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="reset-password">Set new password</Label>
+            <Label htmlFor="reset-password">تنظیم رمز جدید</Label>
             <Input
               id="reset-password"
               type="text"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               minLength={6}
-              placeholder="New password for this member"
+              placeholder="رمز جدید برای این عضو"
               required
             />
           </div>
           {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <Button type="submit" disabled={loading}>
-            {loading ? 'Updating...' : 'Update password'}
+            {loading ? 'در حال به‌روزرسانی...' : 'به‌روزرسانی رمز عبور'}
           </Button>
         </form>
       </CardContent>

@@ -132,7 +132,7 @@ export function PmSubcontractorsPanel({
       setFile(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed')
+      setError(err instanceof Error ? err.message : fa ? 'ذخیره ناموفق بود' : 'Save failed')
     } finally {
       setSaving(false)
     }

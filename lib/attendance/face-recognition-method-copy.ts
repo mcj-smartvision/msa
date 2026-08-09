@@ -1,10 +1,10 @@
-/** Client-facing English brief for Canadian stakeholders — biometric gate ID. */
+/** متن فارسی توضیحات روش شناسایی چهره برای ذی‌نفعان — شناسه بیومتریک گیت. */
 
 export const FACE_RECOGNITION_METHOD_TITLE =
-  'Biometric Face Identification — Method Overview'
+  'شناسایی بیومتریک چهره — مرور روش'
 
 export const FACE_RECOGNITION_METHOD_SUBTITLE =
-  'Industry-standard embedding pipeline used by Liparta gate attendance'
+  'خط لوله تعبیه استاندارد صنعتی که در حضور و غیاب گیت لیپارتا استفاده می‌شود'
 
 export type MethodSection = {
   heading: string
@@ -17,76 +17,76 @@ export type MethodSection = {
 
 export const FACE_RECOGNITION_METHOD_SECTIONS: MethodSection[] = [
   {
-    heading: 'Recognition pattern',
+    heading: 'الگوی شناسایی',
     body:
-      'Liparta’s gate camera uses the same biometric embedding approach found in modern commercial attendance terminals (FaceNet / ArcFace-class systems)—not generative AI “image guessing.”',
+      'دوربین گیت لیپارتا از همان رویکرد تعبیه بیومتریک دستگاه‌های حضور و غیاب تجاری مدرن (کلاس FaceNet / ArcFace) استفاده می‌کند — نه «حدس تصویر» با هوش مصنوعی مولد.',
   },
   {
-    heading: 'How identification works',
+    heading: 'شناسایی چگونه کار می‌کند',
     steps: [
       {
-        title: '1. Detect',
-        text: 'Locate faces in the live camera frame (MediaPipe Face Detector).',
+        title: '۱. تشخیص',
+        text: 'چهره‌ها را در فریم زنده دوربین پیدا می‌کند (MediaPipe Face Detector).',
       },
       {
-        title: '2. Align & embed',
-        text: 'Convert each face into a fixed 128-dimensional FaceNet descriptor—a numeric biometric vector.',
+        title: '۲. هم‌ترازسازی و تعبیه',
+        text: 'هر چهره را به یک توصیف‌گر ۱۲۸بُعدی ثابت FaceNet تبدیل می‌کند — یک بردار عددی بیومتریک.',
       },
       {
-        title: '3. Enroll (multi-sample)',
-        text: 'Capture five short samples per person, average them into one stable template, and store it with a preview image.',
+        title: '۳. ثبت‌نام (چندنمونه)',
+        text: 'پنج نمونه کوتاه از هر نفر می‌گیرد، میانگین می‌گیرد تا یک قالب پایدار بسازد و همراه تصویر پیش‌نمایش ذخیره می‌کند.',
       },
       {
-        title: '4. Identify (1:N)',
-        text: 'Compare the live descriptor to the project gallery using Euclidean distance.',
+        title: '۴. شناسایی (۱ به N)',
+        text: 'توصیف‌گر زنده را با گالری پروژه با فاصله اقلیدسی مقایسه می‌کند.',
       },
       {
-        title: '5. Decide with dual gates',
-        text: 'Accept only if distance is below a strict threshold (default 0.48) and the best match beats the second-best by an ambiguity margin (default 0.06). If two people look too similar, the system returns Unknown instead of risking a swap.',
+        title: '۵. تصمیم با دو آستانه',
+        text: 'فقط وقتی قبول می‌کند که فاصله زیر آستانه سخت (پیش‌فرض ۰٫۴۸) باشد و بهترین تطبیق با حاشیه ابهام (پیش‌فرض ۰٫۰۶) از دومین بهتر باشد. اگر دو نفر خیلی شبیه باشند، به‌جای ریسک جابه‌جایی هویت، «ناشناس» برمی‌گرداند.',
       },
       {
-        title: '6. Record transit',
-        text: 'Only successful, non-ambiguous matches create an IN/OUT attendance event (with cooldown to avoid double punches).',
+        title: '۶. ثبت تردد',
+        text: 'فقط تطبیق‌های موفق و غیرمبهم یک رویداد ورود/خروج حضور ایجاد می‌کنند (با کول‌داون برای جلوگیری از ثبت دوبل).',
       },
     ],
   },
   {
-    heading: 'Why this is professional',
+    heading: 'چرا این روش حرفه‌ای است',
     rows: [
       {
-        label: 'Identity signal',
-        value: 'Stable numeric embedding — not an LLM opinion on photos',
+        label: 'سیگنال هویت',
+        value: 'تعبیه عددی پایدار — نه نظر یک مدل زبانی درباره عکس',
       },
       {
-        label: 'Determinism',
-        value: 'Same face maps into the same vector space every time',
+        label: 'قطعیت',
+        value: 'همان چهره هر بار در همان فضای برداری نگاشت می‌شود',
       },
       {
-        label: 'Lookalike control',
-        value: 'Distance threshold + ambiguity margin (rejects risky swaps)',
+        label: 'کنترل شباهت ظاهری',
+        value: 'آستانه فاصله + حاشیه ابهام (جابه‌جایی پرریسک را رد می‌کند)',
       },
       {
-        label: 'API dependency',
-        value: 'Matching runs on the server; no OpenAI vision call for ID',
+        label: 'وابستگی به API',
+        value: 'تطبیق روی سرور اجرا می‌شود؛ برای شناسایی فراخوان OpenAI Vision نیست',
       },
       {
-        label: 'Auditability',
-        value: 'Distance and margin can be logged with each decision',
+        label: 'قابلیت ممیزی',
+        value: 'فاصله و حاشیه را می‌توان با هر تصمیم ثبت کرد',
       },
     ],
   },
   {
-    heading: 'Site operations',
+    heading: 'عملیات سایت',
     bullets: [
-      'Re-enroll workers once after upgrading from photo-only records.',
-      'During enrollment, face the camera and slightly turn left/right across the five samples.',
-      'Good frontal lighting improves accuracy; hard backlight or heavy occlusion may reject matches by design.',
-      'Privacy: a face template (vector) plus a cropped enrollment image are stored in private project storage; matching is 1:N within the project gallery only.',
+      'پس از ارتقا از رکوردهای فقط‌عکس، کارگران را یک‌بار دوباره ثبت‌نام کنید.',
+      'هنگام ثبت‌نام رو به دوربین باشید و در پنج نمونه کمی به چپ/راست بچرخید.',
+      'نور جلو خوب دقت را بالا می‌برد؛ نور پشتی شدید یا پوشاندن زیاد ممکن است عمداً تطبیق را رد کند.',
+      'حریم خصوصی: قالب چهره (بردار) به‌همراه تصویر بریده‌شده ثبت‌نام در فضای خصوصی پروژه ذخیره می‌شود؛ تطبیق فقط ۱ به N داخل گالری همان پروژه است.',
     ],
   },
   {
-    heading: 'Summary for stakeholders',
+    heading: 'خلاصه برای ذی‌نفعان',
     quote:
-      'Liparta gate attendance identifies people with a FaceNet biometric template, multi-sample enrollment, and open-set matching (threshold + ambiguity margin)—the same class of pattern used by commercial face attendance devices—rather than asking a language model to visually guess who is in the frame.',
+      'حضور و غیاب گیت لیپارتا افراد را با قالب بیومتریک FaceNet، ثبت‌نام چندنمونه و تطبیق open-set (آستانه + حاشیه ابهام) شناسایی می‌کند — همان کلاس الگوی دستگاه‌های حضور چهره‌ای تجاری — نه اینکه از یک مدل زبانی بخواهد حدس بزند چه کسی در قاب است.',
   },
 ]

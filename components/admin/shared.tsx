@@ -49,12 +49,12 @@ export function StatusBadge({ active }: { active: boolean }) {
       )}
     >
       <span className={cn('mr-1.5 h-1.5 w-1.5 rounded-full', active ? 'bg-emerald-500' : 'bg-muted-foreground/50')} />
-      {active ? 'Active' : 'Inactive'}
+      {active ? 'فعال' : 'غیرفعال'}
     </span>
   )
 }
 
-export function LoadingBlock({ label = 'Loading...' }: { label?: string }) {
+export function LoadingBlock({ label = 'در حال بارگذاری...' }: { label?: string }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border bg-card p-16 text-center">
       <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
@@ -69,7 +69,7 @@ export function ErrorBlock({ message, onRetry }: { message: string; onRetry?: ()
       <p className="font-medium">{message}</p>
       {onRetry ? (
         <button type="button" onClick={onRetry} className="underline mt-2 text-destructive/80 hover:text-destructive">
-          Try again
+          تلاش مجدد
         </button>
       ) : null}
     </div>

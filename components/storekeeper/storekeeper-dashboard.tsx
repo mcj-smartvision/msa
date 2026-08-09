@@ -264,11 +264,11 @@ export function StorekeeperDashboard({
     const note =
       entryMode === 'manual'
         ? transactionType === 'IN'
-          ? 'Manual invoice entry'
-          : 'Manual dispatch entry'
+          ? 'ثبت دستی فاکتور'
+          : 'ثبت دستی خروج'
         : transactionType === 'IN'
-          ? 'AI invoice receipt'
-          : 'AI dispatch document'
+          ? 'رسید فاکتور با هوش مصنوعی'
+          : 'سند خروج با هوش مصنوعی'
 
     try {
       const save = transactionType === 'IN' ? confirmInventoryReceipt : confirmInventoryDispatch
@@ -645,7 +645,7 @@ export function StorekeeperDashboard({
               {scanPreview ? (
                 <div className="rounded-xl border overflow-hidden bg-muted/30 w-full max-w-md mx-auto sm:mx-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={scanPreview} alt="Invoice preview" className="w-full max-h-64 object-contain" />
+                  <img src={scanPreview} alt="پیش‌نمایش فاکتور" className="w-full max-h-64 object-contain" />
                 </div>
               ) : null}
 

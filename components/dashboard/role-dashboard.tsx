@@ -39,7 +39,7 @@ export function RoleDashboard({
 
   const roleLabel = context.user.primaryRole
     ? SITE_ROLE_LABELS[context.user.primaryRole]
-    : 'Team Member'
+    : 'عضو تیم'
 
   return (
     <UiBlockVisibilityProvider
@@ -52,13 +52,13 @@ export function RoleDashboard({
         <UiBlockCustomizePanel />
 
         <PageHeader
-          title={`${roleLabel} Dashboard`}
-          description={`Welcome back, ${context.user.fullName}. Your workspace is tailored to your role.`}
+          title={`داشبورد ${roleLabel}`}
+          description={`${context.user.fullName} عزیز، خوش آمدید. فضای کاری مطابق نقش شما تنظیم شده است.`}
         />
 
         {context.user.projects.length > 1 ? (
           <div className="max-w-sm space-y-2">
-            <Label htmlFor="project-select">Active project</Label>
+            <Label htmlFor="project-select">پروژه فعال</Label>
             <select
               id="project-select"
               value={context.projectId ?? ''}
@@ -75,7 +75,7 @@ export function RoleDashboard({
         ) : null}
 
         {widgets.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No widgets configured for your role.</p>
+          <p className="text-sm text-muted-foreground">ویجتی برای نقش شما پیکربندی نشده است.</p>
         ) : (
           <WidgetGrid>
             {widgets.map((widget) => {

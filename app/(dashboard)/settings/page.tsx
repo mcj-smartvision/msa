@@ -25,12 +25,12 @@ export default function SettingsPage() {
     setMessage(null)
 
     if (newPassword !== confirmPassword) {
-      setError('New passwords do not match.')
+      setError('رمزهای جدید یکسان نیستند.')
       return
     }
 
     if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters.')
+      setError('رمز عبور باید حداقل ۶ کاراکتر باشد.')
       return
     }
 
@@ -41,7 +41,7 @@ export default function SettingsPage() {
     } = await supabase.auth.getUser()
 
     if (!user?.email) {
-      setError('You must be signed in.')
+      setError('باید وارد شده باشید.')
       setLoading(false)
       return
     }
@@ -52,7 +52,7 @@ export default function SettingsPage() {
     })
 
     if (verifyError) {
-      setError('Current password is incorrect.')
+      setError('رمز فعلی نادرست است.')
       setLoading(false)
       return
     }
@@ -72,7 +72,7 @@ export default function SettingsPage() {
 
     await supabase.from('profiles').update({ is_first_login: false }).eq('id', user.id)
 
-    setMessage('Password updated successfully.')
+    setMessage('رمز عبور با موفقیت به‌روزرسانی شد.')
     setCurrentPassword('')
     setNewPassword('')
     setConfirmPassword('')
@@ -83,19 +83,19 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-xl">
       <PageHeader
-        title="Account Settings"
-        description="Change your login password. Your admin can still see the last password they set for you."
+        title="تنظیمات حساب"
+        description="رمز ورود خود را تغییر دهید. ادمین همچنان آخرین رمزی را که برای شما تنظیم کرده می‌بیند."
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>Change password</CardTitle>
-          <CardDescription>Use your current password, then set a new one.</CardDescription>
+          <CardTitle>تغییر رمز عبور</CardTitle>
+          <CardDescription>رمز فعلی را وارد کنید، سپس رمز جدید را تنظیم کنید.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="current-password">Current password</Label>
+              <Label htmlFor="current-password">رمز فعلی</Label>
               <Input
                 id="current-password"
                 type="password"
@@ -105,7 +105,7 @@ export default function SettingsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-password">New password</Label>
+              <Label htmlFor="new-password">رمز جدید</Label>
               <Input
                 id="new-password"
                 type="password"
@@ -116,7 +116,7 @@ export default function SettingsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirm new password</Label>
+              <Label htmlFor="confirm-password">تأیید رمز جدید</Label>
               <Input
                 id="confirm-password"
                 type="password"
@@ -137,7 +137,7 @@ export default function SettingsPage() {
               </Alert>
             ) : null}
             <Button type="submit" disabled={loading}>
-              {loading ? 'Saving...' : 'Update password'}
+              {loading ? 'در حال ذخیره...' : 'به‌روزرسانی رمز عبور'}
             </Button>
           </form>
         </CardContent>

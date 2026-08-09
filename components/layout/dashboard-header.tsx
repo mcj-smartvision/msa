@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LogoutButton } from '@/components/auth/logout-button'
-import { HeaderLanguageSwitcher } from '@/components/i18n/header-language-switcher'
 import { HeaderCalendarSwitcher } from '@/components/schedule/header-calendar-switcher'
 import { HeaderProjectSwitcher } from '@/components/project/header-project-switcher'
 import { MessengerButton } from '@/components/messaging/messenger-panel'
@@ -25,9 +24,9 @@ export function DashboardHeader({ email, isAdmin, roleNavLinks = [] }: Dashboard
 
   const baseNav = isAdmin
     ? [
-        { href: '/admin', label: 'Control Center' },
-        { href: '/admin/members', label: 'Members' },
-        { href: '/admin/projects', label: 'Projects' },
+        { href: '/admin', label: 'کنترل سنتر' },
+        { href: '/admin/members', label: 'اعضا' },
+        { href: '/admin/projects', label: 'پروژه‌ها' },
       ]
     : []
 
@@ -42,7 +41,7 @@ export function DashboardHeader({ email, isAdmin, roleNavLinks = [] }: Dashboard
     : [
         ...(roleNav.length > 0
           ? roleNav
-          : [{ href: '/dashboard', label: 'Dashboard' }]),
+          : [{ href: '/dashboard', label: 'داشبورد' }]),
         ...tailNav,
       ]
 
@@ -79,7 +78,6 @@ export function DashboardHeader({ email, isAdmin, roleNavLinks = [] }: Dashboard
           <MessengerButton />
           <HeaderProjectSwitcher className="hidden sm:block" />
           <HeaderCalendarSwitcher />
-          <HeaderLanguageSwitcher />
           <span className="text-sm text-muted-foreground hidden md:inline max-w-[180px] truncate">{email}</span>
           <LogoutButton label={app.signOut} />
         </div>

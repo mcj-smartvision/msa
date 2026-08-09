@@ -119,7 +119,7 @@ export function ProcurementDashboard({
     return (
       <EmptyState
         title={t.title}
-        description="Ask admin to add you as Procurement Officer on a project."
+        description="از ادمین بخواهید شما را به‌عنوان مسئول تدارکات روی یک پروژه منصوب کند."
       />
     )
   }

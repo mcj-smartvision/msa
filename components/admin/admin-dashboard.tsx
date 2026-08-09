@@ -35,47 +35,47 @@ export function AdminDashboard() {
   return (
     <div className="mx-auto max-w-[1280px] space-y-8">
       <PageHeader
-        title="Control Center"
-        description={`${APP_TAGLINE} System overview and team monitoring — without the clutter.`}
+        title="کنترل سنتر"
+        description={`${APP_TAGLINE} نمای کلی سیستم و پایش تیم — بدون شلوغی.`}
       />
 
       <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Users" value={stats.memberCount} icon={Users} trend={`${stats.projectCount} projects`} />
-        <StatCard label="Active Users" value={activeMembers} icon={UserCheck} trend="Currently enabled" trendType="up" />
+        <StatCard label="کل کاربران" value={stats.memberCount} icon={Users} trend={`${stats.projectCount} پروژه`} />
+        <StatCard label="کاربران فعال" value={activeMembers} icon={UserCheck} trend="فعال و مجاز" trendType="up" />
         <StatCard
-          label="On Site Now"
+          label="حاضر در سایت"
           value={feeds.insideCount}
           icon={MapPin}
-          trend={`${feeds.outsideCount} left · ${feeds.absentCount} absent`}
+          trend={`${feeds.outsideCount} خارج · ${feeds.absentCount} غایب`}
           trendType={feeds.insideCount > 0 ? 'up' : 'neutral'}
         />
         <StatCard
-          label="Needs Attention"
+          label="نیاز به توجه"
           value={needsAttention}
           icon={AlertCircle}
-          trend={pendingPassword > 0 ? `${pendingPassword} password pending` : 'Live issues + messages'}
+          trend={pendingPassword > 0 ? `${pendingPassword} رمز در انتظار` : 'هشدارها و پیام‌ها'}
           trendType={needsAttention > 0 ? 'warning' : 'up'}
         />
       </section>
 
       <section className="grid gap-3 sm:grid-cols-3">
         <QuietMetric
-          label="Messages"
+          label="پیام‌ها"
           value={feeds.tickets.length}
-          hint={`${feeds.openMessageCount} urgent / open`}
+          hint={`${feeds.openMessageCount} فوری / باز`}
           icon={MessageSquare}
         />
         <QuietMetric
-          label="Open Alerts"
+          label="هشدارهای باز"
           value={feeds.alerts.length}
-          hint="Unresolved critical & stock"
+          hint="بحرانی و موجودی حل‌نشده"
           icon={AlertCircle}
           warn={feeds.alerts.length > 0}
         />
         <QuietMetric
-          label="Password Pending"
+          label="رمز در انتظار"
           value={pendingPassword}
-          hint="First login required"
+          hint="نیاز به اولین ورود"
           icon={Shield}
           warn={pendingPassword > 0}
         />

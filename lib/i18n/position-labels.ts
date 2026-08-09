@@ -40,11 +40,11 @@ export function getPositionLabel(
   position: { key: string; title: string; name_en?: string | null; name_fa?: string | null; name_fr?: string | null; name_de?: string | null },
   locale: FormLocale
 ): string {
-  const loc = (['en', 'fa', 'fr', 'de'].includes(locale) ? locale : 'en') as LocaleKey
+  const loc = (['en', 'fa', 'fr', 'de'].includes(locale) ? locale : 'fa') as LocaleKey
   const dbKey = `name_${loc}` as 'name_en' | 'name_fa' | 'name_fr' | 'name_de'
   const fromDb = position[dbKey]
   if (fromDb) return fromDb
-  return POSITION_LABELS[position.key]?.[loc] ?? position.title
+  return POSITION_LABELS[position.key]?.[loc] ?? POSITION_LABELS[position.key]?.fa ?? position.title
 }
 
 export function getSeedPositionRows(projectId: string) {

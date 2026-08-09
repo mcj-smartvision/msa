@@ -45,7 +45,7 @@ export function getRoleNavLinks(context: DashboardUserContext): RoleNavLink[] {
   ) {
     links.push({
       href: '/project/subcontractors',
-      label: 'Subcontractors',
+      label: 'پیمانکاران جزء',
       roleKey: 'project_manager',
     })
   }

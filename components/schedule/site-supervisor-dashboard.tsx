@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Bot, Loader2 } from 'lucide-react'
 import { useLocale } from '@/components/i18n/locale-provider'
-import { PageHeader, LoadingBlock, ErrorBlock, SectionCard, EmptyState } from '@/components/admin/shared'
+import { PageHeader, LoadingBlock, ErrorBlock, EmptyState } from '@/components/admin/shared'
 import { ScheduleDateToolbar } from '@/components/schedule/schedule-date-toolbar'
 import { ScheduleDateInput } from '@/components/schedule/schedule-date-input'
 import { SupervisorSummaryCards } from '@/components/supervisor/supervisor-summary-cards'
@@ -12,6 +12,14 @@ import { TodayActivitiesTable } from '@/components/supervisor/today-activities-t
 import { LookaheadPanel } from '@/components/supervisor/lookahead-panel'
 import { ResourcesPanel } from '@/components/supervisor/resources-panel'
 import { IssuesAlertsPanel } from '@/components/supervisor/issues-alerts-panel'
+import {
+  SupervisorSafetyActionsPanel,
+  countOpenSupervisorSafetyActions,
+} from '@/components/hse/supervisor-safety-actions-panel'
+import {
+  SupervisorWorkspaceShell,
+  type SupervisorNavId,
+} from '@/components/supervisor/supervisor-workspace-shell'
 import { QuickReportDialog } from '@/components/supervisor/quick-report-dialog'
 import { AiDraftViewer } from '@/components/shared/ai-draft-viewer'
 import { ModalOverlay } from '@/components/supervisor/modal-overlay'
@@ -130,6 +138,12 @@ export function SiteSupervisorDashboard({
   const [hseSeverity, setHseSeverity] = useState('warning')
   const [hseDesc, setHseDesc] = useState('')
   const [instructionText, setInstructionText] = useState('')
+  const [activeSection, setActiveSection] = useState<SupervisorNavId>('safety')
+  const [safetyBadge, setSafetyBadge] = useState(0)
+
+  useEffect(() => {
+    setSafetyBadge(countOpenSupervisorSafetyActions())
+  }, [])
 
   const loadData = useCallback(async () => {
     if (!projectId) {
@@ -234,7 +248,7 @@ export function SiteSupervisorDashboard({
       setGeneratedAction(draft)
       setAiDrafts((prev) => [draft, ...prev])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed')
+      setError(err instanceof Error ? err.message : 'اقدام ناموفق بود')
     } finally {
       setActionLoading(false)
     }
@@ -244,7 +258,7 @@ export function SiteSupervisorDashboard({
     return (
       <EmptyState
         title={t.title}
-        description="Ask the project admin to add you with Site Supervisor position."
+        description="از ادمین پروژه بخواهید شما را با سمت سرپرست کارگاه منصوب کند."
       />
     )
   }
@@ -282,133 +296,213 @@ export function SiteSupervisorDashboard({
 
       <ScheduleDateToolbar />
 
-      {projectId ? (
-        <div className="rounded-xl border border-sky-200 bg-sky-50/80 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex-1 text-sm">
-            <p className="font-medium text-sky-950">
-              {isRtl ? 'لیست‌های دفتر فنی و وضعیت تأیید مدیر پروژه' : 'Technical Office lists & PM approval status'}
-            </p>
-            <p className="text-sky-900/80 mt-0.5 text-xs">
-              {isRtl
-                ? 'ببینید دفتر فنی چه نوشته، مدیر تأیید کرده یا نه، و کامنت بگذارید.'
-                : 'See TO items, PM approval status, and leave comments.'}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" asChild>
-              <Link href={`/site-ops/prepared?projectId=${projectId}&as=supervisor`}>
-                {isRtl ? 'لیست‌های کارگاه' : 'Workshop lists'}
-              </Link>
-            </Button>
-            <Button type="button" size="sm" variant="outline" asChild>
-              <Link href={`/site-ops/schedule?projectId=${projectId}&as=supervisor`}>
-                {isRtl ? 'مشاهده برنامه (فقط خواندنی)' : 'View schedule (read-only)'}
-              </Link>
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
       {loading && tasks.length === 0 ? <LoadingBlock label={t.saving} /> : null}
       {error ? <ErrorBlock message={error} onRetry={() => void loadData()} /> : null}
 
-      <UiBlockGuard code="SS-KPI-01">
-        <SupervisorSummaryCards kpis={kpis} labels={t} />
-      </UiBlockGuard>
-
-      <UiBlockGuard code="SS-TBL-01">
-        <TodayActivitiesTable
-          activities={todayActivities}
-          labels={t}
-          isRtl={isRtl}
-          onOpenQuickReport={(id) => {
-            const act = todayActivities.find((a) => a.id === id) ?? null
-            setQuickReportActivity(act)
-          }}
-          onCreateInstruction={(id) => {
-            setActionTaskId(id)
-            setInstructionText('')
-            setGeneratedAction(null)
-            setActionDialog('instruction')
-          }}
-        />
-      </UiBlockGuard>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <UiBlockGuard code="SS-PNL-01">
-          <LookaheadPanel activities={lookahead} labels={t} isRtl={isRtl} />
-        </UiBlockGuard>
-        <UiBlockGuard code="SS-PNL-03">
-          <IssuesAlertsPanel
-            issues={issues}
-            labels={t}
-            onDraftPmComment={(issueId) => {
-              const issue = issues.find((i) => i.id === issueId)
-              setPmNote(issue?.description ?? '')
-              setGeneratedAction(null)
-              setActionDialog('pm_comment')
-            }}
-          />
-        </UiBlockGuard>
-      </div>
-
-      <UiBlockGuard code="SS-PNL-02">
-        <ResourcesPanel
-          resources={resources}
-          labels={t}
-          onRequestPurchase={() => {
-            setGeneratedAction(null)
-            setActionDialog('purchase')
-          }}
-        />
-      </UiBlockGuard>
-
-      <UiBlockGuard code="SS-PNL-04">
-      <SectionCard
-        title={t.aiActions}
-        action={
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" onClick={() => { setGeneratedAction(null); setActionDialog('hse_alert') }}>
-              {t.hseAlert}
-            </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => { setGeneratedAction(null); setActionDialog('pm_comment') }}>
-              {t.pmComment}
-            </Button>
-          </div>
-        }
+      <SupervisorWorkspaceShell
+        activeId={activeSection}
+        onSelect={setActiveSection}
+        items={[
+          {
+            id: 'safety',
+            label: 'ایمنی و اخطارها',
+            hint: 'اعلان‌های تأییدشده برای اقدام میدانی',
+            badge: safetyBadge,
+            badgeTone: 'danger',
+          },
+          {
+            id: 'overview',
+            label: 'خلاصه وضعیت',
+            hint: 'شاخص‌های روزانه کارگاه',
+          },
+          {
+            id: 'workshop',
+            label: 'لیست‌های کارگاه',
+            hint: 'دفتر فنی و وضعیت تأیید مدیر پروژه',
+          },
+          {
+            id: 'today',
+            label: 'فعالیت‌های امروز',
+            hint: 'گزارش سریع و دستور کار',
+          },
+          {
+            id: 'lookahead',
+            label: 'نگاه به جلو',
+            hint: 'فعالیت‌های روزهای آینده',
+          },
+          {
+            id: 'issues',
+            label: 'مسائل و هشدارها',
+            hint: 'مشکلات ثبت‌شده کارگاه',
+            badge: issues.filter((i) => i.status === 'open').length || undefined,
+          },
+          {
+            id: 'resources',
+            label: 'منابع و مصالح',
+            hint: 'موجودی و درخواست خرید',
+          },
+          {
+            id: 'ai',
+            label: 'اقدامات هوشمند',
+            hint: 'پیش‌نویس‌های در انتظار تأیید',
+            badge: aiDrafts.length || undefined,
+          },
+        ]}
       >
-        {aiDrafts.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">{t.noAiDrafts}</p>
-        ) : (
-          <div className="space-y-4 p-4">
-            {aiDrafts.slice(0, 5).map((draft) => (
-              <div key={draft.id} className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Bot className="h-4 w-4" />
-                  <Badge variant="outline">{draft.type}</Badge>
-                </div>
-                <AiDraftViewer
-                  text={draft.text_generated}
-                  status={draft.status}
-                  labels={labelsForAction(draft.type)}
-                  onApprove={async (text) => {
-                    if (text !== draft.text_generated) {
-                      await updateAiActionText(supabase, draft.id, text)
-                    }
-                    await confirmAiAction(supabase, draft.id, initialContext.userId)
-                    void loadData()
-                  }}
-                  onReject={async () => {
-                    await rejectAiAction(supabase, draft.id, initialContext.userId)
-                    void loadData()
-                  }}
-                />
+        {activeSection === 'safety' ? (
+          <SupervisorSafetyActionsPanel
+            embedded
+            onQueueChange={setSafetyBadge}
+          />
+        ) : null}
+
+        {activeSection === 'overview' ? (
+          <UiBlockGuard code="SS-KPI-01">
+            <SupervisorSummaryCards kpis={kpis} labels={t} />
+          </UiBlockGuard>
+        ) : null}
+
+        {activeSection === 'workshop' ? (
+          projectId ? (
+            <div className="space-y-3">
+              <p className="text-sm text-slate-600">
+                {isRtl
+                  ? 'ببینید دفتر فنی چه نوشته، مدیر تأیید کرده یا نه، و کامنت بگذارید.'
+                  : 'See TO items, PM approval status, and leave comments.'}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" size="sm" asChild>
+                  <Link href={`/site-ops/prepared?projectId=${projectId}&as=supervisor`}>
+                    {isRtl ? 'لیست‌های کارگاه' : 'Workshop lists'}
+                  </Link>
+                </Button>
+                <Button type="button" size="sm" variant="outline" asChild>
+                  <Link href={`/site-ops/schedule?projectId=${projectId}&as=supervisor`}>
+                    {isRtl ? 'مشاهده برنامه (فقط خواندنی)' : 'View schedule (read-only)'}
+                  </Link>
+                </Button>
               </div>
-            ))}
-          </div>
-        )}
-      </SectionCard>
-      </UiBlockGuard>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">ابتدا یک پروژه انتخاب کنید.</p>
+          )
+        ) : null}
+
+        {activeSection === 'today' ? (
+          <UiBlockGuard code="SS-TBL-01">
+            <TodayActivitiesTable
+              activities={todayActivities}
+              labels={t}
+              isRtl={isRtl}
+              onOpenQuickReport={(id) => {
+                const act = todayActivities.find((a) => a.id === id) ?? null
+                setQuickReportActivity(act)
+              }}
+              onCreateInstruction={(id) => {
+                setActionTaskId(id)
+                setInstructionText('')
+                setGeneratedAction(null)
+                setActionDialog('instruction')
+              }}
+            />
+          </UiBlockGuard>
+        ) : null}
+
+        {activeSection === 'lookahead' ? (
+          <UiBlockGuard code="SS-PNL-01">
+            <LookaheadPanel activities={lookahead} labels={t} isRtl={isRtl} />
+          </UiBlockGuard>
+        ) : null}
+
+        {activeSection === 'issues' ? (
+          <UiBlockGuard code="SS-PNL-03">
+            <IssuesAlertsPanel
+              issues={issues}
+              labels={t}
+              onDraftPmComment={(issueId) => {
+                const issue = issues.find((i) => i.id === issueId)
+                setPmNote(issue?.description ?? '')
+                setGeneratedAction(null)
+                setActionDialog('pm_comment')
+              }}
+            />
+          </UiBlockGuard>
+        ) : null}
+
+        {activeSection === 'resources' ? (
+          <UiBlockGuard code="SS-PNL-02">
+            <ResourcesPanel
+              resources={resources}
+              labels={t}
+              onRequestPurchase={() => {
+                setGeneratedAction(null)
+                setActionDialog('purchase')
+              }}
+            />
+          </UiBlockGuard>
+        ) : null}
+
+        {activeSection === 'ai' ? (
+          <UiBlockGuard code="SS-PNL-04">
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setGeneratedAction(null)
+                    setActionDialog('hse_alert')
+                  }}
+                >
+                  {t.hseAlert}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setGeneratedAction(null)
+                    setActionDialog('pm_comment')
+                  }}
+                >
+                  {t.pmComment}
+                </Button>
+              </div>
+              {aiDrafts.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">{t.noAiDrafts}</p>
+              ) : (
+                <div className="space-y-4">
+                  {aiDrafts.slice(0, 5).map((draft) => (
+                    <div key={draft.id} className="space-y-2 rounded-lg border p-3">
+                      <div className="flex items-center gap-2">
+                        <Bot className="h-4 w-4" />
+                        <Badge variant="outline">{draft.type}</Badge>
+                      </div>
+                      <AiDraftViewer
+                        text={draft.text_generated}
+                        status={draft.status}
+                        labels={labelsForAction(draft.type)}
+                        onApprove={async (text) => {
+                          if (text !== draft.text_generated) {
+                            await updateAiActionText(supabase, draft.id, text)
+                          }
+                          await confirmAiAction(supabase, draft.id, initialContext.userId)
+                          void loadData()
+                        }}
+                        onReject={async () => {
+                          await rejectAiAction(supabase, draft.id, initialContext.userId)
+                          void loadData()
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </UiBlockGuard>
+        ) : null}
+      </SupervisorWorkspaceShell>
 
       <UiBlockGuard code="SS-ACT-01">
       <QuickReportDialog
@@ -455,26 +549,26 @@ export function SiteSupervisorDashboard({
             {actionDialog === 'purchase' ? (
               <>
                 <div className="space-y-2">
-                  <Label>Material</Label>
+                  <Label>{isRtl ? 'مصالح' : 'Material'}</Label>
                   <Input value={purchaseMaterial} onChange={(e) => setPurchaseMaterial(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label>Qty</Label>
+                    <Label>{isRtl ? 'تعداد' : 'Qty'}</Label>
                     <Input type="number" value={purchaseQty} onChange={(e) => setPurchaseQty(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Unit</Label>
+                    <Label>{isRtl ? 'واحد' : 'Unit'}</Label>
                     <Input value={purchaseUnit} onChange={(e) => setPurchaseUnit(e.target.value)} />
                   </div>
                 </div>
                 <ScheduleDateInput
-                  label="Needed date"
+                  label={isRtl ? 'تاریخ نیاز' : 'Needed date'}
                   valueIso={purchaseDate}
                   onChangeIso={setPurchaseDate}
                 />
                 <div className="space-y-2">
-                  <Label>Reason</Label>
+                  <Label>{isRtl ? 'دلیل' : 'Reason'}</Label>
                   <Textarea rows={3} value={purchaseReason} onChange={(e) => setPurchaseReason(e.target.value)} />
                 </div>
               </>
@@ -482,16 +576,16 @@ export function SiteSupervisorDashboard({
             {actionDialog === 'pm_comment' ? (
               <>
                 <div className="space-y-2">
-                  <Label>Category</Label>
+                  <Label>{isRtl ? 'دسته' : 'Category'}</Label>
                   <Select value={pmCategory} onValueChange={setPmCategory}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="delay">Delay risk</SelectItem>
-                      <SelectItem value="resource">Resource</SelectItem>
-                      <SelectItem value="coordination">Coordination</SelectItem>
-                      <SelectItem value="general">General</SelectItem>
+                      <SelectItem value="delay">{isRtl ? 'ریسک تأخیر' : 'Delay risk'}</SelectItem>
+                      <SelectItem value="resource">{isRtl ? 'منابع' : 'Resource'}</SelectItem>
+                      <SelectItem value="coordination">{isRtl ? 'هماهنگی' : 'Coordination'}</SelectItem>
+                      <SelectItem value="general">{isRtl ? 'عمومی' : 'General'}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -505,9 +599,9 @@ export function SiteSupervisorDashboard({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="info">Info</SelectItem>
-                    <SelectItem value="warning">Warning</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
+                    <SelectItem value="info">{isRtl ? 'اطلاع' : 'Info'}</SelectItem>
+                    <SelectItem value="warning">{isRtl ? 'هشدار' : 'Warning'}</SelectItem>
+                    <SelectItem value="critical">{isRtl ? 'بحرانی' : 'Critical'}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Textarea rows={4} value={hseDesc} onChange={(e) => setHseDesc(e.target.value)} />

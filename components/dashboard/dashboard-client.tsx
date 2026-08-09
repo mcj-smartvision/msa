@@ -39,7 +39,7 @@ export function DashboardClient({
 
   useEffect(() => {
     loadWidgets(context)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load dashboard'))
+      .catch((err) => setError(err instanceof Error ? err.message : 'بارگذاری داشبورد ناموفق بود'))
       .finally(() => setLoading(false))
   }, [context, loadWidgets])
 
@@ -56,14 +56,14 @@ export function DashboardClient({
       setContext(next)
       await loadWidgets(next)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to switch project')
+      setError(err instanceof Error ? err.message : 'تغییر پروژه ناموفق بود')
     } finally {
       setLoading(false)
     }
   }
 
   if (loading && widgetKeys.length === 0) {
-    return <LoadingBlock label="Loading your dashboard..." />
+    return <LoadingBlock label="در حال بارگذاری داشبورد شما..." />
   }
 
   if (error) {

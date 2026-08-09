@@ -23,11 +23,11 @@ export function EntryExitWidget({ context }: { context: WidgetRenderContext }) {
     fetch(`/api/attendance/transit?projectId=${encodeURIComponent(context.projectId)}&limit=8`)
       .then(async (res) => {
         const json = await res.json()
-        if (!res.ok) throw new Error(json.error || 'Failed to load')
+        if (!res.ok) throw new Error(json.error || 'بارگذاری ناموفق بود')
         if (!cancelled) setLogs(json.transits as AttendanceTransit[])
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Error')
+        if (!cancelled) setError(e instanceof Error ? e.message : 'خطا')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -39,22 +39,22 @@ export function EntryExitWidget({ context }: { context: WidgetRenderContext }) {
 
   return (
     <WidgetShell
-      title="Entry / Exit Logs"
-      description="Gate activity for today"
+      title="ثبت ورود / خروج"
+      description="تردد گیت امروز"
       action={
         <Button size="sm" variant="outline" asChild>
-          <Link href="/dashboard/security">Open gate</Link>
+          <Link href="/dashboard/security">باز کردن گیت</Link>
         </Button>
       }
     >
       {!context.projectId ? (
-        <p className="text-sm text-muted-foreground">No project selected.</p>
+        <p className="text-sm text-muted-foreground">پروژه‌ای انتخاب نشده است.</p>
       ) : loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">در حال بارگذاری…</p>
       ) : error ? (
         <p className="text-sm text-destructive">{error}</p>
       ) : logs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No transits yet.</p>
+        <p className="text-sm text-muted-foreground">هنوز ترددی ثبت نشده است.</p>
       ) : (
         <ul className="space-y-2">
           {logs.map((log) => (
@@ -74,7 +74,7 @@ export function EntryExitWidget({ context }: { context: WidgetRenderContext }) {
                       : 'text-amber-600 font-medium'
                   }
                 >
-                  {log.direction}
+                  {log.direction === 'IN' ? 'ورود' : log.direction === 'OUT' ? 'خروج' : log.direction}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {new Date(log.occurredAt).toLocaleTimeString([], {

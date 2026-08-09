@@ -63,7 +63,7 @@ export default function ProjectWidgetsPage({ params }: { params: { projectId: st
         setLoading(true)
         await loadData()
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load visibility')
+        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری تنظیمات نمایش ناموفق بود')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -73,14 +73,14 @@ export default function ProjectWidgetsPage({ params }: { params: { projectId: st
     }
   }, [supabase, params.projectId])
 
-  if (loading) return <LoadingBlock label="Loading visibility settings..." />
+  if (loading) return <LoadingBlock label="در حال بارگذاری تنظیمات نمایش..." />
   if (error) return <ErrorBlock message={error} onRetry={() => window.location.reload()} />
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Dashboard Visibility"
-        description="Configure which dashboard modules, charts, tables, and panels are visible per position."
+        title="نمایش داشبورد"
+        description="مشخص کنید کدام ماژول‌ها، نمودارها، جداول و پنل‌های داشبورد برای هر سمت قابل‌نمایش باشند."
       />
 
       <div className="flex flex-wrap gap-2 border-b pb-2">
@@ -92,7 +92,7 @@ export default function ProjectWidgetsPage({ params }: { params: { projectId: st
             tab === 'ui-blocks' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
           )}
         >
-          UI Blocks
+          بلوک‌های UI
           <Badge variant="secondary" className="ms-2 text-[10px]">
             {uiBlocks.length || catalogStats.total}
           </Badge>
@@ -107,7 +107,7 @@ export default function ProjectWidgetsPage({ params }: { params: { projectId: st
               : 'text-muted-foreground hover:bg-muted'
           )}
         >
-          Legacy Widgets
+          ویجت‌های قدیمی
           <Badge variant="secondary" className="ms-2 text-[10px]">
             {widgets.length}
           </Badge>

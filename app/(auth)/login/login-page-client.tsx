@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { HardHat, Lock, User, ArrowRight } from 'lucide-react'
 import { normalizeLoginIdentifier } from '@/lib/auth/login-identifier'
-import { HeaderLanguageSwitcher } from '@/components/i18n/header-language-switcher'
 import { HeaderCalendarSwitcher } from '@/components/schedule/header-calendar-switcher'
 import { APP_NAME, APP_TAGLINE } from '@/lib/brand'
 
@@ -41,10 +40,10 @@ export default function LoginPage() {
       const msg = signInError.message.toLowerCase()
       if (msg.includes('fetch failed') || msg.includes('network')) {
         setError(
-          'Cannot reach Supabase. Check internet/VPN, then restart the dev server (only one npm run dev on port 3000).'
+          'ارتباط با سرور برقرار نشد. اینترنت/VPN را بررسی کنید و سرور توسعه را دوباره راه‌اندازی کنید.'
         )
       } else if (msg.includes('invalid login credentials')) {
-        setError('Wrong email or password.')
+        setError('ایمیل یا رمز عبور نادرست است.')
       } else {
         setError(signInError.message)
       }
@@ -73,7 +72,6 @@ export default function LoginPage() {
       <div className="absolute inset-0 site-grid-bg opacity-10 pointer-events-none" />
       <div className="absolute top-4 end-4 z-10 flex flex-wrap items-center justify-end gap-2">
         <HeaderCalendarSwitcher />
-        <HeaderLanguageSwitcher />
       </div>
 
       <div className="relative w-full max-w-[420px] rounded-2xl border border-white/10 bg-background/95 backdrop-blur-sm shadow-elevated p-8 sm:p-10">
@@ -90,7 +88,7 @@ export default function LoginPage() {
         <div className="space-y-2 mb-6 text-center">
           <h2 className="text-lg font-semibold">{app.signIn}</h2>
           <p className="text-muted-foreground text-sm">
-            Enter your credentials to continue.
+            برای ادامه، اطلاعات ورود خود را وارد کنید.
           </p>
         </div>
 
@@ -106,7 +104,7 @@ export default function LoginPage() {
                 onChange={(e) => setIdentifier(e.target.value)}
                 required
                 className="pl-10 h-11"
-                placeholder="mojtaba421@gmail.com"
+                placeholder="ایمیل یا نام کاربری"
                 autoComplete="username"
               />
             </div>
@@ -141,7 +139,7 @@ export default function LoginPage() {
           ) : null}
 
           <Button type="submit" className="w-full h-11" disabled={loading}>
-            {loading ? 'Signing in...' : (
+            {loading ? 'در حال ورود...' : (
               <>
                 {app.signIn}
                 <ArrowRight className="h-4 w-4" />
@@ -151,7 +149,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          Access by invitation only.
+          ورود فقط با دعوت‌نامه.
         </p>
       </div>
     </div>

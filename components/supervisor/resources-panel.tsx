@@ -31,13 +31,13 @@ export function ResourcesPanel({ resources, labels, onRequestPurchase }: Resourc
           </CardHeader>
           <CardContent className="space-y-3">
             {materials.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No inventory linked.</p>
+              <p className="text-xs text-muted-foreground">انباری متصل نیست.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-muted-foreground border-b">
-                      <th className="py-1 text-start">Name</th>
+                      <th className="py-1 text-start">نام</th>
                       <th className="py-1 text-start">{labels.stock}</th>
                       <th className="py-1 text-start">{labels.status}</th>
                     </tr>
@@ -78,11 +78,11 @@ export function ResourcesPanel({ resources, labels, onRequestPurchase }: Resourc
             <p className="text-xs text-muted-foreground mt-1">{labels.crews}</p>
             {shortage ? (
               <Badge variant="destructive" className="mt-2">
-                {manpower.shortage_note ?? 'Shortage'}
+                {manpower.shortage_note ?? 'کمبود'}
               </Badge>
             ) : (
               <Badge variant="secondary" className="mt-2">
-                OK
+                مناسب
               </Badge>
             )}
           </CardContent>

@@ -32,7 +32,7 @@ export function IssuesAlertsPanel({ issues, labels, onDraftPmComment }: IssuesAl
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">{issue.description}</p>
                 {issue.related_task_name ? (
-                  <p className="text-xs text-muted-foreground mt-1">Task: {issue.related_task_name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">فعالیت: {issue.related_task_name}</p>
                 ) : null}
                 <p className="text-xs text-muted-foreground mt-1">
                   <FormattedDate value={issue.created_at.slice(0, 10)} />

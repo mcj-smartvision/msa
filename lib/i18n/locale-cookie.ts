@@ -4,7 +4,7 @@ import { normalizeLocale } from '@/lib/project-init/i18n/utils'
 export const LOCALE_COOKIE = 'sitepilot_locale'
 
 export function readLocaleCookie(): FormLocale {
-  if (typeof document === 'undefined') return 'en'
+  if (typeof document === 'undefined') return 'fa'
   const match = document.cookie.match(new RegExp(`(?:^|; )${LOCALE_COOKIE}=([^;]*)`))
   return normalizeLocale(match?.[1] ? decodeURIComponent(match[1]) : undefined)
 }

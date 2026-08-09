@@ -122,7 +122,7 @@ export function QuickReportDialog({
       setSummaryText(result.summaryText)
       setReportId(result.reportId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed')
+      setError(err instanceof Error ? err.message : locale === 'fa' ? 'ناموفق بود' : 'Failed')
     } finally {
       setLoading(false)
     }
@@ -163,15 +163,15 @@ export function QuickReportDialog({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label>{locale === 'fa' ? 'وضعیت' : 'Status'}</Label>
               <Select value={actualStatus} onValueChange={(v) => setActualStatus(v as ActualStatus)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="notStarted">Not started</SelectItem>
-                  <SelectItem value="started">Started</SelectItem>
-                  <SelectItem value="finished">Finished</SelectItem>
+                  <SelectItem value="notStarted">{locale === 'fa' ? 'شروع نشده' : 'Not started'}</SelectItem>
+                  <SelectItem value="started">{locale === 'fa' ? 'شروع شده' : 'Started'}</SelectItem>
+                  <SelectItem value="finished">{locale === 'fa' ? 'تمام شده' : 'Finished'}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -217,7 +217,12 @@ export function QuickReportDialog({
             {labels.hseIncident}
           </label>
           {hseIncident ? (
-            <Textarea rows={2} value={hseDesc} onChange={(e) => setHseDesc(e.target.value)} placeholder="HSE details" />
+            <Textarea
+              rows={2}
+              value={hseDesc}
+              onChange={(e) => setHseDesc(e.target.value)}
+              placeholder={locale === 'fa' ? 'جزئیات HSE' : 'HSE details'}
+            />
           ) : null}
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}

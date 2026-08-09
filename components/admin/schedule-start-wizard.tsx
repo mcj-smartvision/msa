@@ -48,13 +48,13 @@ export function ScheduleStartWizard({ projectId, baselineStart, onComplete }: Sc
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Failed to apply start date')
+      if (!response.ok) throw new Error(data.error || 'اعمال تاریخ شروع ناموفق بود')
 
       setAnalysis(data.analysis)
       setStep('done')
       onComplete?.()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed')
+      setError(err instanceof Error ? err.message : 'ناموفق')
     } finally {
       setLoading(false)
     }

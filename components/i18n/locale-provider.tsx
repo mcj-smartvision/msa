@@ -42,13 +42,14 @@ export function LocaleProvider({
   )
 
   useEffect(() => {
-    const stored = readStoredLocale()
-    if (stored && stored !== locale) {
-      setLocaleState(stored)
+    // Temporary: force Persian UI across the app (cleanup later)
+    if (locale !== 'fa') {
+      setLocale('fa')
+      return
     }
     document.documentElement.lang = locale
     document.documentElement.dir = dir
-  }, [locale, dir])
+  }, [locale, dir, setLocale])
 
   const value = useMemo<LocaleContextValue>(
     () => ({
@@ -74,10 +75,10 @@ export function useLocale() {
 export function useLocaleSafe() {
   const ctx = useContext(LocaleContext)
   if (ctx) return ctx
-  const locale: FormLocale = 'en'
+  const locale: FormLocale = 'fa'
   return {
     locale,
-    dir: 'ltr' as const,
+    dir: 'rtl' as const,
     setLocale: () => {},
     app: APP_SHELL[locale],
   }

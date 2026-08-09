@@ -52,7 +52,7 @@ export default function ProjectMembersPage({ params }: { params: { projectId: st
         setLoading(true)
         await loadData()
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load members')
+        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری اعضا ناموفق بود')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -92,7 +92,7 @@ export default function ProjectMembersPage({ params }: { params: { projectId: st
     })
 
     const data = await response.json()
-    if (!response.ok) throw new Error(data.error || 'Failed to create member')
+    if (!response.ok) throw new Error(data.error || 'ایجاد عضو ناموفق بود')
     await loadData()
   }
 

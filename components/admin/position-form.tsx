@@ -42,7 +42,7 @@ export function PositionForm({ initial, submitLabel, onSubmit }: PositionFormPro
         setIsActive(true)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save position')
+      setError(err instanceof Error ? err.message : 'ذخیره سمت ناموفق بود')
     } finally {
       setLoading(false)
     }
@@ -57,21 +57,21 @@ export function PositionForm({ initial, submitLabel, onSubmit }: PositionFormPro
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="position-title">Title</Label>
+              <Label htmlFor="position-title">عنوان</Label>
               <Input id="position-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="position-key">Key</Label>
+              <Label htmlFor="position-key">کلید</Label>
               <Input id="position-key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="site_supervisor" />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="position-description">Description</Label>
+            <Label htmlFor="position-description">توضیحات</Label>
             <Textarea id="position-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
           </div>
-          <Checkbox id="position-active" label="Active position" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+          <Checkbox id="position-active" label="سمت فعال" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          <Button type="submit" disabled={loading}>{loading ? 'Saving...' : submitLabel}</Button>
+          <Button type="submit" disabled={loading}>{loading ? 'در حال ذخیره...' : submitLabel}</Button>
         </form>
       </CardContent>
     </Card>

@@ -138,7 +138,7 @@ export function TechnicalOfficeDashboard({
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
-          Project
+          پروژه
           <select
             className="mt-1 block min-w-[220px] rounded-lg border px-3 py-2"
             value={projectId}

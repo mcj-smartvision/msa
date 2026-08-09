@@ -19,17 +19,24 @@ const statusStyles = {
 }
 
 const statusLabels = {
-  open: 'Urgent',
-  in_progress: 'Recent',
-  resolved: 'Resolved',
-  closed: 'Closed',
+  open: 'فوری',
+  in_progress: 'اخیر',
+  resolved: 'حل‌شده',
+  closed: 'بسته‌شده',
+}
+
+const priorityLabels = {
+  low: 'کم',
+  medium: 'متوسط',
+  high: 'بالا',
+  critical: 'بحرانی',
 }
 
 export function SupportTicketsPanel({ tickets }: { tickets: AdminSupportTicket[] }) {
   if (tickets.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-6 text-center">
-        No project messages yet.
+        هنوز پیامی ثبت نشده است.
       </p>
     )
   }
@@ -45,8 +52,8 @@ export function SupportTicketsPanel({ tickets }: { tickets: AdminSupportTicket[]
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <span className="text-xs font-mono text-muted-foreground">{ticket.id}</span>
-                <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize', priorityStyles[ticket.priority])}>
-                  {ticket.priority}
+                <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium', priorityStyles[ticket.priority])}>
+                  {priorityLabels[ticket.priority]}
                 </span>
                 <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium', statusStyles[ticket.status])}>
                   {statusLabels[ticket.status]}
@@ -86,7 +93,7 @@ export function CriticalAlertsPanel({
   if (alerts.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-6 text-center">
-        No unresolved alerts right now.
+        در حال حاضر هشدار حل‌نشده‌ای وجود ندارد.
       </p>
     )
   }
@@ -104,7 +111,11 @@ export function CriticalAlertsPanel({
               {alert.source}
             </span>
             <span className="text-xs text-muted-foreground">
-              {alert.time === 'now' || alert.time === '—' ? alert.time : `${alert.time} ago`}
+              {alert.time === 'now'
+                ? 'الان'
+                : alert.time === '—'
+                  ? alert.time
+                  : `${alert.time} پیش`}
             </span>
           </div>
         </div>

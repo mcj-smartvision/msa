@@ -18,7 +18,13 @@ interface TodayActivitiesTableProps {
   onCreateInstruction: (activityId: string) => void
 }
 
-const plannedLabels: Record<TodayActivity['planned_status'], string> = {
+const plannedLabelsFa: Record<TodayActivity['planned_status'], string> = {
+  shouldStart: 'شروع',
+  shouldContinue: 'ادامه',
+  shouldFinish: 'پایان',
+}
+
+const plannedLabelsEn: Record<TodayActivity['planned_status'], string> = {
   shouldStart: 'Start',
   shouldContinue: 'Continue',
   shouldFinish: 'Finish',
@@ -31,6 +37,8 @@ export function TodayActivitiesTable({
   onOpenQuickReport,
   onCreateInstruction,
 }: TodayActivitiesTableProps) {
+  const plannedLabels = isRtl ? plannedLabelsFa : plannedLabelsEn
+
   if (activities.length === 0) {
     return (
       <SectionCard title={labels.todayOps}>
@@ -46,11 +54,11 @@ export function TodayActivitiesTable({
           <thead>
             <tr className="border-b text-muted-foreground">
               <th className="px-4 py-2 font-medium text-start">{labels.wbs}</th>
-              <th className="px-4 py-2 font-medium text-start">Activity</th>
-              <th className="px-4 py-2 font-medium text-start hidden md:table-cell">Plan</th>
-              <th className="px-4 py-2 font-medium text-start">Progress</th>
-              <th className="px-4 py-2 font-medium text-start hidden lg:table-cell">Readiness</th>
-              <th className="px-4 py-2 font-medium text-end">Actions</th>
+              <th className="px-4 py-2 font-medium text-start">{isRtl ? 'فعالیت' : 'Activity'}</th>
+              <th className="px-4 py-2 font-medium text-start hidden md:table-cell">{isRtl ? 'برنامه' : 'Plan'}</th>
+              <th className="px-4 py-2 font-medium text-start">{isRtl ? 'پیشرفت' : 'Progress'}</th>
+              <th className="px-4 py-2 font-medium text-start hidden lg:table-cell">{isRtl ? 'آمادگی' : 'Readiness'}</th>
+              <th className="px-4 py-2 font-medium text-end">{isRtl ? 'اقدامات' : 'Actions'}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -78,7 +86,7 @@ export function TodayActivitiesTable({
                 <td className="px-4 py-3 hidden lg:table-cell">
                   <ReadinessDots
                     readiness={a.readiness}
-                    labels={{ materials: labels.materials, manpower: labels.manpower, access: 'Access' }}
+                    labels={{ materials: labels.materials, manpower: labels.manpower, access: labels.access }}
                   />
                 </td>
                 <td className="px-4 py-3">

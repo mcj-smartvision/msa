@@ -835,8 +835,8 @@ export function ExpenseManagement({
           ? costTypeRaw
           : 'materials'
       ) as FinancialCostType
-      if (!Number.isFinite(amount) || amount <= 0) errors.push('Invalid amount')
-      if (!documentDate) errors.push('Missing date')
+      if (!Number.isFinite(amount) || amount <= 0) errors.push('مبلغ نامعتبر')
+      if (!documentDate) errors.push('تاریخ وارد نشده')
 
       const candidate = {
         projectId: projectId!,

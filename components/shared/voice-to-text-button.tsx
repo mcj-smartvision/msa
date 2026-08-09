@@ -79,10 +79,10 @@ export function VoiceToTextButton({
       form.append('language', fa ? 'fa' : 'en')
       const res = await fetch('/api/ai/transcribe', { method: 'POST', body: form })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed')
+      if (!res.ok) throw new Error(data.error || (fa ? 'ناموفق' : 'Failed'))
       setPendingText(String(data.text ?? '').trim())
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed')
+      setError(err instanceof Error ? err.message : fa ? 'ناموفق' : 'Failed')
     } finally {
       setBusy(false)
     }

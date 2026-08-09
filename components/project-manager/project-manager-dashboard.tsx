@@ -46,6 +46,7 @@ import {
 } from '@/utils/project-manager/dashboard'
 import { fetchProjectSubcontractors } from '@/utils/project-manager/subcontractors'
 import { PmSubcontractorsPanel } from '@/components/project-manager/pm-subcontractors-panel'
+import { PmWeeklySafetySummaryPanel } from '@/components/hse/pm-weekly-safety-summary'
 import { VoiceToTextButton } from '@/components/shared/voice-to-text-button'
 import { cn } from '@/lib/utils'
 import { AlertTriangle, ShieldAlert } from 'lucide-react'
@@ -245,7 +246,7 @@ export function ProjectManagerDashboard({
     return (
       <EmptyState
         title={t.title}
-        description="Ask the admin to add you as Project Manager on a project."
+        description="از ادمین بخواهید شما را به‌عنوان مدیر پروژه روی یک پروژه منصوب کند."
       />
     )
   }
@@ -290,6 +291,8 @@ export function ProjectManagerDashboard({
           isRtl={isRtl}
           isFa={locale === 'fa' || locale === 'ar'}
         />
+
+        <PmWeeklySafetySummaryPanel />
 
         <UiBlockGuard code="PM-TBL-01">
           <div className="border-t pt-8 space-y-6">

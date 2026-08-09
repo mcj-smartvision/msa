@@ -54,7 +54,7 @@ export function NotificationRouteEditor({
         is_active: true,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save route')
+      setError(err instanceof Error ? err.message : 'ذخیره مسیر ناموفق بود')
     } finally {
       setLoading(false)
     }
@@ -73,12 +73,12 @@ export function NotificationRouteEditor({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Add notification route</CardTitle>
+          <CardTitle>افزودن مسیر اعلان</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAddRoute} className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="route-event">Event type</Label>
+              <Label htmlFor="route-event">نوع رویداد</Label>
               <select
                 id="route-event"
                 value={eventTypeId}
@@ -91,7 +91,7 @@ export function NotificationRouteEditor({
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="route-position">Target position</Label>
+              <Label htmlFor="route-position">سمت هدف</Label>
               <select
                 id="route-position"
                 value={positionId}
@@ -106,7 +106,7 @@ export function NotificationRouteEditor({
             <div className="sm:col-span-2">
               <Checkbox
                 id="route-email"
-                label="Email enabled"
+                label="ایمیل فعال"
                 checked={emailEnabled}
                 onChange={(e) => setEmailEnabled(e.target.checked)}
               />
@@ -114,7 +114,7 @@ export function NotificationRouteEditor({
             {error ? <p className="sm:col-span-2 text-sm text-destructive">{error}</p> : null}
             <div className="sm:col-span-2">
               <Button type="submit" disabled={loading || !eventTypeId || !positionId}>
-                {loading ? 'Saving...' : 'Save route'}
+                {loading ? 'در حال ذخیره...' : 'ذخیره مسیر'}
               </Button>
             </div>
           </form>
@@ -123,29 +123,29 @@ export function NotificationRouteEditor({
 
       <Card>
         <CardHeader>
-          <CardTitle>Configured routes</CardTitle>
+          <CardTitle>مسیرهای پیکربندی‌شده</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {routes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No notification routes configured yet.</p>
+            <p className="text-sm text-muted-foreground">هنوز مسیر اعلانی پیکربندی نشده است.</p>
           ) : (
             routes.map((route) => (
               <div key={route.id} className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="font-medium">{route.event_type?.title ?? 'Event'}</p>
+                  <p className="font-medium">{route.event_type?.title ?? 'رویداد'}</p>
                   <p className="text-sm text-muted-foreground">
-                    Position: {route.position?.title ?? route.position_id}
+                    سمت: {route.position?.title ?? route.position_id}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <Checkbox
                     id={`route-email-${route.id}`}
-                    label="Email enabled"
+                    label="ایمیل فعال"
                     checked={route.email_enabled}
                     onChange={() => toggleEmail(route)}
                   />
                   <Button variant="outline" size="sm" onClick={() => onDelete(route.id)}>
-                    Remove
+                    حذف
                   </Button>
                 </div>
               </div>
@@ -156,13 +156,13 @@ export function NotificationRouteEditor({
 
       <Card>
         <CardHeader>
-          <CardTitle>Routing matrix</CardTitle>
+          <CardTitle>ماتریس مسیریابی</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b text-left">
-                <th className="py-2 pr-4">Event</th>
+                <th className="py-2 pr-4">رویداد</th>
                 {positions.map((position) => (
                   <th key={position.id} className="py-2 px-2 whitespace-nowrap">{position.title}</th>
                 ))}
@@ -176,7 +176,7 @@ export function NotificationRouteEditor({
                     const route = routeMap.get(`${eventType.id}:${position.id}`)
                     return (
                       <td key={position.id} className="py-2 px-2 text-center">
-                        {route ? (route.email_enabled ? 'Email' : 'Muted') : '—'}
+                        {route ? (route.email_enabled ? 'ایمیل' : 'بی‌صدا') : '—'}
                       </td>
                     )
                   })}

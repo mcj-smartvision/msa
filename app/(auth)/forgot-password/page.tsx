@@ -29,7 +29,7 @@ export default function ForgotPasswordPage() {
     if (resetError) {
       setError(resetError.message)
     } else {
-      setMessage('If this email exists, a password reset link has been sent.')
+      setMessage('اگر این ایمیل وجود داشته باشد، لینک بازنشانی رمز ارسال شده است.')
     }
     setLoading(false)
   }
@@ -38,13 +38,13 @@ export default function ForgotPasswordPage() {
     <main className="min-h-screen flex items-center justify-center p-4 bg-muted/30">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Forgot password</CardTitle>
-          <CardDescription>Enter your email to receive a reset link.</CardDescription>
+          <CardTitle>فراموشی رمز عبور</CardTitle>
+          <CardDescription>ایمیل خود را وارد کنید تا لینک بازنشانی دریافت کنید.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">ایمیل</Label>
               <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             {message ? (
@@ -58,12 +58,12 @@ export default function ForgotPasswordPage() {
               </Alert>
             ) : null}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Sending...' : 'Send reset link'}
+              {loading ? 'در حال ارسال...' : 'ارسال لینک بازنشانی'}
             </Button>
           </form>
           <p className="text-sm text-muted-foreground mt-4 text-center">
             <Link href="/login" className="text-primary underline">
-              Back to sign in
+              بازگشت به ورود
             </Link>
           </p>
         </CardContent>

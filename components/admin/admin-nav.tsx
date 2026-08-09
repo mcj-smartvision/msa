@@ -82,7 +82,7 @@ function AdminShellFrame({ children, email }: { children: ReactNode; email?: str
               {email}
             </p>
           ) : null}
-          <LogoutButton label="Sign out" className="w-full" />
+          <LogoutButton label="خروج" className="w-full" />
         </div>
       </aside>
 
@@ -92,7 +92,7 @@ function AdminShellFrame({ children, email }: { children: ReactNode; email?: str
             <HardHat className="h-5 w-5 text-primary" />
             <span className="font-bold">{APP_NAME}</span>
           </div>
-          <LogoutButton label="Out" />
+          <LogoutButton label="خروج" />
         </header>
 
         <div className="lg:hidden border-b bg-white px-2 py-2 overflow-x-auto">
@@ -323,17 +323,17 @@ export function ProjectAdminNav({ projectId, projectName }: ProjectNavProps) {
   const base = `/admin/projects/${projectId}`
 
   const items = [
-    { href: `${base}/members`, label: 'Members' },
-    { href: `${base}/positions`, label: 'Positions' },
-    { href: `${base}/schedule`, label: 'Schedule' },
-    { href: `${base}/routing`, label: 'Notifications' },
-    { href: `${base}/widgets`, label: 'Visibility' },
+    { href: `${base}/members`, label: 'اعضا' },
+    { href: `${base}/positions`, label: 'سمت‌ها' },
+    { href: `${base}/schedule`, label: 'برنامه زمان‌بندی' },
+    { href: `${base}/routing`, label: 'اعلان‌ها' },
+    { href: `${base}/widgets`, label: 'نمایش' },
   ]
 
   return (
     <div className="rounded-2xl border bg-white p-5 space-y-4">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Project</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">پروژه</p>
         <h2 className="text-lg font-semibold mt-1">{projectName}</h2>
       </div>
       <nav className="flex flex-wrap gap-2">

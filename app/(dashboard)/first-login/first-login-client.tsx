@@ -23,11 +23,11 @@ export default function FirstLoginClient() {
     setError(null)
 
     if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters.')
+      setError('رمز عبور باید حداقل ۶ کاراکتر باشد.')
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.')
+      setError('رمزها یکسان نیستند.')
       return
     }
 
@@ -38,7 +38,7 @@ export default function FirstLoginClient() {
     } = await supabase.auth.getUser()
 
     if (!user?.email) {
-      setError('Session expired. Please sign in again.')
+      setError('نشست منقضی شده است. لطفاً دوباره وارد شوید.')
       setLoading(false)
       return
     }
@@ -71,16 +71,16 @@ export default function FirstLoginClient() {
                 <ShieldCheck className="h-7 w-7" />
               </div>
             </div>
-            <h1 className="text-xl font-bold">Secure Your Account</h1>
+            <h1 className="text-xl font-bold">حساب خود را امن کنید</h1>
             <p className="text-sm text-white/70 mt-2">
-              Your admin created your account. Set a personal password before continuing.
+              ادمین حساب شما را ساخته است. قبل از ادامه، یک رمز شخصی تنظیم کنید.
             </p>
           </div>
 
           <div className="p-6 space-y-5">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="new-password">New password</Label>
+                <Label htmlFor="new-password">رمز جدید</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -91,12 +91,12 @@ export default function FirstLoginClient() {
                     required
                     minLength={6}
                     className="pl-10 h-11"
-                    placeholder="Minimum 6 characters"
+                    placeholder="حداقل ۶ کاراکتر"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm password</Label>
+                <Label htmlFor="confirm-password">تأیید رمز</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -107,7 +107,7 @@ export default function FirstLoginClient() {
                     required
                     minLength={6}
                     className="pl-10 h-11"
-                    placeholder="Re-enter password"
+                    placeholder="رمز را دوباره وارد کنید"
                   />
                 </div>
               </div>
@@ -119,13 +119,13 @@ export default function FirstLoginClient() {
               ) : null}
 
               <Button type="submit" className="w-full h-11" disabled={loading}>
-                {loading ? 'Saving...' : 'Continue to dashboard'}
+                {loading ? 'در حال ذخیره...' : 'ادامه به داشبورد'}
               </Button>
             </form>
 
             <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
               <HardHat className="h-3.5 w-3.5" />
-              Liparta · First login security
+              لیپارتا · امنیت اولین ورود
             </div>
           </div>
         </div>

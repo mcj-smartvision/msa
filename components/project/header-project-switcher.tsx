@@ -65,11 +65,11 @@ export function HeaderProjectSwitcher({ className }: { className?: string }) {
       <Select value={selected} onValueChange={handleChange}>
         <SelectTrigger
           className="h-9 w-[160px] gap-2 border-muted-foreground/20 bg-background/80"
-          aria-label="Project"
+          aria-label="پروژه"
         >
           <FolderKanban className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <SelectValue placeholder="Project">
-            <span className="truncate">{current?.name ?? 'Project'}</span>
+          <SelectValue placeholder="پروژه">
+            <span className="truncate">{current?.name ?? 'پروژه'}</span>
           </SelectValue>
         </SelectTrigger>
         <SelectContent align="end">

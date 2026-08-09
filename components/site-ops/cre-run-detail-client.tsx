@@ -130,7 +130,7 @@ export function CreRunDetailClient() {
             <tr className="border-b text-left text-slate-500">
               <th className="py-2 pr-2">UID</th>
               <th className="py-2 pr-2">WBS</th>
-              <th className="py-2 pr-2">Name</th>
+              <th className="py-2 pr-2">نام</th>
               <th className="py-2 pr-2">{t.status}</th>
               <th className="py-2 pr-2">{t.quantity}</th>
               <th className="py-2 pr-2">UOM</th>

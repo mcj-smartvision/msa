@@ -37,7 +37,7 @@ export function FaceEnrollWizardClient({
     void fetch(`/api/attendance/members?projectId=${encodeURIComponent(projectId)}`)
       .then(async (res) => {
         const json = await res.json()
-        if (!res.ok) throw new Error(json.error || 'Failed to load members')
+        if (!res.ok) throw new Error(json.error || 'بارگذاری اعضا ناموفق بود')
         if (!cancelled) {
           setMembers(
             (json.members ?? []).map(
@@ -51,7 +51,7 @@ export function FaceEnrollWizardClient({
         }
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Load error')
+        if (!cancelled) setError(e instanceof Error ? e.message : 'خطای بارگذاری')
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -71,7 +71,7 @@ export function FaceEnrollWizardClient({
             onValueChange={(id) => {
               setProjectId(id)
               writeProjectCookie(id)
-              setProjectName(projectOptions.find((p) => p.id === id)?.name ?? 'Project')
+              setProjectName(projectOptions.find((p) => p.id === id)?.name ?? 'پروژه')
             }}
           >
             <SelectTrigger>

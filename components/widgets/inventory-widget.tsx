@@ -5,21 +5,21 @@ import { WidgetShell } from '@/components/widgets/widget-shell'
 import { Button } from '@/components/ui/button'
 
 const SAMPLE_STOCK = [
-  { item: 'Rebar 16mm', qty: '2.4 t', status: 'Low' },
-  { item: 'Portland Cement', qty: '180 bags', status: 'OK' },
-  { item: 'Formwork panels', qty: '42 units', status: 'OK' },
-  { item: 'Safety harnesses', qty: '6 units', status: 'Critical' },
+  { item: 'میلگرد ۱۶', qty: '۲٫۴ تن', status: 'کم' },
+  { item: 'سیمان پرتلند', qty: '۱۸۰ پاکت', status: 'کافی' },
+  { item: 'پانل قالب', qty: '۴۲ عدد', status: 'کافی' },
+  { item: 'هارنس ایمنی', qty: '۶ عدد', status: 'بحرانی' },
 ]
 
 export function InventoryWidget({ context }: { context: WidgetRenderContext }) {
   return (
     <WidgetShell
-      title="Inventory & Stock"
-      description="Material receiving and on-site stock levels"
-      action={<Button size="sm" variant="outline">Receive</Button>}
+      title="موجودی و انبار"
+      description="دریافت مصالح و سطح موجودی در سایت"
+      action={<Button size="sm" variant="outline">دریافت</Button>}
     >
       {!context.projectId ? (
-        <p className="text-sm text-muted-foreground">No project selected.</p>
+        <p className="text-sm text-muted-foreground">پروژه‌ای انتخاب نشده است.</p>
       ) : (
         <ul className="space-y-2">
           {SAMPLE_STOCK.map((row) => (
@@ -37,8 +37,8 @@ export function InventoryWidget({ context }: { context: WidgetRenderContext }) {
 
 function StatusPill({ status }: { status: string }) {
   const tone =
-    status === 'Critical' ? 'bg-red-100 text-red-800' :
-    status === 'Low' ? 'bg-amber-100 text-amber-800' :
+    status === 'بحرانی' ? 'bg-red-100 text-red-800' :
+    status === 'کم' ? 'bg-amber-100 text-amber-800' :
     'bg-emerald-100 text-emerald-800'
   return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}>{status}</span>
 }

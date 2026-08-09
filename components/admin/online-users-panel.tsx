@@ -10,16 +10,16 @@ const statusStyles = {
 }
 
 const statusHint = {
-  online: 'On site',
-  idle: 'Left today',
-  offline: 'Absent',
+  online: 'حاضر',
+  idle: 'خارج‌شده امروز',
+  offline: 'غایب',
 }
 
 export function OnlineUsersPanel({ users }: { users: OnlineUser[] }) {
   if (users.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-6 text-center">
-        No active members to show presence for.
+        عضوی برای نمایش حضور وجود ندارد.
       </p>
     )
   }

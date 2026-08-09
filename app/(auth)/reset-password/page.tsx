@@ -22,12 +22,12 @@ export default function ResetPasswordPage() {
     setError(null)
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.')
+      setError('رمزها یکسان نیستند.')
       return
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters.')
+      setError('رمز عبور باید حداقل ۶ کاراکتر باشد.')
       return
     }
 
@@ -58,13 +58,13 @@ export default function ResetPasswordPage() {
     <main className="min-h-screen flex items-center justify-center p-4 bg-muted/30">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Set new password</CardTitle>
-          <CardDescription>Choose a new password for your account.</CardDescription>
+          <CardTitle>تنظیم رمز جدید</CardTitle>
+          <CardDescription>برای حساب خود یک رمز جدید انتخاب کنید.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="password">New password</Label>
+              <Label htmlFor="password">رمز جدید</Label>
               <Input
                 id="password"
                 type="password"
@@ -75,7 +75,7 @@ export default function ResetPasswordPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">Confirm password</Label>
+              <Label htmlFor="confirm-password">تأیید رمز</Label>
               <Input
                 id="confirm-password"
                 type="password"
@@ -91,12 +91,12 @@ export default function ResetPasswordPage() {
               </Alert>
             ) : null}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Saving...' : 'Save new password'}
+              {loading ? 'در حال ذخیره...' : 'ذخیره رمز جدید'}
             </Button>
           </form>
           <p className="text-sm text-muted-foreground mt-4 text-center">
             <Link href="/login" className="text-primary underline">
-              Back to sign in
+              بازگشت به ورود
             </Link>
           </p>
         </CardContent>

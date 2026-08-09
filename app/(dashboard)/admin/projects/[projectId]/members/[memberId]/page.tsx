@@ -29,7 +29,7 @@ export default function MemberProfilePage({
       fetchProjectMember(supabase, params.memberId),
       fetchPositions(supabase, params.projectId),
     ])
-    if (!memberData) throw new Error('Member not found')
+    if (!memberData) throw new Error('عضو یافت نشد')
     setMember(memberData)
     setPositions(positionData)
   }
@@ -41,7 +41,7 @@ export default function MemberProfilePage({
         setLoading(true)
         await loadMember()
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load member profile')
+        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری پروفایل عضو ناموفق بود')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -51,24 +51,24 @@ export default function MemberProfilePage({
     }
   }, [supabase, params.memberId, params.projectId])
 
-  if (loading) return <LoadingBlock label="Loading member profile..." />
-  if (error || !member) return <ErrorBlock message={error ?? 'Member not found'} />
+  if (loading) return <LoadingBlock label="در حال بارگذاری پروفایل عضو..." />
+  if (error || !member) return <ErrorBlock message={error ?? 'عضو یافت نشد'} />
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Member Profile"
-        description="Update member details, positions, and login credentials."
+        title="پروفایل عضو"
+        description="جزئیات عضو، سمت‌ها و اطلاعات ورود را به‌روز کنید."
         actions={
           <Button asChild variant="outline">
-            <Link href={`/admin/projects/${params.projectId}/members`}>Back to members</Link>
+            <Link href={`/admin/projects/${params.projectId}/members`}>بازگشت به اعضا</Link>
           </Button>
         }
       />
 
       {saved ? (
         <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2">
-          Member profile updated successfully.
+          پروفایل عضو با موفقیت به‌روز شد.
         </p>
       ) : null}
 
@@ -81,7 +81,7 @@ export default function MemberProfilePage({
             body: JSON.stringify({ member_id: member.id, password }),
           })
           const data = await response.json()
-          if (!response.ok) throw new Error(data.error || 'Failed to reset password')
+          if (!response.ok) throw new Error(data.error || 'بازنشانی رمز ناموفق بود')
           await loadMember()
         }}
       />
@@ -92,7 +92,7 @@ export default function MemberProfilePage({
           ...member,
           position_ids: member.positions?.map((position) => position.id) ?? [],
         }}
-        submitLabel="Save changes"
+        submitLabel="ذخیره تغییرات"
         showPasswordField={false}
         onSubmit={async (values) => {
           const response = await fetch('/api/admin/update-member', {
@@ -110,7 +110,7 @@ export default function MemberProfilePage({
             }),
           })
           const data = await response.json()
-          if (!response.ok) throw new Error(data.error || 'Failed to update member')
+          if (!response.ok) throw new Error(data.error || 'به‌روزرسانی عضو ناموفق بود')
           setSaved(true)
           await loadMember()
           router.refresh()

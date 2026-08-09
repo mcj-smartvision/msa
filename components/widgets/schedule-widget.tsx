@@ -4,17 +4,17 @@ import type { WidgetRenderContext } from '@/types/dashboard'
 import { WidgetShell } from '@/components/widgets/widget-shell'
 
 const MILESTONES = [
-  { name: 'Foundation complete', date: 'Apr 12', status: 'done' },
-  { name: 'Level 3 slab pour', date: 'May 03', status: 'active' },
-  { name: 'MEP rough-in start', date: 'May 28', status: 'upcoming' },
-  { name: 'Facade closure', date: 'Jul 15', status: 'upcoming' },
+  { name: 'اتمام فونداسیون', date: '۱۲ فروردین', status: 'done' },
+  { name: 'بتن‌ریزی سقف طبقه ۳', date: '۱۳ اردیبهشت', status: 'active' },
+  { name: 'شروع زیرسازی تأسیسات', date: '۷ خرداد', status: 'upcoming' },
+  { name: 'بستن نما', date: '۲۴ تیر', status: 'upcoming' },
 ]
 
 export function ScheduleWidget({ context }: { context: WidgetRenderContext }) {
   return (
-    <WidgetShell title="Schedule" description="Upcoming baseline milestones">
+    <WidgetShell title="برنامه زمان‌بندی" description="نقاط عطف برنامه پایه">
       {!context.projectId ? (
-        <p className="text-sm text-muted-foreground">Upload a baseline schedule to enable milestones.</p>
+        <p className="text-sm text-muted-foreground">برای فعال‌سازی نقاط عطف، برنامه پایه را بارگذاری کنید.</p>
       ) : (
         <ul className="space-y-2">
           {MILESTONES.map((item) => (

@@ -5,15 +5,15 @@ import { WidgetShell } from '@/components/widgets/widget-shell'
 
 export function SafetyWidget({ context }: { context: WidgetRenderContext }) {
   return (
-    <WidgetShell title="Safety Overview" description="HSE status and open observations">
+    <WidgetShell title="نمای ایمنی" description="وضعیت HSE و مشاهدات باز">
       {!context.projectId ? (
-        <p className="text-sm text-muted-foreground">No project selected.</p>
+        <p className="text-sm text-muted-foreground">پروژه‌ای انتخاب نشده است.</p>
       ) : (
         <div className="grid grid-cols-2 gap-3 text-sm">
-          <SafetyStat label="Days without LTI" value="47" good />
-          <SafetyStat label="Open observations" value="3" />
-          <SafetyStat label="PPE compliance" value="92%" good />
-          <SafetyStat label="Toolbox talks (week)" value="5" good />
+          <SafetyStat label="روز بدون حادثه منجر به توقف" value="47" good />
+          <SafetyStat label="مشاهدات باز" value="3" />
+          <SafetyStat label="رعایت PPE" value="92%" good />
+          <SafetyStat label="جلسات ایمنی (هفته)" value="5" good />
         </div>
       )}
     </WidgetShell>

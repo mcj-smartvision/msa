@@ -39,7 +39,7 @@ export default function ProjectRoutingPage({ params }: { params: { projectId: st
         setLoading(true)
         await loadData()
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load routing')
+        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری مسیریابی ناموفق بود')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -49,14 +49,14 @@ export default function ProjectRoutingPage({ params }: { params: { projectId: st
     }
   }, [supabase, params.projectId])
 
-  if (loading) return <LoadingBlock label="Loading notification routing..." />
+  if (loading) return <LoadingBlock label="در حال بارگذاری مسیریابی اعلان‌ها..." />
   if (error) return <ErrorBlock message={error} onRetry={() => window.location.reload()} />
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Notification Routing"
-        description="Route event notifications to positions. Members receive the union of notifications from all assigned positions."
+        title="مسیریابی اعلان‌ها"
+        description="اعلان‌های رویداد را به سمت‌ها هدایت کنید. اعضا مجموع اعلان‌های همه سمت‌های اختصاص‌یافته را دریافت می‌کنند."
       />
 
       <NotificationRouteEditor

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSupabase } from '@/hooks/useSupabase'
 import { fetchDashboardStats } from '@/utils/dashboard'
+import { SITE_ROLE_LABELS, type SiteRoleKey } from '@/lib/dashboard/roles'
 import type { WidgetRenderContext } from '@/types/dashboard'
 import { WidgetShell } from '@/components/widgets/widget-shell'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -23,25 +24,28 @@ export function OverviewStatsWidget({ context }: { context: WidgetRenderContext 
       .finally(() => setLoading(false))
   }, [context.projectId, supabase])
 
+  const roleKey = context.user.primaryRole as SiteRoleKey | undefined
+  const roleLabel = roleKey ? SITE_ROLE_LABELS[roleKey] ?? 'عضو' : 'عضو'
+
   return (
-    <WidgetShell title="Daily Summary" description="Project snapshot at a glance">
+    <WidgetShell title="خلاصه روزانه" description="نمای کلی پروژه در یک نگاه">
       {loading ? (
         <div className="grid grid-cols-2 gap-3">
           <Skeleton className="h-16" />
           <Skeleton className="h-16" />
         </div>
       ) : !context.projectId ? (
-        <p className="text-sm text-muted-foreground">No active project assigned.</p>
+        <p className="text-sm text-muted-foreground">پروژه فعالی اختصاص داده نشده است.</p>
       ) : (
         <div className="grid grid-cols-2 gap-3">
-          <Stat label="Reports" value={String(stats?.reportCount ?? 0)} />
-          <Stat label="Team members" value={String(stats?.memberCount ?? 0)} />
-          <Stat label="Role" value={context.user.primaryRole?.replace(/_/g, ' ') ?? 'Member'} />
-          <Stat label="Status" value="Active" />
+          <Stat label="گزارش‌ها" value={String(stats?.reportCount ?? 0)} />
+          <Stat label="اعضای تیم" value={String(stats?.memberCount ?? 0)} />
+          <Stat label="نقش" value={roleLabel} />
+          <Stat label="وضعیت" value="فعال" />
         </div>
       )}
       <Link href="/reports" className="text-xs text-primary underline mt-4 inline-block">
-        View all reports
+        مشاهده همه گزارش‌ها
       </Link>
     </WidgetShell>
   )

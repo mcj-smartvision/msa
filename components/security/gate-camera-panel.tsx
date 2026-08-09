@@ -503,7 +503,7 @@ export function GateCameraPanel({
           {watching ? (
             <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-red-600/90 px-3 py-1 text-xs font-medium text-white">
               <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
-              LIVE — پایش · {faceCount} صورت
+              زنده — پایش · {faceCount} صورت
             </div>
           ) : faceCount > 0 ? (
             <div className="absolute top-3 left-3 rounded-full bg-emerald-700/90 px-3 py-1 text-xs font-medium text-white">
@@ -552,7 +552,7 @@ export function GateCameraPanel({
             onClick={() => setMethodOpen(true)}
           >
             <Info className="h-4 w-4 ml-1" />
-            Recognition Method
+            روش شناسایی
           </Button>
           {!watching ? (
             <Button

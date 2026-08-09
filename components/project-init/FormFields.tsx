@@ -155,7 +155,7 @@ export function SelectField<T extends FieldValues>({
   required,
   description,
   options,
-  placeholder = 'Select...',
+  placeholder = 'انتخاب کنید...',
   className,
   onValueChange,
 }: BaseFieldProps<T> & {
@@ -208,7 +208,7 @@ export function SearchableSelectField<T extends FieldValues>({
   required,
   description,
   options,
-  placeholder = 'Type to search...',
+  placeholder = 'برای جستجو تایپ کنید...',
   className,
   onValueChange,
 }: BaseFieldProps<T> & {
@@ -271,7 +271,7 @@ export function SearchableSelectField<T extends FieldValues>({
               {open ? (
                 <div className="absolute z-[9999] mt-1 w-full max-h-60 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-lg">
                   {filtered.length === 0 ? (
-                    <p className="px-3 py-2 text-sm text-muted-foreground">No match</p>
+                    <p className="px-3 py-2 text-sm text-muted-foreground">موردی یافت نشد</p>
                   ) : (
                     filtered.map((opt) => (
                       <button
@@ -307,7 +307,7 @@ export function GroupedSelectField<T extends FieldValues>({
   required,
   description,
   groups,
-  placeholder = 'Select...',
+  placeholder = 'انتخاب کنید...',
   className,
 }: BaseFieldProps<T> & {
   groups: readonly { group: string; options: readonly { value: string; label: string }[] }[]
@@ -447,8 +447,8 @@ export function FileDropzone<T extends FieldValues>({
     <FieldWrapper label={label} description={description}>
       <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/40 transition-colors">
         <div className="flex flex-col items-center justify-center py-4 px-4 text-center">
-          <p className="text-sm font-medium">Click or drag file to upload</p>
-          <p className="text-xs text-muted-foreground mt-1">{fileName || 'No file selected'}</p>
+          <p className="text-sm font-medium">برای بارگذاری کلیک کنید یا فایل را بکشید</p>
+          <p className="text-xs text-muted-foreground mt-1">{fileName || 'فایلی انتخاب نشده'}</p>
         </div>
         <input
           type="file"

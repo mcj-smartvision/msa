@@ -18,8 +18,8 @@ export default async function ProjectSchedulePage({ params }: { params: { projec
   return (
     <div className="space-y-6 max-w-6xl">
       <PageHeader
-        title="Schedule"
-        description="Import MSP XML, confirm project start, and view tasks in the selected calendar."
+        title="برنامه زمان‌بندی"
+        description="فایل MSP XML را وارد کنید، شروع پروژه را تأیید کنید و فعالیت‌ها را در تقویم انتخابی ببینید."
       />
 
       <ScheduleImportPanel

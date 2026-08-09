@@ -15,16 +15,16 @@ export const SITE_ROLES = {
 export type SiteRoleKey = (typeof SITE_ROLES)[keyof typeof SITE_ROLES]
 
 export const SITE_ROLE_LABELS: Record<SiteRoleKey, string> = {
-  project_manager: 'Project Manager',
-  site_supervisor: 'Site Supervisor',
-  technical_office: 'Technical Office',
-  storekeeper: 'Storekeeper',
-  procurement_officer: 'Procurement',
-  qa_qc_inspector: 'QC',
+  project_manager: 'مدیر پروژه',
+  site_supervisor: 'سرپرست کارگاه',
+  technical_office: 'دفتر فنی',
+  storekeeper: 'انباردار',
+  procurement_officer: 'تدارکات',
+  qa_qc_inspector: 'کنترل کیفیت',
   hse_officer: 'HSE',
-  security: 'Security',
-  client: 'Client',
-  project_accountant: 'Project Accountant',
+  security: 'حراست',
+  client: 'کارفرما',
+  project_accountant: 'حسابدار پروژه',
 }
 
 /** Higher index = lower priority when resolving a primary role. */

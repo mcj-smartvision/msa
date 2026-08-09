@@ -34,12 +34,12 @@ export function SchedulePreviewTable({
         <thead>
           <tr className="border-b bg-muted/30">
             <th className="text-left px-3 py-3 font-medium text-muted-foreground w-[88px]">WBS</th>
-            <th className="text-left px-3 py-3 font-medium text-muted-foreground min-w-[320px]">Task</th>
-            <th className="text-center px-2 py-3 font-medium text-muted-foreground w-[72px]">Critical</th>
-            <th className="text-left px-3 py-3 font-medium text-muted-foreground w-[112px]">Start</th>
-            <th className="text-left px-3 py-3 font-medium text-muted-foreground w-[112px]">Finish</th>
-            <th className="text-left px-3 py-3 font-medium text-muted-foreground w-[120px]">Status</th>
-            <th className="text-left px-3 py-3 font-medium text-muted-foreground min-w-[140px]">Predecessors</th>
+            <th className="text-left px-3 py-3 font-medium text-muted-foreground min-w-[320px]">فعالیت</th>
+            <th className="text-center px-2 py-3 font-medium text-muted-foreground w-[72px]">بحرانی</th>
+            <th className="text-left px-3 py-3 font-medium text-muted-foreground w-[112px]">شروع</th>
+            <th className="text-left px-3 py-3 font-medium text-muted-foreground w-[112px]">پایان</th>
+            <th className="text-left px-3 py-3 font-medium text-muted-foreground w-[120px]">وضعیت</th>
+            <th className="text-left px-3 py-3 font-medium text-muted-foreground min-w-[140px]">پیش‌نیازها</th>
             <th className="text-right px-3 py-3 font-medium text-muted-foreground w-[52px]">%</th>
           </tr>
         </thead>

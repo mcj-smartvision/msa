@@ -23,11 +23,11 @@ export function ReportWidget({ context }: { context: WidgetRenderContext }) {
 
   return (
     <WidgetShell
-      title="Recent Reports"
-      description="Latest site photo reports"
+      title="گزارش‌های اخیر"
+      description="آخرین گزارش‌های تصویری سایت"
       action={
         <Link href="/reports/new" className="text-xs text-primary underline">
-          New report
+          گزارش جدید
         </Link>
       }
     >
@@ -37,14 +37,14 @@ export function ReportWidget({ context }: { context: WidgetRenderContext }) {
           <Skeleton className="h-10" />
         </div>
       ) : reports.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No reports submitted yet.</p>
+        <p className="text-sm text-muted-foreground">هنوز گزارشی ثبت نشده است.</p>
       ) : (
         <ul className="space-y-2">
           {reports.slice(0, 5).map((report) => (
             <li key={report.id} className="rounded-md border px-3 py-2 text-sm">
-              <p className="font-medium">{report.activity_type ?? 'Site report'}</p>
+              <p className="font-medium">{report.activity_type ?? 'گزارش سایت'}</p>
               <p className="text-xs text-muted-foreground">
-                <FormattedDate value={report.created_at} dateTime /> · workforce {report.workforce_count ?? '—'}
+                <FormattedDate value={report.created_at} dateTime /> · نیروی کار {report.workforce_count ?? '—'}
               </p>
             </li>
           ))}
