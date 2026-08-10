@@ -1,8 +1,12 @@
 'use client'
 
 import Link from 'next/link'
+import { ShieldAlert } from 'lucide-react'
 import { CONSTRUCTION_ROLES } from '@/lib/admin/construction-roles'
-import { getRoleDashboardRoute } from '@/lib/admin/role-dashboard-routes'
+import {
+  getRoleDashboardRoute,
+  ROLE_DASHBOARD_ROUTES,
+} from '@/lib/admin/role-dashboard-routes'
 import { getPositionLabel } from '@/lib/i18n/position-labels'
 import type { ProjectMember } from '@/types/admin'
 import { cn } from '@/lib/utils'
@@ -16,7 +20,7 @@ const DUTY_FA: Record<string, string> = {
   architect: 'انطباق طراحی و هماهنگی معماری.',
   structural_engineer: 'بررسی طراحی سازه و انطباق در میدان.',
   mep_engineer: 'سیستم‌های مکانیک، برق و لوله‌کشی.',
-  hse_officer: 'ایمنی، بهداشت و انطباق زیست‌محیطی.',
+  hse_officer: 'پایش دوربین ایمنی، بازبینی حوادث و اعلان به سرپرست و مدیر پروژه.',
   qa_qc_inspector: 'بازرسی تضمین و کنترل کیفیت.',
   surveyor: 'اندازه‌گیری، پیاده‌سازی و تأیید ازبیلت.',
   storekeeper: 'دریافت مصالح، موجودی و انبارداری.',
@@ -34,8 +38,25 @@ const DUTY_FA: Record<string, string> = {
   visitor: 'دسترسی موقت محدود به کارگاه.',
 }
 
+/** Preferred display order for live role dashboards in the control center. */
+const LIVE_ROLE_ORDER = [
+  'project_manager',
+  'site_supervisor',
+  'hse_officer',
+  'technical_office',
+  'security',
+  'storekeeper',
+  'procurement_officer',
+  'qa_qc_inspector',
+  'project_accountant',
+] as const
+
 function dutySummary(positionKey: string, positionTitle: string): string {
-  return DUTY_FA[positionKey] ?? CONSTRUCTION_ROLES.find((r) => r.key === positionKey)?.description ?? positionTitle
+  return (
+    DUTY_FA[positionKey] ??
+    CONSTRUCTION_ROLES.find((r) => r.key === positionKey)?.description ??
+    positionTitle
+  )
 }
 
 function initials(name: string): string {
@@ -48,69 +69,149 @@ function initials(name: string): string {
     .toUpperCase()
 }
 
-/** Checkerboard of defined members + short duty summary — nothing else. */
+function roleTitleFa(key: string): string {
+  return getPositionLabel({ key, title: key }, 'fa')
+}
+
+function liveRoleKeys(): string[] {
+  const keys = Object.keys(ROLE_DASHBOARD_ROUTES)
+  return [...keys].sort((a, b) => {
+    const ia = LIVE_ROLE_ORDER.indexOf(a as (typeof LIVE_ROLE_ORDER)[number])
+    const ib = LIVE_ROLE_ORDER.indexOf(b as (typeof LIVE_ROLE_ORDER)[number])
+    const ra = ia === -1 ? 999 : ia
+    const rb = ib === -1 ? 999 : ib
+    if (ra !== rb) return ra - rb
+    return roleTitleFa(a).localeCompare(roleTitleFa(b), 'fa')
+  })
+}
+
+/** Role dashboards catalog + defined members checkerboard. */
 export function RoleDashboardGrid({ members }: { members: ProjectMember[] }) {
+  const roleKeys = liveRoleKeys()
+  const memberCountByRole = new Map<string, number>()
+  for (const m of members) {
+    for (const p of m.positions ?? []) {
+      memberCountByRole.set(p.key, (memberCountByRole.get(p.key) ?? 0) + 1)
+    }
+  }
+
   const rows = members
     .slice()
     .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email, 'fa'))
 
-  if (rows.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground py-8 text-center">
-        هنوز عضوی تعریف نشده است.
-      </p>
-    )
-  }
-
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200">
-      <div className="grid grid-cols-1 sm:grid-cols-2">
-        {rows.map((member, index) => {
-          const positions = member.positions ?? []
-          const primary = positions[0]
-          const duty = primary
-            ? dutySummary(primary.key, getPositionLabel(primary, 'fa'))
-            : 'سمت تعریف نشده'
-          const roleTitles =
-            positions.map((p) => getPositionLabel(p, 'fa')).join(' · ') || '—'
-          const dashboardHref = primary ? getRoleDashboardRoute(primary.key) : null
-          const memberHref = `/admin/projects/${member.project_id}/members`
-          const href = dashboardHref ?? memberHref
-          // Chessboard: (row + col) on 2-column grid
-          const row = Math.floor(index / 2)
-          const col = index % 2
-          const dark = (row + col) % 2 === 1
-
-          return (
-            <Link
-              key={member.id}
-              href={href}
-              className={cn(
-                'flex gap-3 border-b border-e border-slate-200 p-4 transition-colors hover:bg-amber-50/70',
-                dark ? 'bg-slate-100' : 'bg-white',
-                !member.is_active && 'opacity-55'
-              )}
-            >
-              <div
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900">داشبوردهای نقش</h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          ورود مستقیم به داشبورد عملیاتی هر نقش — شامل مسئول ایمنی.
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {roleKeys.map((key) => {
+            const href = getRoleDashboardRoute(key)
+            if (!href) return null
+            const assigned = memberCountByRole.get(key) ?? 0
+            const isHse = key === 'hse_officer'
+            return (
+              <Link
+                key={key}
+                href={href}
                 className={cn(
-                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-                  dark ? 'bg-white text-slate-700' : 'bg-slate-200/90 text-slate-700'
+                  'flex gap-3 rounded-xl border p-3.5 transition-colors hover:bg-amber-50/70',
+                  isHse
+                    ? 'border-amber-300 bg-amber-50/50'
+                    : 'border-slate-200 bg-white'
                 )}
               >
-                {initials(member.full_name || member.email || '?')}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-slate-900 truncate">
-                  {member.full_name || member.email}
-                </p>
-                <p className="text-xs font-medium text-slate-600 mt-0.5 truncate">{roleTitles}</p>
-                <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed line-clamp-2">
-                  {duty}
-                </p>
-              </div>
-            </Link>
-          )
-        })}
+                <div
+                  className={cn(
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+                    isHse ? 'bg-amber-200/80 text-amber-900' : 'bg-slate-200/90 text-slate-700'
+                  )}
+                >
+                  {isHse ? <ShieldAlert className="h-4 w-4" /> : roleTitleFa(key).slice(0, 1)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-900">{roleTitleFa(key)}</p>
+                    {isHse ? (
+                      <span className="rounded border border-amber-400 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                        ایمنی
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground line-clamp-2">
+                    {dutySummary(key, roleTitleFa(key))}
+                  </p>
+                  <p className="mt-1.5 text-[11px] text-slate-500">
+                    {assigned > 0 ? `${assigned} عضو با این نقش` : 'هنوز عضوی با این نقش نیست — داشبورد آماده است'}
+                  </p>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold text-slate-900">اعضای تعریف‌شده</h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">با کلیک به داشبورد نقش اصلی یا پروفایل عضو می‌روید.</p>
+
+        {rows.length === 0 ? (
+          <p className="mt-3 py-8 text-center text-sm text-muted-foreground">
+            هنوز عضوی تعریف نشده است.
+          </p>
+        ) : (
+          <div className="mt-3 overflow-hidden rounded-xl border border-slate-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2">
+              {rows.map((member, index) => {
+                const positions = member.positions ?? []
+                const primary = positions[0]
+                const duty = primary
+                  ? dutySummary(primary.key, getPositionLabel(primary, 'fa'))
+                  : 'سمت تعریف نشده'
+                const roleTitles =
+                  positions.map((p) => getPositionLabel(p, 'fa')).join(' · ') || '—'
+                const dashboardHref = primary ? getRoleDashboardRoute(primary.key) : null
+                const memberHref = `/admin/projects/${member.project_id}/members`
+                const href = dashboardHref ?? memberHref
+                const row = Math.floor(index / 2)
+                const col = index % 2
+                const dark = (row + col) % 2 === 1
+
+                return (
+                  <Link
+                    key={member.id}
+                    href={href}
+                    className={cn(
+                      'flex gap-3 border-b border-e border-slate-200 p-4 transition-colors hover:bg-amber-50/70',
+                      dark ? 'bg-slate-100' : 'bg-white',
+                      !member.is_active && 'opacity-55'
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+                        dark ? 'bg-white text-slate-700' : 'bg-slate-200/90 text-slate-700'
+                      )}
+                    >
+                      {initials(member.full_name || member.email || '?')}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-900">
+                        {member.full_name || member.email}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs font-medium text-slate-600">{roleTitles}</p>
+                      <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                        {duty}
+                      </p>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

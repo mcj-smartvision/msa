@@ -115,7 +115,9 @@ function ControlCenterExpandedPanel() {
         <h2 className="text-base font-semibold tracking-tight">{titles[openDetail]}</h2>
         {openDetail === 'dashboards' ? (
           <p className="text-xs text-muted-foreground mt-0.5">
-            {fa ? 'اعضای تعریف‌شده و خلاصه وظایف' : 'Defined members and duty summaries'}
+            {fa
+              ? 'داشبورد نقش‌ها (از جمله مسئول ایمنی) و اعضای تعریف‌شده'
+              : 'Role dashboards (including HSE) and defined members'}
           </p>
         ) : (
           <p className="text-xs text-muted-foreground mt-0.5">
