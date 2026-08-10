@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { isSystemAdmin } from '@/lib/admin/access'
 import { createServiceClient } from '@/lib/supabase/service'
-import { createProjectMember, findProfileByEmail } from '@/utils/admin'
+import { createProjectMember, findProfileByEmail, updateProjectMember } from '@/utils/admin'
 import { normalizeLoginIdentifier, isDeliverableEmail } from '@/lib/auth/login-identifier'
 
 export async function POST(request: NextRequest) {
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     if (!project_id || !full_name || !password) {
       return NextResponse.json(
-        { error: 'project_id, full_name, and password are required' },
+        { error: 'پروژه، نام کامل و رمز عبور الزامی است' },
         { status: 400 }
       )
     }
@@ -46,27 +46,27 @@ export async function POST(request: NextRequest) {
 
     if (!realEmail && !usernameOrEmail) {
       return NextResponse.json(
-        { error: 'Real email or username is required' },
+        { error: 'ایمیل واقعی یا نام کاربری الزامی است' },
         { status: 400 }
       )
     }
 
     if (realEmail && !isDeliverableEmail(realEmail)) {
       return NextResponse.json(
-        { error: 'contact_email must be a real mailbox (not @site.local)' },
+        { error: 'ایمیل باید واقعی باشد (مثلاً gmail.com) — نه @site.local' },
         { status: 400 }
       )
     }
 
     if (!Array.isArray(position_ids) || position_ids.length < 1) {
       return NextResponse.json(
-        { error: 'Select at least one position for this member' },
+        { error: 'حداقل یک نقش/سمت را انتخاب کنید' },
         { status: 400 }
       )
     }
 
     if (String(password).length < 6) {
-      return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
+      return NextResponse.json({ error: 'رمز عبور باید حداقل ۶ کاراکتر باشد' }, { status: 400 })
     }
 
     // Prefer real email as auth login; fall back to username@site.local
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (!created.user) {
-        return NextResponse.json({ error: 'Failed to create auth user' }, { status: 500 })
+        return NextResponse.json({ error: 'ساخت کاربر احراز هویت ناموفق بود' }, { status: 500 })
       }
 
       profile = {
@@ -135,11 +135,43 @@ export async function POST(request: NextRequest) {
       .maybeSingle()
 
     if (existingMember) {
-      return NextResponse.json({ error: 'This member is already assigned to this project' }, { status: 400 })
+      // Already on this project — update role/profile instead of blocking (e.g. assign HSE).
+      // Service role bypasses RLS so member_positions sync actually persists.
+      const member = await updateProjectMember(
+        service,
+        existingMember.id,
+        {
+          full_name,
+          phone,
+          password: String(password),
+          is_active: is_active ?? true,
+          position_ids,
+          email: normalizedEmail,
+        },
+        user.id
+      )
+
+      await service
+        .from('profiles')
+        .update({
+          contact_email: realEmail || null,
+          personnel_code: body.personnel_code ?? body.personnelCode ?? null,
+          full_name,
+        })
+        .eq('id', profile.id)
+
+      return NextResponse.json(
+        {
+          member,
+          updated: true,
+          message: 'این کاربر از قبل در پروژه بود؛ نقش و اطلاعات او به‌روز شد.',
+        },
+        { status: 200 }
+      )
     }
 
     const member = await createProjectMember(
-      supabase,
+      service,
       project_id,
       profile.id,
       {
@@ -155,7 +187,7 @@ export async function POST(request: NextRequest) {
     )
 
     if (realEmail) {
-      await supabase
+      await service
         .from('profiles')
         .update({
           contact_email: realEmail,
@@ -163,7 +195,7 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', profile.id)
     } else if (body.personnel_code || body.personnelCode) {
-      await supabase
+      await service
         .from('profiles')
         .update({ personnel_code: body.personnel_code ?? body.personnelCode })
         .eq('id', profile.id)
@@ -171,7 +203,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ member }, { status: 201 })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Create member failed'
+    const message = error instanceof Error ? error.message : 'ایجاد عضو ناموفق بود'
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

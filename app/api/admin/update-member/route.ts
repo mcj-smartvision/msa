@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       }
 
       await updateProjectMember(
-        supabase,
+        service,
         memberId,
         {
           full_name: body.full_name ?? body.fullName,
@@ -84,13 +84,14 @@ export async function POST(request: NextRequest) {
         user.id
       )
 
-      await supabase
+      await service
         .from('profiles')
         .update({ email: contactEmail, contact_email: contactEmail, personnel_code: personnelCode })
         .eq('id', member.user_id)
     } else {
+      const service = createServiceClient()
       await updateProjectMember(
-        supabase,
+        service,
         memberId,
         {
           full_name: body.full_name ?? body.fullName,

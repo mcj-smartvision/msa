@@ -250,7 +250,12 @@ async function syncMemberPositions(
   positionIds: string[],
   assignedBy?: string
 ) {
-  await supabase.from('member_positions').delete().eq('project_member_id', memberId)
+  const { error: deleteError } = await supabase
+    .from('member_positions')
+    .delete()
+    .eq('project_member_id', memberId)
+
+  if (deleteError) throw new Error(deleteError.message)
 
   if (positionIds.length === 0) return
 
