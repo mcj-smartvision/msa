@@ -20,7 +20,7 @@ import type { AdminProject, Position, ProjectMember } from '@/types/admin'
 import { formatLoginDisplay } from '@/lib/auth/login-identifier'
 import { getAdminMemberMessages } from '@/lib/i18n/admin-member'
 import { useLocale } from '@/components/i18n/locale-provider'
-import { KeyRound, Pencil, UserCheck, Users } from 'lucide-react'
+import { KeyRound, Pencil, ShieldAlert, UserCheck, Users } from 'lucide-react'
 
 export default function AdminMembersPage() {
   const supabase = useSupabase()
@@ -32,8 +32,20 @@ export default function AdminMembersPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('')
   const [positionsLoading, setPositionsLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [preferredPositionKey, setPreferredPositionKey] = useState<string | undefined>()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const seedPositionsForProject = useCallback(async (projectId: string): Promise<Position[]> => {
+    const response = await fetch('/api/admin/seed-positions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project_id: projectId }),
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.error || t.seedFailed)
+    return (data.positions ?? []) as Position[]
+  }, [t.seedFailed])
 
   const loadPositions = useCallback(
     async (projectId: string) => {
@@ -43,7 +55,14 @@ export default function AdminMembersPage() {
       }
       setPositionsLoading(true)
       try {
-        const data = await fetchPositions(supabase, projectId)
+        let data = await fetchPositions(supabase, projectId)
+        const hse = data.find((p) => p.key === 'hse_officer')
+        const needsHseSeed =
+          !hse ||
+          (hse.name_fa !== 'مسئول ایمنی' && hse.title !== 'مسئول ایمنی')
+        if (needsHseSeed) {
+          data = await seedPositionsForProject(projectId)
+        }
         setPositions(data)
       } catch (err) {
         console.error(err)
@@ -52,7 +71,7 @@ export default function AdminMembersPage() {
         setPositionsLoading(false)
       }
     },
-    [supabase]
+    [supabase, seedPositionsForProject]
   )
 
   async function loadData(projectId?: string) {
@@ -94,14 +113,13 @@ export default function AdminMembersPage() {
 
   async function handleSeedPositions() {
     if (!selectedProjectId) return
-    const response = await fetch('/api/admin/seed-positions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_id: selectedProjectId }),
-    })
-    const data = await response.json()
-    if (!response.ok) throw new Error(data.error || t.seedFailed)
-    setPositions(data.positions ?? [])
+    const next = await seedPositionsForProject(selectedProjectId)
+    setPositions(next)
+  }
+
+  function openAddMember(roleKey?: string) {
+    setPreferredPositionKey(roleKey)
+    setShowForm(true)
   }
 
   async function handleCreateMember(values: {
@@ -127,6 +145,7 @@ export default function AdminMembersPage() {
     if (!response.ok) throw new Error(data.error || 'ایجاد عضو ناموفق بود')
     await loadData(selectedProjectId)
     setShowForm(false)
+    setPreferredPositionKey(undefined)
   }
 
   if (loading) return <LoadingBlock label={t.loadingPositions} />
@@ -137,6 +156,9 @@ export default function AdminMembersPage() {
     : members
   const activeCount = projectMembers.filter((m) => m.is_active).length
   const pendingPassword = projectMembers.filter((m) => !m.password_changed_by_member).length
+  const hasHseMember = projectMembers.some((m) =>
+    (m.positions ?? []).some((p) => p.key === 'hse_officer')
+  )
 
   return (
     <div className="space-y-6 max-w-[1400px]">
@@ -144,7 +166,17 @@ export default function AdminMembersPage() {
         title={t.memberManagement}
         description={t.memberManagementDesc}
         actions={
-          <Button onClick={() => setShowForm(!showForm)} disabled={!selectedProjectId && projects.length === 0}>
+          <Button
+            onClick={() => {
+              if (showForm) {
+                setShowForm(false)
+                setPreferredPositionKey(undefined)
+              } else {
+                openAddMember()
+              }
+            }}
+            disabled={!selectedProjectId && projects.length === 0}
+          >
             {showForm ? t.cancel : t.addMember}
           </Button>
         }
@@ -194,6 +226,7 @@ export default function AdminMembersPage() {
             onValueChange={(id) => {
               setSelectedProjectId(id)
               setShowForm(false)
+              setPreferredPositionKey(undefined)
             }}
           >
             <SelectTrigger className="w-[240px]">
@@ -217,12 +250,39 @@ export default function AdminMembersPage() {
         </Card>
       )}
 
+      {selectedProjectId && !hasHseMember ? (
+        <Card className="border-amber-200 bg-amber-50/70 shadow-card">
+          <CardContent className="py-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
+                <ShieldAlert className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-amber-950">مسئول ایمنی تعریف نشده</p>
+                <p className="text-xs text-amber-900/80 mt-0.5">
+                  نقش «مسئول ایمنی» را به یک عضو اختصاص دهید تا داشبورد HSE برای او فعال شود.
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              className="bg-amber-800 hover:bg-amber-900 text-white"
+              onClick={() => openAddMember('hse_officer')}
+            >
+              تعریف مسئول ایمنی
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {showForm && selectedProjectId ? (
         <MemberForm
+          key={`member-form-${preferredPositionKey ?? 'default'}-${positions.find((p) => p.key === preferredPositionKey)?.id ?? 'none'}`}
           positions={positions}
           positionsLoading={positionsLoading}
           onSeedPositions={handleSeedPositions}
-          submitLabel={t.addMember}
+          preferredPositionKey={preferredPositionKey}
+          submitLabel={preferredPositionKey === 'hse_officer' ? 'افزودن مسئول ایمنی' : t.addMember}
           onSubmit={handleCreateMember}
         />
       ) : null}

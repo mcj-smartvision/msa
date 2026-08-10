@@ -127,6 +127,24 @@ export async function seedProjectPositions(
     }
   }
 
+  // Refresh HSE labels so older projects show «مسئول ایمنی» in member role dropdowns.
+  const hseRow = rows.find((row) => row.key === 'hse_officer')
+  if (hseRow) {
+    await supabase
+      .from('positions')
+      .update({
+        title: hseRow.title,
+        name_en: hseRow.name_en,
+        name_fa: hseRow.name_fa,
+        name_fr: hseRow.name_fr,
+        name_de: hseRow.name_de,
+        description: hseRow.description,
+        is_active: true,
+      })
+      .eq('project_id', projectId)
+      .eq('key', 'hse_officer')
+  }
+
   const positions = await fetchPositions(supabase, projectId)
   return positions.length
 }

@@ -101,6 +101,26 @@ export function RoleDashboardGrid({ members }: { members: ProjectMember[] }) {
 
   return (
     <div className="space-y-6">
+      <Link
+        href="/dashboard/hse"
+        className="flex items-center justify-between gap-3 rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3.5 transition-colors hover:bg-amber-100"
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-900">
+            <ShieldAlert className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-amber-950">داشبورد مسئول ایمنی</p>
+            <p className="text-xs text-amber-900/80">
+              باز کردن مرکز کنترل ایمنی — حتی اگر هنوز عضوی با این نقش تعریف نشده باشد
+            </p>
+          </div>
+        </div>
+        <span className="shrink-0 rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white">
+          باز کردن
+        </span>
+      </Link>
+
       <div>
         <h3 className="text-sm font-semibold text-slate-900">داشبوردهای نقش</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
@@ -144,7 +164,11 @@ export function RoleDashboardGrid({ members }: { members: ProjectMember[] }) {
                     {dutySummary(key, roleTitleFa(key))}
                   </p>
                   <p className="mt-1.5 text-[11px] text-slate-500">
-                    {assigned > 0 ? `${assigned} عضو با این نقش` : 'هنوز عضوی با این نقش نیست — داشبورد آماده است'}
+                    {assigned > 0
+                      ? `${assigned} عضو با این نقش`
+                      : isHse
+                        ? 'هنوز عضوی نیست — از «مدیریت اعضا» نقش مسئول ایمنی را تعریف کنید'
+                        : 'هنوز عضوی با این نقش نیست — داشبورد آماده است'}
                   </p>
                 </div>
               </Link>
@@ -154,8 +178,18 @@ export function RoleDashboardGrid({ members }: { members: ProjectMember[] }) {
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-slate-900">اعضای تعریف‌شده</h3>
-        <p className="mt-0.5 text-xs text-muted-foreground">با کلیک به داشبورد نقش اصلی یا پروفایل عضو می‌روید.</p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">اعضای تعریف‌شده</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">با کلیک به داشبورد نقش اصلی یا پروفایل عضو می‌روید.</p>
+          </div>
+          <Link
+            href="/admin/members"
+            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+          >
+            تعریف مسئول ایمنی
+          </Link>
+        </div>
 
         {rows.length === 0 ? (
           <p className="mt-3 py-8 text-center text-sm text-muted-foreground">

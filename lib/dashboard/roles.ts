@@ -21,7 +21,7 @@ export const SITE_ROLE_LABELS: Record<SiteRoleKey, string> = {
   storekeeper: 'انباردار',
   procurement_officer: 'تدارکات',
   qa_qc_inspector: 'کنترل کیفیت',
-  hse_officer: 'HSE',
+  hse_officer: 'مسئول ایمنی',
   security: 'حراست',
   client: 'کارفرما',
   project_accountant: 'حسابدار پروژه',

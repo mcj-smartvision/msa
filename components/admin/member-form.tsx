@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,6 +25,8 @@ interface MemberFormProps {
   showPasswordField?: boolean
   positionsLoading?: boolean
   onSeedPositions?: () => Promise<void>
+  /** Prefill role dropdown by positions.key (e.g. hse_officer). */
+  preferredPositionKey?: string
 }
 
 export function MemberForm({
@@ -35,6 +37,7 @@ export function MemberForm({
   showPasswordField = !initial,
   positionsLoading = false,
   onSeedPositions,
+  preferredPositionKey,
 }: MemberFormProps) {
   const { locale } = useLocale()
   const t = getAdminMemberMessages(locale)
@@ -59,6 +62,12 @@ export function MemberForm({
   const [seeding, setSeeding] = useState(false)
   const [seedMessage, setSeedMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!preferredPositionKey || roleId) return
+    const match = positions.find((p) => p.key === preferredPositionKey && p.is_active)
+    if (match) setRoleId(match.id)
+  }, [preferredPositionKey, positions, roleId])
 
   async function handleSeed() {
     if (!onSeedPositions) return

@@ -37,7 +37,7 @@ BEGIN
     (p_project_id, 'architect', 'Architect', 'Architect', 'معمار', 'Design compliance', true),
     (p_project_id, 'structural_engineer', 'Structural Engineer', 'Structural Engineer', 'مهندس سازه', 'Structural oversight', true),
     (p_project_id, 'mep_engineer', 'MEP Engineer', 'MEP Engineer', 'مهندس MEP', 'MEP systems', true),
-    (p_project_id, 'hse_officer', 'HSE Officer', 'HSE Officer', 'مسئول HSE', 'Health and safety', true),
+    (p_project_id, 'hse_officer', 'HSE Officer', 'HSE Officer', 'مسئول ایمنی', 'Health and safety', true),
     (p_project_id, 'qa_qc_inspector', 'QA/QC Inspector', 'QA/QC Inspector', 'بازرس QA/QC', 'Quality inspections', true),
     (p_project_id, 'surveyor', 'Surveyor', 'Surveyor', 'نقشه‌بردار', 'Site measurements', true),
     (p_project_id, 'storekeeper', 'Storekeeper', 'Storekeeper', 'انباردار', 'Inventory management', true),

@@ -58,6 +58,7 @@ export function ConstructionRoleSelect({
   })
 
   const hasPositions = sortedPositions.length > 0
+  const hasHseOfficer = sortedPositions.some((p) => p.key === 'hse_officer')
 
   return (
     <div className="space-y-2">
@@ -87,9 +88,13 @@ export function ConstructionRoleSelect({
         </Select>
       )}
 
-      {!loading && !hasPositions && onSeed ? (
+      {!loading && (!hasPositions || !hasHseOfficer) && onSeed ? (
         <div className="rounded-lg border border-dashed bg-amber-50/50 p-4 space-y-3">
-          <p className="text-sm text-amber-900">{messages.noPositions}</p>
+          <p className="text-sm text-amber-900">
+            {hasPositions
+              ? 'نقش «مسئول ایمنی» در این پروژه تعریف نشده. نقش‌های پیش‌فرض را به‌روز کنید تا در لیست ظاهر شود.'
+              : messages.noPositions}
+          </p>
           <Button type="button" variant="outline" size="sm" onClick={() => onSeed()} disabled={seeding}>
             {seeding ? (
               <>

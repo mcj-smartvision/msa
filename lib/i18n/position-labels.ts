@@ -18,7 +18,7 @@ export const POSITION_LABELS: Record<string, Record<LocaleKey, string>> = {
   architect: { en: 'Architect', fa: 'معمار', fr: 'Architecte', de: 'Architekt' },
   structural_engineer: { en: 'Structural Engineer', fa: 'مهندس سازه', fr: 'Ingénieur structure', de: 'Tragwerksplaner' },
   mep_engineer: { en: 'MEP Engineer', fa: 'مهندس MEP', fr: 'Ingénieur MEP', de: 'TGA-Ingenieur' },
-  hse_officer: { en: 'HSE Officer', fa: 'مسئول HSE', fr: 'Responsable HSE', de: 'HSE-Beauftragter' },
+  hse_officer: { en: 'HSE Officer', fa: 'مسئول ایمنی', fr: 'Responsable HSE', de: 'HSE-Beauftragter' },
   qa_qc_inspector: { en: 'QA/QC Inspector', fa: 'بازرس QA/QC', fr: 'Inspecteur QA/QC', de: 'QA/QC-Prüfer' },
   surveyor: { en: 'Surveyor', fa: 'نقشه‌بردار', fr: 'Géomètre', de: 'Vermessungsingenieur' },
   storekeeper: { en: 'Storekeeper', fa: 'انباردار', fr: 'Magasinier', de: 'Lagerverwalter' },
