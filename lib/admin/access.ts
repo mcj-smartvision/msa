@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { SystemRole } from '@/types/admin'
 import { ADMIN_EMAIL } from '@/lib/admin/defaults'
 
-/** Platform admin: system_admin / it_admin role, or the configured ADMIN_EMAIL. */
+/** Platform admin if the user has system_admin / it_admin, or matches ADMIN_EMAIL. Previous admins are kept. */
 export async function isSystemAdmin(supabase: SupabaseClient, userId: string): Promise<boolean> {
   const { data: roleRows, error: roleError } = await supabase
     .from('user_system_roles')
