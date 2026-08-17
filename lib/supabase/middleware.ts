@@ -27,11 +27,23 @@ export async function updateSession(request: NextRequest) {
   })
 
   let user: Awaited<ReturnType<typeof supabase.auth.getUser>>['data']['user'] = null
-  try {
-    const { data } = await supabase.auth.getUser()
-    user = data.user
-  } catch (error) {
-    console.error('[middleware] Supabase auth unavailable:', error)
+  let authUnreachable = false
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const { data } = await supabase.auth.getUser()
+      user = data.user
+      authUnreachable = false
+      break
+    } catch (error) {
+      authUnreachable = true
+      console.error('[middleware] Supabase auth unavailable:', error)
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)))
+      }
+    }
+  }
+
+  if (authUnreachable && !user) {
     // Allow auth routes and static assets when Supabase is unreachable.
     if (
       request.nextUrl.pathname.startsWith('/login') ||

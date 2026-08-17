@@ -29,42 +29,51 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
-    const authEmail = normalizeLoginIdentifier(identifier)
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: authEmail,
-      password,
-    })
-
-    if (signInError) {
-      const msg = signInError.message.toLowerCase()
-      if (msg.includes('fetch failed') || msg.includes('network')) {
-        setError(
-          'ارتباط با سرور برقرار نشد. اینترنت/VPN را بررسی کنید و سرور توسعه را دوباره راه‌اندازی کنید.'
-        )
-      } else if (msg.includes('invalid login credentials')) {
-        setError('ایمیل یا رمز عبور نادرست است.')
-      } else {
-        setError(signInError.message)
-      }
-      setLoading(false)
-      return
-    }
-
-    if (redirectParam && redirectParam !== '/login') {
-      router.push(redirectParam)
-      router.refresh()
-      return
-    }
-
     try {
-      const res = await fetch('/api/auth/post-login')
-      const data = await res.json()
-      router.push(data.redirectTo ?? '/dashboard')
+      const supabase = createClient()
+      const authEmail = normalizeLoginIdentifier(identifier)
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: authEmail,
+        password,
+      })
+
+      if (signInError) {
+        const msg = signInError.message.toLowerCase()
+        if (msg.includes('fetch failed') || msg.includes('network') || msg.includes('failed to fetch')) {
+          setError(
+            'ارتباط با سرور برقرار نشد. اینترنت/VPN را بررسی کنید، صفحه را رفرش کنید و دوباره وارد شوید.'
+          )
+        } else if (msg.includes('invalid login credentials')) {
+          setError('ایمیل یا رمز عبور نادرست است.')
+        } else {
+          setError(signInError.message)
+        }
+        return
+      }
+
+      if (redirectParam && redirectParam !== '/login') {
+        router.push(redirectParam)
+        router.refresh()
+        return
+      }
+
+      try {
+        const res = await fetch('/api/auth/post-login')
+        const data = await res.json().catch(() => ({} as { redirectTo?: string }))
+        if (!res.ok || !data.redirectTo || data.redirectTo === '/login') {
+          setError('ورود ناقص ماند. صفحه را رفرش کنید و دوباره تلاش کنید.')
+          return
+        }
+        router.push(data.redirectTo)
+      } catch {
+        router.push('/dashboard')
+      }
+      router.refresh()
     } catch {
-      router.push('/dashboard')
+      setError('ورود انجام نشد. صفحه را رفرش کنید و دوباره تلاش کنید.')
+    } finally {
+      setLoading(false)
     }
-    router.refresh()
   }
 
   return (
