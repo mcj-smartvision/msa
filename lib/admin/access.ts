@@ -2,8 +2,21 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { SystemRole } from '@/types/admin'
 import { ADMIN_EMAIL } from '@/lib/admin/defaults'
 
-/** Only mojtaba421@gmail.com has full platform admin access. */
+/** Platform admin: system_admin / it_admin role, or the configured ADMIN_EMAIL. */
 export async function isSystemAdmin(supabase: SupabaseClient, userId: string): Promise<boolean> {
+  const { data: roleRows, error: roleError } = await supabase
+    .from('user_system_roles')
+    .select('system_role:system_roles(key, is_active)')
+    .eq('user_id', userId)
+
+  if (!roleError && roleRows) {
+    const hasRole = roleRows.some((row) => {
+      const role = normalizeRole(row as { system_role: unknown })
+      return Boolean(role?.is_active && (role.key === 'system_admin' || role.key === 'it_admin'))
+    })
+    if (hasRole) return true
+  }
+
   const { data, error } = await supabase
     .from('profiles')
     .select('email')
