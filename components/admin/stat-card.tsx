@@ -8,6 +8,7 @@ interface StatCardProps {
   trend?: string
   trendType?: 'up' | 'down' | 'neutral' | 'warning'
   className?: string
+  compact?: boolean
 }
 
 const trendColors = {
@@ -17,19 +18,34 @@ const trendColors = {
   warning: 'text-amber-600',
 }
 
-export function StatCard({ label, value, icon: Icon, trend, trendType = 'neutral', className }: StatCardProps) {
+export function StatCard({
+  label,
+  value,
+  icon: Icon,
+  trend,
+  trendType = 'neutral',
+  className,
+  compact,
+}: StatCardProps) {
   return (
-    <div className={cn('stat-card', className)}>
+    <div className={cn('stat-card', compact && 'p-4 rounded-[12px]', className)}>
       <div className="flex items-start justify-between gap-3">
-        <div className="space-y-2 min-w-0">
+        <div className={cn('min-w-0', compact ? 'space-y-1' : 'space-y-2')}>
           <p className="admin-section-title">{label}</p>
-          <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
+          <p className={cn('font-bold tracking-tight text-foreground', compact ? 'text-2xl' : 'text-3xl')}>
+            {value}
+          </p>
           {trend ? (
             <p className={cn('text-xs font-medium', trendColors[trendType])}>{trend}</p>
           ) : null}
         </div>
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Icon className="h-5 w-5" />
+        <div
+          className={cn(
+            'flex shrink-0 items-center justify-center rounded-[10px] bg-primary/10 text-primary',
+            compact ? 'h-9 w-9' : 'h-11 w-11 rounded-xl'
+          )}
+        >
+          <Icon className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
         </div>
       </div>
     </div>

@@ -63,7 +63,7 @@
   }
 
   .stat-card {
-    @apply rounded-2xl border border-slate-200/80 bg-white p-6 shadow-none transition-shadow hover:shadow-sm;
+    @apply rounded-[12px] border border-slate-200/80 bg-white p-6 shadow-none transition-shadow hover:shadow-sm;
   }
 
   .admin-section-title {

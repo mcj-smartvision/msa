@@ -176,7 +176,7 @@ async function fetchCriticalAlerts(supabase: SupabaseClient): Promise<AdminCriti
 
   const alertsRes = await supabase
     .from('alerts')
-    .select('id, message, severity, alert_type, created_at')
+    .select('id, message, severity, alert_type, created_at, project_id')
     .eq('is_resolved', false)
     .in('severity', ['warning', 'critical'])
     .order('created_at', { ascending: false })
@@ -191,12 +191,13 @@ async function fetchCriticalAlerts(supabase: SupabaseClient): Promise<AdminCriti
       severity: mapAlertSeverity(String(row.severity)),
       source: alertSourceLabel(String(row.alert_type)),
       time: formatDurationAgo(String(row.created_at)),
+      projectId: row.project_id ? String(row.project_id) : null,
     })
   }
 
   const inventoryRes = await supabase
     .from('inventory_items')
-    .select('id, name, current_stock, min_stock, last_updated_at')
+    .select('id, name, current_stock, min_stock, last_updated_at, project_id')
     .limit(200)
 
   if (inventoryRes.error && !isMissingTable(inventoryRes.error)) {
@@ -213,13 +214,14 @@ async function fetchCriticalAlerts(supabase: SupabaseClient): Promise<AdminCriti
       severity: current <= 0 ? 'critical' : 'medium',
       source: 'Inventory',
       time: formatDurationAgo((row.last_updated_at as string) ?? null),
+      projectId: row.project_id ? String(row.project_id) : null,
     })
   }
 
   const since = startOfLocalDayIso()
   const failedRes = await supabase
     .from('attendance_transits')
-    .select('id, person_name, identification_status, occurred_at')
+    .select('id, person_name, identification_status, occurred_at, project_id')
     .gte('occurred_at', since)
     .neq('identification_status', 'success')
     .order('occurred_at', { ascending: false })
@@ -237,6 +239,7 @@ async function fetchCriticalAlerts(supabase: SupabaseClient): Promise<AdminCriti
       severity: 'high',
       source: 'Security',
       time: formatDurationAgo(String(row.occurred_at)),
+      projectId: row.project_id ? String(row.project_id) : null,
     })
   }
 

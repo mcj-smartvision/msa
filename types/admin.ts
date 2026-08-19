@@ -270,6 +270,7 @@ export interface AdminCriticalAlert {
   severity: 'medium' | 'high' | 'critical'
   source: string
   time: string
+  projectId?: string | null
 }
 
 export interface ControlCenterFeeds {
