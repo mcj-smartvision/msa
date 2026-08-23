@@ -23,7 +23,7 @@ export function DashboardLayoutShell({
   }
 
   return (
-    <div className="min-h-screen bg-muted/20">
+    <div className="min-h-screen bg-[#5a7088]">
       <DashboardHeader email={email} isAdmin={isAdmin} roleNavLinks={roleNavLinks} />
       <main className="container mx-auto px-4 py-8">{children}</main>
     </div>

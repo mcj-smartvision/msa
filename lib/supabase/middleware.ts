@@ -74,6 +74,8 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/dashboard') ||
     request.nextUrl.pathname.startsWith('/admin') ||
     request.nextUrl.pathname.startsWith('/settings') ||
+    request.nextUrl.pathname.startsWith('/account') ||
+    request.nextUrl.pathname.startsWith('/project-directory') ||
     request.nextUrl.pathname.startsWith('/first-login') ||
     request.nextUrl.pathname.startsWith('/site-ops') ||
     request.nextUrl.pathname.startsWith('/finance') ||

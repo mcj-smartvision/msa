@@ -14,6 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { HEADER_CHIP } from '@/components/layout/header-chip'
+import { cn } from '@/lib/utils'
 
 interface ProjectOption {
   id: string
@@ -95,13 +97,13 @@ export function HeaderProjectSwitcher({
     <div className={className}>
       <Select value={selected ?? ALL_PROJECTS_SCOPE} onValueChange={handleChange}>
         <SelectTrigger
-          className="h-9 w-[180px] gap-2 border-slate-200 bg-white text-[13px] rounded-[10px]"
+          className={cn(HEADER_CHIP, 'w-[128px]')}
           aria-label={fa ? 'پروژه' : 'Project'}
         >
           {selected === ALL_PROJECTS_SCOPE ? (
-            <Layers className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Layers className="h-3.5 w-3.5 shrink-0 text-slate-500" />
           ) : (
-            <FolderKanban className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <FolderKanban className="h-3.5 w-3.5 shrink-0 text-slate-500" />
           )}
           <SelectValue placeholder={allLabel}>
             <span className="truncate">{display}</span>

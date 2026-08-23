@@ -6,13 +6,13 @@ import {
   BarChart3,
   Building2,
   CheckCircle2,
-  HardHat,
   Shield,
   Sparkles,
   Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { APP_NAME, APP_TAGLINE, APP_TAGLINE_FA } from '@/lib/brand'
+import { APP_NAME, APP_TAGLINE } from '@/lib/brand'
+import { BrandLogo } from '@/components/brand/brand-logo'
 
 const benefits = [
   {
@@ -42,12 +42,8 @@ export function LandingPage() {
     <div className="min-h-screen bg-background" dir="rtl">
       <header className="border-b bg-card/80 backdrop-blur sticky top-0 z-10">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-2.5">
-            <HardHat className="h-8 w-8 text-primary" />
-            <div>
-              <span className="text-xl font-bold tracking-tight block leading-none">{APP_NAME}</span>
-              <span className="text-[11px] text-muted-foreground">{APP_TAGLINE_FA}</span>
-            </div>
+          <div className="flex items-center">
+            <BrandLogo size="md" />
           </div>
           <Button asChild variant="outline" size="sm">
             <Link href="/login">ورود</Link>

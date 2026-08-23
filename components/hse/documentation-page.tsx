@@ -38,7 +38,7 @@ export function DocumentationPage() {
     <div className="space-y-4" dir="rtl" lang="fa">
       <HsePageHeader
         title="راهنمای عملیات ایمنی"
-        description="این راهنما نحوه استقرار، بهره‌برداری و نگهداری سامانه پایش هوشمند ایمنی لیپارتا را توضیح می‌دهد."
+        description="این راهنما نحوه استقرار، بهره‌برداری و نگهداری سامانه پایش هوشمند ایمنی MSA را توضیح می‌دهد."
       />
 
       <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">

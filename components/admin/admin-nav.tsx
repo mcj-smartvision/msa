@@ -8,43 +8,24 @@ import {
   Users,
   FolderKanban,
   Settings,
-  HardHat,
   MessageSquare,
   AlertCircle,
-  Activity,
-  Calendar,
-  Globe,
-  UserPlus,
-  Bell,
+  ClipboardCheck,
   type LucideIcon,
 } from 'lucide-react'
+import { BrandLogo } from '@/components/brand/brand-logo'
 import { cn } from '@/lib/utils'
-import { APP_NAME, APP_PRODUCT_LINE } from '@/lib/brand'
 import { LogoutButton } from '@/components/auth/logout-button'
 import { useLocale } from '@/components/i18n/locale-provider'
-import { LOCALE_OPTIONS } from '@/lib/i18n/app-shell'
-import type { FormLocale } from '@/lib/project-init/i18n/types'
-import { useScheduleCalendar } from '@/hooks/useScheduleCalendar'
-import type { ScheduleCalendar } from '@/lib/schedule/calendar-preference'
+import { HeaderLanguageSwitcher } from '@/components/i18n/header-language-switcher'
 import { HeaderProjectSwitcher } from '@/components/project/header-project-switcher'
+import { HeaderUserMenu } from '@/components/account/header-user-menu'
 import { MessengerButton } from '@/components/messaging/messenger-panel'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import {
   useControlCenterDetailsOptional,
   ControlCenterDataProvider,
   type DetailKey,
 } from '@/components/admin/control-center-details-context'
-
-const CALENDAR_OPTIONS: { value: ScheduleCalendar; labelEn: string; labelFa: string }[] = [
-  { value: 'gregorian', labelEn: 'Gregorian', labelFa: 'میلادی' },
-  { value: 'jalali', labelEn: 'Shamsi (Jalali)', labelFa: 'هجری شمسی' },
-]
 
 const NAV_ROW =
   'flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13px] font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -61,16 +42,10 @@ export function AdminShell({ children, email }: { children: ReactNode; email?: s
 
 function AdminShellFrame({ children, email }: { children: ReactNode; email?: string }) {
   return (
-    <div className="flex min-h-screen bg-[#F4F5F7]">
+    <div className="flex min-h-screen bg-[#5a7088]">
       <aside className="hidden lg:flex w-[260px] flex-col border-e border-slate-200/90 bg-white shrink-0">
-        <div className="flex h-14 items-center gap-2.5 border-b border-slate-100 px-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-primary text-primary-foreground shrink-0">
-            <HardHat className="h-4 w-4" />
-          </div>
-          <div className="min-w-0">
-            <p className="font-semibold text-[13px] leading-tight tracking-tight">{APP_NAME}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{APP_PRODUCT_LINE}</p>
-          </div>
+        <div className="flex h-14 items-center border-b border-slate-100 px-3">
+          <BrandLogo size="md" />
         </div>
 
         <nav className="flex-1 p-3 overflow-y-auto">
@@ -100,56 +75,18 @@ function AdminShellFrame({ children, email }: { children: ReactNode; email?: str
 }
 
 function AdminTopHeader({ email }: { email?: string }) {
-  const ctx = useControlCenterDetailsOptional()
-  const { locale } = useLocale()
-  const fa = locale === 'fa'
-  const alertCount = ctx?.feeds.alerts.length ?? 0
-  const initial = (email ?? 'A').trim().charAt(0).toUpperCase()
-
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-slate-200/90 bg-white/95 px-4 sm:px-6 backdrop-blur">
-      <div className="flex min-w-0 items-center gap-2 lg:hidden">
-        <HardHat className="h-4 w-4 text-primary" />
-        <span className="font-semibold text-sm">{APP_NAME}</span>
+      <div className="flex min-w-0 items-center">
+        <BrandLogo size="sm" />
       </div>
-      <p className="hidden lg:block text-sm font-semibold tracking-tight text-slate-900">{APP_NAME}</p>
 
-      <div className="ms-auto flex items-center gap-2 sm:gap-3">
+      <div className="ms-auto flex items-center gap-2">
         <HeaderProjectSwitcher allowAll className="min-w-0" />
-        <button
-          type="button"
-          onClick={() => ctx?.setOpenDetail('alerts')}
-          className="relative flex h-9 w-9 items-center justify-center rounded-[10px] border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-          aria-label={fa ? 'اعلان‌ها' : 'Notifications'}
-        >
-          <Bell className="h-4 w-4" />
-          {alertCount > 0 ? (
-            <span className="absolute -top-1 -start-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
-              {alertCount > 9 ? '9+' : alertCount}
-            </span>
-          ) : null}
-        </button>
-        <div className="flex items-center gap-2 rounded-[10px] border border-slate-200 bg-white py-1 ps-1 pe-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-[8px] bg-slate-900 text-[11px] font-semibold text-white">
-            {initial}
-          </span>
-          <span className="hidden sm:block max-w-[140px] truncate text-xs text-slate-600" title={email}>
-            {email ?? (fa ? 'ادمین' : 'Admin')}
-          </span>
-        </div>
+        <HeaderUserMenu email={email} />
+        <HeaderLanguageSwitcher />
       </div>
     </header>
-  )
-}
-
-function NavGroup({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="space-y-0.5">
-      <p className="px-2.5 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-        {label}
-      </p>
-      {children}
-    </div>
   )
 }
 
@@ -157,9 +94,8 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const ctx = useControlCenterDetailsOptional()
-  const { locale, setLocale } = useLocale()
+  const { locale } = useLocale()
   const fa = locale === 'fa'
-  const { calendar, setCalendar } = useScheduleCalendar()
 
   const openDetail = ctx?.openDetail ?? null
   const feeds = ctx?.feeds
@@ -177,129 +113,63 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
     [ctx, pathname, router]
   )
 
+  const goControlCenter = useCallback(() => {
+    ctx?.setOpenDetail(null)
+    if (pathname !== '/admin') router.push('/admin')
+  }, [ctx, pathname, router])
+
   const linkActive = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname.startsWith(href)
 
   return (
     <div className={cn(compact ? 'flex flex-wrap gap-1' : 'space-y-1')}>
-      <NavGroup label={fa ? 'نمای کلی' : 'Overview'}>
-        <FlatLink
-          href="/admin"
-          label={fa ? 'کنترل سنتر' : 'Control Center'}
-          icon={LayoutDashboard}
-          active={linkActive('/admin', true)}
-        />
-      </NavGroup>
-
-      <NavGroup label={fa ? 'شرکت و پروژه‌ها' : 'Company'}>
-        <FlatLink
-          href="/admin/projects"
-          label={fa ? 'پروژه‌ها' : 'Projects'}
-          icon={FolderKanban}
-          active={linkActive('/admin/projects')}
-        />
-      </NavGroup>
-
-      <NavGroup label={fa ? 'تیم' : 'Team'}>
-        <FlatAction
-          label={fa ? 'داشبورد اعضا' : 'Member Dashboards'}
-          icon={Users}
-          count={ctx?.members.length}
-          active={openDetail === 'dashboards'}
-          onClick={() => selectDetail('dashboards')}
-        />
-        <FlatLink
-          href="/admin/members"
-          label={fa ? 'اضافه کردن عضو' : 'Add Member'}
-          icon={UserPlus}
-          active={linkActive('/admin/members')}
-        />
-      </NavGroup>
-
-      <NavGroup label={fa ? 'پایش' : 'Monitor'}>
-        <MessengerButton variant="nav" />
-        <FlatAction
-          label={fa ? 'ساپورت و پیام‌ها' : 'Support & Messages'}
-          icon={MessageSquare}
-          count={feeds?.tickets.length}
-          active={openDetail === 'messages'}
-          onClick={() => selectDetail('messages')}
-        />
-        <FlatAction
-          label={fa ? 'هشدارهای بحرانی' : 'Critical Alerts'}
-          icon={AlertCircle}
-          count={feeds?.alerts.length}
-          warn={(feeds?.alerts.length ?? 0) > 0}
-          active={openDetail === 'alerts'}
-          onClick={() => selectDetail('alerts')}
-        />
-        <FlatAction
-          label={fa ? 'فعالیت‌های اخیر' : 'Recent Activity'}
-          icon={Activity}
-          count={feeds?.activities.length}
-          active={openDetail === 'activity'}
-          onClick={() => selectDetail('activity')}
-        />
-      </NavGroup>
-
-      <NavGroup label={fa ? 'تنظیمات' : 'Settings'}>
-        <Select value={calendar} onValueChange={(v) => setCalendar(v as ScheduleCalendar)}>
-          <SelectTrigger
-            className={cn(NAV_ROW, 'h-auto border-0 shadow-none bg-transparent focus:ring-0')}
-            aria-label={fa ? 'نوع تقویم' : 'Calendar'}
-          >
-            <Calendar className="h-4 w-4 shrink-0 opacity-90" />
-            <SelectValue>
-              <span className="truncate">
-                {fa ? 'تقویم' : 'Calendar'}
-                <span className="mx-1.5 text-muted-foreground">·</span>
-                {CALENDAR_OPTIONS.find((o) => o.value === calendar)
-                  ? fa
-                    ? CALENDAR_OPTIONS.find((o) => o.value === calendar)!.labelFa
-                    : CALENDAR_OPTIONS.find((o) => o.value === calendar)!.labelEn
-                  : calendar}
-              </span>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {CALENDAR_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {fa ? opt.labelFa : opt.labelEn}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={locale} onValueChange={(v) => setLocale(v as FormLocale)}>
-          <SelectTrigger
-            className={cn(NAV_ROW, 'h-auto border-0 shadow-none bg-transparent focus:ring-0')}
-            aria-label={fa ? 'زبان' : 'Language'}
-          >
-            <Globe className="h-4 w-4 shrink-0 opacity-90" />
-            <SelectValue>
-              <span className="truncate">
-                {fa ? 'زبان' : 'Language'}
-                <span className="mx-1.5 text-muted-foreground">·</span>
-                {LOCALE_OPTIONS.find((o) => o.value === locale)?.label ?? locale}
-              </span>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {LOCALE_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <FlatLink
-          href="/settings"
-          label={fa ? 'تنظیمات' : 'Settings'}
-          icon={Settings}
-          active={linkActive('/settings')}
-        />
-      </NavGroup>
+      <FlatAction
+        label={fa ? 'کنترل سنتر' : 'Control Center'}
+        icon={LayoutDashboard}
+        active={pathname === '/admin' && openDetail === null}
+        onClick={goControlCenter}
+      />
+      <FlatLink
+        href="/admin/projects"
+        label={fa ? 'پروژه‌ها' : 'Projects'}
+        icon={FolderKanban}
+        active={linkActive('/admin/projects')}
+      />
+      <FlatLink
+        href="/dashboard/qc"
+        label={fa ? 'کنترل کیفیت' : 'Quality Control'}
+        icon={ClipboardCheck}
+        active={linkActive('/dashboard/qc')}
+      />
+      <FlatAction
+        label={fa ? 'داشبورد اعضا' : 'Member Dashboards'}
+        icon={Users}
+        count={ctx?.members.length}
+        active={openDetail === 'dashboards'}
+        onClick={() => selectDetail('dashboards')}
+      />
+      <MessengerButton variant="nav" />
+      <FlatAction
+        label={fa ? 'ساپورت و پیام‌ها' : 'Support & Messages'}
+        icon={MessageSquare}
+        count={feeds?.tickets.length}
+        active={openDetail === 'messages'}
+        onClick={() => selectDetail('messages')}
+      />
+      <FlatAction
+        label={fa ? 'هشدارهای بحرانی' : 'Critical Alerts'}
+        icon={AlertCircle}
+        count={feeds?.alerts.length}
+        warn={(feeds?.alerts.length ?? 0) > 0}
+        active={openDetail === 'alerts'}
+        onClick={() => selectDetail('alerts')}
+      />
+      <FlatLink
+        href="/settings"
+        label={fa ? 'تنظیمات' : 'Settings'}
+        icon={Settings}
+        active={linkActive('/settings')}
+      />
     </div>
   )
 }

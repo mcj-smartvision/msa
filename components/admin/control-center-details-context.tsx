@@ -12,8 +12,14 @@ export type DetailKey =
   | 'alerts'
   | 'roles'
   | 'dashboards'
-  | 'activity'
   | 'presence'
+
+const EMPTY_SPARKLINE = {
+  people: [0, 0, 0, 0, 0, 0, 0],
+  active: [0, 0, 0, 0, 0, 0, 0],
+  onSite: [0, 0, 0, 0, 0, 0, 0],
+  attention: [0, 0, 0, 0, 0, 0, 0],
+}
 
 const EMPTY_FEEDS: ControlCenterFeeds = {
   activities: [],
@@ -24,6 +30,8 @@ const EMPTY_FEEDS: ControlCenterFeeds = {
   tickets: [],
   alerts: [],
   openMessageCount: 0,
+  lastActivityByProjectId: {},
+  sparkline: EMPTY_SPARKLINE,
 }
 
 type ControlCenterDetailsValue = {

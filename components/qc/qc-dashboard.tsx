@@ -59,6 +59,7 @@ import {
   UiBlockGuard,
   UiBlockVisibilityProvider,
 } from '@/components/dashboard/ui-block-visibility'
+import { QcEnginePanels } from '@/components/qc/qc-engine-panels'
 
 interface QcDashboardProps {
   initialContext: DashboardUserContext
@@ -426,6 +427,14 @@ export function QcDashboard({
           </SectionCard>
           </UiBlockGuard>
         </>
+      ) : null}
+
+      {!loading && projectId ? (
+        <QcEnginePanels
+          projectId={projectId}
+          t={t}
+          isInspector={initialContext.positionKeys.includes('qa_qc_inspector')}
+        />
       ) : null}
 
       {inspectTarget ? (

@@ -9,10 +9,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { HardHat, Lock, User, ArrowRight } from 'lucide-react'
+import { Lock, User, ArrowRight } from 'lucide-react'
 import { normalizeLoginIdentifier } from '@/lib/auth/login-identifier'
 import { HeaderCalendarSwitcher } from '@/components/schedule/header-calendar-switcher'
-import { APP_NAME, APP_TAGLINE } from '@/lib/brand'
+import { APP_TAGLINE } from '@/lib/brand'
+import { BrandLogo } from '@/components/brand/brand-logo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -85,13 +86,8 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-[420px] rounded-2xl border border-white/10 bg-background/95 backdrop-blur-sm shadow-elevated p-8 sm:p-10">
         <div className="flex flex-col items-center text-center mb-8">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground mb-4">
-            <HardHat className="h-6 w-6" />
-          </div>
-          <h1 className="text-xl font-bold tracking-tight">{APP_NAME}</h1>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground mt-1">
-            {APP_TAGLINE}
-          </p>
+          <BrandLogo size="lg" className="mb-3" />
+          <p className="text-xs text-muted-foreground mt-1">{APP_TAGLINE}</p>
         </div>
 
         <div className="space-y-2 mb-6 text-center">

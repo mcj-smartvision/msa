@@ -2,15 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LogoutButton } from '@/components/auth/logout-button'
 import { HeaderCalendarSwitcher } from '@/components/schedule/header-calendar-switcher'
+import { HeaderLanguageSwitcher } from '@/components/i18n/header-language-switcher'
 import { HeaderProjectSwitcher } from '@/components/project/header-project-switcher'
+import { HeaderUserMenu } from '@/components/account/header-user-menu'
 import { MessengerButton } from '@/components/messaging/messenger-panel'
 import { useLocale } from '@/components/i18n/locale-provider'
 import type { RoleNavLink } from '@/lib/dashboard/role-nav'
-import { HardHat } from 'lucide-react'
+import { BrandLogo } from '@/components/brand/brand-logo'
 import { cn } from '@/lib/utils'
-import { APP_NAME } from '@/lib/brand'
 
 interface DashboardHeaderProps {
   email: string
@@ -50,10 +50,7 @@ export function DashboardHeader({ email, isAdmin, roleNavLinks = [] }: Dashboard
       <div className="container mx-auto flex h-14 items-center justify-between gap-4 px-4">
         <nav className="flex min-w-0 items-center gap-1 sm:gap-2 overflow-x-auto">
           <Link href={homeHref} className="flex items-center gap-2 font-bold shrink-0 mr-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <HardHat className="h-4 w-4" />
-            </div>
-            <span className="hidden sm:inline">{APP_NAME}</span>
+            <BrandLogo size="sm" withName />
           </Link>
           {navItems.map((item) => {
             const active = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
@@ -75,11 +72,11 @@ export function DashboardHeader({ email, isAdmin, roleNavLinks = [] }: Dashboard
         </nav>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <HeaderLanguageSwitcher />
           <MessengerButton />
           <HeaderProjectSwitcher className="hidden sm:block" />
           <HeaderCalendarSwitcher />
-          <span className="text-sm text-muted-foreground hidden md:inline max-w-[180px] truncate">{email}</span>
-          <LogoutButton label={app.signOut} />
+          <HeaderUserMenu email={email} />
         </div>
       </div>
     </header>

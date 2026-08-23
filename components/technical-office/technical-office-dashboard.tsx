@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLocale } from '@/components/i18n/locale-provider'
 import { getTechnicalOfficeMessages } from '@/lib/i18n/technical-office'
 import type { DashboardUserContext } from '@/types/dashboard'
+import { PageHeader } from '@/components/admin/shared'
+import { ProjectDrawingsPanel } from '@/components/technical-office/project-drawings-panel'
 
 type PackageRow = {
   id: string
@@ -127,14 +129,10 @@ export function TechnicalOfficeDashboard({
 
   return (
     <div className="mx-auto max-w-6xl space-y-8" dir={dir}>
-      <header className="space-y-2">
-        <p className="text-sm text-muted-foreground">{initialContext.fullName}</p>
-        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
-        <p className="text-sm text-muted-foreground max-w-2xl">{t.subtitle}</p>
-        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 inline-block">
-          {t.polesExample}
-        </p>
-      </header>
+      <PageHeader title={t.title} description={t.subtitle} />
+      <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 inline-block">
+        {t.polesExample}
+      </p>
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="text-sm">
@@ -164,6 +162,12 @@ export function TechnicalOfficeDashboard({
           {t.exceptions}
         </Link>
       </div>
+
+      <ProjectDrawingsPanel
+        projectId={projectId}
+        canUpload
+        fa={locale === 'fa' || locale === 'ar'}
+      />
 
       {packages.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t.seedHint}</p>

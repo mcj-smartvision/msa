@@ -8,19 +8,25 @@ interface PageHeaderProps {
   actions?: ReactNode
 }
 
-export function PageHeader({ title, description, actions }: PageHeaderProps) {
+export function PageHeader({ title, description: _description, actions }: PageHeaderProps) {
   return (
-    <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between pb-1">
-      <div className="space-y-2">
-        <h1 className="text-2xl sm:text-[1.75rem] font-bold tracking-tight text-foreground">
-          {title}
-        </h1>
-        {description ? (
-          <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">{description}</p>
-        ) : null}
+    <section className="relative h-[148px] overflow-hidden rounded-[12px] bg-[#1a2330]">
+      <img
+        src="/brand/header-banner.png"
+        alt=""
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover object-left"
+      />
+      <div className="relative flex h-full items-center px-5 sm:px-7">
+        <div className="min-w-0 max-w-xl">
+          <h1 className="whitespace-nowrap text-[1.85rem] sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-sm">
+            {title}
+          </h1>
+          {actions ? (
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">{actions}</div>
+          ) : null}
+        </div>
       </div>
-      {actions ? <div className="flex flex-wrap gap-2 shrink-0">{actions}</div> : null}
-    </div>
+    </section>
   )
 }
 

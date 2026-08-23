@@ -4,52 +4,97 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Activity,
-  AlertTriangle,
-  HardHat,
+  Cpu,
   Plus,
-  TrendingUp,
+  Radio,
+  ServerCrash,
+  ShieldAlert,
+  UserX,
+  Users,
 } from 'lucide-react'
 import { useSupabase } from '@/hooks/useSupabase'
-import { createProject, fetchAdminProjects } from '@/utils/admin'
+import { createProject, fetchAdminProjects, fetchAllMembers } from '@/utils/admin'
+import { fetchControlCenterFeeds } from '@/lib/admin/control-center'
+import {
+  countIdleUsers,
+  countLiveSessions,
+  fetchAdminOpsMetrics,
+} from '@/lib/admin/projects-ops'
 import { LoadingBlock, ErrorBlock } from '@/components/admin/shared'
 import { ControlKpiCard, ProjectsControlHeader } from '@/components/admin/projects-control/control-chrome'
-import { ProjectToolbar } from '@/components/admin/projects-control/project-toolbar'
 import {
   EmptyProjectsState,
   ProjectRow,
 } from '@/components/admin/projects-control/project-row'
 import { ProjectCreationDrawer } from '@/components/admin/projects-control/project-creation-drawer'
+import { ActivityFeed } from '@/components/admin/activity-feed'
 import { Button } from '@/components/ui/button'
-import {
-  estimateProgress,
-  resolveProjectStatusKey,
-} from '@/lib/admin/project-status'
-import type { AdminProject, CreateProjectInput } from '@/types/admin'
+import { openProjectDirectory } from '@/lib/account/open-account-page'
+import { sortProjectsRecent } from '@/components/admin/project-directory-table'
+import type {
+  AdminOpsMetrics,
+  AdminProject,
+  AuthActivityUser,
+  ControlCenterFeeds,
+  CreateProjectInput,
+  ProjectMember,
+} from '@/types/admin'
+
+const IDLE_DAYS_KEY = 'liparta.admin.idleDays'
+const EMPTY_FEEDS: ControlCenterFeeds = {
+  activities: [],
+  presenceUsers: [],
+  insideCount: 0,
+  outsideCount: 0,
+  absentCount: 0,
+  tickets: [],
+  alerts: [],
+  openMessageCount: 0,
+  lastActivityByProjectId: {},
+  sparkline: {
+    people: [0, 0, 0, 0, 0, 0, 0],
+    active: [0, 0, 0, 0, 0, 0, 0],
+    onSite: [0, 0, 0, 0, 0, 0, 0],
+    attention: [0, 0, 0, 0, 0, 0, 0],
+  },
+}
+
+function readIdleDays(): number {
+  if (typeof window === 'undefined') return 14
+  const raw = Number(window.localStorage.getItem(IDLE_DAYS_KEY))
+  return Number.isFinite(raw) && raw >= 1 && raw <= 365 ? raw : 14
+}
+
+function ownerLabel(project: AdminProject): string | null {
+  const parts = [project.client_name, project.contractor_name].filter(Boolean) as string[]
+  return parts.length ? parts.join(' · ') : null
+}
 
 export default function AdminProjectsPage() {
   const supabase = useSupabase()
   const router = useRouter()
   const [projects, setProjects] = useState<AdminProject[]>([])
+  const [members, setMembers] = useState<ProjectMember[]>([])
+  const [feeds, setFeeds] = useState<ControlCenterFeeds>(EMPTY_FEEDS)
+  const [ops, setOps] = useState<AdminOpsMetrics | null>(null)
+  const [authUsers, setAuthUsers] = useState<AuthActivityUser[]>([])
+  const [idleDays, setIdleDays] = useState(14)
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [successNote, setSuccessNote] = useState<string | null>(null)
 
-  const [query, setQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [locationFilter, setLocationFilter] = useState('all')
-  const [sort, setSort] = useState('updated_desc')
+  useEffect(() => {
+    setIdleDays(readIdleDays())
+  }, [])
 
   const loadProjects = useCallback(
     async (mode: 'initial' | 'refresh' = 'initial') => {
-      if (mode === 'refresh') setRefreshing(true)
-      else setLoading(true)
+      if (mode !== 'refresh') setLoading(true)
       setError(null)
       try {
-        const data = await Promise.race([
-          fetchAdminProjects(supabase),
+        const [projectData, memberData] = await Promise.race([
+          Promise.all([fetchAdminProjects(supabase), fetchAllMembers(supabase)]),
           new Promise<never>((_, reject) =>
             setTimeout(
               () =>
@@ -58,16 +103,31 @@ export default function AdminProjectsPage() {
                     'زمان بارگذاری تمام شد — اتصال Supabase را بررسی و صفحه را تازه کنید.'
                   )
                 ),
-              15000
+              20000
             )
           ),
         ])
-        setProjects(data)
+
+        const [feedData, opsData, authRes] = await Promise.all([
+          fetchControlCenterFeeds(supabase, memberData),
+          fetchAdminOpsMetrics(supabase),
+          fetch('/api/admin/auth-activity')
+            .then(async (res) => {
+              if (!res.ok) return { users: [] as AuthActivityUser[] }
+              return (await res.json()) as { users?: AuthActivityUser[] }
+            })
+            .catch(() => ({ users: [] as AuthActivityUser[] })),
+        ])
+
+        setProjects(projectData)
+        setMembers(memberData)
+        setFeeds(feedData)
+        setOps(opsData)
+        setAuthUsers(authRes.users ?? [])
       } catch (err) {
         setError(err instanceof Error ? err.message : 'بارگذاری پروژه‌ها ناموفق بود')
       } finally {
         setLoading(false)
-        setRefreshing(false)
       }
     },
     [supabase]
@@ -77,58 +137,44 @@ export default function AdminProjectsPage() {
     void loadProjects('initial')
   }, [loadProjects])
 
-  const locations = useMemo(() => {
-    const set = new Set<string>()
-    for (const p of projects) {
-      if (p.location?.trim()) set.add(p.location.trim())
+  const memberCountByProject = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const member of members) {
+      map.set(member.project_id, (map.get(member.project_id) ?? 0) + 1)
     }
-    return [...set].sort((a, b) => a.localeCompare(b, 'fa'))
-  }, [projects])
+    return map
+  }, [members])
 
   const kpis = useMemo(() => {
-    const active = projects.filter(
-      (p) => resolveProjectStatusKey(p.status, p.is_active) === 'active'
-    ).length
-    const atRisk = projects.filter((p) => {
-      const key = resolveProjectStatusKey(p.status, p.is_active)
-      return key === 'at_risk' || key === 'suspended' || key === 'paused'
-    }).length
-    const progressValues = projects.map((p) => estimateProgress(p.status, p.is_active))
-    const overall =
-      progressValues.length === 0
-        ? 0
-        : Math.round(progressValues.reduce((a, b) => a + b, 0) / progressValues.length)
-    const dayAgo = Date.now() - 24 * 60 * 60 * 1000
-    const recent = projects.filter((p) => {
-      const t = new Date(p.updated_at || p.created_at || 0).getTime()
-      return Number.isFinite(t) && t >= dayAgo
-    }).length
-    return { active, atRisk, overall, recent }
-  }, [projects])
+    const uniqueActive = new Set(
+      members.filter((m) => m.is_active).map((m) => m.user_id)
+    ).size
+    const pending = new Set(
+      members.filter((m) => !m.password_changed_by_member).map((m) => m.user_id)
+    ).size
+    const liveFromAuth = countLiveSessions(members, authUsers)
+    const live = liveFromAuth > 0 ? liveFromAuth : feeds.insideCount
+    return {
+      activeUsers: uniqueActive,
+      pendingApprovals: pending,
+      liveSessions: live,
+      onSiteNow: feeds.insideCount,
+      idleUsers: countIdleUsers(members, authUsers, idleDays),
+      failedJobs24h: ops?.failedJobs24h ?? 0,
+      activeProjects: ops?.activeProjects ?? projects.filter((p) => p.is_active).length,
+      aiActionsThisMonth: ops?.aiActionsThisMonth ?? 0,
+      securityEvents24h: ops?.securityEvents24h ?? 0,
+    }
+  }, [members, authUsers, idleDays, feeds.insideCount, ops, projects])
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    let rows = projects.filter((p) => {
-      const key = resolveProjectStatusKey(p.status, p.is_active)
-      if (statusFilter !== 'all' && key !== statusFilter) return false
-      if (locationFilter !== 'all' && (p.location || '') !== locationFilter) return false
-      if (!q) return true
-      const hay = `${p.name} ${p.code ?? ''} ${p.location ?? ''} ${p.status}`.toLowerCase()
-      return hay.includes(q)
-    })
+  const recentProjects = useMemo(() => sortProjectsRecent(projects).slice(0, 3), [projects])
 
-    rows = [...rows].sort((a, b) => {
-      if (sort === 'name_asc') return a.name.localeCompare(b.name, 'fa')
-      if (sort === 'name_desc') return b.name.localeCompare(a.name, 'fa')
-      if (sort === 'progress_desc') {
-        return estimateProgress(b.status, b.is_active) - estimateProgress(a.status, a.is_active)
-      }
-      const ta = new Date(a.updated_at || a.created_at || 0).getTime()
-      const tb = new Date(b.updated_at || b.created_at || 0).getTime()
-      return tb - ta
-    })
-    return rows
-  }, [projects, query, statusFilter, locationFilter, sort])
+  function handleIdleDaysChange(value: string) {
+    const next = Number(value)
+    if (!Number.isFinite(next) || next < 1 || next > 365) return
+    setIdleDays(next)
+    window.localStorage.setItem(IDLE_DAYS_KEY, String(next))
+  }
 
   async function handleCreate(input: CreateProjectInput) {
     const project = await createProject(supabase, input)
@@ -144,19 +190,22 @@ export default function AdminProjectsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1200px] space-y-5 rounded-lg bg-[#F7F8FA] p-1 sm:p-0">
+    <div className="mx-auto max-w-[1200px] space-y-5 rounded-lg p-1 sm:p-0">
       <ProjectsControlHeader
-        eyebrow="مرکز کنترل پروژه"
+        eyebrow="مرکز کنترل سامانه"
         title="پروژه‌ها"
-        description="سایت‌های فعال، وضعیت تیم و پیشرفت عمرانی را پایش کنید."
+        description="پایش کاربران، امنیت، منابع پلن و فهرست پروژه‌ها در سطح ادمین سیستم."
         actions={
           <>
-            <Button asChild variant="outline" className="border-[#E4E7EC]">
+            <Button
+              asChild
+              className="h-8 border-0 bg-[#E4A055] text-white hover:bg-[#D48E45] hover:text-white"
+            >
               <Link href="/admin/projects/initialize">راه‌اندازی پیشرفته</Link>
             </Button>
             <Button
               type="button"
-              className="bg-[#C96A1B] hover:bg-[#A95312]"
+              className="h-8 border-0 bg-[#E4A055] text-white hover:bg-[#D48E45] hover:text-white"
               onClick={() => setDrawerOpen(true)}
             >
               <Plus className="h-4 w-4" />
@@ -174,66 +223,109 @@ export default function AdminProjectsPage() {
 
       {error ? <ErrorBlock message={error} onRetry={() => void loadProjects('refresh')} /> : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <ControlKpiCard
-          label="پروژه‌های فعال"
-          value={kpis.active}
-          hint="در حال اجرا"
-          icon={HardHat}
+          label="کاربران فعال / در انتظار تأیید"
+          value={`${kpis.activeUsers} / ${kpis.pendingApprovals}`}
+          hint={`${kpis.pendingApprovals} عضو هنوز ورود اول یا تغییر رمز نکرده‌اند`}
+          icon={Users}
           tone="success"
+          help="کاربران فعال یعنی اعضای مجاز پروژه‌ها. در انتظار تأیید همان اعضایی است که هنوز رمز دعوت را عوض نکرده‌اند."
         />
         <ControlKpiCard
-          label="در خطر / نیازمند توجه"
-          value={kpis.atRisk}
-          hint="نیاز به رسیدگی"
-          icon={AlertTriangle}
-          tone="warning"
-        />
-        <ControlKpiCard
-          label="پیشرفت کلی"
-          value={`${kpis.overall}٪`}
-          hint="میانگین پروژه‌های موجود"
-          icon={TrendingUp}
+          label="نشست‌های زنده"
+          value={kpis.liveSessions}
+          hint={`${kpis.onSiteNow} حاضر در سایت همین حالا`}
+          icon={Radio}
           tone="info"
+          help="ورود موفق به سامانه در ۳۰ دقیقه اخیر. اگر ورود اخیر نباشد، تعداد حاضر در گیت نمایش داده می‌شود. نشست وب‌سوکت جداگانه‌ای در سیستم نیست."
         />
         <ControlKpiCard
-          label="به‌روزرسانی اخیر"
-          value={kpis.recent}
-          hint="در ۲۴ ساعت گذشته"
-          icon={Activity}
+          label="کاربران غیرفعال"
+          value={kpis.idleUsers}
+          hint={`بیش از ${idleDays} روز بدون ورود`}
+          icon={UserX}
+          tone={kpis.idleUsers > 0 ? 'warning' : 'neutral'}
+          help="بر اساس آخرین ورود واقعی حساب (Supabase). اگر ورود ثبت نشده باشد، تاریخ عضویت ملاک است. آستانه را می‌توانید عوض کنید."
+          extra={
+            <label className="flex items-center gap-2 text-[11px] text-[#667085]">
+              آستانه
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={idleDays}
+                onChange={(e) => handleIdleDaysChange(e.target.value)}
+                className="h-7 w-16 rounded border border-[#E4E7EC] bg-white px-1.5 text-[12px] tabular-nums"
+                aria-label="تعداد روز بی‌تحرکی"
+              />
+              روز
+            </label>
+          }
+        />
+        <ControlKpiCard
+          label="خطاها و Job ناموفق"
+          value={kpis.failedJobs24h}
+          hint="۲۴ ساعت اخیر"
+          icon={ServerCrash}
+          tone={kpis.failedJobs24h > 0 ? 'warning' : 'neutral'}
+          help="جمع واردات زمان‌بندی ناموفق، ایمیل گیت ناموفق، و تحلیل تصویر ناموفق در ۲۴ ساعت گذشته. عدد ساختگی نیست."
+        />
+        <ControlKpiCard
+          label="مصرف منابع پلن"
+          value={`${kpis.activeProjects} / ${kpis.aiActionsThisMonth}`}
+          hint="پروژه فعال · اقدام AI این ماه"
+          icon={Cpu}
+          tone="info"
+          help="سقف اشتراک جداگانه‌ای در سامانه تعریف نشده. این کارت تعداد پروژه‌های فعال و تعداد اقدام‌های هوش مصنوعی ثبت‌شده در همین ماه را نشان می‌دهد."
+        />
+        <ControlKpiCard
+          label="رویدادهای امنیتی"
+          value={kpis.securityEvents24h}
+          hint="شناسایی ناموفق گیت و لاگ ممیزی، ۲۴ ساعت"
+          icon={ShieldAlert}
+          tone={kpis.securityEvents24h > 0 ? 'warning' : 'neutral'}
+          help="ورود ناموفق حساب کاربری در این نسخه جداگانه ذخیره نمی‌شود. رویدادها از شناسایی ناموفق گیت و جدول ممیزی (اگر داده داشته باشد) می‌آیند."
         />
       </div>
 
-      <ProjectToolbar
-        query={query}
-        onQueryChange={setQuery}
-        status={statusFilter}
-        onStatusChange={setStatusFilter}
-        location={locationFilter}
-        onLocationChange={setLocationFilter}
-        locations={locations}
-        sort={sort}
-        onSortChange={setSort}
-        onRefresh={() => void loadProjects('refresh')}
-        refreshing={refreshing}
-      />
+      <section className="rounded-lg border border-[#E4E7EC] bg-white shadow-sm overflow-hidden">
+        <div className="border-b border-[#E4E7EC] px-4 py-3">
+          <h2 className="text-sm font-semibold text-[#17202A]">آخرین فعالیت‌ها</h2>
+          <p className="text-[11px] text-[#667085] mt-0.5">
+            اقدامات واقعی کاربران در همه پروژه‌ها، با زمان دقیق رویداد
+          </p>
+        </div>
+        <div className="p-4 max-h-[360px] overflow-y-auto">
+          <ActivityFeed activities={feeds.activities} />
+        </div>
+      </section>
 
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-sm font-semibold text-[#17202A]">همه پروژه‌ها</h2>
-          <p className="text-xs text-[#667085]">{visible.length} پروژه قابل نمایش</p>
+      <section className="rounded-[12px] border border-[#5a7088] bg-white px-4 py-6">
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => openProjectDirectory()}
+            className="h-10 rounded-[10px] bg-[#F3D2A4] px-6 text-sm font-semibold text-[#8A4B12] hover:bg-[#EFC58A]"
+          >
+            فهرست پروژه‌ها
+          </button>
         </div>
 
         {projects.length === 0 ? (
-          <EmptyProjectsState onCreate={() => setDrawerOpen(true)} />
-        ) : visible.length === 0 ? (
-          <div className="rounded-lg border border-[#E4E7EC] bg-white px-4 py-10 text-center text-sm text-[#667085]">
-            هیچ پروژه‌ای با این فیلترها پیدا نشد.
+          <div className="mt-5">
+            <EmptyProjectsState onCreate={() => setDrawerOpen(true)} />
           </div>
         ) : (
-          <div className="space-y-2">
-            {visible.map((project) => (
-              <ProjectRow key={project.id} project={project} />
+          <div className="mt-5 space-y-2">
+            {recentProjects.map((project, index) => (
+              <ProjectRow
+                key={project.id}
+                index={index + 1}
+                project={project}
+                memberCount={memberCountByProject.get(project.id) ?? 0}
+                ownerLabel={ownerLabel(project)}
+              />
             ))}
           </div>
         )}

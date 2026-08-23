@@ -36,12 +36,12 @@ export function ProjectToolbar({
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-[#E4E7EC] bg-white p-3 shadow-sm lg:flex-row lg:items-center">
       <div className="relative min-w-0 flex-1">
-        <Search className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#667085]" />
+        <Search className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/80" />
         <Input
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder="جستجوی پروژه…"
-          className="h-9 border-[#E4E7EC] ps-9"
+          className="h-9 border-[#E4E7EC] bg-[#5a7088] ps-9 text-white placeholder:text-white"
           aria-label="جستجوی پروژه"
         />
       </div>
@@ -53,12 +53,8 @@ export function ProjectToolbar({
           aria-label="فیلتر وضعیت"
         >
           <option value="all">همه وضعیت‌ها</option>
-          <option value="active">فعال</option>
-          <option value="planning">برنامه‌ریزی</option>
-          <option value="at_risk">در خطر</option>
-          <option value="completed">تکمیل‌شده</option>
-          <option value="suspended">متوقف</option>
-          <option value="paused">متوقف موقت</option>
+          <option value="enabled">فعال در سامانه</option>
+          <option value="disabled">غیرفعال</option>
         </select>
 
         {locations.length > 0 ? (
@@ -83,10 +79,10 @@ export function ProjectToolbar({
           onChange={(e) => onSortChange(e.target.value)}
           aria-label="مرتب‌سازی"
         >
-          <option value="updated_desc">جدیدترین به‌روزرسانی</option>
+          <option value="created_desc">جدیدترین ایجاد</option>
           <option value="name_asc">نام (الف تا ی)</option>
           <option value="name_desc">نام (ی تا الف)</option>
-          <option value="progress_desc">بیشترین پیشرفت</option>
+          <option value="members_desc">بیشترین عضو</option>
         </select>
 
         <Button

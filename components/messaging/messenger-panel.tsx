@@ -30,6 +30,7 @@ import { CallOverlay, IncomingCallBanner, createOutgoingCall } from '@/component
 import { VoiceVideoRecorder } from '@/components/messaging/media-recorder'
 import { cn } from '@/lib/utils'
 import { useLocale } from '@/components/i18n/locale-provider'
+import { APP_NAME } from '@/lib/brand'
 
 function chatTitle(c: MessengerConversation | null | undefined) {
   if (!c) return 'گفتگو'
@@ -109,37 +110,42 @@ export function MessengerButton({
     const supabase = createClient()
     let channel: ReturnType<typeof supabase.channel> | null = null
 
-    void supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
-      channel = supabase
-        .channel(`msg-badge-${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'app_notifications',
-            filter: `user_id=eq.${user.id}`,
-          },
-          () => {
-            setPulse(true)
-            void refreshUnread(projectId)
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'project_messages',
-            filter: `project_id=eq.${projectId}`,
-          },
-          () => {
-            void refreshUnread(projectId)
-          }
-        )
-        .subscribe()
-    })
+    void supabase.auth
+      .getUser()
+      .then(({ data: { user } }) => {
+        if (!user) return
+        channel = supabase
+          .channel(`msg-badge-${user.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'app_notifications',
+              filter: `user_id=eq.${user.id}`,
+            },
+            () => {
+              setPulse(true)
+              void refreshUnread(projectId)
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'project_messages',
+              filter: `project_id=eq.${projectId}`,
+            },
+            () => {
+              void refreshUnread(projectId)
+            }
+          )
+          .subscribe()
+      })
+      .catch(() => {
+        /* ignore auth/realtime noise in the header badge */
+      })
 
     return () => {
       if (channel) void supabase.removeChannel(channel)
@@ -543,7 +549,7 @@ function MessengerPanel({
           )}
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-[15px] text-white truncate">
-              {activeConversation ? chatTitle(activeConversation) : 'پیام‌رسان لیبارتا'}
+              {activeConversation ? chatTitle(activeConversation) : `پیام‌رسان ${APP_NAME}`}
             </p>
             <p className="text-[11px] text-emerald-200/70 truncate">
               {activeConversation

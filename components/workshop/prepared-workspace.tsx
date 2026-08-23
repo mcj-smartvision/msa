@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { approvalStatusFa } from '@/lib/workshop/approvals'
+import { PageHeader } from '@/components/admin/shared'
 
 type PreparedItem = {
   id: string
@@ -125,12 +126,10 @@ export function PreparedWorkspace() {
 
   return (
     <div className="space-y-4" dir="rtl">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">لیست‌های تهیه‌شده</h1>
-        <p className="text-sm text-slate-600">
-          سرپرست کارگاه — نوشته‌های دفتر فنی، وضعیت تأیید مدیر پروژه، و گفتگو با کامنت.
-        </p>
-      </header>
+      <PageHeader
+        title="لیست‌های تهیه‌شده"
+        description="سرپرست کارگاه — نوشته‌های دفتر فنی، وضعیت تأیید مدیر پروژه، و گفتگو با کامنت."
+      />
 
       {message && (
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{message}</div>

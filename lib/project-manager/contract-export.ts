@@ -69,7 +69,7 @@ export function buildSubcontractHtml(
     <div><div class="sign-line">امضاء کارفرما / مدیر پروژه</div></div>
     <div><div class="sign-line">امضاء پیمانکار</div></div>
   </div>
-  <p class="footer">تولیدشده توسط Liparta — قالب استاندارد خلاصه قرارداد</p>
+  <p class="footer">تولیدشده توسط MSA — قالب استاندارد خلاصه قرارداد</p>
 </body>
 </html>`
 }

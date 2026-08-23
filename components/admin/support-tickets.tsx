@@ -2,7 +2,7 @@
 
 import type { AdminCriticalAlert, AdminSupportTicket } from '@/types/admin'
 import { cn } from '@/lib/utils'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, ShieldCheck } from 'lucide-react'
 
 const priorityStyles = {
   low: 'bg-slate-100 text-slate-700 border-slate-200',
@@ -92,9 +92,12 @@ export function CriticalAlertsPanel({
 
   if (alerts.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground py-6 text-center">
-        در حال حاضر هشدار حل‌نشده‌ای وجود ندارد.
-      </p>
+      <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
+        <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+          <ShieldCheck className="h-6 w-6" />
+        </span>
+        <p className="text-sm font-medium text-emerald-800">در حال حاضر هشدار حل‌نشده‌ای وجود ندارد.</p>
+      </div>
     )
   }
 

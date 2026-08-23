@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { PageHeader } from '@/components/admin/shared'
 
 export function HsePageHeader({
   title,
@@ -10,17 +11,7 @@ export function HsePageHeader({
   description?: string
   actions?: React.ReactNode
 }) {
-  return (
-    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h1 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h1>
-        {description ? (
-          <p className="mt-0.5 max-w-3xl text-sm text-slate-600">{description}</p>
-        ) : null}
-      </div>
-      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
-    </div>
-  )
+  return <PageHeader title={title} description={description} actions={actions} />
 }
 
 export function KpiCard({

@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 40 20% 98%;
+    --background: 211 20% 44%;
     --foreground: 220 20% 12%;
     --card: 0 0% 100%;
     --card-foreground: 220 20% 12%;
@@ -35,9 +35,38 @@
     @apply border-border;
   }
 
+  html {
+    font-family: var(--font-sans), Vazirmatn, Tahoma, ui-sans-serif, sans-serif;
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
+    @apply bg-background text-foreground antialiased font-sans;
+    font-feature-settings: 'ss01' on;
+    line-height: 1.75;
+    letter-spacing: 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-sans), Vazirmatn, Tahoma, ui-sans-serif, sans-serif;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: -0.015em;
+  }
+
+  h1 {
+    font-weight: 800;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-family: inherit;
   }
 }
 
@@ -47,6 +76,14 @@
       linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px),
       linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px);
     background-size: 48px 48px;
+  }
+
+  .admin-blueprint-bg {
+    background-color: #f8fafc;
+    background-image:
+      linear-gradient(to right, #1e3a5f 1px, transparent 1px),
+      linear-gradient(to bottom, #1e3a5f 1px, transparent 1px);
+    background-size: 22px 22px;
   }
 
   .industrial-gradient {

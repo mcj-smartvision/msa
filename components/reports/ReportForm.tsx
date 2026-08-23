@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { PageHeader } from '@/components/admin/shared'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Camera, Package, AlertTriangle, Upload, FileText } from 'lucide-react'
 
@@ -35,12 +36,10 @@ export function ReportForm() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6" dir="rtl">
-      <div>
-        <h1 className="text-2xl font-bold">ثبت گزارش کارگاه</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          گزارش روزانه، مصالح، موانع و عکس — برای تحلیل هوشمند و آرشیو مدیریتی
-        </p>
-      </div>
+      <PageHeader
+        title="ثبت گزارش کارگاه"
+        description="گزارش روزانه، مصالح، موانع و عکس — برای تحلیل هوشمند و آرشیو مدیریتی"
+      />
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <Card>

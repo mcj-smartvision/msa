@@ -35,6 +35,9 @@ export interface AdminProject {
   schedule_start_aligned?: boolean | null
   created_at?: string
   updated_at?: string
+  client_name?: string | null
+  contractor_name?: string | null
+  created_by?: string | null
 }
 
 export interface ProjectMember {
@@ -240,6 +243,25 @@ export interface AdminActivityItem {
   section: string
   time: string
   type: 'action' | 'alert' | 'security'
+  projectName?: string
+  occurredAt?: string
+}
+
+export interface AdminOpsMetrics {
+  activeUsers: number
+  pendingApprovals: number
+  liveSessions: number
+  onSiteNow: number
+  failedJobs24h: number
+  activeProjects: number
+  aiActionsThisMonth: number
+  securityEvents24h: number
+}
+
+export interface AuthActivityUser {
+  id: string
+  lastSignInAt: string | null
+  createdAt: string
 }
 
 export interface OnlineUser {
@@ -273,6 +295,13 @@ export interface AdminCriticalAlert {
   projectId?: string | null
 }
 
+export interface AdminSparklineSeries {
+  people: number[]
+  active: number[]
+  onSite: number[]
+  attention: number[]
+}
+
 export interface ControlCenterFeeds {
   activities: AdminActivityItem[]
   presenceUsers: OnlineUser[]
@@ -282,4 +311,6 @@ export interface ControlCenterFeeds {
   tickets: AdminSupportTicket[]
   alerts: AdminCriticalAlert[]
   openMessageCount: number
+  lastActivityByProjectId: Record<string, string>
+  sparkline: AdminSparklineSeries
 }

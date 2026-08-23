@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Bot, Loader2 } from 'lucide-react'
 import { useLocale } from '@/components/i18n/locale-provider'
 import { PageHeader, LoadingBlock, ErrorBlock, EmptyState } from '@/components/admin/shared'
+import { ProjectDrawingsPanel } from '@/components/technical-office/project-drawings-panel'
 import { ScheduleDateToolbar } from '@/components/schedule/schedule-date-toolbar'
 import { ScheduleDateInput } from '@/components/schedule/schedule-date-input'
 import { SupervisorSummaryCards } from '@/components/supervisor/supervisor-summary-cards'
@@ -321,6 +322,11 @@ export function SiteSupervisorDashboard({
             hint: 'دفتر فنی و وضعیت تأیید مدیر پروژه',
           },
           {
+            id: 'drawings',
+            label: 'نقشه‌ها',
+            hint: 'نقشه‌های PDF و DWG بارگذاری‌شده توسط دفتر فنی',
+          },
+          {
             id: 'today',
             label: 'فعالیت‌های امروز',
             hint: 'گزارش سریع و دستور کار',
@@ -360,6 +366,10 @@ export function SiteSupervisorDashboard({
           <UiBlockGuard code="SS-KPI-01">
             <SupervisorSummaryCards kpis={kpis} labels={t} />
           </UiBlockGuard>
+        ) : null}
+
+        {activeSection === 'drawings' ? (
+          <ProjectDrawingsPanel projectId={projectId ?? ''} canUpload={false} fa={isRtl} />
         ) : null}
 
         {activeSection === 'workshop' ? (

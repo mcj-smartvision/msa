@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Globe } from 'lucide-react'
 import { LOCALE_OPTIONS } from '@/lib/i18n/app-shell'
 import type { FormLocale } from '@/lib/project-init/i18n/types'
@@ -11,20 +12,31 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useLocale } from './locale-provider'
+import { HEADER_CHIP } from '@/components/layout/header-chip'
+import { cn } from '@/lib/utils'
 
 /** Compact language switcher for the global site header */
 export function HeaderLanguageSwitcher({ className }: { className?: string }) {
   const { locale, setLocale, app } = useLocale()
   const current = LOCALE_OPTIONS.find((o) => o.value === locale)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    setReady(true)
+  }, [])
+
+  if (!ready) {
+    return <div className={cn(className, HEADER_CHIP, 'w-[88px]')} aria-hidden />
+  }
 
   return (
     <div className={className}>
       <Select value={locale} onValueChange={(v) => setLocale(v as FormLocale)}>
         <SelectTrigger
-          className="h-9 w-[130px] gap-2 border-muted-foreground/20 bg-background/80"
+          className={cn(HEADER_CHIP, 'w-auto min-w-0')}
           aria-label={app.language}
         >
-          <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <Globe className="h-3.5 w-3.5 shrink-0 text-slate-500" />
           <SelectValue placeholder={app.language}>
             <span className="truncate">{current?.label ?? locale.toUpperCase()}</span>
           </SelectValue>

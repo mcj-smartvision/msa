@@ -1,7 +1,7 @@
 {
   "name": "sitepilot-3",
   "version": "3.0.0",
-  "description": "Liparta — Control Readiness & Site Operations",
+  "description": "MSA — Control Readiness & Site Operations",
   "private": true,
   "scripts": {
     "dev": "next dev",

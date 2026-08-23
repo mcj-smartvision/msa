@@ -11,7 +11,7 @@ export const ROLE_DASHBOARD_ACCESS: Record<
   'technical-office': ['technical_office'],
   storekeeper: ['storekeeper'],
   procurement: ['procurement_officer'],
-  qc: ['qa_qc_inspector'],
+  qc: ['qa_qc_inspector', 'site_supervisor'],
   hse: ['hse_officer'],
   security: ['security', 'project_manager', 'site_manager'],
   accountant: ['project_accountant', 'finance_admin'],

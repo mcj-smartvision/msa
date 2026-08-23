@@ -1,7 +1,7 @@
 import type { FormLocale } from '@/lib/project-init/i18n/types'
 
 const EN = {
-  brand: 'Liparta · Site Ops',
+  brand: 'MSA · Site Ops',
   tagline: 'Integrity before Intelligence.',
   subtitle: 'Phase 1 checks readiness only. Layer 2 executes daily control.',
   subtitleFaNote: '',
@@ -52,7 +52,7 @@ const EN = {
 }
 
 const FA: typeof EN = {
-  brand: 'لیپارتا — عملیات کارگاه',
+  brand: 'MSA — عملیات کارگاه',
   tagline: 'یکپارچگی قبل از هوشمندی.',
   subtitle: 'فاز ۱ فقط آمادگی کنترل را می‌سنجد. لایه ۲ کنترل روزانه کارگاه را اجرا می‌کند.',
   subtitleFaNote: '',
@@ -71,7 +71,7 @@ const FA: typeof EN = {
   forceReason: 'دلیل نادیده گرفتن (الزامی)',
   notReadyWarn:
     'NOT_CONTROL_READY — یافته‌های برنامه را در MSP اصلاح کنید، CRE را دوباره اجرا و JSON را وارد کنید.',
-  fixAndRerun: 'برنامه را اصلاح و CRE Phase 1 را بیرون از لیپارتا دوباره اجرا کنید، سپس JSON را وارد کنید.',
+  fixAndRerun: 'برنامه را اصلاح و CRE Phase 1 را بیرون از MSA دوباره اجرا کنید، سپس JSON را وارد کنید.',
   generatePlan: 'تولید برنامه روزانه',
   issuePlan: 'صدور برنامه',
   workOrders: 'دستورکارها',

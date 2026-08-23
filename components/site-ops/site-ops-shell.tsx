@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { MessengerButton } from '@/components/messaging/messenger-panel'
 import { writeProjectCookie } from '@/lib/project/project-cookie'
+import { PageHeader } from '@/components/admin/shared'
 
 const PRIMARY = [
   { href: '/site-ops/schedule', label: 'برنامه' },
@@ -100,18 +101,15 @@ export function SiteOpsShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="space-y-5" dir="rtl">
+      <PageHeader
+        title="کارگاه روزانه"
+        description={
+          readOnly
+            ? 'نمای سرپرست کارگاه — فقط مشاهده؛ ویرایش برای دفتر فنی است.'
+            : 'برنامه را ببینید، زیرمجموعه بسازید، به امروز بفرستید، عملکرد ثبت کنید.'
+        }
+      />
       <header className="space-y-3 border-b border-slate-200 pb-4">
-        <div>
-          <p className="text-sm font-medium text-slate-500">لیبارتا — عملیات کارگاه</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 mt-1">
-            کارگاه روزانه
-          </h1>
-          <p className="text-sm text-slate-600 mt-1">
-            {readOnly
-              ? 'نمای سرپرست کارگاه — فقط مشاهده؛ ویرایش برای دفتر فنی است.'
-              : 'برنامه را ببینید، زیرمجموعه بسازید، به امروز بفرستید، عملکرد ثبت کنید.'}
-          </p>
-        </div>
         <div className="flex flex-wrap items-end gap-3">
           <div className="ms-auto order-first sm:order-none">
             <MessengerButton />

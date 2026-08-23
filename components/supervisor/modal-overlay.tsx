@@ -26,13 +26,13 @@ export function ModalOverlay({ open, onClose, title, children, className }: Moda
     >
       <div
         className={cn(
-          'bg-background rounded-t-2xl sm:rounded-xl border shadow-lg w-full sm:max-w-lg max-h-[92vh] overflow-y-auto',
+          'w-full max-h-[92vh] overflow-y-auto rounded-t-2xl border border-slate-200 bg-slate-100 text-slate-900 shadow-lg sm:max-w-lg sm:rounded-xl',
           className
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b bg-background/95 backdrop-blur px-4 py-3">
-          <h2 className="text-base font-semibold">{title}</h2>
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-100 px-4 py-3">
+          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
           <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="بستن">
             <X className="h-4 w-4" />
           </Button>

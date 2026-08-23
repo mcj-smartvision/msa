@@ -5,8 +5,10 @@ import { ShieldAlert } from 'lucide-react'
 import { CONSTRUCTION_ROLES } from '@/lib/admin/construction-roles'
 import {
   getRoleDashboardRoute,
+  memberWorkspaceHref,
   ROLE_DASHBOARD_ROUTES,
 } from '@/lib/admin/role-dashboard-routes'
+import { writeProjectCookie } from '@/lib/project/project-cookie'
 import { getPositionLabel } from '@/lib/i18n/position-labels'
 import type { ProjectMember } from '@/types/admin'
 import { cn } from '@/lib/utils'
@@ -206,9 +208,7 @@ export function RoleDashboardGrid({ members }: { members: ProjectMember[] }) {
                   : 'سمت تعریف نشده'
                 const roleTitles =
                   positions.map((p) => getPositionLabel(p, 'fa')).join(' · ') || '—'
-                const dashboardHref = primary ? getRoleDashboardRoute(primary.key) : null
-                const memberHref = `/admin/projects/${member.project_id}/members`
-                const href = dashboardHref ?? memberHref
+                const href = memberWorkspaceHref(member)
                 const row = Math.floor(index / 2)
                 const col = index % 2
                 const dark = (row + col) % 2 === 1
@@ -217,6 +217,9 @@ export function RoleDashboardGrid({ members }: { members: ProjectMember[] }) {
                   <Link
                     key={member.id}
                     href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => writeProjectCookie(member.project_id)}
                     className={cn(
                       'flex gap-3 border-b border-e border-slate-200 p-4 transition-colors hover:bg-amber-50/70',
                       dark ? 'bg-slate-100' : 'bg-white',

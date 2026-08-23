@@ -73,7 +73,7 @@ import {
 } from '@/lib/finance/types'
 import { fetchVendorBills, buildVendorBillKpis, getUnpaidVendorBills } from '@/utils/finance/vendor-bills'
 import { NativeAppBootstrap } from '@/components/finance/native-app-bootstrap'
-import { APP_NAME } from '@/lib/brand'
+import { BrandLogo } from '@/components/brand/brand-logo'
 
 type TabId = 'home' | 'invoices' | 'expenses' | 'payables'
 
@@ -342,9 +342,9 @@ export function AccountantNativeApp({
           <div className="relative z-10 space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55">
-                  {APP_NAME}
-                </p>
+                <div className="flex items-center">
+                  <BrandLogo size="sm" />
+                </div>
                 <h1 className="mt-1 text-xl font-bold tracking-tight text-white sm:text-2xl">{t.title}</h1>
                 {showHero ? (
                   <p className="mt-1 max-w-[18rem] text-xs leading-relaxed text-white/65">{t.description}</p>

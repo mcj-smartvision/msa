@@ -7,13 +7,13 @@ import { useLocale } from '@/components/i18n/locale-provider'
 import { cn } from '@/lib/utils'
 
 interface VoiceToTextButtonProps {
-  /** Called with transcript after user confirms (or auto if confirm=false) */
   onTranscript: (text: string) => void
-  /** Append to existing text instead of replace */
   mode?: 'append' | 'replace'
   className?: string
   size?: 'sm' | 'default'
   disabled?: boolean
+  autoConfirm?: boolean
+  variant?: 'default' | 'outline'
 }
 
 /**
@@ -26,6 +26,8 @@ export function VoiceToTextButton({
   className,
   size = 'sm',
   disabled,
+  autoConfirm = false,
+  variant = 'outline',
 }: VoiceToTextButtonProps) {
   const { locale } = useLocale()
   const fa = locale === 'fa' || locale === 'ar'
@@ -80,7 +82,12 @@ export function VoiceToTextButton({
       const res = await fetch('/api/ai/transcribe', { method: 'POST', body: form })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || (fa ? 'ناموفق' : 'Failed'))
-      setPendingText(String(data.text ?? '').trim())
+      const text = String(data.text ?? '').trim()
+      if (autoConfirm) {
+        onTranscript(text)
+        return
+      }
+      setPendingText(text)
     } catch (err) {
       setError(err instanceof Error ? err.message : fa ? 'ناموفق' : 'Failed')
     } finally {
@@ -101,7 +108,7 @@ export function VoiceToTextButton({
           <Button
             type="button"
             size={size}
-            variant="outline"
+            variant={variant}
             disabled={disabled || busy}
             onClick={() => void startRecording()}
           >

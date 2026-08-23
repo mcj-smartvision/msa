@@ -38,6 +38,18 @@ export function getRoleNavLinks(context: DashboardUserContext): RoleNavLink[] {
     })
   }
 
+  if (
+    (context.isSystemAdmin || context.positionKeys.includes('site_supervisor')) &&
+    !seen.has('/dashboard/qc')
+  ) {
+    seen.add('/dashboard/qc')
+    links.push({
+      href: '/dashboard/qc',
+      label: SITE_ROLE_LABELS.qa_qc_inspector,
+      roleKey: 'qa_qc_inspector',
+    })
+  }
+
   // Project Manager also gets subcontractors registry
   if (
     (context.isSystemAdmin || context.positionKeys.includes('project_manager')) &&

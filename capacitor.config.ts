@@ -26,7 +26,7 @@ const serverUrl = (process.env.CAPACITOR_SERVER_URL || 'http://10.0.2.2:3000').r
 
 const config: CapacitorConfig = {
   appId: 'com.liparta.accountant',
-  appName: 'Liparta حسابداری',
+  appName: 'MSA حسابداری',
   webDir: 'capacitor-www',
   server: {
     url: `${serverUrl}/login?redirect=${encodeURIComponent('/accountant-app')}`,

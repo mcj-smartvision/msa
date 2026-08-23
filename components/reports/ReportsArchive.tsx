@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FormattedDate } from '@/components/schedule/formatted-date'
 import type { EquipmentItem, ExtendedAnalysis, ReportWithAnalysis, WorkerRole } from '@/types'
+import { PageHeader } from '@/components/admin/shared'
 
 function safetyLabel(value?: string) {
   const map: Record<string, string> = {
@@ -195,22 +196,22 @@ export function ReportsArchive() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">آرشیو گزارش‌ها</h1>
-          <p className="text-muted-foreground mt-1">تحلیل تفصیلی AI: ایمنی، فعالیت، نور، آب‌وهوا</p>
-        </div>
-        <div className="flex gap-3">
-          <Select value={filterProjectId} onValueChange={setFilterProjectId}>
-            <SelectTrigger className="w-[200px]"><SelectValue placeholder="فیلتر پروژه" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">همه پروژه‌ها</SelectItem>
-              {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button asChild><Link href="/reports/new">گزارش جدید</Link></Button>
-        </div>
-      </div>
+      <PageHeader
+        title="آرشیو گزارش‌ها"
+        description="تحلیل تفصیلی AI: ایمنی، فعالیت، نور، آب‌وهوا"
+        actions={
+          <>
+            <Select value={filterProjectId} onValueChange={setFilterProjectId}>
+              <SelectTrigger className="w-[200px]"><SelectValue placeholder="فیلتر پروژه" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه پروژه‌ها</SelectItem>
+                {projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button asChild><Link href="/reports/new">گزارش جدید</Link></Button>
+          </>
+        }
+      />
       {error && (
         <Alert variant="destructive">
           <AlertDescription className="flex items-center justify-between gap-4">

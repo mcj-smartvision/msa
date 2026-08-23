@@ -36,6 +36,12 @@ export async function POST(request: NextRequest) {
     if (language === 'fa' || language === 'en') {
       body.append('language', language === 'fa' ? 'fa' : 'en')
     }
+    if (language === 'fa') {
+      body.append(
+        'prompt',
+        'بازرسی کنترل کیفیت سازه. موضوع بررسی اتصالات تیر به ستون. طبقه سوم. آرماتوربندی، قالب‌بندی، بتن‌ریزی، جوشکاری، ستون، تیر، محور.'
+      )
+    }
 
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',

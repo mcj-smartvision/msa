@@ -11,6 +11,8 @@ import {
 import { useLocale } from '@/components/i18n/locale-provider'
 import { useScheduleCalendar } from '@/hooks/useScheduleCalendar'
 import type { ScheduleCalendar } from '@/lib/schedule/calendar-preference'
+import { HEADER_CHIP } from '@/components/layout/header-chip'
+import { cn } from '@/lib/utils'
 
 const CALENDAR_OPTIONS: { value: ScheduleCalendar; labelEn: string; labelFa: string; short: string }[] = [
   { value: 'gregorian', labelEn: 'Gregorian', labelFa: 'میلادی', short: 'G' },
@@ -28,10 +30,10 @@ export function HeaderCalendarSwitcher({ className }: { className?: string }) {
     <div className={className}>
       <Select value={calendar} onValueChange={(v) => setCalendar(v as ScheduleCalendar)}>
         <SelectTrigger
-          className="h-9 w-[130px] gap-2 border-muted-foreground/20 bg-background/80"
+          className={cn(HEADER_CHIP, 'w-auto min-w-0')}
           aria-label={app.calendar}
         >
-          <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <Calendar className="h-3.5 w-3.5 shrink-0 text-slate-500" />
           <SelectValue placeholder={app.calendar}>
             <span className="truncate">
               {current ? (fa ? current.labelFa : current.labelEn) : calendar}

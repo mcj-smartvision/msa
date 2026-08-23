@@ -18,6 +18,7 @@ import {
   canEditPackageContent,
 } from '@/lib/workshop/approvals'
 import type { ScheduleTreeNode, WorkshopPackageNode } from '@/lib/workshop/types'
+import { PageHeader } from '@/components/admin/shared'
 import { WORKSHOP_UOMS } from '@/lib/workshop/types'
 
 type Selection =
@@ -355,14 +356,14 @@ export function ScheduleWorkspace() {
 
   return (
     <div className="space-y-4" dir="rtl">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">برنامه</h1>
-        <p className="text-sm text-slate-600">
-          {readOnly
+      <PageHeader
+        title="برنامه"
+        description={
+          readOnly
             ? 'نمای فقط‌خواندنی سرپرست کارگاه — برای ویرایش به دفتر فنی مراجعه کنید.'
-            : 'در همین جدول ویرایش کنید → به مدیر پروژه بفرستید → بعد از تأیید به امروز.'}
-        </p>
-      </header>
+            : 'در همین جدول ویرایش کنید → به مدیر پروژه بفرستید → بعد از تأیید به امروز.'
+        }
+      />
 
       {readOnly && (
         <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-950">

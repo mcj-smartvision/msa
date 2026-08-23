@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { approvalStatusFa } from '@/lib/workshop/approvals'
+import { PageHeader } from '@/components/admin/shared'
 import { ProposedChangeView } from '@/components/workshop/proposed-change-view'
 
 type InboxItem = {
@@ -75,12 +76,10 @@ export function ApprovalsWorkspace() {
 
   return (
     <div className="space-y-4" dir="rtl">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">تأییدات</h1>
-        <p className="text-sm text-slate-600">
-          مدیر پروژه موارد ارسالی دفتر فنی را تأیید، رد یا با کامنت برمی‌گرداند.
-        </p>
-      </header>
+      <PageHeader
+        title="تأییدات"
+        description="مدیر پروژه موارد ارسالی دفتر فنی را تأیید، رد یا با کامنت برمی‌گرداند."
+      />
 
       {message && (
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{message}</div>

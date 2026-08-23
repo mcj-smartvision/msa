@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { PageHeader } from '@/components/admin/shared'
 
 export function FlagsWorkspace() {
   const projectId = useSearchParams().get('projectId') ?? ''
@@ -16,12 +17,10 @@ export function FlagsWorkspace() {
 
   return (
     <div className="space-y-4" dir="rtl">
-      <header>
-        <h1 className="text-2xl font-bold">پرچم‌ها / نیاز به بررسی</h1>
-        <p className="text-sm text-slate-600 mt-1">
-          صف بررسی دفتر فنی — ثبت کارگاه را متوقف نمی‌کند.
-        </p>
-      </header>
+      <PageHeader
+        title="پرچم‌ها / نیاز به بررسی"
+        description="صف بررسی دفتر فنی — ثبت کارگاه را متوقف نمی‌کند."
+      />
       {flags.length === 0 ? (
         <p className="text-sm text-slate-600 rounded-2xl border border-dashed bg-white p-6">
           پرچم باز ندارید.

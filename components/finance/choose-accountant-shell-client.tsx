@@ -7,7 +7,7 @@ import {
   ACCOUNTANT_DESKTOP_PATH,
   ACCOUNTANT_MOBILE_PATH,
 } from '@/lib/dashboard/accountant-shell'
-import { APP_NAME } from '@/lib/brand'
+import { BrandLogo } from '@/components/brand/brand-logo'
 import { cn } from '@/lib/utils'
 
 export function ChooseAccountantShellClient() {
@@ -48,9 +48,9 @@ export function ChooseAccountantShellClient() {
       <div className="pointer-events-none absolute inset-0 site-grid-bg opacity-10" />
       <div className="relative w-full max-w-lg space-y-6 rounded-2xl border border-white/10 bg-background/95 p-6 shadow-elevated backdrop-blur-sm sm:p-8">
         <div className="text-center">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            {APP_NAME}
-          </p>
+          <div className="mb-3 flex justify-center">
+            <BrandLogo size="lg" />
+          </div>
           <h1 className="mt-2 text-xl font-bold tracking-tight sm:text-2xl">{copy.title}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{copy.subtitle}</p>
         </div>

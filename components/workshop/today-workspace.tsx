@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { PageHeader } from '@/components/admin/shared'
 
 export function TodayWorkspace() {
   const projectId = useSearchParams().get('projectId') ?? ''
@@ -49,21 +50,21 @@ export function TodayWorkspace() {
 
   return (
     <div className="space-y-4" dir="rtl">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">امروز</h1>
-          <p className="text-sm text-slate-600">کارهای ارسال‌شده به امروز و ثبت عملکرد</p>
-        </div>
-        <label className="text-sm">
-          تاریخ
-          <input
-            type="date"
-            className="mt-1 block rounded-lg border px-3 py-2"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </label>
-      </header>
+      <PageHeader
+        title="امروز"
+        description="کارهای ارسال‌شده به امروز و ثبت عملکرد"
+        actions={
+          <label className="text-sm">
+            تاریخ
+            <input
+              type="date"
+              className="mt-1 block rounded-lg border px-3 py-2"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </label>
+        }
+      />
       {message && <p className="text-sm rounded-lg border bg-white px-3 py-2">{message}</p>}
 
       {items.length === 0 ? (
