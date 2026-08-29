@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { PageHeader } from '@/components/admin/shared'
-import { HeaderLanguageSwitcher } from '@/components/i18n/header-language-switcher'
 import { HeaderCalendarSwitcher } from '@/components/schedule/header-calendar-switcher'
 
 export default function SettingsPage() {
@@ -91,12 +90,11 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>تقویم و زبان</CardTitle>
-          <CardDescription>تقویم نمایش تاریخ و زبان رابط را از اینجا تغییر دهید.</CardDescription>
+          <CardTitle>تقویم</CardTitle>
+          <CardDescription>تقویم نمایش تاریخ را از اینجا تغییر دهید.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-3">
           <HeaderCalendarSwitcher />
-          <HeaderLanguageSwitcher />
         </CardContent>
       </Card>
 

@@ -10,6 +10,7 @@ import { OnlineUsersPanel } from '@/components/admin/online-users-panel'
 import { SupportTicketsPanel, CriticalAlertsPanel } from '@/components/admin/support-tickets'
 import { RoleDashboardGrid } from '@/components/admin/role-dashboard-grid'
 import { ProjectStatusBadge } from '@/components/admin/projects-control/project-row'
+import { HeaderLanguageSwitcher } from '@/components/i18n/header-language-switcher'
 import type { DetailKey } from '@/components/admin/control-center-details-context'
 import { isAllProjectsScope } from '@/lib/project/project-cookie'
 import { openProjectDirectory } from '@/lib/account/open-account-page'
@@ -75,7 +76,9 @@ export function AdminDashboard() {
       <PageHeader
         title={pageTitleFor(openDetail, fa)}
         actions={
-          openDetail === 'dashboards' ? (
+          openDetail === null ? (
+            <HeaderLanguageSwitcher />
+          ) : openDetail === 'dashboards' ? (
             <Button
               asChild
               className="h-8 border-0 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"

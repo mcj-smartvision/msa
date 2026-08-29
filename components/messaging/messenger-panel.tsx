@@ -57,7 +57,7 @@ export function MessengerButton({
   variant = 'default',
   className,
 }: {
-  variant?: 'default' | 'nav'
+  variant?: 'default' | 'nav' | 'fab'
   className?: string
 }) {
   const { locale } = useLocale()
@@ -81,9 +81,9 @@ export function MessengerButton({
     return () => window.removeEventListener('focus', sync)
   }, [])
 
-  const refreshUnread = useCallback(async (pid: string) => {
+  const refreshUnread = useCallback(async () => {
     try {
-      const res = await fetch(`/api/messaging/unread?projectId=${pid}`)
+      const res = await fetch('/api/messaging/unread')
       const data = await res.json()
       if (res.ok) {
         const next = Number(data.unread ?? 0)
@@ -98,15 +98,13 @@ export function MessengerButton({
   }, [])
 
   useEffect(() => {
-    if (!projectId) return
-    void refreshUnread(projectId)
-    const t = window.setInterval(() => void refreshUnread(projectId), 12000)
+    void refreshUnread()
+    const t = window.setInterval(() => void refreshUnread(), 12000)
     return () => window.clearInterval(t)
-  }, [projectId, open, refreshUnread])
+  }, [open, refreshUnread])
 
   // Realtime: new notifications for this user → badge
   useEffect(() => {
-    if (!projectId) return
     const supabase = createClient()
     let channel: ReturnType<typeof supabase.channel> | null = null
 
@@ -126,7 +124,7 @@ export function MessengerButton({
             },
             () => {
               setPulse(true)
-              void refreshUnread(projectId)
+              void refreshUnread()
             }
           )
           .on(
@@ -135,10 +133,9 @@ export function MessengerButton({
               event: 'INSERT',
               schema: 'public',
               table: 'project_messages',
-              filter: `project_id=eq.${projectId}`,
             },
             () => {
-              void refreshUnread(projectId)
+              void refreshUnread()
             }
           )
           .subscribe()
@@ -150,7 +147,7 @@ export function MessengerButton({
     return () => {
       if (channel) void supabase.removeChannel(channel)
     }
-  }, [projectId, refreshUnread])
+  }, [refreshUnread])
 
   useEffect(() => {
     if (!pulse) return
@@ -166,23 +163,40 @@ export function MessengerButton({
         className={cn(
           variant === 'nav'
             ? 'relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900'
-            : cn(
-                'relative inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-white shadow-md transition-all',
-                'bg-gradient-to-l from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500',
-                pulse && 'ring-2 ring-rose-400 ring-offset-2 ring-offset-background scale-105'
-              ),
+            : variant === 'fab'
+              ? cn(
+                  'relative inline-flex h-12 w-12 items-center justify-center rounded-full text-white shadow-lg transition-all',
+                  'bg-gradient-to-br from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500',
+                  pulse && 'ring-2 ring-rose-400 ring-offset-2 scale-105'
+                )
+              : cn(
+                  'relative inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-white shadow-md transition-all',
+                  'bg-gradient-to-l from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500',
+                  pulse && 'ring-2 ring-rose-400 ring-offset-2 ring-offset-background scale-105'
+                ),
           className
         )}
         title={messengerLabel}
+        aria-label={messengerLabel}
       >
-        <MessageCircle className={cn('h-4 w-4 shrink-0', pulse && variant !== 'nav' && 'animate-bounce')} />
-        <span className={cn(variant === 'nav' ? 'flex-1 text-start' : 'hidden sm:inline')}>{messengerLabel}</span>
+        <MessageCircle
+          className={cn(
+            variant === 'fab' ? 'h-6 w-6' : 'h-4 w-4 shrink-0',
+            pulse && variant !== 'nav' && 'animate-bounce'
+          )}
+        />
+        {variant === 'default' ? (
+          <span className="hidden sm:inline">{messengerLabel}</span>
+        ) : null}
+        {variant === 'nav' ? <span className="flex-1 text-start">{messengerLabel}</span> : null}
         {unread > 0 && (
           <span
             className={cn(
               variant === 'nav'
-                ? 'inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-white'
-                : 'absolute -top-1.5 -start-1.5 min-w-[20px] h-[20px] rounded-full bg-rose-500 text-[11px] font-bold flex items-center justify-center px-1 shadow-lg border-2 border-white text-white animate-pulse'
+                ? 'inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white'
+                : variant === 'fab'
+                  ? 'absolute -top-1 -right-1 min-w-[22px] h-[22px] rounded-full bg-red-600 text-[11px] font-bold flex items-center justify-center px-1 shadow-md border-2 border-white text-white'
+                  : 'absolute -top-1.5 -start-1.5 min-w-[20px] h-[20px] rounded-full bg-red-600 text-[11px] font-bold flex items-center justify-center px-1 shadow-lg border-2 border-white text-white animate-pulse'
             )}
           >
             {unread > 99 ? '99+' : unread}

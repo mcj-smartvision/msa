@@ -4,8 +4,6 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { MessengerButton } from '@/components/messaging/messenger-panel'
-import { writeProjectCookie } from '@/lib/project/project-cookie'
 import { PageHeader } from '@/components/admin/shared'
 
 const PRIMARY = [
@@ -111,9 +109,6 @@ export function SiteOpsShell({ children }: { children: React.ReactNode }) {
       />
       <header className="space-y-3 border-b border-slate-200 pb-4">
         <div className="flex flex-wrap items-end gap-3">
-          <div className="ms-auto order-first sm:order-none">
-            <MessengerButton />
-          </div>
           <label className="text-sm text-slate-600">
             پروژه
             <select

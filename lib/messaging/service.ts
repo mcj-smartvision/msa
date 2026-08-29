@@ -861,6 +861,37 @@ export async function unreadTotal(supabase: SupabaseClient, projectId: string) {
   return conversations.reduce((sum, c) => sum + c.unreadCount, 0)
 }
 
+/** Sum unread across every project the signed-in user can access. */
+export async function unreadTotalAllProjects(supabase: SupabaseClient) {
+  const user = await requireUser(supabase)
+  const admin = await isSystemAdmin(supabase, user.id)
+
+  let projectIds: string[] = []
+  if (admin) {
+    const { data, error } = await supabase.from('projects').select('id')
+    if (error) throw new MessagingError('VALIDATION', error.message)
+    projectIds = (data ?? []).map((p) => String(p.id))
+  } else {
+    const { data, error } = await supabase
+      .from('project_members')
+      .select('project_id')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+    if (error) throw new MessagingError('VALIDATION', error.message)
+    projectIds = (data ?? []).map((p) => String(p.project_id))
+  }
+
+  let total = 0
+  for (const pid of projectIds) {
+    try {
+      total += await unreadTotal(supabase, pid)
+    } catch {
+      /* skip inaccessible projects */
+    }
+  }
+  return total
+}
+
 export function messagingErrorResponse(error: unknown) {
   if (error instanceof MessagingError) {
     const status = error.code === 'FORBIDDEN' ? 403 : error.code === 'NOT_FOUND' ? 404 : 400

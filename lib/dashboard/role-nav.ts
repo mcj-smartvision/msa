@@ -92,5 +92,20 @@ export function getRoleNavLinks(context: DashboardUserContext): RoleNavLink[] {
     })
   }
 
+  // Schedule Intelligence — deterministic CPM dashboard (no AI)
+  if (
+    (context.isSystemAdmin ||
+      context.positionKeys.includes('project_manager') ||
+      context.positionKeys.includes('technical_office')) &&
+    !seen.has('/dashboard/schedule-intelligence')
+  ) {
+    links.push({
+      href: '/dashboard/schedule-intelligence',
+      label: 'تحلیل زمان‌بندی',
+      roleKey: 'project_manager',
+    })
+    seen.add('/dashboard/schedule-intelligence')
+  }
+
   return links
 }

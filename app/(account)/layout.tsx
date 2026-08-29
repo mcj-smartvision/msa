@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { GlobalMessengerFab } from '@/components/layout/global-messenger-fab'
 
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -9,5 +10,10 @@ export default async function AccountLayout({ children }: { children: React.Reac
 
   if (!user) redirect('/login')
 
-  return <>{children}</>
+  return (
+    <>
+      {children}
+      <GlobalMessengerFab />
+    </>
+  )
 }

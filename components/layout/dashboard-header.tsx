@@ -2,11 +2,6 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { HeaderCalendarSwitcher } from '@/components/schedule/header-calendar-switcher'
-import { HeaderLanguageSwitcher } from '@/components/i18n/header-language-switcher'
-import { HeaderProjectSwitcher } from '@/components/project/header-project-switcher'
-import { HeaderUserMenu } from '@/components/account/header-user-menu'
-import { MessengerButton } from '@/components/messaging/messenger-panel'
 import { useLocale } from '@/components/i18n/locale-provider'
 import type { RoleNavLink } from '@/lib/dashboard/role-nav'
 import { BrandLogo } from '@/components/brand/brand-logo'
@@ -18,7 +13,7 @@ interface DashboardHeaderProps {
   roleNavLinks?: RoleNavLink[]
 }
 
-export function DashboardHeader({ email, isAdmin, roleNavLinks = [] }: DashboardHeaderProps) {
+export function DashboardHeader({ isAdmin, roleNavLinks = [] }: DashboardHeaderProps) {
   const { app } = useLocale()
   const pathname = usePathname()
 
@@ -31,17 +26,13 @@ export function DashboardHeader({ email, isAdmin, roleNavLinks = [] }: Dashboard
     : []
 
   const roleNav = roleNavLinks.map((link) => ({ href: link.href, label: link.label }))
-  // Home = first role dashboard when available; otherwise generic /dashboard
   const homeHref = isAdmin ? '/admin' : roleNav[0]?.href ?? '/dashboard'
-  // Reports removed from global nav — role dashboards own their own workflows
   const tailNav = [{ href: '/settings', label: app.settings }]
 
   const navItems = isAdmin
     ? [...baseNav, ...tailNav]
     : [
-        ...(roleNav.length > 0
-          ? roleNav
-          : [{ href: '/dashboard', label: 'داشبورد' }]),
+        ...(roleNav.length > 0 ? roleNav : [{ href: '/dashboard', label: 'داشبورد' }]),
         ...tailNav,
       ]
 
@@ -53,7 +44,8 @@ export function DashboardHeader({ email, isAdmin, roleNavLinks = [] }: Dashboard
             <BrandLogo size="sm" withName />
           </Link>
           {navItems.map((item) => {
-            const active = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
+            const active =
+              pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
             return (
               <Link
                 key={item.href}
@@ -70,14 +62,6 @@ export function DashboardHeader({ email, isAdmin, roleNavLinks = [] }: Dashboard
             )
           })}
         </nav>
-
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <HeaderLanguageSwitcher />
-          <MessengerButton />
-          <HeaderProjectSwitcher className="hidden sm:block" />
-          <HeaderCalendarSwitcher />
-          <HeaderUserMenu email={email} />
-        </div>
       </div>
     </header>
   )

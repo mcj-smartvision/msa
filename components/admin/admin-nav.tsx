@@ -17,10 +17,7 @@ import { BrandLogo } from '@/components/brand/brand-logo'
 import { cn } from '@/lib/utils'
 import { LogoutButton } from '@/components/auth/logout-button'
 import { useLocale } from '@/components/i18n/locale-provider'
-import { HeaderLanguageSwitcher } from '@/components/i18n/header-language-switcher'
-import { HeaderProjectSwitcher } from '@/components/project/header-project-switcher'
-import { HeaderUserMenu } from '@/components/account/header-user-menu'
-import { MessengerButton } from '@/components/messaging/messenger-panel'
+import { GlobalMessengerFab } from '@/components/layout/global-messenger-fab'
 import {
   useControlCenterDetailsOptional,
   ControlCenterDataProvider,
@@ -58,7 +55,7 @@ function AdminShellFrame({ children, email }: { children: ReactNode; email?: str
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <AdminTopHeader email={email} />
+        <AdminTopHeader />
 
         <div className="lg:hidden border-b bg-white px-2 py-2 overflow-x-auto">
           <nav className="min-w-[280px]">
@@ -69,23 +66,16 @@ function AdminShellFrame({ children, email }: { children: ReactNode; email?: str
         <main className="flex-1 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-6 overflow-auto">
           {children}
         </main>
+        <GlobalMessengerFab />
       </div>
     </div>
   )
 }
 
-function AdminTopHeader({ email }: { email?: string }) {
+function AdminTopHeader() {
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-slate-200/90 bg-white/95 px-4 sm:px-6 backdrop-blur">
-      <div className="flex min-w-0 items-center">
-        <BrandLogo size="sm" />
-      </div>
-
-      <div className="ms-auto flex items-center gap-2">
-        <HeaderProjectSwitcher allowAll className="min-w-0" />
-        <HeaderUserMenu email={email} />
-        <HeaderLanguageSwitcher />
-      </div>
+      <BrandLogo size="sm" />
     </header>
   )
 }
@@ -148,7 +138,6 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
         active={openDetail === 'dashboards'}
         onClick={() => selectDetail('dashboards')}
       />
-      <MessengerButton variant="nav" />
       <FlatAction
         label={fa ? 'ساپورت و پیام‌ها' : 'Support & Messages'}
         icon={MessageSquare}

@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Lock, User, ArrowRight } from 'lucide-react'
 import { normalizeLoginIdentifier } from '@/lib/auth/login-identifier'
-import { HeaderCalendarSwitcher } from '@/components/schedule/header-calendar-switcher'
 import { APP_TAGLINE } from '@/lib/brand'
 import { BrandLogo } from '@/components/brand/brand-logo'
 
@@ -80,9 +79,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 industrial-gradient relative">
       <div className="absolute inset-0 site-grid-bg opacity-10 pointer-events-none" />
-      <div className="absolute top-4 end-4 z-10 flex flex-wrap items-center justify-end gap-2">
-        <HeaderCalendarSwitcher />
-      </div>
 
       <div className="relative w-full max-w-[420px] rounded-2xl border border-white/10 bg-background/95 backdrop-blur-sm shadow-elevated p-8 sm:p-10">
         <div className="flex flex-col items-center text-center mb-8">
