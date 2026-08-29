@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useLocale } from '@/components/i18n/locale-provider'
 import type { RoleNavLink } from '@/lib/dashboard/role-nav'
 import { BrandLogo } from '@/components/brand/brand-logo'
+import { HeaderUserControls } from '@/components/layout/header-user-controls'
 import { cn } from '@/lib/utils'
 
 interface DashboardHeaderProps {
@@ -13,7 +14,7 @@ interface DashboardHeaderProps {
   roleNavLinks?: RoleNavLink[]
 }
 
-export function DashboardHeader({ isAdmin, roleNavLinks = [] }: DashboardHeaderProps) {
+export function DashboardHeader({ email, isAdmin, roleNavLinks = [] }: DashboardHeaderProps) {
   const { app } = useLocale()
   const pathname = usePathname()
 
@@ -62,6 +63,8 @@ export function DashboardHeader({ isAdmin, roleNavLinks = [] }: DashboardHeaderP
             )
           })}
         </nav>
+
+        <HeaderUserControls email={email} allowAllProject={isAdmin} />
       </div>
     </header>
   )

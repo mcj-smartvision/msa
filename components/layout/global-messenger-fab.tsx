@@ -2,10 +2,10 @@
 
 import { MessengerButton } from '@/components/messaging/messenger-panel'
 
-/** Fixed messenger entry — bottom-left on all dashboard pages. */
+/** Messenger — lower-left, subtle, not competing with main content. */
 export function GlobalMessengerFab() {
   return (
-    <div className="fixed bottom-4 left-4 z-[60] pointer-events-none">
+    <div className="fixed bottom-16 left-5 z-[45] pointer-events-none sm:bottom-20 sm:left-6">
       <div className="pointer-events-auto">
         <MessengerButton variant="fab" />
       </div>

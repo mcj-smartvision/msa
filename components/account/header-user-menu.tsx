@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, KeyRound, LogOut, Pencil, UserRound, FilePenLine } from 'lucide-react'
+import { ChevronDown, KeyRound, LogOut, Pencil, UserRound } from 'lucide-react'
 import { useLocale } from '@/components/i18n/locale-provider'
 import { formatLoginDisplay } from '@/lib/auth/login-identifier'
 import { accountCopy } from '@/lib/account/copy'
@@ -41,9 +41,8 @@ export function HeaderUserMenu({
 
   const items = [
     { key: 'profile' as const, label: copy.profile, icon: UserRound },
-    { key: 'change-request' as const, label: copy.changeRequest, icon: FilePenLine },
-    { key: 'password' as const, label: copy.password, icon: KeyRound },
     { key: 'edit' as const, label: copy.edit, icon: Pencil },
+    { key: 'password' as const, label: copy.password, icon: KeyRound },
     { key: 'logout' as const, label: copy.logout, icon: LogOut, danger: true },
   ]
 
@@ -60,7 +59,7 @@ export function HeaderUserMenu({
         <span className="flex h-6 w-6 items-center justify-center rounded-[7px] bg-slate-900 text-[10px] font-semibold text-white">
           {initial}
         </span>
-        <span className="hidden sm:block max-w-[88px] truncate text-xs text-slate-700" title={username}>
+        <span className="max-w-[120px] truncate text-xs font-medium text-slate-800" title={username}>
           {username}
         </span>
         <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-slate-500 transition-transform', open && 'rotate-180')} />

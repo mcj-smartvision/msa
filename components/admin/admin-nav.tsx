@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 import { LogoutButton } from '@/components/auth/logout-button'
 import { useLocale } from '@/components/i18n/locale-provider'
 import { GlobalMessengerFab } from '@/components/layout/global-messenger-fab'
+import { HeaderUserControls } from '@/components/layout/header-user-controls'
 import {
   useControlCenterDetailsOptional,
   ControlCenterDataProvider,
@@ -55,7 +56,7 @@ function AdminShellFrame({ children, email }: { children: ReactNode; email?: str
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <AdminTopHeader />
+        <AdminTopHeader email={email} />
 
         <div className="lg:hidden border-b bg-white px-2 py-2 overflow-x-auto">
           <nav className="min-w-[280px]">
@@ -72,10 +73,11 @@ function AdminShellFrame({ children, email }: { children: ReactNode; email?: str
   )
 }
 
-function AdminTopHeader() {
+function AdminTopHeader({ email }: { email?: string }) {
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-slate-200/90 bg-white/95 px-4 sm:px-6 backdrop-blur">
+    <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b border-slate-200/90 bg-white/95 px-4 sm:px-6 backdrop-blur">
       <BrandLogo size="sm" />
+      <HeaderUserControls email={email} allowAllProject />
     </header>
   )
 }
