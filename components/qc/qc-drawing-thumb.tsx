@@ -21,7 +21,7 @@ async function buildThumb(drawingId: string, fileName: string) {
   const file = await fetchDrawingBytes(drawingId)
   const kind = sniffDrawingKind(file.bytes, file.fileName, file.contentType)
   if (kind === 'image') {
-    const url = URL.createObjectURL(new Blob([file.bytes]))
+    const url = URL.createObjectURL(new Blob([Uint8Array.from(file.bytes)]))
     cache.set(drawingId, url)
     return url
   }

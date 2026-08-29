@@ -292,6 +292,7 @@ export interface AdminSupportTicket {
   created: string
   messages: number
   topic?: string
+  projectId?: string | null
 }
 
 export interface AdminCriticalAlert {

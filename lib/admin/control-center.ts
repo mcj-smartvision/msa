@@ -274,7 +274,7 @@ async function fetchSupportMessages(
 
   const { data, error } = await supabase
     .from('project_messages')
-    .select('id, body, priority, topic, created_at, sender_id')
+    .select('id, body, priority, topic, created_at, sender_id, project_id')
     .order('created_at', { ascending: false })
     .limit(15)
 
@@ -316,6 +316,7 @@ async function fetchSupportMessages(
       created: formatTimeAgo(String(row.created_at)),
       messages: 1,
       topic,
+      projectId: row.project_id ? String(row.project_id) : null,
     } satisfies AdminSupportTicket
   })
 }

@@ -37,7 +37,7 @@ function pointerPos(canvas: HTMLCanvasElement, event: React.PointerEvent) {
 }
 
 async function renderImage(bytes: Uint8Array, canvas: HTMLCanvasElement, maxDim = 2200) {
-  const blob = new Blob([bytes])
+  const blob = new Blob([Uint8Array.from(bytes)])
   const url = URL.createObjectURL(blob)
   try {
     const image = new Image()
@@ -193,7 +193,7 @@ export const QcDrawingMarkup = forwardRef<
         setPageCount(rendered.pageCount)
         replaceIframe(null)
       } catch {
-        replaceIframe(URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })))
+        replaceIframe(URL.createObjectURL(new Blob([Uint8Array.from(bytes)], { type: 'application/pdf' })))
         setUnsupported(true)
         return
       }
