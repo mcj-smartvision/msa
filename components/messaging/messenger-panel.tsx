@@ -165,8 +165,10 @@ export function MessengerButton({
             ? 'relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900'
             : variant === 'fab'
               ? cn(
-                  'relative inline-flex h-11 w-11 items-center justify-center rounded-full text-white shadow-md transition-colors',
-                  'bg-slate-600 hover:bg-slate-700 opacity-90 hover:opacity-100'
+                  'relative inline-flex h-10 items-center gap-2 rounded-full px-3.5 sm:px-4 text-sm font-medium text-white',
+                  'border border-sky-300/50 bg-sky-500/70 backdrop-blur-md shadow-lg shadow-sky-500/30',
+                  'ring-1 ring-inset ring-sky-200/40 hover:bg-sky-500/85 transition-colors',
+                  pulse && 'shadow-sky-400/50 shadow-xl'
                 )
               : cn(
                   'relative inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-white shadow-md transition-all',
@@ -184,8 +186,10 @@ export function MessengerButton({
             pulse && variant === 'default' && 'animate-bounce'
           )}
         />
-        {variant === 'default' ? (
-          <span className="hidden sm:inline">{messengerLabel}</span>
+        {variant === 'default' || variant === 'fab' ? (
+          <span className={cn(variant === 'fab' ? 'text-[13px] font-semibold' : 'hidden sm:inline')}>
+            {messengerLabel}
+          </span>
         ) : null}
         {variant === 'nav' ? <span className="flex-1 text-start">{messengerLabel}</span> : null}
         {unread > 0 && (
@@ -194,7 +198,7 @@ export function MessengerButton({
               variant === 'nav'
                 ? 'inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white'
                 : variant === 'fab'
-                  ? 'absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-red-600 text-[10px] font-bold flex items-center justify-center px-0.5 border border-white text-white'
+                  ? 'absolute -top-1.5 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-600 text-[10px] font-bold flex items-center justify-center px-0.5 border-2 border-white text-white shadow-sm'
                   : 'absolute -top-1.5 -start-1.5 min-w-[20px] h-[20px] rounded-full bg-red-600 text-[11px] font-bold flex items-center justify-center px-1 shadow-lg border-2 border-white text-white animate-pulse'
             )}
           >

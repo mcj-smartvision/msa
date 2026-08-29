@@ -77,7 +77,7 @@ function AdminTopHeader({ email }: { email?: string }) {
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b border-slate-200/90 bg-white/95 px-4 sm:px-6 backdrop-blur">
       <BrandLogo size="sm" />
-      <HeaderUserControls email={email} allowAllProject />
+      <HeaderUserControls email={email} allowAllProject showLanguage />
     </header>
   )
 }
