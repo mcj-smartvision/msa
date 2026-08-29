@@ -65,7 +65,7 @@ export function WidgetVisibilityEditor({
               id="widget-position"
               value={positionId}
               onChange={(e) => setPositionId(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="msa-field flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm"
             >
               {positions.map((position) => (
                 <option key={position.id} value={position.id}>{position.title}</option>

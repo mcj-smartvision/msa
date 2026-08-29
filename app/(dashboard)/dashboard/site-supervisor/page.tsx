@@ -6,7 +6,11 @@ import { hasRoleDashboardAccess } from '@/lib/schedule/access'
 import { fetchAllProjectTasks, fetchUnresolvedAlerts } from '@/utils/schedule'
 import { SiteSupervisorDashboard } from '@/components/schedule/site-supervisor-dashboard'
 
-export default async function SiteSupervisorPage() {
+export default async function SiteSupervisorPage({
+  searchParams,
+}: {
+  searchParams?: { section?: string }
+}) {
   const supabase = createClient()
   const {
     data: { user },
@@ -46,6 +50,7 @@ export default async function SiteSupervisorPage() {
       initialTasks={tasks}
       initialAlerts={alerts}
       visibleBlockCodes={visibleBlockCodes}
+      initialSection={searchParams?.section === 'inspection' ? 'inspection' : undefined}
     />
   )
 }

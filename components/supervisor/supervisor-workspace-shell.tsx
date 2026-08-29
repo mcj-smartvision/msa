@@ -7,6 +7,7 @@ export type SupervisorNavId =
   | 'overview'
   | 'workshop'
   | 'drawings'
+  | 'inspection'
   | 'today'
   | 'lookahead'
   | 'issues'

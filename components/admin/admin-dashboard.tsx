@@ -21,6 +21,7 @@ import {
   MapPin,
   AlertCircle,
   FolderKanban,
+  Plus,
 } from 'lucide-react'
 
 function pageTitleFor(detail: DetailKey | null, fa: boolean): string {
@@ -77,9 +78,9 @@ export function AdminDashboard() {
           openDetail === 'dashboards' ? (
             <Button
               asChild
-              className="h-8 border-0 bg-[#E4A055] text-white hover:bg-[#D48E45] hover:text-white"
+              className="h-8 border-0 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
             >
-              <Link href="/admin/members">{fa ? 'اضافه کردن عضو جدید' : 'Add new member'}</Link>
+              <Link href="/admin/members/new">{fa ? 'اضافه کردن عضو جدید' : 'Add new member'}</Link>
             </Button>
           ) : null
         }
@@ -143,14 +144,21 @@ export function AdminDashboard() {
 
       {openDetail === 'alerts' || openDetail === 'dashboards' ? null : (
         <section className="rounded-[12px] border border-[#5a7088] bg-white px-4 py-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-          <div className="flex justify-center">
+          <div className="flex flex-wrap justify-center gap-3">
             <button
               type="button"
               onClick={() => openProjectDirectory()}
-              className="h-10 rounded-[10px] bg-[#F3D2A4] px-6 text-sm font-semibold text-[#8A4B12] hover:bg-[#EFC58A]"
+              className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
             >
               {fa ? 'فهرست پروژه‌ها' : 'Project list'}
             </button>
+            <Link
+              href="/admin/projects/new"
+              className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              {fa ? 'ایجاد پروژه جدید' : 'Create new project'}
+            </Link>
           </div>
           <RecentProjectsPreview projects={scoped.scopedProjects} fa={fa} />
         </section>
@@ -197,7 +205,7 @@ function RecentProjectsPreview({
       <div className="mt-5 flex flex-col items-center justify-center py-6 text-center">
         <FolderKanban className="mb-2 h-8 w-8 text-sky-300" />
         <p className="text-sm font-medium text-slate-700">{fa ? 'هنوز پروژه‌ای ثبت نشده' : 'No projects yet'}</p>
-        <Link href="/admin/projects" className="mt-2 text-[12px] font-medium text-sky-700 hover:underline">
+        <Link href="/admin/projects/new" className="mt-2 text-[12px] font-medium text-sky-700 hover:underline">
           {fa ? 'ایجاد پروژه' : 'Create a project'}
         </Link>
       </div>
@@ -229,11 +237,35 @@ function RecentProjectsPreview({
 }
 
 function ControlCenterExpandedPanel() {
-  const { feeds, stats, members, openDetail } = useControlCenterDetails()
+  const { feeds, stats, members, scope, openDetail } = useControlCenterDetails()
   const { locale } = useLocale()
   if (!openDetail || !stats) return null
 
   const fa = locale === 'fa'
+  const all = isAllProjectsScope(scope)
+  const scopedMembers = all ? members : members.filter((m) => m.project_id === scope)
+  const memberIds = new Set(scopedMembers.map((m) => m.user_id))
+  const scopedAlerts = all
+    ? feeds.alerts
+    : feeds.alerts.filter((a) => !a.projectId || a.projectId === scope)
+  const scopedTickets = all
+    ? feeds.tickets
+    : feeds.tickets.filter((t) => !t.projectId || t.projectId === scope)
+  const scopedPresence = all
+    ? feeds.presenceUsers
+    : feeds.presenceUsers.filter((u) => memberIds.has(u.id))
+  const scopedRoleBreakdown = (() => {
+    const roleMap = new Map<string, number>()
+    for (const member of scopedMembers) {
+      for (const pos of member.positions ?? []) {
+        roleMap.set(pos.title, (roleMap.get(pos.title) ?? 0) + 1)
+      }
+    }
+    return Array.from(roleMap.entries())
+      .map(([role, count]) => ({ role, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8)
+  })()
   const titles: Record<DetailKey, string> = {
     messages: fa ? 'پشتیبانی و پیام‌ها' : 'Support & Messages',
     alerts: fa ? 'هشدارهای حیاتی' : 'Critical Alerts',
@@ -248,11 +280,11 @@ function ControlCenterExpandedPanel() {
         <h2 className="text-sm font-semibold tracking-tight">{titles[openDetail]}</h2>
       </div>
       <div className="p-4 max-h-[min(78vh,720px)] overflow-y-auto">
-        {openDetail === 'messages' ? <SupportTicketsPanel tickets={feeds.tickets} /> : null}
-        {openDetail === 'alerts' ? <CriticalAlertsPanel alerts={feeds.alerts} /> : null}
-        {openDetail === 'roles' && stats.roleBreakdown ? (
+        {openDetail === 'messages' ? <SupportTicketsPanel tickets={scopedTickets} /> : null}
+        {openDetail === 'alerts' ? <CriticalAlertsPanel alerts={scopedAlerts} /> : null}
+        {openDetail === 'roles' ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {stats.roleBreakdown.map((item) => (
+            {scopedRoleBreakdown.map((item) => (
               <div key={item.role} className="rounded-[10px] bg-sky-50 px-4 py-3">
                 <p className="text-[11px] text-sky-800">{item.role}</p>
                 <p className="text-xl font-semibold tracking-tight mt-1 tabular-nums">{item.count}</p>
@@ -260,8 +292,8 @@ function ControlCenterExpandedPanel() {
             ))}
           </div>
         ) : null}
-        {openDetail === 'dashboards' ? <RoleDashboardGrid members={members} /> : null}
-        {openDetail === 'presence' ? <OnlineUsersPanel users={feeds.presenceUsers} /> : null}
+        {openDetail === 'dashboards' ? <RoleDashboardGrid members={scopedMembers} /> : null}
+        {openDetail === 'presence' ? <OnlineUsersPanel users={scopedPresence} /> : null}
       </div>
     </section>
   )

@@ -6,9 +6,17 @@ export type QcRequestStatus =
   | 'completed'
   | 'cancelled'
 
+export type QcInspectorVerdict = 'approved' | 'rejected'
 export type QcVerdict = 'pass' | 'fail' | 'na'
 export type QcNcrSeverity = 'minor' | 'major' | 'critical'
 export type QcNcrStatus = 'open' | 'in_progress' | 'pending_verify' | 'closed' | 'waived'
+export type QcRequestPriority = 'high' | 'medium' | 'low'
+
+export const DEFAULT_QC_REQUEST_PRIORITY: QcRequestPriority = 'medium'
+
+export function parseQcRequestPriority(value: unknown): QcRequestPriority {
+  return value === 'high' || value === 'low' ? value : DEFAULT_QC_REQUEST_PRIORITY
+}
 
 export type QcInspectableItem = {
   id: string
@@ -50,6 +58,10 @@ export type QcInspectionRequest = {
   itemIds: string[]
   itemCodes: string[]
   drawings: QcRequestDrawing[]
+  inspectorVerdict: QcInspectorVerdict | null
+  inspectorNotes: string | null
+  inspectorClassified: string | null
+  priority: QcRequestPriority
 }
 
 export type QcChecklistRow = {

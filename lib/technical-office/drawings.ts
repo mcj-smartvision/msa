@@ -310,6 +310,14 @@ export async function saveDrawingToStorage(opts: {
   }
 }
 
+export async function getProjectDrawingStorage(rawId: string) {
+  const parsed = parseDrawingId(rawId)
+  if (!parsed) return null
+  const storage = getDrawingsStorage()
+  await ensureDrawingsBucket(storage)
+  return resolveStoredPath(storage, parsed.projectId, parsed.id)
+}
+
 export async function signDrawingDownload(rawId: string): Promise<{ url: string; fileName: string }> {
   const parsed = parseDrawingId(rawId)
   if (!parsed) throw new Error('نقشه پیدا نشد.')

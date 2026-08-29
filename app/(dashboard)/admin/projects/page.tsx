@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react'
 import { useSupabase } from '@/hooks/useSupabase'
-import { createProject, fetchAdminProjects, fetchAllMembers } from '@/utils/admin'
+import { fetchAdminProjects, fetchAllMembers } from '@/utils/admin'
 import { fetchControlCenterFeeds } from '@/lib/admin/control-center'
 import {
   countIdleUsers,
@@ -26,7 +26,6 @@ import {
   EmptyProjectsState,
   ProjectRow,
 } from '@/components/admin/projects-control/project-row'
-import { ProjectCreationDrawer } from '@/components/admin/projects-control/project-creation-drawer'
 import { ActivityFeed } from '@/components/admin/activity-feed'
 import { Button } from '@/components/ui/button'
 import { openProjectDirectory } from '@/lib/account/open-account-page'
@@ -36,7 +35,6 @@ import type {
   AdminProject,
   AuthActivityUser,
   ControlCenterFeeds,
-  CreateProjectInput,
   ProjectMember,
 } from '@/types/admin'
 
@@ -81,7 +79,6 @@ export default function AdminProjectsPage() {
   const [idleDays, setIdleDays] = useState(14)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [drawerOpen, setDrawerOpen] = useState(false)
   const [successNote, setSuccessNote] = useState<string | null>(null)
 
   useEffect(() => {
@@ -176,14 +173,6 @@ export default function AdminProjectsPage() {
     window.localStorage.setItem(IDLE_DAYS_KEY, String(next))
   }
 
-  async function handleCreate(input: CreateProjectInput) {
-    const project = await createProject(supabase, input)
-    setDrawerOpen(false)
-    setSuccessNote(`پروژه «${project.name}» ایجاد شد.`)
-    await loadProjects('refresh')
-    router.push(`/admin/projects/${project.id}/members`)
-  }
-
   if (loading) return <LoadingBlock label="در حال بارگذاری مرکز کنترل پروژه‌ها..." />
   if (error && projects.length === 0) {
     return <ErrorBlock message={error} onRetry={() => void loadProjects('initial')} />
@@ -199,17 +188,18 @@ export default function AdminProjectsPage() {
           <>
             <Button
               asChild
-              className="h-8 border-0 bg-[#E4A055] text-white hover:bg-[#D48E45] hover:text-white"
+              className="h-8 border-0 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
             >
               <Link href="/admin/projects/initialize">راه‌اندازی پیشرفته</Link>
             </Button>
             <Button
-              type="button"
-              className="h-8 border-0 bg-[#E4A055] text-white hover:bg-[#D48E45] hover:text-white"
-              onClick={() => setDrawerOpen(true)}
+              asChild
+              className="h-8 border-0 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
             >
-              <Plus className="h-4 w-4" />
-              پروژه جدید
+              <Link href="/admin/projects/new">
+                <Plus className="h-4 w-4" />
+                پروژه جدید
+              </Link>
             </Button>
           </>
         }
@@ -306,7 +296,7 @@ export default function AdminProjectsPage() {
           <button
             type="button"
             onClick={() => openProjectDirectory()}
-            className="h-10 rounded-[10px] bg-[#F3D2A4] px-6 text-sm font-semibold text-[#8A4B12] hover:bg-[#EFC58A]"
+            className="h-10 rounded-[10px] bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
           >
             فهرست پروژه‌ها
           </button>
@@ -314,7 +304,7 @@ export default function AdminProjectsPage() {
 
         {projects.length === 0 ? (
           <div className="mt-5">
-            <EmptyProjectsState onCreate={() => setDrawerOpen(true)} />
+            <EmptyProjectsState onCreate={() => router.push('/admin/projects/new')} />
           </div>
         ) : (
           <div className="mt-5 space-y-2">
@@ -330,12 +320,6 @@ export default function AdminProjectsPage() {
           </div>
         )}
       </section>
-
-      <ProjectCreationDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onSubmit={handleCreate}
-      />
     </div>
   )
 }

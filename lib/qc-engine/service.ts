@@ -2,22 +2,67 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/service'
 import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
 import { isQcActivityType, QC_CHECKLIST_BY_ACTIVITY } from '@/lib/qc-engine/activity-types'
-import type {
-  QcChecklistRow,
-  QcEngineDashboard,
-  QcEngineNcr,
-  QcInspectableItem,
-  QcInspectionRequest,
-  QcOfficeDrawing,
-  QcRequestDrawing,
-  QcRequestStatus,
-  QcResultPhoto,
-  QcVerdict,
+import {
+  parseQcRequestPriority,
+  type QcChecklistRow,
+  type QcEngineDashboard,
+  type QcEngineNcr,
+  type QcInspectableItem,
+  type QcInspectionRequest,
+  type QcInspectorVerdict,
+  type QcOfficeDrawing,
+  type QcRequestDrawing,
+  type QcRequestPriority,
+  type QcRequestStatus,
+  type QcResultPhoto,
+  type QcVerdict,
 } from '@/lib/qc-engine/types'
-import { DRAWINGS_BUCKET, ensureDrawingsBucket, listProjectDrawings } from '@/lib/technical-office/drawings'
+import {
+  DRAWINGS_BUCKET,
+  drawingContentType,
+  ensureDrawingsBucket,
+  getProjectDrawingStorage,
+  listProjectDrawings,
+} from '@/lib/technical-office/drawings'
 
 const PHOTO_BUCKET = 'qc-engine-photos'
 const MARKED_PREFIX = 'qc-marked'
+const LEGACY_SAMPLE_ITEM_CODES = new Set(['n200', 'c3-b04'])
+
+function requestDrawingRank(drawing: QcRequestDrawing) {
+  const name = drawing.fileName.toLowerCase()
+  const type = (drawing.contentType || '').toLowerCase()
+  if (!drawing.fileName.trim()) return -1
+  if (type.startsWith('image/') || /\.(png|jpe?g|webp|gif)$/i.test(name)) return 3
+  if (/-marked/i.test(name)) return 2
+  if (drawing.url) return 1
+  return -1
+}
+
+function isLegacySampleItemCode(code: string) {
+  return LEGACY_SAMPLE_ITEM_CODES.has(code.trim().toLowerCase())
+}
+
+async function removeLegacySampleItems(projectId: string) {
+  const db = engine(createServiceClient())
+  const { data: rows, error } = await db
+    .from('inspectable_item')
+    .select('id, code')
+    .eq('project_id', projectId)
+    .eq('is_active', true)
+  if (error) throw new Error(error.message)
+  const ids = (rows ?? [])
+    .filter((row) => isLegacySampleItemCode(String(row.code ?? '')))
+    .map((row) => String(row.id))
+  if (!ids.length) return
+  const { error: unlinkError } = await db.from('inspection_request_item').delete().in('inspectable_item_id', ids)
+  if (unlinkError) throw new Error(unlinkError.message)
+  const { error: deactivateError } = await db
+    .from('inspectable_item')
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .in('id', ids)
+  if (deactivateError) throw new Error(deactivateError.message)
+}
 
 function engine(client: SupabaseClient) {
   return client.schema('qc_engine')
@@ -97,6 +142,7 @@ async function ensurePhotoBucket(storage: SupabaseClient) {
 
 export async function loadQcEngineDashboard(projectId: string): Promise<QcEngineDashboard> {
   const db = engine(createServiceClient())
+  await removeLegacySampleItems(projectId)
   const [{ data: itemRows, error: itemError }, { data: requestRows, error: requestError }] = await Promise.all([
     db.from('inspectable_item').select('*').eq('project_id', projectId).eq('is_active', true).order('code'),
     db.from('inspection_request').select('*').eq('project_id', projectId).order('created_at', { ascending: false }),
@@ -184,18 +230,32 @@ export async function loadQcEngineDashboard(projectId: string): Promise<QcEngine
       requestedByName: requesterNames.get(String(row.requested_by)) || null,
       itemIds,
       itemCodes: itemIds.map((id) => itemsById.get(id)?.code ?? id),
-      drawings: drawingRows
-        .filter((drawing) => String(drawing.request_id) === String(row.id))
-        .map(
-          (drawing): QcRequestDrawing => ({
+      inspectorVerdict:
+        row.inspector_verdict === 'approved' || row.inspector_verdict === 'rejected'
+          ? (row.inspector_verdict as QcInspectorVerdict)
+          : null,
+      inspectorNotes: row.inspector_notes ? String(row.inspector_notes) : null,
+      inspectorClassified: row.inspector_classified ? String(row.inspector_classified) : null,
+      priority: parseQcRequestPriority(row.priority),
+      drawings: (() => {
+        const latest = new Map<string, { drawing: QcRequestDrawing; rank: number }>()
+        for (const drawing of drawingRows.filter((item) => String(item.request_id) === String(row.id))) {
+          const mapped: QcRequestDrawing = {
             id: String(drawing.id),
             requestId: String(drawing.request_id),
             sourceDrawingId: drawing.source_drawing_id ? String(drawing.source_drawing_id) : null,
-            fileName: String(drawing.file_name),
+            fileName: String(drawing.file_name ?? ''),
             contentType: drawing.content_type ? String(drawing.content_type) : null,
             url: signedDrawings.get(String(drawing.id)) ?? null,
-          })
-        ),
+          }
+          const rank = requestDrawingRank(mapped)
+          if (rank < 0) continue
+          const key = mapped.sourceDrawingId || mapped.id
+          const existing = latest.get(key)
+          if (!existing || rank > existing.rank) latest.set(key, { drawing: mapped, rank })
+        }
+        return [...latest.values()].map((item) => item.drawing)
+      })(),
     }
   })
 
@@ -304,6 +364,7 @@ export async function createInspectionRequest(input: {
   gridFrom?: string
   gridTo?: string
   sourceDrawingId?: string | null
+  priority?: QcRequestPriority
 }) {
   const db = engine(createServiceClient())
   const base = {
@@ -311,7 +372,7 @@ export async function createInspectionRequest(input: {
     requested_by: input.requestedBy,
     activity_type: input.activityType,
     requested_at: new Date().toISOString(),
-    status: 'submitted' as const,
+    status: 'draft' as const,
     notes: input.notes?.trim() || null,
   }
   const withFields = {
@@ -320,9 +381,10 @@ export async function createInspectionRequest(input: {
     grid_from: input.gridFrom?.trim() || null,
     grid_to: input.gridTo?.trim() || null,
     source_drawing_id: input.sourceDrawingId || null,
+    priority: parseQcRequestPriority(input.priority),
   }
   let { data, error } = await db.from('inspection_request').insert(withFields).select('*').single()
-  if (error && /floor|grid_from|source_drawing|column|schema cache/i.test(error.message)) {
+  if (error && /floor|grid_from|source_drawing|priority|column|schema cache/i.test(error.message)) {
     const retry = await db.from('inspection_request').insert(base).select('*').single()
     data = retry.data
     error = retry.error
@@ -385,6 +447,7 @@ export async function attachMarkedDrawings(input: {
   await ensureDrawingsBucket(storage)
 
   for (const [index, file] of input.files.entries()) {
+    if (!file.size) continue
     const displayName = file.name.replace(/[^\w.\u0600-\u06FF-]+/g, '_') || 'marked-drawing.jpg'
     const ext = displayName.includes('.') ? displayName.split('.').pop()?.toLowerCase() || 'bin' : 'bin'
     const path = `${MARKED_PREFIX}/${input.projectId}/${input.requestId}/${crypto.randomUUID()}.${ext}`
@@ -404,6 +467,32 @@ export async function attachMarkedDrawings(input: {
       uploaded_by: input.uploadedBy,
     })
     if (error) throw new Error(error.message)
+  }
+}
+
+export async function attachOfficeDrawingsIfMissing(input: {
+  requestId: string
+  projectId: string
+  uploadedBy: string
+  drawingIds: string[]
+  alreadyAttachedSourceIds?: (string | null)[]
+}) {
+  const attached = new Set((input.alreadyAttachedSourceIds ?? []).filter((id): id is string => Boolean(id)))
+  const db = engine(createServiceClient())
+  for (const drawingId of [...new Set(input.drawingIds.filter(Boolean))]) {
+    if (attached.has(drawingId)) continue
+    const stored = await getProjectDrawingStorage(drawingId)
+    if (!stored) continue
+    const { error } = await db.from('inspection_request_drawing').insert({
+      request_id: input.requestId,
+      source_drawing_id: drawingId,
+      file_name: stored.fileName,
+      storage_path: stored.path,
+      content_type: drawingContentType(stored.format),
+      uploaded_by: input.uploadedBy,
+    })
+    if (error) throw new Error(error.message)
+    attached.add(drawingId)
   }
 }
 
@@ -437,9 +526,93 @@ export async function assertRequestEditable(requestId: string) {
   }
 }
 
+export async function deleteRequestDrawing(drawingId: string) {
+  const db = engine(createServiceClient())
+  const storage = createServiceClient()
+  const { data, error } = await db
+    .from('inspection_request_drawing')
+    .select('id, request_id, storage_path')
+    .eq('id', drawingId)
+    .maybeSingle()
+  if (error || !data) throw new Error(error?.message || 'نقشه درخواست پیدا نشد.')
+  await assertRequestEditable(String(data.request_id))
+  const { error: deleteError } = await db.from('inspection_request_drawing').delete().eq('id', drawingId)
+  if (deleteError) throw new Error(deleteError.message)
+  const path = String(data.storage_path || '')
+  if (path.startsWith(`${MARKED_PREFIX}/`)) {
+    await storage.storage.from(DRAWINGS_BUCKET).remove([path])
+  }
+}
+
+export async function assertRequestInspectable(requestId: string) {
+  const db = engine(createServiceClient())
+  const { data, error } = await db
+    .from('inspection_request')
+    .select('status, inspector_verdict')
+    .eq('id', requestId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error('درخواست پیدا نشد.')
+  const status = String(data.status)
+  if (status === 'cancelled' || status === 'completed' || data.inspector_verdict) {
+    throw new Error('این درخواست برای علامت‌گذاری بازرس باز نیست.')
+  }
+  if (status !== 'submitted' && status !== 'scheduled' && status !== 'in_progress') {
+    throw new Error('این درخواست هنوز برای بازرسی ارسال نشده است.')
+  }
+}
+
+export function canActAsQcInspector(context: { isSystemAdmin: boolean; positionKeys: string[] }) {
+  return context.isSystemAdmin || context.positionKeys.includes('qa_qc_inspector')
+}
+
 export async function setRequestStatus(requestId: string, status: QcRequestStatus) {
   const db = engine(createServiceClient())
   const { error } = await db.from('inspection_request').update({ status, updated_at: new Date().toISOString() }).eq('id', requestId)
+  if (error) throw new Error(error.message)
+}
+
+export async function recordInspectorDecision(input: {
+  requestId: string
+  inspectorId: string
+  verdict: QcInspectorVerdict
+  notes?: string
+  classified?: string
+}) {
+  const db = engine(createServiceClient())
+  const { data: existing, error: existingError } = await db
+    .from('inspection_request')
+    .select('id, status, notes')
+    .eq('id', input.requestId)
+    .maybeSingle()
+  if (existingError) throw new Error(existingError.message)
+  if (!existing) throw new Error('درخواست پیدا نشد.')
+  const status = String(existing.status)
+  if (status === 'draft') throw new Error('این درخواست هنوز برای بازرسی ارسال نشده است.')
+  if (status === 'cancelled') throw new Error('این درخواست لغو شده است.')
+  if (status === 'completed') throw new Error('برای این درخواست قبلاً تصمیم گرفته شده است.')
+  const now = new Date().toISOString()
+  const notes = input.notes?.trim() || null
+  const classified = input.classified?.trim() || null
+  const patch: Record<string, unknown> = {
+    status: 'completed',
+    inspector_verdict: input.verdict,
+    inspector_notes: notes,
+    inspector_classified: classified,
+    assigned_inspector_id: input.inspectorId,
+    updated_at: now,
+  }
+  let { error } = await db.from('inspection_request').update(patch).eq('id', input.requestId)
+  if (error && /inspector_verdict|inspector_notes|inspector_classified|column|schema cache/i.test(error.message)) {
+    const fallback = [existing.notes, classified, notes, input.verdict === 'approved' ? 'تأیید بازرس' : 'رد بازرس']
+      .filter(Boolean)
+      .join('\n\n')
+    const retry = await db
+      .from('inspection_request')
+      .update({ status: 'completed', notes: fallback || null, updated_at: now })
+      .eq('id', input.requestId)
+    error = retry.error
+  }
   if (error) throw new Error(error.message)
 }
 
@@ -489,14 +662,41 @@ export async function deleteInspectionRequests(projectId: string, requestIds: st
   return { deleted: owned.length }
 }
 
+export async function updateInspectableItems(
+  projectId: string,
+  updates: { id: string; code?: string; floor?: string; name?: string }[]
+) {
+  if (!updates.length) return
+  const db = engine(createServiceClient())
+  for (const update of updates) {
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
+    if (update.code !== undefined) {
+      const code = update.code.trim()
+      if (!code) continue
+      patch.code = code
+    }
+    if (update.floor !== undefined) patch.floor = update.floor.trim() || null
+    if (update.name !== undefined) patch.name = update.name.trim() || null
+    if (Object.keys(patch).length <= 1) continue
+    const { error } = await db
+      .from('inspectable_item')
+      .update(patch)
+      .eq('id', update.id)
+      .eq('project_id', projectId)
+    if (error) throw new Error(error.message)
+  }
+}
+
 export async function updateInspectionRequest(input: {
   requestId: string
+  projectId?: string
   activityType?: string
   floor?: string
   gridFrom?: string
   gridTo?: string
   sourceDrawingId?: string | null
   itemIds?: string[]
+  itemUpdates?: { id: string; code?: string; floor?: string; name?: string }[]
   notes?: string
 }) {
   const db = engine(createServiceClient())
@@ -509,6 +709,9 @@ export async function updateInspectionRequest(input: {
   if (!existing) throw new Error('درخواست پیدا نشد.')
   if (!isRequestEditable(String(existing.status))) {
     throw new Error('پس از باز شدن درخواست توسط بازرس، ویرایش ممکن نیست.')
+  }
+  if (input.projectId && input.itemUpdates?.length) {
+    await updateInspectableItems(input.projectId, input.itemUpdates)
   }
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (input.activityType !== undefined) patch.activity_type = input.activityType

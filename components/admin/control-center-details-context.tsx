@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useSupabase } from '@/hooks/useSupabase'
 import { fetchAdminProjects, fetchAdminStats, fetchAllMembers } from '@/utils/admin'
 import { fetchControlCenterFeeds } from '@/lib/admin/control-center'
-import { ALL_PROJECTS_SCOPE, writeProjectCookie } from '@/lib/project/project-cookie'
+import { ALL_PROJECTS_SCOPE, clearProjectCookie, writeProjectCookie } from '@/lib/project/project-cookie'
 import type { AdminProject, AdminStats, ControlCenterFeeds, ProjectMember } from '@/types/admin'
 
 export type DetailKey =
@@ -41,6 +41,7 @@ type ControlCenterDetailsValue = {
   projects: AdminProject[]
   scope: string
   setScope: (scope: string) => void
+  refreshProjects: () => Promise<void>
   loading: boolean
   error: string | null
   openDetail: DetailKey | null
@@ -63,8 +64,17 @@ export function ControlCenterDataProvider({ children }: { children: ReactNode })
 
   const setScope = useCallback((next: string) => {
     setScopeState(next)
-    if (next !== ALL_PROJECTS_SCOPE) writeProjectCookie(next)
+    if (next === ALL_PROJECTS_SCOPE) {
+      clearProjectCookie()
+    } else {
+      writeProjectCookie(next)
+    }
   }, [])
+
+  const refreshProjects = useCallback(async () => {
+    const projectData = await fetchAdminProjects(supabase)
+    setProjects(projectData)
+  }, [supabase])
 
   useEffect(() => {
     let cancelled = false
@@ -103,13 +113,14 @@ export function ControlCenterDataProvider({ children }: { children: ReactNode })
       projects,
       scope,
       setScope,
+      refreshProjects,
       loading,
       error,
       openDetail,
       setOpenDetail,
       toggleDetail: (key) => setOpenDetail((current) => (current === key ? null : key)),
     }),
-    [feeds, stats, members, projects, scope, setScope, loading, error, openDetail]
+    [feeds, stats, members, projects, scope, setScope, refreshProjects, loading, error, openDetail]
   )
 
   return (

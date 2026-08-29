@@ -3,15 +3,47 @@ import { createClient } from '@/lib/supabase/server'
 import {
   assertProjectMember,
   assertRequestEditable,
+  assertRequestInspectable,
   attachMarkedDrawings,
+  canActAsQcInspector,
   createInspectionRequest,
   deleteInspectionRequests,
   markRequestOpenedByInspector,
+  recordInspectorDecision,
   requireQcEngineUser,
   setRequestStatus,
   updateInspectionRequest,
 } from '@/lib/qc-engine/service'
-import type { QcRequestStatus } from '@/lib/qc-engine/types'
+import { parseQcRequestPriority, type QcRequestStatus } from '@/lib/qc-engine/types'
+
+function selectedDrawingIdsFromForm(form: FormData) {
+  return String(form.get('selectedDrawingIds') ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean)
+}
+
+function uniqueFilesForSelection(
+  files: File[],
+  sourceDrawingIds: (string | null)[],
+  selectedDrawingIds: string[]
+) {
+  const allowed = new Set(selectedDrawingIds)
+  const latest = new Map<string, { file: File; sourceId: string }>()
+  files.forEach((file, index) => {
+    if (!file.size) return
+    const sourceId = sourceDrawingIds[index] || file.name
+    if (allowed.size && sourceDrawingIds[index] && !allowed.has(sourceDrawingIds[index] as string)) return
+    latest.set(sourceId, { file, sourceId })
+  })
+  const ordered = (allowed.size ? selectedDrawingIds : [...latest.keys()])
+    .map((id) => latest.get(id))
+    .filter((row): row is { file: File; sourceId: string } => Boolean(row))
+  return {
+    files: ordered.map((row) => row.file),
+    sourceDrawingIds: ordered.map((row) => row.sourceId),
+  }
+}
 
 function isMarkedDrawing(file: File) {
   const name = file.name.toLowerCase()
@@ -52,7 +84,15 @@ export async function POST(request: NextRequest) {
 
       const existingId = String(form.get('requestId') ?? '')
       if (existingId) {
-        await assertRequestEditable(existingId)
+        const inspectorMarkup = String(form.get('inspectorMarkup') ?? '') === '1'
+        if (inspectorMarkup) {
+          if (!canActAsQcInspector(context)) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+          }
+          await assertRequestInspectable(existingId)
+        } else {
+          await assertRequestEditable(existingId)
+        }
         await attachMarkedDrawings({
           requestId: existingId,
           projectId,
@@ -78,15 +118,18 @@ export async function POST(request: NextRequest) {
         gridFrom: String(form.get('gridFrom') ?? ''),
         gridTo: String(form.get('gridTo') ?? ''),
         sourceDrawingId,
+        priority: parseQcRequestPriority(form.get('priority')),
       })
       try {
+        const selectedDrawingIds = selectedDrawingIdsFromForm(form)
+        const uniqueFiles = uniqueFilesForSelection(files, sourceDrawingIds, selectedDrawingIds)
         await attachMarkedDrawings({
           requestId: id,
           projectId,
           uploadedBy: user.id,
-          files,
-          sourceDrawingId,
-          sourceDrawingIds,
+          files: uniqueFiles.files,
+          sourceDrawingId: uniqueFiles.sourceDrawingIds[0] || sourceDrawingId,
+          sourceDrawingIds: uniqueFiles.sourceDrawingIds,
         })
       } catch (attachError) {
         return NextResponse.json(
@@ -105,8 +148,22 @@ export async function POST(request: NextRequest) {
     if (!projectId) return NextResponse.json({ error: 'projectId لازم است' }, { status: 400 })
     await assertProjectMember(supabase, user.id, projectId, context.isSystemAdmin)
 
+    if (body.requestId && body.inspectorDecision) {
+      if (!canActAsQcInspector(context)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      await recordInspectorDecision({
+        requestId: String(body.requestId),
+        inspectorId: user.id,
+        verdict: body.inspectorDecision === 'rejected' ? 'rejected' : 'approved',
+        notes: body.notes == null ? undefined : String(body.notes),
+        classified: body.classified == null ? undefined : String(body.classified),
+      })
+      return NextResponse.json({ ok: true })
+    }
+
     if (body.requestId && body.inspectorOpen) {
-      if (!context.positionKeys.includes('qa_qc_inspector')) {
+      if (!canActAsQcInspector(context)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
       await markRequestOpenedByInspector(String(body.requestId))
@@ -116,12 +173,23 @@ export async function POST(request: NextRequest) {
     if (body.requestId && body.edit) {
       await updateInspectionRequest({
         requestId: String(body.requestId),
+        projectId,
         activityType: body.activityType,
         floor: body.floor,
         gridFrom: body.gridFrom,
         gridTo: body.gridTo,
         sourceDrawingId: body.sourceDrawingId ? String(body.sourceDrawingId) : null,
         itemIds: Array.isArray(body.itemIds) ? body.itemIds.map(String) : undefined,
+        itemUpdates: Array.isArray(body.itemUpdates)
+          ? body.itemUpdates
+              .map((row: { id?: unknown; code?: unknown; floor?: unknown; name?: unknown }) => ({
+                id: String(row.id ?? ''),
+                code: row.code == null ? undefined : String(row.code),
+                floor: row.floor == null ? undefined : String(row.floor),
+                name: row.name == null ? undefined : String(row.name),
+              }))
+              .filter((row: { id: string }) => row.id)
+          : undefined,
         notes: body.notes,
       })
       return NextResponse.json({ ok: true })
@@ -150,6 +218,7 @@ export async function POST(request: NextRequest) {
       gridFrom: body.gridFrom,
       gridTo: body.gridTo,
       sourceDrawingId: body.sourceDrawingId ? String(body.sourceDrawingId) : null,
+      priority: parseQcRequestPriority(body.priority),
     })
     return NextResponse.json({ id })
   } catch (error) {

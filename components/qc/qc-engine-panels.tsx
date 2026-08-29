@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Camera, Download, FileText, Trash2, Upload } from 'lucide-react'
+import { Camera, Check, ChevronLeft, Download, FileText, Maximize2, Pencil, Trash2, Upload, XCircle } from 'lucide-react'
 import { SectionCard, EmptyState } from '@/components/admin/shared'
 import { ModalOverlay } from '@/components/shared/modal-overlay'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { QcMarkedThumb } from '@/components/qc/qc-drawing-thumb'
+import { QcDrawingMarkup, QC_INSPECTOR_PEN_COLOR, QC_SUPERVISOR_PEN_COLOR, type QcDrawingMarkupHandle } from '@/components/qc/qc-drawing-markup'
 import { VoiceToTextButton } from '@/components/shared/voice-to-text-button'
 import { FormattedDate } from '@/components/schedule/formatted-date'
 import { useLocale } from '@/components/i18n/locale-provider'
@@ -22,19 +22,23 @@ import {
   qcActivityLabel,
   type QcActivityType,
 } from '@/lib/qc-engine/activity-types'
-import { readQcSelectedDrawings } from '@/lib/qc-engine/drawing-discipline'
+import { consumeQcSelectedDrawings, clearQcSelectedDrawings, initialQcCreateBlockUntil, isQcRequestCreateBlocked, qcRequestCreateBlockedUntil } from '@/lib/qc-engine/drawing-discipline'
 import { parseRequestSpeech, parseAiClassifiedText, formatSpeechSummary, mergeParsedSpeech, speechItemCode, type ParsedQcRequestSpeech } from '@/lib/qc-engine/parse-request-speech'
-import { downloadBlob, downloadFilesAsZip } from '@/lib/qc-engine/client-download'
-import { clearPendingMarked, loadPendingMarked, removePendingMarked } from '@/lib/qc-engine/pending-marked'
+import { clearPendingMarked, latestPendingBySource, loadPendingMarked, prunePendingMarked } from '@/lib/qc-engine/pending-marked'
 import { clearQcRequestDraft, readQcRequestDraft, writeQcRequestDraft, type QcRequestDraft } from '@/lib/qc-engine/request-draft'
-import type {
-  QcChecklistRow,
-  QcEngineDashboard,
-  QcInspectableItem,
-  QcInspectionRequest,
-  QcNcrSeverity,
-  QcRequestStatus,
-  QcVerdict,
+import {
+  DEFAULT_QC_REQUEST_PRIORITY,
+  parseQcRequestPriority,
+  type QcChecklistRow,
+  type QcEngineDashboard,
+  type QcInspectionRequest,
+  type QcInspectorVerdict,
+  type QcNcrSeverity,
+  type QcNcrStatus,
+  type QcRequestDrawing,
+  type QcRequestPriority,
+  type QcRequestStatus,
+  type QcVerdict,
 } from '@/lib/qc-engine/types'
 import { cn } from '@/lib/utils'
 
@@ -57,6 +61,18 @@ function canEditRequest(status: QcRequestStatus) {
   return status === 'draft' || status === 'submitted'
 }
 
+type RequestItemDraft = {
+  id: string
+  code: string
+  floor: string
+  grid: string
+}
+
+function isLegacySampleItemCode(code: string) {
+  const value = code.trim().toLowerCase()
+  return value === 'n200' || value === 'c3-b04'
+}
+
 type LocalMarkedDrawing = {
   id: string
   file: File
@@ -77,10 +93,105 @@ function activitySelectOptions(locale: string) {
   ))
 }
 
-function requestBadgeClass(status: QcRequestStatus) {
-  if (status === 'completed') return 'bg-emerald-50 text-emerald-800 border-emerald-200'
+function waitingForInspector(status: QcRequestStatus) {
+  return status === 'submitted' || status === 'scheduled' || status === 'in_progress'
+}
+
+function drawingKind(drawing: QcRequestDrawing): 'image' | 'pdf' | 'other' {
+  const name = drawing.fileName.toLowerCase()
+  const type = (drawing.contentType || '').toLowerCase()
+  if (type.startsWith('image/') || /\.(png|jpe?g|webp|gif)$/i.test(name)) return 'image'
+  if (type.includes('pdf') || name.endsWith('.pdf')) return 'pdf'
+  return 'other'
+}
+
+function requestDrawingRank(drawing: QcRequestDrawing) {
+  const name = drawing.fileName.toLowerCase()
+  const type = (drawing.contentType || '').toLowerCase()
+  if (!drawing.fileName.trim()) return -1
+  if (type.startsWith('image/') || /\.(png|jpe?g|webp|gif)$/i.test(name)) return 3
+  if (/-marked/i.test(name)) return 2
+  if (drawing.url) return 1
+  return -1
+}
+
+function uniqueRequestDrawings(drawings: QcRequestDrawing[]) {
+  const latest = new Map<string, { drawing: QcRequestDrawing; rank: number }>()
+  for (const drawing of drawings) {
+    const rank = requestDrawingRank(drawing)
+    if (rank < 0) continue
+    const key = drawing.sourceDrawingId || drawing.id
+    const existing = latest.get(key)
+    if (!existing || rank > existing.rank) latest.set(key, { drawing, rank })
+  }
+  return [...latest.values()].map((item) => item.drawing)
+}
+
+function uniqueMarkedForSelection(rows: LocalMarkedDrawing[], selectedIds: string[]) {
+  const allowed = [...new Set(selectedIds.filter(Boolean))]
+  const latest = new Map<string, LocalMarkedDrawing>()
+  for (const row of rows) {
+    if (!row.sourceDrawingId || !allowed.includes(row.sourceDrawingId)) continue
+    latest.set(row.sourceDrawingId, row)
+  }
+  return allowed.map((id) => latest.get(id)).filter((row): row is LocalMarkedDrawing => Boolean(row))
+}
+
+function inspectorWhisperPrompt() {
+  return 'یادداشت بازرس کنترل کیفیت به فارسی. جمله‌های کامل و درست. کلمه‌هایی مثل عدم رعایت استاندارد، قابل قبول نیست، لطفاً اصلاح کنید، فاصله خاموت، قالب‌بندی، جوش، قبول، رد.'
+}
+
+function requestDrawingFileUrl(drawing: QcRequestDrawing, officeId?: string | null) {
+  if (officeId) return `/api/technical-office/drawings/${encodeURIComponent(officeId)}/file`
+  if (drawing.url && drawing.id.startsWith('local-')) return drawing.url
+  return `/api/qc-engine/request-drawings/${encodeURIComponent(drawing.id)}/file`
+}
+
+function requestPriorityLabel(priority: QcRequestPriority, t: QcMessages) {
+  if (priority === 'high') return t.urgencyHigh
+  if (priority === 'low') return t.urgencyLow
+  return t.urgencyMedium
+}
+
+function requestSendStatusLabel(
+  row: { status: QcRequestStatus },
+  t: QcMessages
+) {
+  if (row.status === 'draft') return t.requestNotSent
+  if (row.status === 'cancelled') return t.requestCancelled
+  return t.requestUnderInspection
+}
+
+function requestSendBadgeClass(status: QcRequestStatus) {
+  if (status === 'draft') return 'bg-slate-100 text-slate-700 border-slate-200'
+  if (status === 'cancelled') return 'bg-slate-100 text-slate-600 border-slate-200'
+  return 'bg-amber-50 text-amber-800 border-amber-200'
+}
+
+function inspectorAnswerLabel(verdict: QcInspectorVerdict, t: QcMessages) {
+  return verdict === 'approved' ? t.inspectorApprovedAnswer : t.inspectorRejectedAnswer
+}
+
+function inspectorAnswerBadgeClass(verdict: QcInspectorVerdict) {
+  return verdict === 'approved'
+    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+    : 'bg-red-50 text-red-800 border-red-200'
+}
+
+function requestStatusLabel(
+  row: { status: QcRequestStatus; inspectorVerdict?: QcInspectorVerdict | null },
+  t: QcMessages
+) {
+  if (row.inspectorVerdict === 'approved') return t.requestApprovedStatus
+  if (row.inspectorVerdict === 'rejected') return t.requestRejectedStatus
+  return t[REQUEST_LABEL[row.status]]
+}
+
+function requestBadgeClass(status: QcRequestStatus, verdict?: QcInspectorVerdict | null) {
+  if (verdict === 'rejected') return 'bg-red-50 text-red-800 border-red-200'
+  if (verdict === 'approved' || status === 'completed') return 'bg-emerald-50 text-emerald-800 border-emerald-200'
   if (status === 'cancelled') return 'bg-slate-100 text-slate-600'
-  if (status === 'in_progress' || status === 'scheduled') return 'bg-amber-50 text-amber-800 border-amber-200'
+  if (status === 'in_progress' || status === 'scheduled' || status === 'submitted') return 'bg-amber-50 text-amber-800 border-amber-200'
   return ''
 }
 
@@ -90,14 +201,106 @@ function severityBadge(severity: QcNcrSeverity) {
   return { variant: 'outline' as const, className: '' }
 }
 
+function engineNcrStatusLabel(status: QcNcrStatus, t: QcMessages) {
+  if (status === 'open') return t.ncrOpenStatus
+  if (status === 'closed') return t.ncrClosedStatus
+  if (status === 'waived') return t.ncrWaived
+  if (status === 'pending_verify') return t.ncrPendingVerify
+  return t.ncrInAction
+}
+
+function localDayKey(date = new Date()) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function localDayKeyFromIso(iso: string) {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  return localDayKey(date)
+}
+
+type InspectorListBadge = 'overdue' | 'today' | 'pending' | 'completed' | 'rejected'
+
+const INSPECTOR_BADGE_SORT: Record<InspectorListBadge, number> = {
+  overdue: 0,
+  today: 1,
+  pending: 2,
+  completed: 3,
+  rejected: 4,
+}
+
+function inspectorListBadge(row: QcInspectionRequest): InspectorListBadge {
+  if (row.inspectorVerdict === 'rejected') return 'rejected'
+  if (row.inspectorVerdict === 'approved' || row.status === 'completed') return 'completed'
+  if (waitingForInspector(row.status) && !row.inspectorVerdict) {
+    const day = localDayKeyFromIso(row.requestedAt)
+    const today = localDayKey()
+    if (day && day < today) return 'overdue'
+    if (day && day === today) return 'today'
+    return 'pending'
+  }
+  return 'pending'
+}
+
+function inspectorBadgeLabel(kind: InspectorListBadge, t: QcMessages) {
+  if (kind === 'overdue') return t.overdue
+  if (kind === 'today') return t.dueToday
+  if (kind === 'completed') return t.requestCompleted
+  if (kind === 'rejected') return t.requestRejectedStatus
+  return t.pendingShort
+}
+
+function inspectorBadgeClass(kind: InspectorListBadge) {
+  if (kind === 'overdue') return 'border-rose-200 bg-rose-100 text-rose-800'
+  if (kind === 'today') return 'border-orange-200 bg-orange-100 text-orange-800'
+  if (kind === 'completed') return 'border-emerald-200 bg-emerald-100 text-emerald-800'
+  if (kind === 'rejected') return 'border-red-200 bg-red-50 text-red-800'
+  return 'border-slate-200 bg-slate-50 text-slate-700'
+}
+
+function inspectorFloorLabel(floor: string | null | undefined, t: QcMessages) {
+  const value = floor?.trim()
+  return value ? `${t.floor} ${value}` : ''
+}
+
+function formatPassRate(value: number, locale: string) {
+  return locale.startsWith('fa') ? `%${value}` : `${value}%`
+}
+
+function InspectorKpiCard({
+  value,
+  label,
+  valueClassName,
+}: {
+  value: string
+  label: string
+  valueClassName?: string
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-5 text-center shadow-card">
+      <p className={cn('text-3xl font-bold tracking-tight', valueClassName || 'text-slate-900')}>{value}</p>
+      <p className="mt-1 text-sm text-slate-500">{label}</p>
+    </div>
+  )
+}
+
 export function QcEnginePanels({
   projectId,
   t,
   isInspector = false,
+  showResults = true,
+  showRequestForm = false,
+  drawingsHref = '/dashboard/qc/drawings',
 }: {
   projectId: string
   t: QcMessages
   isInspector?: boolean
+  showResults?: boolean
+  showRequestForm?: boolean
+  drawingsHref?: string
 }) {
   const { locale } = useLocale()
   const [data, setData] = useState<QcEngineDashboard>({
@@ -121,15 +324,22 @@ export function QcEnginePanels({
 
   const [activityType, setActivityType] = useState<QcActivityType>('rebar')
   const [selectMode, setSelectMode] = useState<'exact' | 'range'>('range')
-  const [rangeFrom, setRangeFrom] = useState('A')
-  const [rangeTo, setRangeTo] = useState('ژ')
+  const [rangeFrom, setRangeFrom] = useState('')
+  const [rangeTo, setRangeTo] = useState('')
+  const [inspectionUrgency, setInspectionUrgency] = useState<QcRequestPriority>(DEFAULT_QC_REQUEST_PRIORITY)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([])
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null)
   const [sourceDrawingId, setSourceDrawingId] = useState('')
   const [selectedOfficeIds, setSelectedOfficeIds] = useState<string[]>([])
   const [markedDrawings, setMarkedDrawings] = useState<LocalMarkedDrawing[]>([])
-  const [previewMarkedId, setPreviewMarkedId] = useState<string | null>(null)
+  const [previewDrawing, setPreviewDrawing] = useState<QcRequestDrawing | null>(null)
+  const [markupDrawing, setMarkupDrawing] = useState<QcRequestDrawing | null>(null)
+  const [markupOfficeId, setMarkupOfficeId] = useState<string | null>(null)
+  const inspectorMarkupRef = useRef<QcDrawingMarkupHandle>(null)
+  const [markupSaving, setMarkupSaving] = useState(false)
+  const [inspectorSpeech, setInspectorSpeech] = useState('')
+  const [inspectorClassified, setInspectorClassified] = useState('')
   const [voiceText, setVoiceText] = useState('')
   const [typedSpeech, setTypedSpeech] = useState('')
   const [parsedSpeech, setParsedSpeech] = useState<ParsedQcRequestSpeech | null>(null)
@@ -146,14 +356,21 @@ export function QcEnginePanels({
   const [editGridFrom, setEditGridFrom] = useState('')
   const [editGridTo, setEditGridTo] = useState('')
   const [editSourceId, setEditSourceId] = useState('')
-  const [editItemIds, setEditItemIds] = useState<string[]>([])
+  const [editNotes, setEditNotes] = useState('')
+  const [editItems, setEditItems] = useState<RequestItemDraft[]>([])
   const [detailFiles, setDetailFiles] = useState<File[]>([])
   const [checklist, setChecklist] = useState<QcChecklistRow[]>([])
   const [photoCaption, setPhotoCaption] = useState('')
   const inspectorOpened = useRef<Set<string>>(new Set())
   const markedDrawingsRef = useRef<LocalMarkedDrawing[]>([])
   const markedHydrateGen = useRef(0)
+  const suppressCreateUntilRef = useRef(initialQcCreateBlockUntil())
+  const submitPointerRef = useRef(false)
+  const [createBlockedUntil, setCreateBlockedUntil] = useState(initialQcCreateBlockUntil)
+  const drawingsConfirmedRef = useRef(false)
+  const selectedOfficeIdsRef = useRef<string[]>([])
   markedDrawingsRef.current = markedDrawings
+  selectedOfficeIdsRef.current = selectedOfficeIds
 
   const load = useCallback(async () => {
     if (!projectId) return [] as QcInspectionRequest[]
@@ -172,12 +389,53 @@ export function QcEnginePanels({
       officeDrawings: json.officeDrawings ?? [],
     }
     setData(next)
+    setSelectedIds((current) => {
+      const valid = new Set(next.items.map((item) => item.id))
+      const filtered = current.filter((id) => valid.has(id) && !isLegacySampleItemCode(next.items.find((item) => item.id === id)?.code || ''))
+      return filtered.length === current.length ? current : filtered
+    })
     return next.requests
   }, [projectId, t.engineError])
+
+  useLayoutEffect(() => {
+    const until = initialQcCreateBlockUntil()
+    suppressCreateUntilRef.current = Math.max(suppressCreateUntilRef.current, until)
+    setCreateBlockedUntil((current) => Math.max(current, until))
+  }, [])
+
+  useEffect(() => {
+    const until = Math.max(createBlockedUntil, qcRequestCreateBlockedUntil(), suppressCreateUntilRef.current)
+    const remaining = until - Date.now()
+    if (remaining <= 0) return
+    const timer = window.setTimeout(() => setCreateBlockedUntil(0), remaining + 50)
+    return () => window.clearTimeout(timer)
+  }, [createBlockedUntil])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  const hydrateMarkedDrawings = useCallback(async () => {
+    if (!projectId) return
+    const gen = ++markedHydrateGen.current
+    const pending = await loadPendingMarked(projectId)
+    if (gen !== markedHydrateGen.current) return
+    const allowed = selectedOfficeIdsRef.current
+    const rows = latestPendingBySource(
+      allowed.length ? pending.filter((row) => allowed.includes(row.sourceDrawingId)) : []
+    )
+    setMarkedDrawings((current) => {
+      current.forEach((row) => URL.revokeObjectURL(row.url))
+      return rows.map((row) => ({
+        id: row.id,
+        file: new File([row.blob], row.fileName, { type: row.mimeType || 'image/png' }),
+        url: URL.createObjectURL(row.blob),
+        title: row.sourceTitle || row.fileName,
+        sourceDrawingId: row.sourceDrawingId,
+      }))
+    })
+    if (rows[0]?.sourceDrawingId) setSourceDrawingId((current) => current || rows[0].sourceDrawingId)
+  }, [projectId])
 
   useEffect(() => {
     if (!projectId) return
@@ -194,6 +452,7 @@ export function QcEnginePanels({
       setSelectMode(draft.selectMode)
       setRangeFrom(draft.rangeFrom)
       setRangeTo(draft.rangeTo)
+      setInspectionUrgency(parseQcRequestPriority(draft.priority))
       setSelectedIds(draft.selectedIds)
       setSourceDrawingId(draft.sourceDrawingId)
       setVoiceText(draft.voiceText)
@@ -201,44 +460,50 @@ export function QcEnginePanels({
       if (draft.voiceText.trim()) setParsedSpeech(parseAiClassifiedText(draft.voiceText))
       else if (draft.typedSpeech.trim()) setParsedSpeech(parseRequestSpeech(draft.typedSpeech))
     }
-    const ids = readQcSelectedDrawings(projectId)
-    if (ids.length) {
-      setSelectedOfficeIds(ids)
-      if (ids[0]) setSourceDrawingId(ids[0])
-    } else if (draft?.sourceDrawingId) {
-      setSelectedOfficeIds([draft.sourceDrawingId])
+    const confirmedIds = consumeQcSelectedDrawings(projectId)
+    let allowed: string[] = []
+    if (confirmedIds && confirmedIds.length) {
+      drawingsConfirmedRef.current = true
+      allowed = [...new Set(confirmedIds)]
+      setSelectedOfficeIds(allowed)
+      if (allowed[0]) setSourceDrawingId(allowed[0])
+    } else if (draft?.selectedDrawingsConfirmed && draft.selectedOfficeIds.length) {
+      drawingsConfirmedRef.current = true
+      allowed = [...new Set(draft.selectedOfficeIds)]
+      setSelectedOfficeIds(allowed)
+      if (allowed[0]) setSourceDrawingId((current) => current || allowed[0])
+    } else {
+      drawingsConfirmedRef.current = false
+      setSelectedOfficeIds([])
+      if (!draft?.selectedDrawingsConfirmed) setSourceDrawingId('')
+      clearQcSelectedDrawings()
     }
+    selectedOfficeIdsRef.current = allowed
     setDraftReady(true)
-  }, [projectId])
-
-  const hydrateMarkedDrawings = useCallback(async () => {
-    if (!projectId) return
-    const gen = ++markedHydrateGen.current
-    const pending = await loadPendingMarked(projectId)
-    if (gen !== markedHydrateGen.current) return
-    setMarkedDrawings((current) => {
-      current.forEach((row) => URL.revokeObjectURL(row.url))
-      return pending.map((row) => ({
-        id: row.id,
-        file: new File([row.blob], row.fileName, { type: row.mimeType || 'image/png' }),
-        url: URL.createObjectURL(row.blob),
-        title: row.sourceTitle || row.fileName,
-        sourceDrawingId: row.sourceDrawingId,
-      }))
-    })
-    const sourceIds = pending.map((row) => row.sourceDrawingId).filter(Boolean)
-    if (sourceIds[0]) setSourceDrawingId((current) => current || sourceIds[0])
-    if (sourceIds.length) {
-      setSelectedOfficeIds((current) => [...new Set([...sourceIds, ...current])])
+    if (confirmedIds) {
+      const until = Date.now() + 1500
+      suppressCreateUntilRef.current = Math.max(suppressCreateUntilRef.current, until)
+      setCreateBlockedUntil((current) => Math.max(current, until))
     }
-  }, [projectId])
+    void (async () => {
+      if (allowed.length) await prunePendingMarked(projectId, allowed)
+      else await clearPendingMarked(projectId)
+      await hydrateMarkedDrawings()
+    })()
+  }, [hydrateMarkedDrawings, projectId])
 
   useEffect(() => {
+    if (!draftReady) return
     void hydrateMarkedDrawings()
-    const onPageShow = () => void hydrateMarkedDrawings()
-    window.addEventListener('pageshow', onPageShow)
-    return () => window.removeEventListener('pageshow', onPageShow)
-  }, [hydrateMarkedDrawings])
+    const blockAccidentalCreate = () => {
+      const until = Date.now() + 1500
+      suppressCreateUntilRef.current = Math.max(suppressCreateUntilRef.current, until)
+      setCreateBlockedUntil((current) => Math.max(current, until))
+      void hydrateMarkedDrawings()
+    }
+    window.addEventListener('pageshow', blockAccidentalCreate)
+    return () => window.removeEventListener('pageshow', blockAccidentalCreate)
+  }, [draftReady, hydrateMarkedDrawings, selectedOfficeIds])
 
   useEffect(() => {
     return () => {
@@ -265,6 +530,9 @@ export function QcEnginePanels({
       sourceDrawingId,
       voiceText,
       typedSpeech,
+      priority: inspectionUrgency,
+      selectedOfficeIds,
+      selectedDrawingsConfirmed: drawingsConfirmedRef.current && selectedOfficeIds.length > 0,
     }
   }
 
@@ -283,10 +551,12 @@ export function QcEnginePanels({
         draft.gridX ||
         draft.gridY ||
         draft.selectedIds.length ||
+        draft.selectedDrawingsConfirmed && draft.selectedOfficeIds.length ||
         draft.sourceDrawingId
     )
     if (!hasContent) {
       clearQcRequestDraft(projectId)
+      clearQcSelectedDrawings()
       return
     }
     writeQcRequestDraft(draft)
@@ -305,9 +575,11 @@ export function QcEnginePanels({
     rangeFrom,
     rangeTo,
     selectedIds,
+    selectedOfficeIds,
     sourceDrawingId,
     voiceText,
     typedSpeech,
+    inspectionUrgency,
   ])
 
   async function markInspectorOpened(requestId: string) {
@@ -321,20 +593,84 @@ export function QcEnginePanels({
     await load()
   }
 
-  const floorItems = useMemo(() => {
-    if (!floor) return data.items
-    return data.items.filter((item) => (item.floor ?? '') === floor)
-  }, [data.items, floor])
+  const inspectorRows = useMemo(() => {
+    const rows: {
+      key: string
+      requestId: string
+      title: string
+      floorLabel: string
+      badge: InspectorListBadge
+      requestedAt: string
+    }[] = []
+    for (const request of data.requests) {
+      if (request.status === 'draft' || request.status === 'cancelled') continue
+      const badge = inspectorListBadge(request)
+      const items = request.itemIds.flatMap((id, index) => {
+        const item = data.items.find((entry) => entry.id === id)
+        const itemCode = item?.code || request.itemCodes[index] || ''
+        if (!itemCode || isLegacySampleItemCode(itemCode)) return []
+        return [{ id, code: itemCode, floor: item?.floor || request.floor }]
+      })
+      if (items.length === 0) {
+        rows.push({
+          key: request.id,
+          requestId: request.id,
+          title: qcActivityLabel(request.activityType, locale),
+          floorLabel: inspectorFloorLabel(request.floor, t),
+          badge,
+          requestedAt: request.requestedAt,
+        })
+        continue
+      }
+      for (const item of items) {
+        rows.push({
+          key: `${request.id}:${item.id}`,
+          requestId: request.id,
+          title: item.code,
+          floorLabel: inspectorFloorLabel(item.floor, t),
+          badge,
+          requestedAt: request.requestedAt,
+        })
+      }
+    }
+    rows.sort(
+      (a, b) =>
+        INSPECTOR_BADGE_SORT[a.badge] - INSPECTOR_BADGE_SORT[b.badge] || a.requestedAt.localeCompare(b.requestedAt)
+    )
+    return rows
+  }, [data.items, data.requests, locale, t])
 
-  const floors = useMemo(
-    () => [...new Set(data.items.map((item) => item.floor).filter((value): value is string => Boolean(value)))],
-    [data.items]
-  )
-  const previewMarked = markedDrawings.find((row) => row.id === previewMarkedId) ?? null
+  const inspectorKpis = useMemo(() => {
+    const pendingRows = inspectorRows.filter(
+      (row) => row.badge === 'overdue' || row.badge === 'today' || row.badge === 'pending'
+    )
+    const overdue = inspectorRows.filter((row) => row.badge === 'overdue').length
+    const openNcrs = data.ncrs.filter(
+      (ncr) => ncr.status === 'open' || ncr.status === 'in_progress' || ncr.status === 'pending_verify'
+    ).length
+    const decided = data.requests.filter(
+      (row) => row.status === 'completed' && (row.inspectorVerdict === 'approved' || row.inspectorVerdict === 'rejected')
+    )
+    const approved = decided.filter((row) => row.inspectorVerdict === 'approved').length
+    const passRate = decided.length ? Math.round((approved / decided.length) * 100) : 0
+    return {
+      pending: pendingRows.length,
+      openNcrs,
+      passRate,
+      overdue,
+    }
+  }, [data.ncrs, data.requests, inspectorRows])
 
-  function toggleItem(id: string) {
-    setSelectedIds((current) => (current.includes(id) ? current.filter((value) => value !== id) : [...current, id]))
-  }
+  const inspectorNcrs = useMemo(() => {
+    const order: Record<QcNcrStatus, number> = {
+      open: 0,
+      in_progress: 1,
+      pending_verify: 2,
+      closed: 3,
+      waived: 4,
+    }
+    return [...data.ncrs].sort((a, b) => order[a.status] - order[b.status] || b.createdAt.localeCompare(a.createdAt))
+  }, [data.ncrs])
 
   function applyParsed(parsed: ParsedQcRequestSpeech, overwrite = false) {
     setParsedSpeech(parsed)
@@ -356,26 +692,6 @@ export function QcEnginePanels({
   function applyAiText(value: string) {
     setVoiceText(value)
     applyParsed(parseAiClassifiedText(value), true)
-  }
-
-  async function removeMarkedDrawing(id: string) {
-    const row = markedDrawings.find((item) => item.id === id)
-    if (row) URL.revokeObjectURL(row.url)
-    setMarkedDrawings((current) => current.filter((item) => item.id !== id))
-    if (previewMarkedId === id) setPreviewMarkedId(null)
-    if (projectId) await removePendingMarked(projectId, id)
-  }
-
-  function downloadOneMarked(row: LocalMarkedDrawing) {
-    downloadBlob(row.file.name || `${row.title}.png`, row.file)
-  }
-
-  async function downloadAllMarked() {
-    if (!markedDrawings.length) return
-    await downloadFilesAsZip(
-      'marked-drawings.zip',
-      markedDrawings.map((row) => ({ name: row.file.name || `${row.title}.png`, blob: row.file }))
-    )
   }
 
   async function applySpeech(text: string) {
@@ -462,8 +778,12 @@ export function QcEnginePanels({
     return ids
   }
 
-  async function handleCreateRequest(event: React.FormEvent) {
-    event.preventDefault()
+  async function handleCreateRequest(event?: React.FormEvent) {
+    event?.preventDefault()
+    if (Date.now() < suppressCreateUntilRef.current || isQcRequestCreateBlocked() || Date.now() < createBlockedUntil) {
+      return
+    }
+    if (busy) return
     setBusy(true)
     setError(null)
     setMessage(null)
@@ -485,11 +805,14 @@ export function QcEnginePanels({
     body.set('floor', floor)
     body.set('gridFrom', rangeFrom)
     body.set('gridTo', rangeTo)
+    body.set('priority', inspectionUrgency)
     const baseDrawingId = sourceDrawingId || selectedOfficeIds[0] || ''
     if (baseDrawingId) body.set('sourceDrawingId', baseDrawingId)
+    if (selectedOfficeIds.length) body.set('selectedDrawingIds', selectedOfficeIds.join(','))
     const notes = [typedSpeech.trim(), voiceText.trim()].filter((value, index, rows) => value && rows.indexOf(value) === index).join('\n\n')
     if (notes) body.set('notes', notes)
-    for (const row of markedDrawings) {
+    const drawingsToAttach = uniqueMarkedForSelection(markedDrawings, selectedOfficeIds)
+    for (const row of drawingsToAttach) {
       body.append('file', row.file)
       body.append('fileSourceId', row.sourceDrawingId || '')
     }
@@ -506,8 +829,8 @@ export function QcEnginePanels({
       projectId,
       activityType,
       requestedAt: new Date().toISOString(),
-      status: 'submitted',
-      notes: null,
+      status: 'draft',
+      notes: notes || null,
       floor: floor || null,
       gridFrom: rangeFrom || null,
       gridTo: rangeTo || null,
@@ -516,7 +839,11 @@ export function QcEnginePanels({
       requestedByName: null,
       itemIds,
       itemCodes: itemIds.map((id) => data.items.find((item) => item.id === id)?.code ?? (code || id)),
-      drawings: markedDrawings.map((row, index) => ({
+      inspectorVerdict: null,
+      inspectorNotes: null,
+      inspectorClassified: null,
+      priority: inspectionUrgency,
+      drawings: drawingsToAttach.map((row, index) => ({
         id: `local-${index}`,
         requestId: json.id || '',
         sourceDrawingId: row.sourceDrawingId || baseDrawingId || null,
@@ -531,20 +858,27 @@ export function QcEnginePanels({
     }))
     setViewRequestId(created.id)
     setSelectedIds([])
+    setSelectedOfficeIds([])
+    drawingsConfirmedRef.current = false
     setMarkedDrawings([])
     await clearPendingMarked(projectId)
     clearQcRequestDraft(projectId)
+    clearQcSelectedDrawings()
     setSourceDrawingId('')
     setCode('')
     setDiscipline('')
     setTopic('')
     setElementType('')
+    setFloor('')
     setGridX('')
     setGridY('')
+    setRangeFrom('')
+    setRangeTo('')
     setVoiceText('')
     setTypedSpeech('')
     setParsedSpeech(null)
-    setMessage(json.warning ? `${t.requestCreated} ${json.warning}` : t.requestCreated)
+    setInspectionUrgency(DEFAULT_QC_REQUEST_PRIORITY)
+    setMessage(json.warning ? `${t.requestSavedSendHint} ${json.warning}` : t.requestSavedSendHint)
     const loaded = await load()
     const fromServer = loaded.find((row) => row.id === created.id)
     if (!fromServer) {
@@ -610,7 +944,22 @@ export function QcEnginePanels({
       return
     }
     setDetailFiles([])
-    setMessage(t.requestCreated)
+    setMessage(t.drawingAttached)
+    await load()
+  }
+
+  async function removeViewedDrawing(drawing: QcRequestDrawing) {
+    if (!viewRequestId || drawing.id.startsWith('local-') || drawing.id.startsWith('office-')) return
+    setBusy(true)
+    setError(null)
+    const res = await fetch(`/api/qc-engine/request-drawings/${encodeURIComponent(drawing.id)}`, { method: 'DELETE' })
+    const json = (await res.json().catch(() => ({}))) as { error?: string }
+    setBusy(false)
+    if (!res.ok) {
+      setError(json.error || t.engineError)
+      return
+    }
+    setMessage(t.drawingRemoved)
     await load()
   }
 
@@ -620,7 +969,22 @@ export function QcEnginePanels({
     setEditGridFrom(row.gridFrom || '')
     setEditGridTo(row.gridTo || '')
     setEditSourceId(row.sourceDrawingId || '')
-    setEditItemIds(row.itemIds)
+    setEditNotes(row.notes || '')
+    setEditItems(
+      row.itemIds.flatMap((id, index) => {
+        const item = data.items.find((entry) => entry.id === id)
+        const code = item?.code || row.itemCodes[index] || ''
+        if (isLegacySampleItemCode(code)) return []
+        return [
+          {
+            id,
+            code,
+            floor: item?.floor || '',
+            grid: item ? item.gridRef || [item.gridX, item.gridY].filter(Boolean).join('-') : '',
+          },
+        ]
+      })
+    )
     setEditingRequest(true)
   }
 
@@ -640,7 +1004,9 @@ export function QcEnginePanels({
         gridFrom: editGridFrom,
         gridTo: editGridTo,
         sourceDrawingId: editSourceId,
-        itemIds: editItemIds,
+        notes: editNotes,
+        itemIds: editItems.map((item) => item.id),
+        itemUpdates: editItems.map((item) => ({ id: item.id, code: item.code, floor: item.floor })),
       }),
     })
     const json = (await res.json().catch(() => ({}))) as { error?: string }
@@ -656,13 +1022,154 @@ export function QcEnginePanels({
 
   async function patchStatus(requestId: string, status: QcRequestStatus) {
     setBusy(true)
-    await fetch('/api/qc-engine/requests', {
+    setError(null)
+    const res = await fetch('/api/qc-engine/requests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ projectId, requestId, status }),
     })
+    const json = (await res.json().catch(() => ({}))) as { error?: string }
     setBusy(false)
+    if (!res.ok) {
+      setError(json.error || t.engineError)
+      return false
+    }
     await load()
+    return true
+  }
+
+  async function sendForInspection(requestId: string) {
+    const row = data.requests.find((item) => item.id === requestId)
+    if (!row || (row.status !== 'draft' && row.status !== 'submitted')) return
+    if (row.status === 'draft') {
+      const ok = await patchStatus(requestId, 'submitted')
+      if (!ok) return
+    }
+    setEditingRequest(false)
+    setViewRequestId(null)
+    setMessage(t.requestSentForInspection)
+    if (row.status !== 'draft') await load()
+  }
+
+  async function submitInspectorDecision(verdict: QcInspectorVerdict) {
+    if (!viewRequestId) return
+    setBusy(true)
+    setError(null)
+    const res = await fetch('/api/qc-engine/requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId,
+        requestId: viewRequestId,
+        inspectorDecision: verdict,
+        notes: inspectorSpeech,
+        classified: inspectorClassified,
+      }),
+    })
+    const json = (await res.json().catch(() => ({}))) as { error?: string }
+    setBusy(false)
+    if (!res.ok) {
+      setError(json.error || t.engineError)
+      return
+    }
+    setMessage(verdict === 'approved' ? t.requestApproved : t.requestRejected)
+    setViewRequestId(null)
+    await load()
+  }
+
+  function appendInspectorNote(text: string) {
+    const trimmed = text.trim()
+    if (!trimmed) return
+    setInspectorSpeech((current) => (current.trim() ? `${current.trim()}\n${trimmed}` : trimmed))
+  }
+
+  function drawingOfficeId(drawing: QcRequestDrawing) {
+    if (drawing.id.startsWith('office-')) return drawing.id.slice('office-'.length)
+    if (drawing.kind === 'office') return drawing.sourceDrawingId
+    return null
+  }
+
+  function openDrawingMarkup(drawing: QcRequestDrawing, officeId?: string | null) {
+    setError(null)
+    setMarkupOfficeId(officeId ?? drawingOfficeId(drawing))
+    setMarkupDrawing(drawing)
+  }
+
+  async function saveInspectorMarkup() {
+    if (!viewRequestId || !markupDrawing || !inspectorMarkupRef.current?.canExport()) return
+    setMarkupSaving(true)
+    setError(null)
+    try {
+      const file = await inspectorMarkupRef.current.exportPng()
+      const body = new FormData()
+      body.set('projectId', projectId)
+      body.set('requestId', viewRequestId)
+      body.set('inspectorMarkup', '1')
+      if (markupDrawing.sourceDrawingId) body.set('sourceDrawingId', markupDrawing.sourceDrawingId)
+      else if (markupOfficeId) body.set('sourceDrawingId', markupOfficeId)
+      body.append('file', file)
+      body.append('fileSourceId', markupDrawing.sourceDrawingId || markupOfficeId || '')
+      const res = await fetch('/api/qc-engine/requests', { method: 'POST', body })
+      const json = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        setError(json.error || t.engineError)
+        return
+      }
+      setMessage(t.inspectorMarkupSaved)
+      setMarkupDrawing(null)
+      setMarkupOfficeId(null)
+      await load()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : t.engineError)
+    } finally {
+      setMarkupSaving(false)
+    }
+  }
+
+  async function openDrawingViewer(drawing: QcRequestDrawing, officeId?: string | null) {
+    setError(null)
+    if (drawing.url) {
+      setPreviewDrawing(drawing)
+      return
+    }
+    if (officeId) {
+      const res = await fetch(`/api/technical-office/drawings/${encodeURIComponent(officeId)}`)
+      const json = (await res.json().catch(() => ({}))) as { url?: string; fileName?: string; error?: string }
+      if (!res.ok || !json.url) {
+        setError(json.error || t.engineError)
+        return
+      }
+      setPreviewDrawing({ ...drawing, url: json.url, fileName: json.fileName || drawing.fileName })
+      return
+    }
+    if (drawing.id.startsWith('local-')) {
+      setPreviewDrawing(drawing)
+      return
+    }
+    const res = await fetch(`/api/qc-engine/request-drawings/${encodeURIComponent(drawing.id)}`)
+    const json = (await res.json().catch(() => ({}))) as { url?: string; fileName?: string; error?: string }
+    if (!res.ok || !json.url) {
+      setError(json.error || t.engineError)
+      return
+    }
+    setPreviewDrawing({ ...drawing, url: json.url, fileName: json.fileName || drawing.fileName })
+  }
+
+  async function downloadDrawing(drawing: QcRequestDrawing, officeId?: string | null) {
+    if (officeId) {
+      await downloadOfficeDrawing(officeId)
+      return
+    }
+    if (drawing.url) {
+      const a = document.createElement('a')
+      a.href = drawing.url
+      a.download = drawing.fileName || 'drawing'
+      a.target = '_blank'
+      a.rel = 'noreferrer'
+      a.click()
+      return
+    }
+    if (!drawing.id.startsWith('local-')) await downloadRequestDrawing(drawing.id)
   }
 
   function toggleRequestSelection(id: string) {
@@ -767,36 +1274,37 @@ export function QcEnginePanels({
   const inspectItem = data.items.find((item) => item.id === inspectItemId) ?? null
   const inspectRequest = data.requests.find((row) => row.id === inspectRequestId) ?? null
   const viewedRequest = data.requests.find((row) => row.id === viewRequestId) ?? null
-  const viewedDrawings = viewedRequest?.drawings ?? []
+  const viewedDrawings = uniqueRequestDrawings(viewedRequest?.drawings ?? [])
+  const sourceAlreadyAttached = viewedDrawings.some(
+    (drawing) => drawing.sourceDrawingId && drawing.sourceDrawingId === viewedRequest?.sourceDrawingId
+  )
   const canEditViewed = viewedRequest ? canEditRequest(viewedRequest.status) : false
   const viewedSourceTitle =
     viewedRequest?.sourceDrawingTitle ||
     data.officeDrawings.find((drawing) => drawing.id === viewedRequest?.sourceDrawingId)?.title ||
     '—'
-  const viewedItemLabel = viewedRequest
-    ? viewedRequest.itemIds
-        .map((id) => {
-          const item = data.items.find((entry) => entry.id === id)
-          if (!item) return viewedRequest.itemCodes.find((code) => code) || null
-          return [item.code, item.floor, item.gridRef || [item.gridX, item.gridY].filter(Boolean).join('-')]
-            .filter(Boolean)
-            .join(' · ')
-        })
-        .filter(Boolean)
-        .join('، ') ||
-      viewedRequest.itemCodes.filter(Boolean).join('، ') ||
-      '—'
-    : '—'
   const viewedGridLabel =
     viewedRequest?.gridFrom && viewedRequest.gridTo
       ? `${viewedRequest.gridFrom} – ${viewedRequest.gridTo}`
       : viewedRequest?.gridFrom || viewedRequest?.gridTo || '—'
+  const canInspectViewed =
+    Boolean(isInspector && viewedRequest && waitingForInspector(viewedRequest.status) && !viewedRequest.inspectorVerdict)
 
   useEffect(() => {
     if (!viewedRequest || !isInspector) return
-    if (!canEditRequest(viewedRequest.status)) return
+    if (!waitingForInspector(viewedRequest.status)) return
     void markInspectorOpened(viewedRequest.id)
   }, [viewedRequest?.id, viewedRequest?.status, isInspector])
+
+  useEffect(() => {
+    if (!viewedRequest) {
+      setInspectorSpeech('')
+      setInspectorClassified('')
+      return
+    }
+    setInspectorSpeech(viewedRequest.inspectorNotes || '')
+    setInspectorClassified(viewedRequest.inspectorClassified || '')
+  }, [viewedRequest?.id])
 
   return (
     <>
@@ -811,8 +1319,96 @@ export function QcEnginePanels({
         </Alert>
       ) : null}
 
+      {isInspector ? (
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <InspectorKpiCard value={String(inspectorKpis.pending)} label={t.pendingShort} />
+            <InspectorKpiCard
+              value={String(inspectorKpis.openNcrs)}
+              label={t.openNcrs}
+              valueClassName="text-red-600"
+            />
+            <InspectorKpiCard
+              value={formatPassRate(inspectorKpis.passRate, locale)}
+              label={t.passRate}
+              valueClassName="text-teal-600"
+            />
+            <InspectorKpiCard
+              value={String(inspectorKpis.overdue)}
+              label={t.overdue}
+              valueClassName="text-orange-500"
+            />
+          </div>
+
+          <SectionCard title={t.inspectionWorklist}>
+            {inspectorRows.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-500">{t.noInspectorRequests}</p>
+            ) : (
+              <ul className="divide-y divide-slate-100 overflow-hidden rounded-[10px] border border-slate-200">
+                {inspectorRows.map((row) => (
+                  <li key={row.key}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-3 px-3 py-3 text-right hover:bg-slate-50"
+                      onClick={() => setViewRequestId(row.requestId)}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-slate-900">{row.title}</span>
+                        {row.floorLabel ? (
+                          <span className="mt-0.5 block text-[11px] text-slate-500">{row.floorLabel}</span>
+                        ) : null}
+                      </span>
+                      <Badge variant="outline" className={cn('rounded-full px-2.5 py-0.5', inspectorBadgeClass(row.badge))}>
+                        {inspectorBadgeLabel(row.badge, t)}
+                      </Badge>
+                      <ChevronLeft className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </SectionCard>
+
+          <SectionCard title={t.ncrManagement}>
+            {inspectorNcrs.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-500">{t.noEngineNcrs}</p>
+            ) : (
+              <div className="space-y-3">
+                {inspectorNcrs.map((ncr) => {
+                  const tone = severityBadge(ncr.severity)
+                  return (
+                    <div
+                      key={ncr.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-900">
+                          {ncr.ncrNumber} – {ncr.title}
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          {ncr.itemCode} - {engineNcrStatusLabel(ncr.status, t)}
+                        </p>
+                      </div>
+                      <Badge variant={tone.variant} className={cn('shrink-0 rounded-full', tone.className)}>
+                        {t[SEVERITY_LABEL[ncr.severity]]}
+                      </Badge>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </SectionCard>
+        </div>
+      ) : null}
+
+      {showRequestForm ? (
       <SectionCard title={t.inspectionRequest} description={t.inspectionRequestHint}>
-        <form onSubmit={(event) => void handleCreateRequest(event)} className="space-y-3 rounded-[10px] border border-slate-200 bg-slate-50/70 p-3">
+        <div className="space-y-3 rounded-[10px] border border-slate-200 bg-slate-50/70 p-3">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+          }}
+        >
           <div className="rounded-[10px] border border-slate-200 bg-white p-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
               <div className="min-w-0 flex-1 space-y-2">
@@ -830,11 +1426,11 @@ export function QcEnginePanels({
                   className="min-h-[160px] bg-white text-sm leading-6 text-slate-900 placeholder:text-slate-400"
                   value={typedSpeech}
                   onChange={(e) => setTypedSpeech(e.target.value)}
+                  onBlur={() => {
+                    if (typedSpeech.trim()) void applySpeech(typedSpeech)
+                  }}
                   placeholder={t.typeRequestPlaceholder}
                 />
-                <Button type="button" size="sm" disabled={speechBusy || !typedSpeech.trim()} onClick={() => void applySpeech(typedSpeech)}>
-                  {speechBusy ? t.saving : t.applyVoiceFields}
-                </Button>
               </div>
               <div className="min-w-0 flex-1 space-y-2">
                 <Label htmlFor="qc-ai-text">{t.aiClassifiedText}</Label>
@@ -849,92 +1445,33 @@ export function QcEnginePanels({
               </div>
             </div>
           </div>
-          {parsedSpeech?.items.length ? (
-            <div className="space-y-2 rounded-[10px] border border-slate-200 bg-white p-3">
-              <p className="text-sm font-medium text-slate-900">
-                {t.extractedItems} · {parsedSpeech.items.length}
-              </p>
-              <p className="text-[11px] text-slate-500">{t.extractedItemsHint}</p>
-              <ul className="grid gap-2 sm:grid-cols-2">
-                {parsedSpeech.items.map((item, index) => (
-                  <li key={`${item.floor ?? ''}-${item.topic ?? ''}-${index}`} className="rounded-[10px] border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-                    <span className="font-semibold text-slate-900">
-                      {index + 1}. {item.topic || (item.activityType ? qcActivityLabel(item.activityType, locale) : t.classifiedItem)}
-                    </span>
-                    <span className="mt-1 block text-[11px] text-slate-600">
-                      {[
-                        item.floor ? `${t.floor} ${item.floor}` : '',
-                        item.elementType,
-                        item.activityType ? qcActivityLabel(item.activityType, locale) : '',
-                        item.gridFrom && item.gridTo ? `${item.gridFrom} تا ${item.gridTo}` : [item.gridX, item.gridY].filter(Boolean).join('-'),
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label>{t.activityType}</Label>
-              <select
-                className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900"
-                value={activityType}
-                onChange={(e) => setActivityType(e.target.value as QcActivityType)}
-              >
-                {activitySelectOptions(locale)}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="qc-item-topic">{t.topic}</Label>
-              <Input id="qc-item-topic" className="bg-white" value={topic} onChange={(e) => setTopic(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="qc-item-element">{t.elementType}</Label>
-              <Input id="qc-item-element" className="bg-white" value={elementType} onChange={(e) => setElementType(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="qc-item-floor">{t.floor}</Label>
-              <Input id="qc-item-floor" className="bg-white" value={floor} onChange={(e) => setFloor(e.target.value)} list="qc-floors" />
-              <datalist id="qc-floors">
-                {floors.map((value) => (
-                  <option key={value} value={value} />
-                ))}
-              </datalist>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="qc-item-gx">{t.gridX}</Label>
-              <Input id="qc-item-gx" className="bg-white" value={gridX} onChange={(e) => setGridX(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="qc-item-gy">{t.gridY}</Label>
-              <Input id="qc-item-gy" className="bg-white" value={gridY} onChange={(e) => setGridY(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div className="flex flex-wrap items-end gap-3">
-              <Button type="button" size="sm">
-                {t.selectModeRange}
-              </Button>
-              <div className="space-y-1.5">
-                <Label>{t.rangeFrom}</Label>
-                <Input value={rangeFrom} onChange={(e) => setRangeFrom(e.target.value)} className="w-24 bg-white" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t.rangeTo}</Label>
-                <Input value={rangeTo} onChange={(e) => setRangeTo(e.target.value)} className="w-24 bg-white" />
-              </div>
+        </form>
+        <div className="flex w-full flex-wrap items-center">
+            <div className="flex flex-wrap items-center gap-2">
+              <Label className="mb-0">{t.inspectionUrgency}</Label>
+              {(['high', 'medium', 'low'] as const).map((level) => {
+                const selected = parseQcRequestPriority(inspectionUrgency) === level
+                return (
+                  <Button
+                    key={level}
+                    type="button"
+                    size="sm"
+                    variant={selected ? 'default' : 'outline'}
+                    className={selected ? '' : 'bg-white text-slate-800'}
+                    onClick={() => setInspectionUrgency(level)}
+                  >
+                    {level === 'high' ? t.urgencyHigh : level === 'medium' ? t.urgencyMedium : t.urgencyLow}
+                  </Button>
+                )
+              })}
             </div>
             <Link
-              href="/dashboard/qc/drawings"
+              href={drawingsHref}
               onClick={() => {
                 const draft = snapshotDraft()
                 if (draft) writeQcRequestDraft(draft)
               }}
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+              className="ms-[2cm] inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
             >
               <FileText className="h-4 w-4" />
               {t.selectDrawing}
@@ -944,133 +1481,42 @@ export function QcEnginePanels({
                 </span>
               ) : null}
             </Link>
-          </div>
-
-          <div className="space-y-2 rounded-[10px] border border-slate-200 bg-slate-100 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium text-slate-900">
-                {t.markedDrawingsOnForm}
-                {markedDrawings.length ? ` · ${markedDrawings.length}` : ''}
-              </p>
-              {markedDrawings.length ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="bg-white text-slate-800"
-                  onClick={() => void downloadAllMarked()}
-                >
-                  <Download className="ml-1 h-4 w-4" />
-                  {t.downloadAllMarked}
-                </Button>
-              ) : null}
-            </div>
-            {markedDrawings.length ? (
-              <div className="flex flex-wrap gap-3">
-                {markedDrawings.map((row) => {
-                  const isImage =
-                    /^image\//.test(row.file.type) || /\.(png|jpe?g|webp|gif)$/i.test(row.file.name)
-                  return (
-                    <div key={row.id} className="w-28 space-y-1">
-                      <button
-                        type="button"
-                        className="block rounded-[8px] text-right hover:ring-2 hover:ring-primary/40"
-                        onClick={() => setPreviewMarkedId(row.id)}
-                      >
-                        {isImage ? (
-                          <QcMarkedThumb src={row.url} title={row.title} />
-                        ) : (
-                          <div className="flex h-24 w-28 items-center justify-center rounded-[8px] border border-slate-200 bg-white">
-                            <FileText className="h-5 w-5 text-slate-500" />
-                          </div>
-                        )}
-                      </button>
-                      <p className="truncate text-[10px] text-slate-600" title={row.title}>
-                        {row.title}
-                      </p>
-                      <div className="flex flex-col items-start gap-0.5">
-                        <button
-                          type="button"
-                          className="text-[10px] font-medium text-sky-800 hover:underline"
-                          onClick={() => downloadOneMarked(row)}
-                        >
-                          {t.downloadDrawing}
-                        </button>
-                        <button
-                          type="button"
-                          className="text-[10px] font-medium text-sky-800 hover:underline"
-                          onClick={() => void downloadAllMarked()}
-                        >
-                          {t.downloadAllMarked}
-                        </button>
-                        <button
-                          type="button"
-                          className="text-[10px] font-medium text-red-700 hover:underline"
-                          onClick={() => void removeMarkedDrawing(row.id)}
-                        >
-                          {t.removeMarked}
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-600">{t.noMarkedDrawingsOnForm}</p>
-            )}
-            <p className="text-[11px] text-slate-600">{t.markedDrawingsFormHint}</p>
-          </div>
-
-          <div>
-            <p className="mb-2 text-sm font-medium">{t.selectedItems}</p>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {floorItems.map((item) => (
-                <label key={item.id} className="flex items-start gap-2 rounded-[10px] border border-slate-200 bg-white px-3 py-2 text-sm">
-                  <input type="checkbox" className="mt-1" checked={selectedIds.includes(item.id)} onChange={() => toggleItem(item.id)} />
-                  <span>
-                    <span className="font-semibold">{item.code}</span>
-                    <span className="block text-[11px] text-slate-500">
-                      {[item.floor, item.gridRef || [item.gridX, item.gridY].filter(Boolean).join('-')].filter(Boolean).join(' · ') || item.disciplineKey}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-          <Button type="submit" disabled={busy || (selectedIds.length === 0 && markedDrawings.length === 0 && !code.trim())}>
+            <span className={cn('ms-auto', (Date.now() < createBlockedUntil || isQcRequestCreateBlocked()) && 'pointer-events-none')}>
+          <Button
+            type="button"
+            disabled={
+              busy ||
+              (selectedIds.length === 0 &&
+                markedDrawings.length === 0 &&
+                !code.trim() &&
+                !typedSpeech.trim() &&
+                !voiceText.trim() &&
+                !(parsedSpeech?.items.length))
+            }
+            onPointerDown={(event) => {
+              submitPointerRef.current = event.isPrimary !== false
+            }}
+            onPointerCancel={() => {
+              submitPointerRef.current = false
+            }}
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              if (!event.isTrusted) return
+              const fromKeyboard = event.detail === 0
+              if (!submitPointerRef.current && !fromKeyboard) return
+              if (Date.now() < suppressCreateUntilRef.current || isQcRequestCreateBlocked() || Date.now() < createBlockedUntil) {
+                return
+              }
+              submitPointerRef.current = false
+              void handleCreateRequest()
+            }}
+          >
             {t.submitRequest}
           </Button>
-        </form>
-
-        <ModalOverlay
-          open={Boolean(previewMarked)}
-          onClose={() => setPreviewMarkedId(null)}
-          title={previewMarked?.title || t.markedDrawingsOnForm}
-          className="bg-white sm:max-w-5xl"
-        >
-          {previewMarked ? (
-            <div className="space-y-3">
-              <div className="overflow-auto rounded-[10px] border border-slate-200 bg-slate-50">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={previewMarked.url}
-                  alt={previewMarked.title}
-                  className="mx-auto max-h-[75vh] w-full object-contain"
-                />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" className="bg-white text-slate-800" onClick={() => downloadOneMarked(previewMarked)}>
-                  <Download className="ml-1 h-4 w-4" />
-                  {t.downloadDrawing}
-                </Button>
-                <Button type="button" variant="outline" className="bg-white text-slate-800" onClick={() => void downloadAllMarked()}>
-                  <Download className="ml-1 h-4 w-4" />
-                  {t.downloadAllMarked}
-                </Button>
-              </div>
-            </div>
-          ) : null}
-        </ModalOverlay>
+            </span>
+        </div>
+        </div>
 
         <div className="mt-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1104,7 +1550,10 @@ export function QcEnginePanels({
             <EmptyState title={t.inspectionRequest} description={t.noRequests} />
           ) : (
             <ul className="divide-y divide-slate-100 rounded-[10px] border border-slate-200">
-              {data.requests.map((row) => (
+              {data.requests.map((row) => {
+                const visibleCodes = (row.itemCodes ?? []).filter((code) => code && !isLegacySampleItemCode(code))
+                const attachedCount = uniqueRequestDrawings(row.drawings ?? []).length
+                return (
                 <li key={row.id} className="flex items-center gap-2 px-3 py-2">
                   <input
                     type="checkbox"
@@ -1125,16 +1574,23 @@ export function QcEnginePanels({
                       <span className="block truncate text-sm font-semibold text-slate-900">
                         {qcActivityLabel(row.activityType, locale)}
                         {row.floor ? ` · ${t.floor} ${row.floor}` : ''}
+                        {` (${requestPriorityLabel(row.priority, t)})`}
                       </span>
                       <span className="block text-[11px] text-slate-500">
+                        {t.createdOn}{' '}
                         <FormattedDate value={row.requestedAt} />
-                        {row.drawings?.length ? ` · ${row.drawings.length} ${t.attachedDrawings}` : ''}
-                        {row.itemCodes?.length ? ` · ${row.itemCodes.join('، ')}` : ''}
+                        {attachedCount ? ` · ${attachedCount} ${t.attachedDrawings}` : ''}
+                        {visibleCodes.length ? ` · ${visibleCodes.join('، ')}` : ''}
                       </span>
                     </span>
-                    <Badge variant="outline" className={requestBadgeClass(row.status)}>
-                      {t[REQUEST_LABEL[row.status]]}
+                    <Badge variant="outline" className={requestSendBadgeClass(row.status)}>
+                      {requestSendStatusLabel(row, t)}
                     </Badge>
+                    {row.inspectorVerdict ? (
+                      <Badge variant="outline" className={inspectorAnswerBadgeClass(row.inspectorVerdict)}>
+                        {inspectorAnswerLabel(row.inspectorVerdict, t)}
+                      </Badge>
+                    ) : null}
                     <span className="text-xs font-medium text-slate-600">{t.viewRequest}</span>
                   </button>
                   <Button
@@ -1149,12 +1605,16 @@ export function QcEnginePanels({
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </li>
-              ))}
+                )
+              })}
             </ul>
           )}
         </div>
       </SectionCard>
+      ) : null}
 
+      {showResults ? (
+        <>
       <SectionCard title={t.engineChecklist} description={t.engineChecklistHint}>
         {inspectRequest && checklist.length > 0 ? (
           <div className="space-y-3">
@@ -1201,6 +1661,7 @@ export function QcEnginePanels({
         )}
       </SectionCard>
 
+      {!isInspector ? (
       <SectionCard title={t.engineNcr}>
         {data.ncrs.length === 0 ? (
           <EmptyState title={t.engineNcr} description={t.noEngineNcrs} />
@@ -1215,7 +1676,7 @@ export function QcEnginePanels({
                       {ncr.ncrNumber} — {ncr.title}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {ncr.itemCode} · {ncr.status === 'open' ? t.ncrOpenStatus : ncr.status === 'closed' ? t.ncrClosedStatus : ncr.status === 'waived' ? t.ncrWaived : ncr.status === 'pending_verify' ? t.ncrPendingVerify : t.ncrInProgressStatus} ·{' '}
+                      {ncr.itemCode} · {engineNcrStatusLabel(ncr.status, t)} ·{' '}
                       <FormattedDate value={ncr.createdAt} />
                     </p>
                   </div>
@@ -1228,6 +1689,9 @@ export function QcEnginePanels({
           </div>
         )}
       </SectionCard>
+      ) : null}
+        </>
+      ) : null}
 
       {viewedRequest ? (
         <ModalOverlay
@@ -1236,9 +1700,12 @@ export function QcEnginePanels({
             setViewRequestId(null)
             setEditingRequest(false)
             setDetailFiles([])
+            setPreviewDrawing(null)
+            setMarkupDrawing(null)
+            setMarkupOfficeId(null)
           }}
           title={t.requestDetails}
-          className="sm:max-w-2xl bg-slate-100 text-slate-900"
+          className="sm:max-w-4xl bg-slate-100 text-slate-900"
         >
           <div className="space-y-4">
             {editingRequest && canEditViewed ? (
@@ -1280,35 +1747,31 @@ export function QcEnginePanels({
                   </select>
                 </div>
                 <div className="space-y-1.5 sm:col-span-2">
-                  <Label>{t.selectedItems}</Label>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {data.items.map((item) => (
-                      <label key={item.id} className="flex items-start gap-2 rounded-[10px] border border-slate-200 bg-white px-3 py-2 text-sm">
-                        <input
-                          type="checkbox"
-                          className="mt-1"
-                          checked={editItemIds.includes(item.id)}
-                          onChange={() =>
-                            setEditItemIds((current) =>
-                              current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id]
-                            )
-                          }
-                        />
-                        <span>
-                          <span className="font-semibold">{item.code}</span>
-                          <span className="block text-[11px] text-slate-500">
-                            {[item.floor, item.gridRef || [item.gridX, item.gridY].filter(Boolean).join('-')].filter(Boolean).join(' · ') || item.disciplineKey}
-                          </span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
+                  <Label htmlFor="qc-edit-notes">{t.requestNotes}</Label>
+                  <Textarea
+                    id="qc-edit-notes"
+                    rows={6}
+                    dir="rtl"
+                    className="bg-white text-sm leading-6 text-slate-900"
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(e.target.value)}
+                  />
                 </div>
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
                 <DetailField label={t.activityType} value={qcActivityLabel(viewedRequest.activityType, locale)} />
-                <DetailField label={t.status} value={t[REQUEST_LABEL[viewedRequest.status]]} />
+                <DetailField label={t.status} value={requestStatusLabel(viewedRequest, t)} />
+                <DetailField
+                  label={t.inspectionUrgency}
+                  value={
+                    viewedRequest.priority === 'high'
+                      ? t.urgencyHigh
+                      : viewedRequest.priority === 'low'
+                        ? t.urgencyLow
+                        : t.urgencyMedium
+                  }
+                />
                 <DetailField label={t.floor} value={viewedRequest.floor || '—'} />
                 <DetailField label={t.gridRange} value={viewedGridLabel} />
                 <DetailField label={t.requestedBy} value={viewedRequest.requestedByName || '—'} />
@@ -1318,21 +1781,22 @@ export function QcEnginePanels({
                     <FormattedDate value={viewedRequest.requestedAt} />
                   </p>
                 </div>
+                {viewedRequest.sourceDrawingId && !sourceAlreadyAttached ? (
                 <div className="space-y-1">
                   <p className="text-[11px] text-slate-500">{t.sourceDrawing}</p>
                   <p className="text-sm font-medium text-slate-900">{viewedSourceTitle}</p>
-                  {viewedRequest.sourceDrawingId ? (
-                    <Button type="button" size="sm" variant="outline" className="mt-1 bg-white text-slate-800" onClick={() => void downloadOfficeDrawing(viewedRequest.sourceDrawingId!)}>
-                      <Download className="h-4 w-4" />
-                      {t.downloadDrawing}
-                    </Button>
-                  ) : null}
+                  <Button type="button" size="sm" variant="outline" className="mt-1 bg-white text-slate-800" onClick={() => void downloadOfficeDrawing(viewedRequest.sourceDrawingId!)}>
+                    <Download className="h-4 w-4" />
+                    {t.downloadDrawing}
+                  </Button>
                 </div>
-                <DetailField label={t.selectedItems} value={viewedItemLabel} />
+                ) : null}
+                <div className="sm:col-span-2">
+                  <DetailField label={t.requestNotes} value={viewedRequest.notes || '—'} />
+                </div>
               </div>
             )}
-            {!canEditViewed ? <p className="text-[11px] text-slate-500">{t.requestLockedAfterInspector}</p> : null}
-            {viewedRequest.notes ? <DetailField label={t.requestNotes} value={viewedRequest.notes} /> : null}
+            {!canEditViewed && !isInspector ? <p className="text-[11px] text-slate-500">{t.requestLockedAfterInspector}</p> : null}
 
             <div className="space-y-2">
               <p className="text-sm font-medium text-slate-900">{t.attachedDrawings}</p>
@@ -1346,20 +1810,28 @@ export function QcEnginePanels({
                       : drawing.kind === 'office'
                         ? drawing.sourceDrawingId
                         : null
-                    const previewable =
-                      Boolean(drawing.url) &&
-                      (/^image\//.test(drawing.contentType || '') ||
-                        /\.(png|jpe?g|webp|gif)$/i.test(drawing.fileName))
+                    const kind = drawingKind(drawing)
+                    const previewable = Boolean(drawing.url) && kind === 'image'
                     return (
                       <li key={drawing.id} className="rounded-[10px] border border-slate-200 bg-white p-3">
                         <p className="mb-2 truncate text-sm font-semibold text-slate-900">{drawing.fileName}</p>
                         {previewable ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={drawing.url ?? ''}
-                            alt={drawing.fileName}
-                            className="mb-3 max-h-80 w-full rounded-[8px] border border-slate-100 object-contain bg-slate-50"
-                          />
+                          <button
+                            type="button"
+                            className="mb-3 block w-full overflow-hidden rounded-[8px] border border-slate-100 bg-slate-50"
+                            onClick={() =>
+                              canInspectViewed
+                                ? openDrawingMarkup(drawing, officeId)
+                                : void openDrawingViewer(drawing, officeId)
+                            }
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={drawing.url ?? ''}
+                              alt={drawing.fileName}
+                              className="max-h-80 w-full object-contain"
+                            />
+                          </button>
                         ) : null}
                         <div className="flex flex-wrap gap-2">
                           <Button
@@ -1367,30 +1839,54 @@ export function QcEnginePanels({
                             size="sm"
                             variant="outline"
                             className="bg-white text-slate-800"
-                            onClick={() => {
-                              if (drawing.url) {
-                                window.open(drawing.url, '_blank', 'noopener,noreferrer')
-                                return
-                              }
-                              if (officeId) {
-                                void downloadOfficeDrawing(officeId)
-                                return
-                              }
-                              if (!drawing.id.startsWith('local-')) void downloadRequestDrawing(drawing.id)
-                            }}
+                            onClick={() => void openDrawingViewer(drawing, officeId)}
+                          >
+                            <Maximize2 className="h-4 w-4" />
+                            {t.viewDrawingFullscreen}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="bg-white text-slate-800"
+                            onClick={() => void downloadDrawing(drawing, officeId)}
                           >
                             <Download className="h-4 w-4" />
-                            {previewable ? t.openFile : t.downloadFile}
+                            {t.downloadDrawing}
                           </Button>
+                          {canEditViewed && !isInspector && !drawing.id.startsWith('local-') && !drawing.id.startsWith('office-') ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="bg-white text-red-700"
+                              disabled={busy}
+                              onClick={() => void removeViewedDrawing(drawing)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              {t.removeAttachedDrawing}
+                            </Button>
+                          ) : null}
+                          {canInspectViewed && kind !== 'other' ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => openDrawingMarkup(drawing, officeId)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                              {t.editOnDrawing}
+                            </Button>
+                          ) : null}
                         </div>
                       </li>
                     )
                   })}
                 </ul>
               )}
-              {canEditViewed ? (
+              {canEditViewed && !isInspector ? (
                 <div className="space-y-2 rounded-[10px] border border-slate-200 bg-white p-3">
                   <Label className="text-slate-800">{t.markedDrawing}</Label>
+                  <p className="text-[11px] text-slate-500">{t.addMarkedDrawingHint}</p>
                   <Input
                     type="file"
                     accept=".pdf,.png,.jpg,.jpeg,.webp,.dwg,application/pdf,image/*"
@@ -1405,8 +1901,83 @@ export function QcEnginePanels({
               ) : null}
             </div>
 
+            {isInspector ? (
+              <div className="space-y-3 rounded-[10px] border border-slate-200 bg-white p-3">
+                <p className="text-sm font-medium text-slate-900">{t.inspectorNotes}</p>
+                <p className="text-[11px] text-slate-500">{t.inspectorVoiceHint}</p>
+                {canInspectViewed ? (
+                  <>
+                    <VoiceToTextButton
+                      mode="append"
+                      variant="default"
+                      prompt={inspectorWhisperPrompt()}
+                      disabled={busy}
+                      onTranscript={appendInspectorNote}
+                    />
+                    <Textarea
+                      rows={6}
+                      dir="rtl"
+                      className="bg-white text-sm leading-6 text-slate-900"
+                      value={inspectorSpeech}
+                      onChange={(e) => setInspectorSpeech(e.target.value)}
+                      placeholder={t.inspectorTypePlaceholder}
+                    />
+                    <div className="space-y-1.5">
+                      <Label>{t.inspectorClassified}</Label>
+                      <p className="text-[11px] text-slate-500">{t.inspectorClassifiedHint}</p>
+                      <Textarea
+                        rows={5}
+                        dir="rtl"
+                        className="bg-white text-sm leading-6 text-slate-900"
+                        value={inspectorClassified}
+                        onChange={(e) => setInspectorClassified(e.target.value)}
+                        placeholder={t.inspectorTypePlaceholder}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <DetailField label={t.inspectorNotes} value={viewedRequest.inspectorNotes || inspectorSpeech || '—'} />
+                    <DetailField label={t.inspectorClassified} value={viewedRequest.inspectorClassified || inspectorClassified || '—'} />
+                  </>
+                )}
+              </div>
+            ) : viewedRequest.inspectorNotes || viewedRequest.inspectorClassified || viewedRequest.inspectorVerdict ? (
+              <div className="space-y-2 rounded-[10px] border border-slate-200 bg-white p-3">
+                <DetailField label={t.status} value={requestStatusLabel(viewedRequest, t)} />
+                {viewedRequest.inspectorClassified ? (
+                  <DetailField label={t.inspectorClassified} value={viewedRequest.inspectorClassified} />
+                ) : null}
+                {viewedRequest.inspectorNotes ? <DetailField label={t.inspectorNotes} value={viewedRequest.inspectorNotes} /> : null}
+              </div>
+            ) : null}
+
             <div className="flex flex-nowrap items-center justify-end gap-2 overflow-x-auto">
-              {editingRequest && canEditViewed ? (
+              {canInspectViewed ? (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => void submitInspectorDecision('approved')}
+                  >
+                    <Check className="h-4 w-4" />
+                    {busy ? t.saving : t.approveRequest}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="bg-white text-red-700"
+                    disabled={busy}
+                    onClick={() => void submitInspectorDecision('rejected')}
+                  >
+                    <XCircle className="h-4 w-4" />
+                    {t.rejectRequest}
+                  </Button>
+                </>
+              ) : null}
+              {editingRequest && canEditViewed && !isInspector ? (
                 <>
                   <Button type="button" size="sm" variant="ghost" onClick={() => setEditingRequest(false)}>
                     {t.close}
@@ -1415,7 +1986,7 @@ export function QcEnginePanels({
                     {busy ? t.saving : t.saveRequestEdits}
                   </Button>
                 </>
-              ) : (
+              ) : !isInspector ? (
                 <Button
                   type="button"
                   size="sm"
@@ -1428,8 +1999,8 @@ export function QcEnginePanels({
                 >
                   {t.editText}
                 </Button>
-              )}
-              {viewedRequest.status !== 'cancelled' && viewedRequest.status !== 'completed' && canEditViewed ? (
+              ) : null}
+              {viewedRequest.status !== 'cancelled' && viewedRequest.status !== 'completed' && canEditViewed && !isInspector ? (
                 <Button
                   type="button"
                   size="sm"
@@ -1440,23 +2011,25 @@ export function QcEnginePanels({
                   {t.cancelRequest}
                 </Button>
               ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="shrink-0 bg-white text-red-700"
-                disabled={busy}
-                onClick={() => setPendingDeleteIds([viewedRequest.id])}
-              >
-                <Trash2 className="h-4 w-4" />
-                {t.deleteRequest}
-              </Button>
-              {viewedRequest.status === 'draft' || viewedRequest.status === 'submitted' ? (
+              {!isInspector ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 bg-white text-red-700"
+                  disabled={busy}
+                  onClick={() => setPendingDeleteIds([viewedRequest.id])}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {t.deleteRequest}
+                </Button>
+              ) : null}
+              {(viewedRequest.status === 'draft' || viewedRequest.status === 'submitted') && !isInspector ? (
                 <Button
                   type="button"
                   size="sm"
                   disabled={busy}
-                  onClick={() => void patchStatus(viewedRequest.id, 'submitted')}
+                  onClick={() => void sendForInspection(viewedRequest.id)}
                 >
                   {t.sendRequest}
                 </Button>
@@ -1465,6 +2038,122 @@ export function QcEnginePanels({
                 {t.close}
               </Button>
             </div>
+          </div>
+        </ModalOverlay>
+      ) : null}
+
+      {previewDrawing ? (
+        <ModalOverlay
+          open
+          onClose={() => setPreviewDrawing(null)}
+          title={previewDrawing.fileName}
+          className="sm:max-w-6xl bg-white text-slate-900"
+          overlayClassName="z-[70]"
+        >
+          <div className="space-y-3">
+            {drawingKind(previewDrawing) === 'image' && previewDrawing.url ? (
+              <div className="overflow-auto rounded-[10px] border border-slate-200 bg-slate-50">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={previewDrawing.url}
+                  alt={previewDrawing.fileName}
+                  className="mx-auto max-h-[80vh] w-full object-contain"
+                />
+              </div>
+            ) : drawingKind(previewDrawing) === 'pdf' && previewDrawing.url ? (
+              <iframe
+                title={previewDrawing.fileName}
+                src={previewDrawing.url}
+                className="h-[80vh] w-full rounded-[10px] border border-slate-200 bg-white"
+              />
+            ) : (
+              <p className="text-sm text-slate-600">{t.drawingNeedsDownload}</p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="bg-white text-slate-800"
+                onClick={() => void downloadDrawing(previewDrawing)}
+              >
+                <Download className="h-4 w-4" />
+                {t.downloadDrawing}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setPreviewDrawing(null)}>
+                {t.close}
+              </Button>
+            </div>
+          </div>
+        </ModalOverlay>
+      ) : null}
+
+      {markupDrawing ? (
+        <ModalOverlay
+          open
+          onClose={() => {
+            setMarkupDrawing(null)
+            setMarkupOfficeId(null)
+          }}
+          title={markupDrawing.fileName}
+          className="sm:max-w-6xl bg-white text-slate-900"
+          overlayClassName="z-[80]"
+        >
+          <div className="space-y-3">
+            <p className="text-[11px] text-slate-600">{t.inspectorMarkupHint}</p>
+            {drawingKind(markupDrawing) === 'other' ? (
+              <p className="text-sm text-slate-600">{t.drawingNeedsDownload}</p>
+            ) : (
+              <QcDrawingMarkup
+                key={markupDrawing.id}
+                ref={inspectorMarkupRef}
+                drawingId={markupOfficeId || markupDrawing.sourceDrawingId || markupDrawing.id}
+                drawingTitle={markupDrawing.fileName}
+                fileUrl={requestDrawingFileUrl(markupDrawing, markupOfficeId)}
+                penColor={isInspector ? QC_INSPECTOR_PEN_COLOR : QC_SUPERVISOR_PEN_COLOR}
+                labels={{
+                  pen: t.markupPen,
+                  eraser: t.markupEraser,
+                  text: t.markupText,
+                  textPlaceholder: t.markupTextPlaceholder,
+                  undo: t.markupUndo,
+                  clear: t.markupClear,
+                  page: t.markupPage,
+                  unsupported: t.dwgCannotPreview,
+                  saving: t.saving,
+                }}
+                onError={setError}
+              />
+            )}
+            <div className="flex flex-wrap gap-2">
+              {canInspectViewed && drawingKind(markupDrawing) !== 'other' ? (
+                <Button type="button" disabled={markupSaving || busy} onClick={() => void saveInspectorMarkup()}>
+                  <Pencil className="h-4 w-4" />
+                  {markupSaving ? t.saving : t.saveInspectorMarkup}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                className="bg-white text-slate-800"
+                onClick={() => void downloadDrawing(markupDrawing, markupOfficeId)}
+              >
+                <Download className="h-4 w-4" />
+                {t.downloadDrawing}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setMarkupDrawing(null)
+                  setMarkupOfficeId(null)
+                }}
+              >
+                {t.close}
+              </Button>
+            </div>
+            {error ? (
+              <p className="rounded-[10px] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>
+            ) : null}
           </div>
         </ModalOverlay>
       ) : null}

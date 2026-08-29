@@ -4,7 +4,11 @@ import { loadRolePageData } from '@/lib/dashboard/load-role-page'
 import { hasRoleDashboardAccess } from '@/lib/schedule/access'
 import { QcOfficeDrawingsPage } from '@/components/qc/qc-office-drawings-page'
 
-export default async function QcOfficeDrawingsRoute() {
+export default async function QcOfficeDrawingsRoute({
+  searchParams,
+}: {
+  searchParams?: { returnTo?: string }
+}) {
   const supabase = createClient()
   const {
     data: { user },
@@ -17,5 +21,5 @@ export default async function QcOfficeDrawingsRoute() {
   if (context.isFirstLogin) redirect('/first-login')
   if (!hasRoleDashboardAccess(context, 'qc')) redirect('/dashboard')
 
-  return <QcOfficeDrawingsPage projectId={activeProjectId} />
+  return <QcOfficeDrawingsPage projectId={activeProjectId} returnTo={searchParams?.returnTo} />
 }

@@ -83,7 +83,7 @@ export function NotificationRouteEditor({
                 id="route-event"
                 value={eventTypeId}
                 onChange={(e) => setEventTypeId(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="msa-field flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm"
               >
                 {eventTypes.map((eventType) => (
                   <option key={eventType.id} value={eventType.id}>{eventType.title}</option>
@@ -96,7 +96,7 @@ export function NotificationRouteEditor({
                 id="route-position"
                 value={positionId}
                 onChange={(e) => setPositionId(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="msa-field flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm"
               >
                 {positions.map((position) => (
                   <option key={position.id} value={position.id}>{position.title}</option>

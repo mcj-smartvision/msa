@@ -66,7 +66,7 @@ export function AccountChangeRequestForm() {
           id="account-request-field"
           value={fieldKey}
           onChange={(e) => setFieldKey(e.target.value as (typeof FIELDS)[number])}
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          className="msa-field flex h-10 w-full rounded-md border border-input px-3 text-sm"
         >
           {FIELDS.map((key) => (
             <option key={key} value={key}>

@@ -14,6 +14,11 @@ export function writeProjectCookie(projectId: string) {
   document.cookie = `${PROJECT_COOKIE}=${encodeURIComponent(projectId)};path=/;max-age=${maxAge};SameSite=Lax`
 }
 
+export function clearProjectCookie() {
+  if (typeof document === 'undefined') return
+  document.cookie = `${PROJECT_COOKIE}=;path=/;max-age=0;SameSite=Lax`
+}
+
 export function isAllProjectsScope(value: string | null | undefined): boolean {
   return !value || value === ALL_PROJECTS_SCOPE
 }

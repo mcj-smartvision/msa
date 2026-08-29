@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { X } from 'lucide-react'
 import { ProjectForm } from '@/components/admin/project-form'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,11 @@ export function ProjectCreationDrawer({
 }) {
   const titleId = useId()
   const descId = useId()
+  const [formKey, setFormKey] = useState(() => crypto.randomUUID())
+
+  useEffect(() => {
+    if (open) setFormKey(crypto.randomUUID())
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -65,6 +70,7 @@ export function ProjectCreationDrawer({
 
         <div className="flex-1 overflow-y-auto px-4 py-4">
           <ProjectForm
+            key={formKey}
             submitLabel="ایجاد پروژه"
             variant="plain"
             onSubmit={async (values) => {

@@ -85,8 +85,11 @@ export function QcDashboard({
   const t = getQcMessages(locale)
   const aiLabels = qcAiLabels(t)
   const isRtl = dir === 'rtl'
+  const isInspector =
+    initialContext.isSystemAdmin || initialContext.positionKeys.includes('qa_qc_inspector')
 
   const [projectId, setProjectId] = useState<string | null>(initialProjectId)
+  const projectName = projectOptions.find((p) => p.id === projectId)?.name ?? ''
   const [inspections, setInspections] = useState<QualityInspection[]>([])
   const [ncrs, setNcrs] = useState<NcrRecord[]>([])
   const [labTests, setLabTests] = useState<LabTestRecord[]>([])
@@ -106,7 +109,7 @@ export function QcDashboard({
   const [inspectComments, setInspectComments] = useState('')
 
   const loadData = useCallback(async () => {
-    if (!projectId) {
+    if (!projectId || isInspector) {
       setInspections([])
       setNcrs([])
       setLabTests([])
@@ -127,7 +130,7 @@ export function QcDashboard({
     } finally {
       setLoading(false)
     }
-  }, [projectId, supabase, t.loadError])
+  }, [projectId, isInspector, supabase, t.loadError])
 
   useEffect(() => {
     void loadData()
@@ -228,7 +231,11 @@ export function QcDashboard({
 
       <PageHeader
         title={t.title}
-        description={t.description}
+        description={
+          isInspector
+            ? t.inspectorSubtitle.replace('{project}', projectName || '—')
+            : t.description
+        }
         actions={
           projectOptions.length > 1 ? (
             <Select value={projectId ?? ''} onValueChange={handleProjectChange}>
@@ -248,9 +255,19 @@ export function QcDashboard({
       />
 
       {error ? <ErrorBlock message={error} onRetry={() => void loadData()} /> : null}
-      {loading ? <LoadingBlock /> : null}
+      {loading && !isInspector ? <LoadingBlock /> : null}
 
-      {!loading && kpis ? (
+      {projectId && (isInspector || !loading) ? (
+        <QcEnginePanels
+          projectId={projectId}
+          t={t}
+          isInspector={isInspector}
+          showRequestForm={false}
+          showResults={false}
+        />
+      ) : null}
+
+      {!isInspector && !loading && kpis ? (
         <>
           <UiBlockGuard code="QC-KPI-01">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -427,14 +444,6 @@ export function QcDashboard({
           </SectionCard>
           </UiBlockGuard>
         </>
-      ) : null}
-
-      {!loading && projectId ? (
-        <QcEnginePanels
-          projectId={projectId}
-          t={t}
-          isInspector={initialContext.positionKeys.includes('qa_qc_inspector')}
-        />
       ) : null}
 
       {inspectTarget ? (

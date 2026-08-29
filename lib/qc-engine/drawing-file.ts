@@ -23,13 +23,16 @@ export function drawingFileUrl(drawingId: string) {
   return `/api/technical-office/drawings/${encodeURIComponent(drawingId)}/file`
 }
 
-export async function fetchDrawingBytes(drawingId: string): Promise<{
+export async function fetchDrawingBytesFromUrl(
+  url: string,
+  fallbackName = 'drawing'
+): Promise<{
   bytes: Uint8Array
   fileName: string
   contentType: string
 }> {
-  const res = await fetch(drawingFileUrl(drawingId))
-  const fileName = decodeURIComponent(res.headers.get('X-File-Name') || 'drawing')
+  const res = await fetch(url)
+  const fileName = decodeURIComponent(res.headers.get('X-File-Name') || fallbackName)
   const contentType = res.headers.get('Content-Type') || 'application/octet-stream'
   if (!res.ok) {
     const json = (await res.json().catch(() => ({}))) as { error?: string }
@@ -37,4 +40,12 @@ export async function fetchDrawingBytes(drawingId: string): Promise<{
   }
   const buffer = await res.arrayBuffer()
   return { bytes: new Uint8Array(buffer), fileName, contentType }
+}
+
+export async function fetchDrawingBytes(drawingId: string): Promise<{
+  bytes: Uint8Array
+  fileName: string
+  contentType: string
+}> {
+  return fetchDrawingBytesFromUrl(drawingFileUrl(drawingId))
 }

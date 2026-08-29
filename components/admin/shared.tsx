@@ -8,7 +8,7 @@ interface PageHeaderProps {
   actions?: ReactNode
 }
 
-export function PageHeader({ title, description: _description, actions }: PageHeaderProps) {
+export function PageHeader({ title, description, actions }: PageHeaderProps) {
   return (
     <section className="relative h-[148px] overflow-hidden rounded-[12px] bg-[#1a2330]">
       <img
@@ -21,6 +21,9 @@ export function PageHeader({ title, description: _description, actions }: PageHe
           <h1 className="whitespace-nowrap text-[1.85rem] sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-sm">
             {title}
           </h1>
+          {description ? (
+            <p className="mt-1 text-sm font-medium text-white/80">{description}</p>
+          ) : null}
           {actions ? (
             <div className="mt-2.5 flex flex-wrap items-center gap-2">{actions}</div>
           ) : null}

@@ -15,7 +15,7 @@ import type {
   UpdateMemberInput,
   WidgetVisibilityInput,
 } from '@/types/admin'
-import { DEFAULT_SITE_POSITIONS } from '@/lib/admin/defaults'
+import { slugifyKey } from '@/lib/admin/access'
 
 export async function fetchAdminStats(supabase: SupabaseClient): Promise<AdminStats> {
   const [projects, members, positions, routes, activeMembers, pendingLogin] = await Promise.all([
@@ -74,30 +74,77 @@ export async function fetchAdminProjects(supabase: SupabaseClient): Promise<Admi
   return (data ?? []) as AdminProject[]
 }
 
+function buildUniqueProjectCode(name: string, explicit?: string) {
+  const trimmed = explicit?.trim()
+  if (trimmed) return trimmed
+  const base = slugifyKey(name) || 'project'
+  return `${base}_${Date.now().toString(36).slice(-6)}`
+}
+
 export async function createProject(
   supabase: SupabaseClient,
   input: CreateProjectInput
 ): Promise<AdminProject> {
-  const { data, error } = await supabase
-    .from('projects')
-    .insert({
-      name: input.name,
-      code: input.code || null,
-      description: input.description || null,
-      location: input.location || null,
-      status: input.status || 'planning',
-      is_active: input.is_active ?? true,
-      start_date: new Date().toISOString().slice(0, 10),
-      end_date: new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
-    })
-    .select()
-    .single()
+  const address = input.address?.trim() || ''
+  const location = input.location?.trim() || address.slice(0, 255) || null
+  const projectCode = buildUniqueProjectCode(input.name, input.code)
+  const notes = [
+    input.description?.trim(),
+    input.project_manager_name?.trim() ? `مدیر پروژه: ${input.project_manager_name.trim()}` : '',
+    address ? `آدرس: ${address}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
 
-  if (error) throw new Error(error.message)
+  const basePayload = {
+    name: input.name.trim(),
+    code: projectCode,
+    description: notes || null,
+    location,
+    client_name: input.client_name?.trim() || null,
+    contractor_name: input.contractor_name?.trim() || null,
+    status: input.status || 'planning',
+    is_active: input.is_active ?? true,
+    start_date: input.start_date || new Date().toISOString().slice(0, 10),
+    end_date: input.end_date || new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10),
+  }
 
-  await seedDefaultPositions(supabase, data.id)
+  const extendedPayload = {
+    ...basePayload,
+    description: input.description?.trim() || null,
+    address: address || null,
+    project_manager_name: input.project_manager_name?.trim() || null,
+  }
+
+  let data: AdminProject | null = null
+  let error: { message: string } | null = null
+
+  ;({ data, error } = await supabase.from('projects').insert(extendedPayload).select().single())
+  if (error && isMissingProjectColumnError(error.message)) {
+    ;({ data, error } = await supabase.from('projects').insert(basePayload).select().single())
+  }
+
+  if (error) throw new Error(formatProjectCreateError(error.message))
+  if (!data) throw new Error('ذخیره پروژه ناموفق بود')
+
+  try {
+    await seedDefaultPositions(supabase, data.id)
+  } catch (seedError) {
+    console.error('seedDefaultPositions failed', seedError)
+  }
 
   return data as AdminProject
+}
+
+function isMissingProjectColumnError(message: string) {
+  return /column.*does not exist|Could not find the '.*' column/i.test(message)
+}
+
+function formatProjectCreateError(message: string) {
+  if (/Failed to fetch|NetworkError|fetch failed/i.test(message)) {
+    return 'ارتباط با سرور برقرار نشد. اتصال اینترنت یا وضعیت Supabase را بررسی کنید.'
+  }
+  return message
 }
 
 async function seedDefaultPositions(supabase: SupabaseClient, projectId: string): Promise<number> {

@@ -4,7 +4,31 @@ import { createClient } from '@/lib/supabase/server'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-/** POST multipart: audio file → Persian/English transcript via OpenAI Whisper */
+const DEFAULT_FA_PROMPT =
+  'متن فارسی محاوره‌ای کارگاه ساختمانی. نقطه‌گذاری درست. کلمه‌هایی مثل عدم رعایت استاندارد، قابل قبول نیست، لطفاً اصلاح کنید، خاموت، قالب‌بندی، جوش، ستون، تیر.'
+
+async function openaiTranscribe(input: {
+  apiKey: string
+  file: File
+  model: string
+  language: string
+  prompt: string
+}) {
+  const body = new FormData()
+  body.append('file', input.file, input.file.name || 'voice.webm')
+  body.append('model', input.model)
+  if (input.language === 'fa' || input.language === 'en') {
+    body.append('language', input.language === 'fa' ? 'fa' : 'en')
+  }
+  if (input.prompt.trim()) body.append('prompt', input.prompt.trim())
+  return fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${input.apiKey}` },
+    body,
+  })
+}
+
+/** POST multipart: audio file → Persian/English transcript */
 export async function POST(request: NextRequest) {
   const openaiKey = process.env.OPENAI_API_KEY
   if (!openaiKey) {
@@ -30,24 +54,25 @@ export async function POST(request: NextRequest) {
     }
 
     const language = String(form.get('language') ?? 'fa')
-    const body = new FormData()
-    body.append('file', file, file.name || 'voice.webm')
-    body.append('model', 'whisper-1')
-    if (language === 'fa' || language === 'en') {
-      body.append('language', language === 'fa' ? 'fa' : 'en')
-    }
-    if (language === 'fa') {
-      body.append(
-        'prompt',
-        'بازرسی کنترل کیفیت سازه. موضوع بررسی اتصالات تیر به ستون. طبقه سوم. آرماتوربندی، قالب‌بندی، بتن‌ریزی، جوشکاری، ستون، تیر، محور.'
-      )
-    }
+    const prompt =
+      String(form.get('prompt') ?? '').trim() || (language === 'fa' ? DEFAULT_FA_PROMPT : '')
 
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${openaiKey}` },
-      body,
+    let response = await openaiTranscribe({
+      apiKey: openaiKey,
+      file,
+      model: 'gpt-4o-transcribe',
+      language,
+      prompt,
     })
+    if (!response.ok) {
+      response = await openaiTranscribe({
+        apiKey: openaiKey,
+        file,
+        model: 'whisper-1',
+        language,
+        prompt,
+      })
+    }
 
     const data = await response.json()
     if (!response.ok) {

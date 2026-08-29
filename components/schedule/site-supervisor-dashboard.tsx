@@ -40,6 +40,8 @@ import { useScheduleViewDate } from '@/hooks/useScheduleViewDate'
 import { useSupabase } from '@/hooks/useSupabase'
 import { writeProjectCookie } from '@/lib/project/project-cookie'
 import { getSiteSupervisorMessages } from '@/lib/i18n/site-supervisor'
+import { QcEnginePanels } from '@/components/qc/qc-engine-panels'
+import { getQcMessages } from '@/lib/i18n/qc'
 import {
   alertsToIssues,
   buildResourceSummary,
@@ -79,6 +81,7 @@ interface SiteSupervisorDashboardProps {
   initialTasks: ProjectTask[]
   initialAlerts: ProjectAlert[]
   visibleBlockCodes?: string[]
+  initialSection?: SupervisorNavId
 }
 
 type ActionDialog = 'purchase' | 'pm_comment' | 'hse_alert' | 'instruction' | null
@@ -90,6 +93,7 @@ export function SiteSupervisorDashboard({
   initialTasks,
   initialAlerts,
   visibleBlockCodes = [],
+  initialSection = 'safety',
 }: SiteSupervisorDashboardProps) {
   const supabase = useSupabase()
   const { locale, dir } = useLocale()
@@ -139,8 +143,23 @@ export function SiteSupervisorDashboard({
   const [hseSeverity, setHseSeverity] = useState('warning')
   const [hseDesc, setHseDesc] = useState('')
   const [instructionText, setInstructionText] = useState('')
-  const [activeSection, setActiveSection] = useState<SupervisorNavId>('safety')
+  const [activeSection, setActiveSection] = useState<SupervisorNavId>(initialSection)
   const [safetyBadge, setSafetyBadge] = useState(0)
+  const qcMessages = getQcMessages(locale)
+  const inspectionDrawingsHref = `/dashboard/qc/drawings?returnTo=${encodeURIComponent('/dashboard/site-supervisor?section=inspection')}`
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('section') === 'inspection') setActiveSection('inspection')
+  }, [])
+
+  function selectSection(id: SupervisorNavId) {
+    setActiveSection(id)
+    const url = new URL(window.location.href)
+    if (id === 'inspection') url.searchParams.set('section', 'inspection')
+    else url.searchParams.delete('section')
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+  }
 
   useEffect(() => {
     setSafetyBadge(countOpenSupervisorSafetyActions())
@@ -302,7 +321,7 @@ export function SiteSupervisorDashboard({
 
       <SupervisorWorkspaceShell
         activeId={activeSection}
-        onSelect={setActiveSection}
+        onSelect={selectSection}
         items={[
           {
             id: 'safety',
@@ -325,6 +344,11 @@ export function SiteSupervisorDashboard({
             id: 'drawings',
             label: 'نقشه‌ها',
             hint: 'نقشه‌های PDF و DWG بارگذاری‌شده توسط دفتر فنی',
+          },
+          {
+            id: 'inspection',
+            label: t.inspectionRequestNav,
+            hint: t.inspectionRequestNavHint,
           },
           {
             id: 'today',
@@ -370,6 +394,20 @@ export function SiteSupervisorDashboard({
 
         {activeSection === 'drawings' ? (
           <ProjectDrawingsPanel projectId={projectId ?? ''} canUpload={false} fa={isRtl} />
+        ) : null}
+
+        {activeSection === 'inspection' ? (
+          projectId ? (
+            <QcEnginePanels
+              projectId={projectId}
+              t={qcMessages}
+              showRequestForm
+              showResults={false}
+              drawingsHref={inspectionDrawingsHref}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">ابتدا یک پروژه انتخاب کنید.</p>
+          )
         ) : null}
 
         {activeSection === 'workshop' ? (

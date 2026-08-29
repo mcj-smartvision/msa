@@ -11,14 +11,15 @@ interface ModalOverlayProps {
   title: string
   children: ReactNode
   className?: string
+  overlayClassName?: string
 }
 
-export function ModalOverlay({ open, onClose, title, children, className }: ModalOverlayProps) {
+export function ModalOverlay({ open, onClose, title, children, className, overlayClassName }: ModalOverlayProps) {
   if (!open) return null
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50"
+      className={cn('fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50', overlayClassName)}
       onClick={onClose}
       role="dialog"
       aria-modal="true"

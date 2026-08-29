@@ -1,4 +1,5 @@
 import { isQcActivityType, type QcActivityType } from '@/lib/qc-engine/activity-types'
+import { parseQcRequestPriority, type QcRequestPriority } from '@/lib/qc-engine/types'
 
 export const QC_REQUEST_DRAFT_KEY = 'msa-qc-request-draft'
 
@@ -19,6 +20,9 @@ export type QcRequestDraft = {
   sourceDrawingId: string
   voiceText: string
   typedSpeech: string
+  priority: QcRequestPriority
+  selectedOfficeIds: string[]
+  selectedDrawingsConfirmed: boolean
 }
 
 export function readQcRequestDraft(projectId: string): QcRequestDraft | null {
@@ -39,12 +43,15 @@ export function readQcRequestDraft(projectId: string): QcRequestDraft | null {
       gridY: String(parsed.gridY ?? ''),
       activityType: isQcActivityType(String(parsed.activityType ?? '')) ? (parsed.activityType as QcActivityType) : 'rebar',
       selectMode: parsed.selectMode === 'range' ? 'range' : 'exact',
-      rangeFrom: String(parsed.rangeFrom ?? 'A'),
-      rangeTo: String(parsed.rangeTo ?? 'C'),
+      rangeFrom: String(parsed.rangeFrom ?? ''),
+      rangeTo: String(parsed.rangeTo ?? ''),
       selectedIds: Array.isArray(parsed.selectedIds) ? parsed.selectedIds.map(String) : [],
       sourceDrawingId: String(parsed.sourceDrawingId ?? ''),
       voiceText: String(parsed.voiceText ?? ''),
       typedSpeech: String(parsed.typedSpeech ?? ''),
+      priority: parseQcRequestPriority(parsed.priority),
+      selectedOfficeIds: Array.isArray(parsed.selectedOfficeIds) ? parsed.selectedOfficeIds.map(String) : [],
+      selectedDrawingsConfirmed: parsed.selectedDrawingsConfirmed === true,
     }
   } catch {
     return null

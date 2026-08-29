@@ -23,6 +23,8 @@
     --border: 220 14% 88%;
     --input: 220 14% 88%;
     --ring: 24 85% 45%;
+    --chrome-field: 211 20% 44%;
+    --chrome-field-foreground: 0 0% 100%;
     --radius: 0.625rem;
     --steel: 220 14% 22%;
     --sand: 38 30% 92%;
@@ -71,6 +73,37 @@
 }
 
 @layer components {
+  .msa-field {
+    @apply bg-white text-slate-900 caret-slate-900 placeholder:text-slate-400;
+  }
+
+  .msa-chrome-field {
+    @apply bg-[#5a7088] text-white caret-white placeholder:text-white/65;
+  }
+
+  input.msa-field:-webkit-autofill,
+  textarea.msa-field:-webkit-autofill,
+  select.msa-field:-webkit-autofill {
+    -webkit-text-fill-color: #0f172a;
+    box-shadow: 0 0 0 1000px #fff inset;
+  }
+
+  input.msa-chrome-field:-webkit-autofill,
+  textarea.msa-chrome-field:-webkit-autofill,
+  select.msa-chrome-field:-webkit-autofill {
+    -webkit-text-fill-color: #fff;
+    box-shadow: 0 0 0 1000px #5a7088 inset;
+  }
+
+  select.msa-chrome-field {
+    color-scheme: dark;
+  }
+
+  select.msa-chrome-field option,
+  select.msa-field option {
+    @apply bg-white text-slate-900;
+  }
+
   .site-grid-bg {
     background-image:
       linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px),

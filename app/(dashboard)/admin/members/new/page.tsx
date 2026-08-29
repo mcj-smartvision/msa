@@ -1,11 +1,11 @@
 import { Suspense } from 'react'
-import { AdminMembersPage } from '@/components/admin/admin-members-page'
+import { AddMemberPage } from '@/components/admin/add-member-page'
 import { LoadingBlock } from '@/components/admin/shared'
 
-export default function AdminMembersRoute() {
+export default function AdminAddMemberRoute() {
   return (
     <Suspense fallback={<LoadingBlock label="در حال بارگذاری..." />}>
-      <AdminMembersPage />
+      <AddMemberPage />
     </Suspense>
   )
 }

@@ -3,13 +3,15 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { Eraser, Pencil, Type, Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { fetchDrawingBytes, sniffDrawingKind } from '@/lib/qc-engine/drawing-file'
+import { fetchDrawingBytes, fetchDrawingBytesFromUrl, sniffDrawingKind } from '@/lib/qc-engine/drawing-file'
 import { renderPdfPage } from '@/lib/qc-engine/pdfjs'
 import { cn } from '@/lib/utils'
 
 type Tool = 'pen' | 'eraser' | 'text'
 
-const PEN_COLOR = '#dc2626'
+export const QC_SUPERVISOR_PEN_COLOR = '#2563eb'
+export const QC_INSPECTOR_PEN_COLOR = '#dc2626'
+
 const SIZES = [3, 6, 12] as const
 const FONT = 'Tahoma, "Segoe UI", Arial, sans-serif'
 
@@ -59,6 +61,7 @@ export const QcDrawingMarkup = forwardRef<
   {
     drawingId: string
     drawingTitle: string
+    fileUrl?: string | null
     labels: {
       pen: string
       eraser: string
@@ -71,8 +74,9 @@ export const QcDrawingMarkup = forwardRef<
       saving: string
     }
     onError: (message: string) => void
+    penColor?: string
   }
->(function QcDrawingMarkup({ drawingId, drawingTitle, labels, onError }, ref) {
+>(function QcDrawingMarkup({ drawingId, drawingTitle, fileUrl, labels, onError, penColor = QC_SUPERVISOR_PEN_COLOR }, ref) {
   const baseRef = useRef<HTMLCanvasElement>(null)
   const inkRef = useRef<HTMLCanvasElement>(null)
   const bytesRef = useRef<Uint8Array | null>(null)
@@ -131,14 +135,14 @@ export const QcDrawingMarkup = forwardRef<
     const fontPx = cssTextSize(size) * (ink.width / Math.max(1, displayWidth))
     ctx.save()
     ctx.globalCompositeOperation = 'source-over'
-    ctx.fillStyle = PEN_COLOR
+    ctx.fillStyle = penColor
     ctx.font = `700 ${fontPx}px ${FONT}`
     ctx.textBaseline = 'top'
     ctx.direction = hasPersian(value) ? 'rtl' : 'ltr'
     ctx.textAlign = 'left'
     ctx.fillText(value, draft.x, draft.y)
     ctx.restore()
-  }, [size, snapshotInk])
+  }, [penColor, size, snapshotInk])
 
   const placeText = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -226,7 +230,9 @@ export const QcDrawingMarkup = forwardRef<
     history.current = []
     void (async () => {
       try {
-        const file = await fetchDrawingBytes(drawingId)
+        const file = fileUrl
+          ? await fetchDrawingBytesFromUrl(fileUrl, drawingTitle)
+          : await fetchDrawingBytes(drawingId)
         if (cancelled) return
         bytesRef.current = file.bytes
         const kind = sniffDrawingKind(file.bytes, file.fileName, file.contentType)
@@ -251,7 +257,7 @@ export const QcDrawingMarkup = forwardRef<
         iframeObjectUrl.current = null
       }
     }
-  }, [drawingId, labels.unsupported, loadPage, replaceIframe])
+  }, [drawingId, drawingTitle, fileUrl, labels.unsupported, loadPage, replaceIframe])
 
   useImperativeHandle(ref, () => ({
     canExport: () => {
@@ -308,7 +314,7 @@ export const QcDrawingMarkup = forwardRef<
       ctx.strokeStyle = 'rgba(0,0,0,1)'
     } else {
       ctx.globalCompositeOperation = 'source-over'
-      ctx.strokeStyle = PEN_COLOR
+      ctx.strokeStyle = penColor
     }
     ctx.beginPath()
     if (last.current) ctx.moveTo(last.current.x, last.current.y)
@@ -393,8 +399,12 @@ export const QcDrawingMarkup = forwardRef<
               aria-label={`${value}`}
             >
               <span
-                className={cn('rounded-full', size === value ? 'bg-white' : 'bg-red-600')}
-                style={{ width: value + 4, height: value + 4 }}
+                className="rounded-full"
+                style={{
+                  width: value + 4,
+                  height: value + 4,
+                  backgroundColor: size === value ? '#ffffff' : penColor,
+                }}
               />
             </button>
           ))}

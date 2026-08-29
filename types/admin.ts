@@ -37,6 +37,8 @@ export interface AdminProject {
   updated_at?: string
   client_name?: string | null
   contractor_name?: string | null
+  address?: string | null
+  project_manager_name?: string | null
   created_by?: string | null
 }
 
@@ -143,6 +145,12 @@ export interface CreateProjectInput {
   code?: string
   description?: string
   location?: string
+  address?: string
+  client_name?: string
+  contractor_name?: string
+  project_manager_name?: string
+  start_date?: string
+  end_date?: string
   status?: string
   is_active?: boolean
 }

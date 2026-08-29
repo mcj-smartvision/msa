@@ -142,7 +142,7 @@ export function ReportForm() {
                 accept="image/jpeg,image/png,image/webp"
                 capture="environment"
                 disabled={isBusy}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="msa-field flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm"
                 onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
               />
             </div>
@@ -153,7 +153,7 @@ export function ReportForm() {
                 type="file"
                 accept="application/pdf,image/*"
                 disabled={isBusy}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="msa-field flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm"
                 onChange={(e) => setDocFile(e.target.files?.[0] ?? null)}
               />
               {docFile ? (

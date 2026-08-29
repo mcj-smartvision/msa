@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Building2, CheckCircle2, Cog, Eye, Landmark, Zap } from 'lucide-react'
 import { EmptyState, PageHeader, SectionCard } from '@/components/admin/shared'
-import { QcDrawingMarkup, type QcDrawingMarkupHandle } from '@/components/qc/qc-drawing-markup'
+import { QcDrawingMarkup, QC_INSPECTOR_PEN_COLOR, QC_SUPERVISOR_PEN_COLOR, type QcDrawingMarkupHandle } from '@/components/qc/qc-drawing-markup'
 import { QcBlobThumb, QcDrawingThumb } from '@/components/qc/qc-drawing-thumb'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -13,12 +13,18 @@ import { getQcMessages } from '@/lib/i18n/qc'
 import { useLocale } from '@/components/i18n/locale-provider'
 import { isQcActivityType, qcActivityLabel } from '@/lib/qc-engine/activity-types'
 import {
+  blockQcRequestCreate,
   classifyDrawingDiscipline,
-  readQcSelectedDrawings,
   writeQcSelectedDrawings,
   type QcDrawingDiscipline,
 } from '@/lib/qc-engine/drawing-discipline'
-import { addPendingMarked, loadPendingMarked, type QcPendingMarked } from '@/lib/qc-engine/pending-marked'
+import {
+  addPendingMarked,
+  loadPendingMarked,
+  prunePendingMarked,
+  type QcPendingMarked,
+} from '@/lib/qc-engine/pending-marked'
+import { readQcRequestDraft, writeQcRequestDraft } from '@/lib/qc-engine/request-draft'
 import type { QcInspectionRequest, QcOfficeDrawing, QcRequestStatus } from '@/lib/qc-engine/types'
 
 const DISCIPLINE_MENU: {
@@ -36,10 +42,24 @@ function canAttach(status: QcRequestStatus) {
   return status === 'draft' || status === 'submitted'
 }
 
-export function QcOfficeDrawingsPage({ projectId }: { projectId: string | null }) {
+function safeDashboardReturnTo(value: string | null) {
+  if (!value || !value.startsWith('/dashboard') || value.startsWith('//') || value.includes('://')) {
+    return '/dashboard/qc'
+  }
+  return value
+}
+
+export function QcOfficeDrawingsPage({
+  projectId,
+  returnTo: returnToProp = null,
+}: {
+  projectId: string | null
+  returnTo?: string | null
+}) {
   const { locale, dir } = useLocale()
   const t = getQcMessages(locale)
   const router = useRouter()
+  const returnTo = safeDashboardReturnTo(returnToProp)
   const markupRef = useRef<QcDrawingMarkupHandle>(null)
 
   const [drawings, setDrawings] = useState<QcOfficeDrawing[]>([])
@@ -89,7 +109,8 @@ export function QcOfficeDrawingsPage({ projectId }: { projectId: string | null }
       }))
     )
     setRequests((dashboardJson.requests ?? []).filter((row) => canAttach(row.status)))
-    setSelectedIds(readQcSelectedDrawings(projectId))
+    const draft = projectId ? readQcRequestDraft(projectId) : null
+    setSelectedIds(draft?.selectedDrawingsConfirmed ? draft.selectedOfficeIds : [])
     const pending = await loadPendingMarked(projectId)
     setPendingMarked(pending)
     setLoading(false)
@@ -121,7 +142,6 @@ export function QcOfficeDrawingsPage({ projectId }: { projectId: string | null }
 
   function openView(id: string) {
     setViewingId(id)
-    setSelectedIds((current) => (current.includes(id) ? current : [...current, id]))
     setSaved(false)
   }
 
@@ -131,12 +151,28 @@ export function QcOfficeDrawingsPage({ projectId }: { projectId: string | null }
     setError(null)
   }
 
-  function confirmSelection() {
-    if (projectId) {
-      const markedIds = pendingMarked.map((row) => row.sourceDrawingId).filter(Boolean)
-      writeQcSelectedDrawings(projectId, [...new Set([...selectedIds, ...markedIds])])
+  async function confirmSelection() {
+    if (typeof document !== 'undefined') {
+      ;(document.activeElement as HTMLElement | null)?.blur()
     }
-    router.push('/dashboard/qc')
+    blockQcRequestCreate(1800)
+    const ids = [...new Set(selectedIds)]
+    if (projectId) {
+      await prunePendingMarked(projectId, ids)
+      writeQcSelectedDrawings(projectId, ids)
+      const draft = readQcRequestDraft(projectId)
+      if (draft) {
+        writeQcRequestDraft({
+          ...draft,
+          selectedOfficeIds: ids,
+          sourceDrawingId: ids[0] || draft.sourceDrawingId,
+          selectedDrawingsConfirmed: ids.length > 0,
+        })
+      }
+    }
+    window.setTimeout(() => {
+      router.push(returnTo)
+    }, 400)
   }
 
   async function saveMarked() {
@@ -178,7 +214,7 @@ export function QcOfficeDrawingsPage({ projectId }: { projectId: string | null }
           mimeType: file.type,
           blob: file,
         })
-        writeQcSelectedDrawings(projectId, selectedIds.includes(viewing.id) ? selectedIds : [...selectedIds, viewing.id])
+        setSelectedIds((current) => (current.includes(viewing.id) ? current : [...current, viewing.id]))
       }
       setSaved(true)
       const pending = await loadPendingMarked(projectId)
@@ -204,8 +240,10 @@ export function QcOfficeDrawingsPage({ projectId }: { projectId: string | null }
             type="button"
             variant="outline"
             className="bg-white text-slate-800"
-            onClick={() => {
-              confirmSelection()
+            onClick={(event) => {
+              event.preventDefault()
+              event.currentTarget.blur()
+              void confirmSelection()
             }}
           >
             {t.backToRequest}
@@ -241,6 +279,7 @@ export function QcOfficeDrawingsPage({ projectId }: { projectId: string | null }
                 ref={markupRef}
                 drawingId={viewing.id}
                 drawingTitle={viewing.title}
+                penColor={returnTo.includes('site-supervisor') ? QC_SUPERVISOR_PEN_COLOR : QC_INSPECTOR_PEN_COLOR}
                 labels={{
                   pen: t.markupPen,
                   eraser: t.markupEraser,
@@ -268,7 +307,14 @@ export function QcOfficeDrawingsPage({ projectId }: { projectId: string | null }
                     <Button type="button" variant="outline" className="bg-white text-slate-800" onClick={closeView}>
                       {t.markAnotherDrawing}
                     </Button>
-                    <Button type="button" onClick={confirmSelection}>
+                    <Button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault()
+                        event.currentTarget.blur()
+                        void confirmSelection()
+                      }}
+                    >
                       {t.backToRequestPage}
                     </Button>
                   </div>
@@ -397,7 +443,14 @@ export function QcOfficeDrawingsPage({ projectId }: { projectId: string | null }
               {selectedIds.length} {t.selectedDrawingCount}
               {pendingMarked.length ? ` · ${pendingMarked.length} ${t.alreadyMarked}` : ''}
             </p>
-            <Button type="button" onClick={confirmSelection}>
+            <Button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault()
+                event.currentTarget.blur()
+                void confirmSelection()
+              }}
+            >
               {t.confirmDrawings}
             </Button>
           </div>

@@ -63,7 +63,7 @@ export function RoleDashboard({
               id="project-select"
               value={context.projectId ?? ''}
               onChange={(e) => onProjectChange?.(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="msa-field flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm"
             >
               {context.user.projects.map(({ project }) => (
                 <option key={project.id} value={project.id}>

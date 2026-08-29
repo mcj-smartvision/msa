@@ -99,7 +99,7 @@ export function UiBlockVisibilityEditor({
                 id="ui-block-position"
                 value={positionId}
                 onChange={(e) => setPositionId(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="msa-field flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm"
               >
                 {positions.map((position) => (
                   <option key={position.id} value={position.id}>
@@ -114,7 +114,7 @@ export function UiBlockVisibilityEditor({
                 id="ui-block-dashboard"
                 value={dashboardFilter}
                 onChange={(e) => setDashboardFilter(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="msa-field flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm"
               >
                 <option value="all">همه ({blocks.length})</option>
                 {dashboards.map((d) => (
@@ -130,7 +130,7 @@ export function UiBlockVisibilityEditor({
                 id="ui-block-kind"
                 value={kindFilter}
                 onChange={(e) => setKindFilter(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="msa-field flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm"
               >
                 <option value="all">همه انواع</option>
                 {kinds.map((k) => (

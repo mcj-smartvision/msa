@@ -14,6 +14,7 @@ interface VoiceToTextButtonProps {
   disabled?: boolean
   autoConfirm?: boolean
   variant?: 'default' | 'outline'
+  prompt?: string
 }
 
 /**
@@ -28,6 +29,7 @@ export function VoiceToTextButton({
   disabled,
   autoConfirm = false,
   variant = 'outline',
+  prompt,
 }: VoiceToTextButtonProps) {
   const { locale } = useLocale()
   const fa = locale === 'fa' || locale === 'ar'
@@ -48,8 +50,19 @@ export function VoiceToTextButton({
     setError(null)
     setPendingText(null)
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : undefined
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      })
+      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : undefined
       const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
       chunksRef.current = []
       recorder.ondataavailable = (e) => {
@@ -79,6 +92,7 @@ export function VoiceToTextButton({
       const form = new FormData()
       form.append('audio', blob, 'voice.webm')
       form.append('language', fa ? 'fa' : 'en')
+      if (prompt?.trim()) form.append('prompt', prompt.trim())
       const res = await fetch('/api/ai/transcribe', { method: 'POST', body: form })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || (fa ? 'ناموفق' : 'Failed'))
@@ -137,11 +151,17 @@ export function VoiceToTextButton({
       {pendingText ? (
         <div className="rounded-md border border-amber-200 bg-amber-50/80 p-3 space-y-2">
           <p className="text-xs font-medium text-amber-950">
-            {fa ? 'متن استخراج‌شده — تأیید کنید:' : 'Transcript — confirm:'}
+            {fa ? 'متن استخراج‌شده را بررسی و در صورت نیاز اصلاح کنید:' : 'Review the transcript and edit if needed:'}
           </p>
-          <p className="text-sm whitespace-pre-wrap leading-relaxed">{pendingText}</p>
+          <textarea
+            dir={fa ? 'rtl' : 'ltr'}
+            rows={4}
+            className="w-full rounded-md border border-amber-200 bg-white px-3 py-2 text-sm leading-6 text-slate-900"
+            value={pendingText}
+            onChange={(e) => setPendingText(e.target.value)}
+          />
           <div className="flex gap-2">
-            <Button type="button" size="sm" onClick={confirm}>
+            <Button type="button" size="sm" disabled={!pendingText.trim()} onClick={confirm}>
               {fa ? 'تأیید و درج در متن' : 'Confirm & insert'}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setPendingText(null)}>

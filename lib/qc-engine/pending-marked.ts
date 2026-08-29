@@ -64,16 +64,29 @@ function uniqueFileName(name: string, existing: string[]) {
   return next
 }
 
+export function latestPendingBySource(rows: QcPendingMarked[]): QcPendingMarked[] {
+  const latest = new Map<string, QcPendingMarked>()
+  for (const row of rows) {
+    latest.set(row.sourceDrawingId || row.id, row)
+  }
+  return [...latest.values()]
+}
+
 export async function addPendingMarked(projectId: string, file: QcPendingMarked): Promise<void> {
   const current = await loadPendingMarked(projectId)
   const nextFile = {
     ...file,
     fileName: uniqueFileName(
       file.fileName,
-      current.map((row) => row.fileName)
+      current
+        .filter((row) => row.sourceDrawingId !== file.sourceDrawingId)
+        .map((row) => row.fileName)
     ),
   }
-  const next = [...current.filter((row) => row.id !== nextFile.id), nextFile]
+  const next = latestPendingBySource([
+    ...current.filter((row) => row.sourceDrawingId !== nextFile.sourceDrawingId && row.id !== nextFile.id),
+    nextFile,
+  ])
   await withStore('readwrite', (store) => store.put(next, `${KEY_PREFIX}${projectId}`))
 }
 
@@ -89,6 +102,22 @@ export async function removePendingMarked(projectId: string, id: string): Promis
 
 export async function clearPendingMarked(projectId: string): Promise<void> {
   await withStore('readwrite', (store) => store.delete(`${KEY_PREFIX}${projectId}`))
+}
+
+export async function prunePendingMarked(projectId: string, keepSourceIds: string[]): Promise<void> {
+  const keep = new Set(keepSourceIds.filter(Boolean))
+  if (keep.size === 0) {
+    await clearPendingMarked(projectId)
+    return
+  }
+  const next = latestPendingBySource(
+    (await loadPendingMarked(projectId)).filter((row) => keep.has(row.sourceDrawingId))
+  )
+  if (next.length === 0) {
+    await clearPendingMarked(projectId)
+    return
+  }
+  await withStore('readwrite', (store) => store.put(next, `${KEY_PREFIX}${projectId}`))
 }
 
 export function pendingToFiles(rows: QcPendingMarked[]): File[] {
