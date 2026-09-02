@@ -6,7 +6,7 @@ import { Bot, Loader2 } from 'lucide-react'
 import { useLocale } from '@/components/i18n/locale-provider'
 import { PageHeader, LoadingBlock, ErrorBlock, EmptyState } from '@/components/admin/shared'
 import { SupervisorDrawingsZoningPanel } from '@/components/supervisor/supervisor-drawings-zoning-panel'
-import { ScheduleDateToolbar } from '@/components/schedule/schedule-date-toolbar'
+import { DailyReportPanel } from '@/components/supervisor/daily-report-panel'
 import { ScheduleDateInput } from '@/components/schedule/schedule-date-input'
 import { SupervisorOverviewPanel } from '@/components/supervisor/supervisor-overview-panel'
 import { TodayActivitiesTable } from '@/components/supervisor/today-activities-table'
@@ -289,10 +289,6 @@ export function SiteSupervisorDashboard({
         description={t.description}
       />
 
-      {activeSection === 'daily-report' || activeSection === 'today' ? (
-        <ScheduleDateToolbar />
-      ) : null}
-
       {loading && tasks.length === 0 ? <LoadingBlock label={t.saving} /> : null}
       {error ? <ErrorBlock message={error} onRetry={() => void loadData()} /> : null}
 
@@ -303,7 +299,7 @@ export function SiteSupervisorDashboard({
           {
             id: 'daily-report',
             label: 'ثبت گزارش روزانه',
-            hint: 'فعالیت‌های متناسب با تاریخ انتخاب‌شده',
+            hint: 'ثبت درصد پیشرفت روزانه فعالیت‌ها',
           },
           {
             id: 'safety',
@@ -326,6 +322,11 @@ export function SiteSupervisorDashboard({
             id: 'inspection',
             label: t.inspectionRequestNav,
             hint: t.inspectionRequestNavHint,
+          },
+          {
+            id: 'today',
+            label: 'فعالیت‌های امروز',
+            hint: 'گزارش سریع و دستور کار',
           },
           {
             id: 'lookahead',
@@ -419,7 +420,14 @@ export function SiteSupervisorDashboard({
           )
         ) : null}
 
-        {activeSection === 'daily-report' || activeSection === 'today' ? (
+        {activeSection === 'daily-report' ? (
+          <DailyReportPanel
+            projectId={projectId}
+            projectName={projectOptions.find((p) => p.id === projectId)?.name ?? ''}
+          />
+        ) : null}
+
+        {activeSection === 'today' ? (
           <UiBlockGuard code="SS-TBL-01">
             <TodayActivitiesTable
               activities={todayActivities}

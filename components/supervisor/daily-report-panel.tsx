@@ -367,7 +367,7 @@ export function DailyReportPanel({
   const [organizeError, setOrganizeError] = useState<string | null>(null)
   const [voiceParsed, setVoiceParsed] = useState<ParsedDailyReportVoice | null>(null)
   const [organizedDraft, setOrganizedDraft] = useState('')
-  const [timingFilter, setTimingFilter] = useState<'all' | DailyReportTiming>('all')
+  const [timingFilter, setTimingFilter] = useState<'all' | DailyReportTiming>('current')
   const [searchQuery, setSearchQuery] = useState('')
 
   const loadActivities = useCallback(async () => {
@@ -485,9 +485,9 @@ export function DailyReportPanel({
       return [
         {
           timing: 'all' as const,
-          title: 'همه فعالیت‌های زیر ۱۰۰٪',
+          title: 'فعالیت‌های قابل گزارش امروز',
           description:
-            'تمام فعالیت‌های قابل گزارش در یک لیست — برای یافتن سریع WBS یا نام را جستجو کنید.',
+            'فعالیت‌های بازه امروز و کارهای قبلی تکمیل‌نشده — برای یافتن سریع WBS یا نام را جستجو کنید.',
           shellClass: 'border-slate-200 bg-white',
           titleClass: 'text-slate-900',
           groups: groupDailyReportActivitiesByParent(filteredEligible),

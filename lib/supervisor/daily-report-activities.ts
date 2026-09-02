@@ -435,16 +435,47 @@ export function groupDailyReportActivitiesByParent(
   }))
 }
 
-/** All workshop packages not yet at 100% progress (any schedule date) */
+/** Incomplete work relevant to the report date (today window + overdue), not every unfinished task. */
 export function activitiesEligibleForDailyReport(
   activities: DailyReportActivity[],
   entries: DailyProgressEntry[],
   reportDate: string
 ): DailyReportActivity[] {
-  return activities.filter((a) => {
-    const pct = latestPercentForActivity(a, entries, reportDate)
-    return pct < 100
-  })
+  return activities.filter((a) => isDateRelevantIncompleteActivity(a, entries, reportDate))
+}
+
+function isDateRelevantIncompleteActivity(
+  activity: DailyReportActivity,
+  entries: DailyProgressEntry[],
+  reportDate: string
+): boolean {
+  const pct = latestPercentForActivity(activity, entries, reportDate)
+  if (pct >= 100) return false
+
+  const start = activity.plannedStartDate || null
+  const finish = activity.plannedFinishDate || null
+  if (!start && !finish) {
+    // Orphan packages without dates: allow reporting
+    return activity.kind === 'package'
+  }
+
+  // Future (not started yet) — only via upcoming filter, not the main eligible set
+  if (start && start > reportDate && pct <= 0) return false
+
+  // Active window for the selected date
+  if (start && finish && start <= reportDate && finish >= reportDate) return true
+  if (start === reportDate || finish === reportDate) return true
+
+  // Overdue: should have started, planned finish passed, still incomplete
+  if (start && start <= reportDate && finish && finish < reportDate) return true
+
+  // Started with no finish date
+  if (start && start <= reportDate && !finish) return true
+
+  // Already has progress but outside window — still reportable (catch-up)
+  if (pct > 0) return true
+
+  return false
 }
 
 export function partitionEligibleByTiming(
@@ -452,15 +483,26 @@ export function partitionEligibleByTiming(
   entries: DailyProgressEntry[],
   reportDate: string
 ): Record<DailyReportTiming, DailyReportActivity[]> {
-  const eligible = activitiesEligibleForDailyReport(activities, entries, reportDate)
   const buckets: Record<DailyReportTiming, DailyReportActivity[]> = {
     current: [],
     past: [],
     upcoming: [],
   }
-  for (const activity of eligible) {
-    buckets[classifyDailyReportTiming(activity, entries, reportDate)].push(activity)
+
+  for (const activity of activities) {
+    const pct = latestPercentForActivity(activity, entries, reportDate)
+    if (pct >= 100) continue
+
+    const timing = classifyDailyReportTiming(activity, entries, reportDate)
+    if (timing === 'upcoming') {
+      buckets.upcoming.push(activity)
+      continue
+    }
+    if (isDateRelevantIncompleteActivity(activity, entries, reportDate)) {
+      buckets[timing].push(activity)
+    }
   }
+
   for (const key of Object.keys(buckets) as DailyReportTiming[]) {
     buckets[key].sort((a, b) => compareWbs(a.wbs, b.wbs))
   }
