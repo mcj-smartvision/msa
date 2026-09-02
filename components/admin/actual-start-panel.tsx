@@ -45,8 +45,14 @@ export function ActualStartPanel({
 
   useEffect(() => {
     setAppliedStart(initialActualStart)
-    if (initialActualStart) setActualStart(initialActualStart)
-  }, [initialActualStart])
+    if (initialActualStart) {
+      setActualStart(initialActualStart)
+    } else if (baselineStart) {
+      setActualStart(baselineStart)
+      setLastSuccess(null)
+      setError(null)
+    }
+  }, [initialActualStart, baselineStart])
 
   const handleDateChange = useCallback(
     (iso: string) => {

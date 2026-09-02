@@ -10,6 +10,7 @@ import {
   toIsoDateOnly,
 } from '@/lib/schedule/dates'
 import { shiftScheduleByActualStart } from '@/lib/schedule/reschedule-engine'
+import { normalizeScheduleWeightPercent, weightedProgressPercent } from '@/lib/schedule/weighted-progress'
 import type { ProjectTask } from '@/types/schedule'
 
 export interface ApplyActualStartInput {
@@ -175,12 +176,18 @@ export async function applyActualStartToSchedule(
   let tasksInProgress = 0
   let tasksCompleted = 0
   let tasksDelayed = 0
-  let percentSum = 0
   let tasksUpdated = 0
+
+  const progressRows: Array<{ progress: number; weight: number }> = []
 
   for (const task of rows) {
     const pct = Number(task.percent_complete)
-    percentSum += pct
+    if (!task.is_summary) {
+      progressRows.push({
+        progress: pct,
+        weight: normalizeScheduleWeightPercent(task.schedule_weight),
+      })
+    }
 
     const dates = shifted.taskDates.get(task.id)
     if (!dates) {
@@ -241,7 +248,7 @@ export async function applyActualStartToSchedule(
     tasks_in_progress: tasksInProgress,
     tasks_completed: tasksCompleted,
     tasks_delayed: tasksDelayed,
-    overall_percent: rows.length ? Math.round(percentSum / rows.length) : 0,
+    overall_percent: weightedProgressPercent(progressRows),
     rebuilt_from_dependencies: false,
     anchor_wbs: shifted.anchorWbs,
     baseline_backfilled: backfilled > 0 ? backfilled : undefined,

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
   ChevronDown,
@@ -16,10 +17,24 @@ import {
   approvalStatusFa,
   canDeletePackage,
   canEditPackageContent,
+  canEditWorkshopPackageRow,
+  WORKSHOP_SKIP_PM_APPROVAL,
 } from '@/lib/workshop/approvals'
 import type { ScheduleTreeNode, WorkshopPackageNode } from '@/lib/workshop/types'
+import {
+  collectScheduleTaskNodes,
+  defaultScheduleExpanded,
+  enrichScheduleTreeWithWbs,
+  findPackageInTree,
+  findPackagePath,
+  findScheduleNode,
+  flattenWorkshopSchedule,
+  nextChildWbs,
+} from '@/lib/workshop/wbs-numbering'
 import { PageHeader } from '@/components/admin/shared'
+import { ScheduleDownloadButton } from '@/components/schedule/schedule-download-button'
 import { WORKSHOP_UOMS } from '@/lib/workshop/types'
+import { formatScheduleWeightDisplay } from '@/lib/workshop/package-weight'
 
 type Selection =
   | { kind: 'schedule'; id: string; name: string; wbs: string | null }
@@ -31,11 +46,13 @@ type InlineDraft = {
   parentId: string
   parentName: string
   depth: number
+  previewWbs: string
   name: string
   quantity: string
   uom: string
   location: string
   crew: string
+  weightPercent: string
 }
 
 type EditDraft = {
@@ -44,9 +61,25 @@ type EditDraft = {
   uom: string
   location: string
   crew: string
+  weightPercent: string
 }
 
-export function ScheduleWorkspace() {
+const SCHEDULE_COL_WIDTHS = [
+  '6%',
+  '34%',
+  '11%',
+  '9%',
+  '7%',
+  '6%',
+  '8%',
+  '8%',
+  '11%',
+] as const
+
+const SCHEDULE_CELL = 'px-1 py-1.5 align-middle box-border'
+const SCHEDULE_HEAD = `${SCHEDULE_CELL} font-medium text-slate-600`
+
+export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean }) {
   const searchParams = useSearchParams()
   const projectId = searchParams.get('projectId') ?? ''
   const forceSupervisorView = searchParams.get('as') === 'supervisor'
@@ -64,9 +97,10 @@ export function ScheduleWorkspace() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [readOnly, setReadOnly] = useState(forceSupervisorView)
+  const [canWriteServer, setCanWriteServer] = useState(false)
 
-  const load = useCallback(async () => {
-    if (!projectId) return
+  const load = useCallback(async (expandAfter?: { kind: 'schedule' | 'package'; id: string }) => {
+    if (!projectId) return []
     setLoading(true)
     try {
       const [treeRes, capRes] = await Promise.all([
@@ -76,23 +110,33 @@ export function ScheduleWorkspace() {
       const data = await treeRes.json()
       const caps = capRes.ok ? await capRes.json() : data.capabilities
       if (!treeRes.ok) throw new Error(data.error || 'خطا در بارگذاری')
-      setNodes(data.nodes ?? [])
+      const loadedNodes = enrichScheduleTreeWithWbs(data.nodes ?? [])
+      setNodes(loadedNodes)
       const serverReadOnly = Boolean(caps?.readOnly ?? data.capabilities?.readOnly)
+      setCanWriteServer(Boolean(caps?.canWrite))
       setReadOnly(forceSupervisorView || serverReadOnly)
-      const exp: Record<string, boolean> = {}
-      for (const n of data.nodes ?? []) {
-        if (n.depth <= 2) exp[n.id] = true
+      const exp = defaultScheduleExpanded(loadedNodes)
+      if (expandAfter?.kind === 'package') {
+        exp[`pkg:${expandAfter.id}`] = true
+      }
+      if (expandAfter?.kind === 'schedule') {
+        const parentNode = collectScheduleTaskNodes(loadedNodes).find(
+          (n) => n.taskId === expandAfter.id || n.id === expandAfter.id
+        )
+        if (parentNode) exp[parentNode.id] = true
       }
       setExpanded((prev) => ({ ...exp, ...prev }))
       setSelected((prev) => {
         if (!prev || prev.kind !== 'package') return prev
-        const found = findPackage(data.nodes ?? [], prev.id)
+        const found = findPackageInTree(loadedNodes, prev.id)
         return found ? { kind: 'package', id: found.id, name: found.name, pkg: found } : null
       })
       setEdits({})
       setInlineDraft(null)
+      return loadedNodes
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'خطا')
+      return []
     } finally {
       setLoading(false)
     }
@@ -106,50 +150,84 @@ export function ScheduleWorkspace() {
   const selectedPackageId = selectedPackage?.id ?? null
   const editable =
     !readOnly && selectedPackage
-      ? canEditPackageContent(selectedPackage.approvalStatus)
+      ? canEditWorkshopPackageRow(
+          selectedPackage.approvalStatus,
+          selectedPackage.origin ?? 'user_added'
+        )
       : false
   const deletable =
     !readOnly && selectedPackage ? canDeletePackage(selectedPackage.approvalStatus) : false
-  const approved = !readOnly && selectedPackage?.approvalStatus === 'approved'
-  const canChangeRequest =
+  const approved =
     !readOnly &&
     selectedPackage &&
     (selectedPackage.approvalStatus === 'approved' ||
+      (WORKSHOP_SKIP_PM_APPROVAL && selectedPackage.approvalStatus !== 'change_requested'))
+  const canChangeRequest =
+    !readOnly &&
+    selectedPackage &&
+    !WORKSHOP_SKIP_PM_APPROVAL &&
+    (selectedPackage.approvalStatus === 'approved' ||
       selectedPackage.approvalStatus === 'change_requested')
   const canSubmit =
+    !WORKSHOP_SKIP_PM_APPROVAL &&
     !readOnly &&
     selectedPackage &&
     (selectedPackage.approvalStatus === 'draft' || selectedPackage.approvalStatus === 'rejected')
 
-  function packageDepth(pkgId: string): number {
-    for (const n of nodes) {
-      const d = findPackageDepth(n.packages, pkgId, n.depth + 1)
-      if (d != null) return d
-    }
-    return 1
+  function visualScheduleDepth(scheduleNodeId: string): number {
+    const n = findScheduleNode(nodes, scheduleNodeId)
+    return n?.depth ?? 0
   }
 
-  function startInlineCreate() {
-    if (!selected || readOnly) return
-    const depth =
-      selected.kind === 'schedule'
-        ? (nodes.find((n) => n.id === selected.id)?.depth ?? 0) + 1
-        : packageDepth(selected.id) + 1
-    if (selected.kind === 'schedule') {
-      setExpanded((x) => ({ ...x, [selected.id]: true }))
-    } else {
-      setExpanded((x) => ({ ...x, [`pkg:${selected.id}`]: true }))
+  function packageDepth(pkgId: string): number {
+    const path = findPackagePath(nodes, pkgId)
+    if (!path) return 1
+    return visualScheduleDepth(path.scheduleId) + path.packageIds.length
+  }
+
+  function startInlineCreate(target?: Selection) {
+    const row = target ?? selected
+    if (!row || readOnly) return
+    if (row.kind === 'schedule') {
+      const node = findScheduleNode(nodes, row.id)
+      if (!node?.taskId || node.isSyntheticGroup) {
+        setMessage('یک فعالیت مشخص را انتخاب کنید (نه ردیف گروه سطح بالا)')
+        return
+      }
+      setExpanded((x) => ({ ...x, [node.id]: true }))
+      setSelected({ kind: 'schedule', id: node.id, name: node.name, wbs: node.wbs })
+      setInlineDraft({
+        parentKind: 'schedule',
+        parentId: node.taskId,
+        parentName: node.name,
+        depth: visualScheduleDepth(node.id) + 1,
+        previewWbs: nextChildWbs(node.wbs, node.packages.length),
+        name: '',
+        quantity: '',
+        uom: 'm2',
+        location: '',
+        crew: '',
+        weightPercent: '',
+      })
+      setMessage(null)
+      return
     }
+
+    const pkg = row.pkg
+    setExpanded((x) => ({ ...x, [`pkg:${pkg.id}`]: true }))
+    setSelected(row)
     setInlineDraft({
-      parentKind: selected.kind,
-      parentId: selected.id,
-      parentName: selected.name,
-      depth,
+      parentKind: 'package',
+      parentId: pkg.id,
+      parentName: pkg.name,
+      depth: packageDepth(pkg.id),
+      previewWbs: nextChildWbs(pkg.wbs, pkg.children.length),
       name: '',
       quantity: '',
       uom: 'm2',
       location: '',
       crew: '',
+        weightPercent: '',
     })
     setMessage(null)
   }
@@ -162,6 +240,7 @@ export function ScheduleWorkspace() {
         uom: pkg.uom,
         location: pkg.location ?? '',
         crew: pkg.crew ?? '',
+        weightPercent: pkg.weightPercent != null ? String(pkg.weightPercent) : '',
       }
     )
   }
@@ -181,7 +260,8 @@ export function ScheduleWorkspace() {
       e.quantity !== String(pkg.quantity) ||
       e.uom !== pkg.uom ||
       e.location !== (pkg.location ?? '') ||
-      e.crew !== (pkg.crew ?? '')
+      e.crew !== (pkg.crew ?? '') ||
+      e.weightPercent !== (pkg.weightPercent != null ? String(pkg.weightPercent) : '')
     )
   }
 
@@ -199,6 +279,7 @@ export function ScheduleWorkspace() {
           uom: e.uom,
           location: e.location,
           crew: e.crew,
+          weightPercent: e.weightPercent.trim() ? Number(e.weightPercent) : null,
         }),
       })
       const data = await res.json()
@@ -214,6 +295,22 @@ export function ScheduleWorkspace() {
 
   async function createInline() {
     if (!inlineDraft || !projectId) return
+    const name = inlineDraft.name.trim()
+    const quantity = Number(inlineDraft.quantity)
+    if (!name) {
+      setMessage('نام زیرمجموعه را وارد کنید')
+      return
+    }
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      setMessage('مقدار باید بزرگ‌تر از صفر باشد')
+      return
+    }
+
+    const expandAfter =
+      inlineDraft.parentKind === 'package'
+        ? { kind: 'package' as const, id: inlineDraft.parentId }
+        : { kind: 'schedule' as const, id: inlineDraft.parentId }
+
     setSaving(true)
     setMessage(null)
     try {
@@ -224,18 +321,30 @@ export function ScheduleWorkspace() {
           projectId,
           parentScheduleNodeId: inlineDraft.parentKind === 'schedule' ? inlineDraft.parentId : null,
           parentPackageId: inlineDraft.parentKind === 'package' ? inlineDraft.parentId : null,
-          name: inlineDraft.name,
-          quantity: Number(inlineDraft.quantity),
+          name,
+          quantity,
           uom: inlineDraft.uom,
           location: inlineDraft.location,
           crew: inlineDraft.crew,
+          wbsCode: inlineDraft.previewWbs,
+          weightPercent: inlineDraft.weightPercent.trim()
+            ? Number(inlineDraft.weightPercent)
+            : null,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'ذخیره نشد')
+
+      const createdId = data.package?.id ? String(data.package.id) : null
       setInlineDraft(null)
-      setMessage('زیرمجموعه اضافه شد — در همین جدول ویرایش کنید')
-      await load()
+      setMessage(`زیرمجموعه ${inlineDraft.previewWbs} ذخیره شد`)
+      const loadedNodes = await load(expandAfter)
+      if (createdId) {
+        const pkg = findPackageInTree(loadedNodes, createdId)
+        if (pkg) {
+          setSelected({ kind: 'package', id: pkg.id, name: pkg.name, pkg })
+        }
+      }
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'خطا')
     } finally {
@@ -326,48 +435,88 @@ export function ScheduleWorkspace() {
     await load()
   }
 
-  const visibleRows = useMemo(() => {
-    const rows: Array<
-      | { type: 'schedule'; node: ScheduleTreeNode }
-      | { type: 'package'; pkg: WorkshopPackageNode; depth: number; parentScheduleId: string }
-    > = []
+  const visibleRows = useMemo(
+    () => flattenWorkshopSchedule(nodes, expanded),
+    [nodes, expanded]
+  )
 
-    function walkPackages(pkgs: WorkshopPackageNode[], depth: number, parentScheduleId: string) {
-      for (const pkg of pkgs) {
-        rows.push({ type: 'package', pkg, depth, parentScheduleId })
-        if (expanded[`pkg:${pkg.id}`]) {
-          walkPackages(pkg.children, depth + 1, parentScheduleId)
-        }
+  const canAddSubBranch =
+    !readOnly &&
+    selected &&
+    (selected.kind === 'package' ||
+      (selected.kind === 'schedule' &&
+        findScheduleNode(nodes, selected.id)?.taskId &&
+        !findScheduleNode(nodes, selected.id)?.isSyntheticGroup))
+
+  const inlineDraftValid =
+    inlineDraft &&
+    inlineDraft.name.trim().length > 0 &&
+    Number(inlineDraft.quantity) > 0
+
+  const dirtyPackages = useMemo(() => {
+    const dirty: WorkshopPackageNode[] = []
+    const visit = (pkgs: WorkshopPackageNode[]) => {
+      for (const p of pkgs) {
+        if (isDirty(p)) dirty.push(p)
+        visit(p.children)
       }
     }
+    for (const n of nodes) visit(n.packages)
+    return dirty
+  }, [nodes, edits])
 
-    for (const node of nodes) {
-      rows.push({ type: 'schedule', node })
-      if (expanded[node.id]) {
-        walkPackages(node.packages, node.depth + 1, node.id)
-      }
-    }
-    return rows
-  }, [nodes, expanded])
+  const toolbarSaveEnabled = inlineDraftValid || dirtyPackages.length > 0
 
   if (!projectId) {
     return <p className="text-sm text-slate-600">پروژه را از بالا انتخاب کنید.</p>
   }
 
   return (
-    <div className="space-y-4" dir="rtl">
-      <PageHeader
-        title="برنامه"
-        description={
-          readOnly
-            ? 'نمای فقط‌خواندنی سرپرست کارگاه — برای ویرایش به دفتر فنی مراجعه کنید.'
-            : 'در همین جدول ویرایش کنید → به مدیر پروژه بفرستید → بعد از تأیید به امروز.'
-        }
-      />
+    <div className="space-y-4 w-full max-w-full min-w-0" dir="rtl">
+      {showBanner ? (
+        <PageHeader
+          showBanner={showBanner}
+          title="برنامه"
+          description={
+            readOnly
+              ? 'نمای فقط‌خواندنی سرپرست کارگاه — برای ویرایش به دفتر فنی مراجعه کنید.'
+              : 'در همین جدول ویرایش کنید → ذخیره → ارسال به امروز.'
+          }
+          actions={
+            projectId ? (
+              <ScheduleDownloadButton
+                projectId={projectId}
+                variant="outline"
+                size="sm"
+                className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+              />
+            ) : null
+          }
+        />
+      ) : projectId ? (
+        <div className="flex justify-end">
+          <ScheduleDownloadButton projectId={projectId} variant="outline" size="sm" />
+        </div>
+      ) : null}
 
       {readOnly && (
-        <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-950">
-          شما به‌عنوان سرپرست کارگاه فقط مشاهده می‌کنید. تغییر و ارسال فقط برای دفتر فنی / مدیر است.
+        <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-950 space-y-1">
+          {forceSupervisorView && canWriteServer ? (
+            <>
+              <p>در حال مشاهده نمای سرپرست — افزودن زیرشاخه در این حالت غیرفعال است.</p>
+              <Link
+                href={`/site-ops/schedule?projectId=${encodeURIComponent(projectId)}`}
+                className="font-medium text-sky-800 underline underline-offset-2"
+              >
+                برو به حالت ویرایش (دفتر فنی)
+              </Link>
+            </>
+          ) : (
+            <p>
+              شما به‌عنوان سرپرست کارگاه فقط مشاهده می‌کنید. تغییر و ارسال فقط برای دفتر فنی /
+              مدیر است.
+            </p>
+          )}
         </div>
       )}
 
@@ -375,14 +524,13 @@ export function ScheduleWorkspace() {
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{message}</div>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_300px]">
-        <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+      <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden w-full max-w-full min-w-0">
           {!readOnly && (
           <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b bg-slate-50 px-3 py-2">
             <button
               type="button"
-              disabled={!selected}
-              onClick={startInlineCreate}
+              disabled={!canAddSubBranch}
+              onClick={() => startInlineCreate()}
               className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-40"
             >
               <Plus className="h-4 w-4" />
@@ -399,8 +547,15 @@ export function ScheduleWorkspace() {
             </button>
             <button
               type="button"
-              disabled={!selectedPackage || !editable || !isDirty(selectedPackage) || saving}
-              onClick={() => selectedPackage && void savePackage(selectedPackage)}
+              disabled={!toolbarSaveEnabled || saving}
+              onClick={() => {
+                if (inlineDraft) void createInline()
+                else if (dirtyPackages.length > 0) {
+                  void (async () => {
+                    for (const pkg of dirtyPackages) await savePackage(pkg)
+                  })()
+                } else if (selectedPackage) void savePackage(selectedPackage)
+              }}
               className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
             >
               <Save className="h-4 w-4" />
@@ -450,30 +605,128 @@ export function ScheduleWorkspace() {
           </div>
           )}
 
-          <div className="overflow-auto max-h-[70vh]">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-white border-b text-slate-500">
-                <tr className="text-right">
-                  <th className="px-3 py-2 font-medium">نام</th>
-                  <th className="px-3 py-2 font-medium w-28">WBS</th>
-                  <th className="px-3 py-2 font-medium w-28">محل</th>
-                  <th className="px-3 py-2 font-medium w-24">مقدار</th>
-                  <th className="px-3 py-2 font-medium w-20">واحد</th>
-                  <th className="px-3 py-2 font-medium w-28">تأیید</th>
-                  <th className="px-3 py-2 font-medium w-24">وضعیت</th>
+          {showTodayQty && approved && selectedPackage && (
+            <div className="flex flex-wrap items-end gap-3 border-b bg-sky-50 px-3 py-3">
+              <label className="text-sm">
+                مقدار امروز
+                <input
+                  type="number"
+                  className="mt-1 rounded-lg border px-3 py-2 text-sm w-32"
+                  value={todayQty}
+                  onChange={(ev) => setTodayQty(ev.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => void sendToday()}
+                className="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white"
+              >
+                تأیید ارسال به امروز
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowTodayQty(false)}
+                className="rounded-lg border px-3 py-2 text-sm"
+              >
+                انصراف
+              </button>
+            </div>
+          )}
+
+          {changePanel && changeForm && selectedPackage && (
+            <div className="border-b bg-amber-50 px-3 py-3 space-y-2">
+              <h3 className="text-sm font-semibold">درخواست تغییر — {selectedPackage.name}</h3>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  className="rounded border px-2 py-1.5 text-sm min-w-[160px]"
+                  value={changeForm.name}
+                  onChange={(ev) => setChangeForm({ ...changeForm, name: ev.target.value })}
+                  placeholder="نام"
+                />
+                <input
+                  className="rounded border px-2 py-1.5 text-sm min-w-[120px]"
+                  value={changeForm.location}
+                  onChange={(ev) => setChangeForm({ ...changeForm, location: ev.target.value })}
+                  placeholder="محل"
+                />
+                <input
+                  type="number"
+                  className="rounded border px-2 py-1.5 text-sm w-24"
+                  value={changeForm.quantity}
+                  onChange={(ev) =>
+                    setChangeForm({ ...changeForm, quantity: ev.target.value })
+                  }
+                />
+                <select
+                  className="rounded border px-2 py-1.5 text-sm"
+                  value={changeForm.uom}
+                  onChange={(ev) => setChangeForm({ ...changeForm, uom: ev.target.value })}
+                >
+                  {WORKSHOP_UOMS.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <textarea
+                className="w-full rounded border px-2 py-1.5 text-sm min-h-[52px]"
+                value={changeComment}
+                onChange={(ev) => setChangeComment(ev.target.value)}
+                placeholder="دلیل تغییر"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => void submitChangeRequest()}
+                  className="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white"
+                >
+                  ارسال درخواست
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChangePanel(false)}
+                  className="rounded-lg border px-3 py-2 text-sm"
+                >
+                  انصراف
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div
+            className="overflow-y-scroll overflow-x-hidden max-h-[calc(100vh-200px)] w-full [scrollbar-gutter:stable]"
+          >
+            <table className="w-full border-collapse text-xs sm:text-sm" style={{ tableLayout: 'fixed' }}>
+              <colgroup>
+                {SCHEDULE_COL_WIDTHS.map((width, i) => (
+                  <col key={i} style={{ width }} />
+                ))}
+              </colgroup>
+              <thead className="sticky top-0 z-[2] bg-white border-b text-slate-500 shadow-[0_1px_0_0_rgb(226_232_240)]">
+                <tr>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[0] }}>WBS</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[1] }}>نام</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[2] }}>تاریخ</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[3] }}>محل</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[4] }}>مقدار</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[5] }}>واحد</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[6] }}>وزن</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[7] }}>تأیید</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[8] }}>وضعیت</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
                   <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
+                    <td colSpan={9} className="px-3 py-8 text-center text-slate-500">
                       در حال بارگذاری…
                     </td>
                   </tr>
                 )}
                 {!loading && visibleRows.length === 0 && !inlineDraft && (
                   <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
+                    <td colSpan={9} className="px-3 py-8 text-center text-slate-500">
                       برنامه‌ای برای این پروژه import نشده.
                     </td>
                   </tr>
@@ -483,54 +736,92 @@ export function ScheduleWorkspace() {
                     const n = row.node
                     const isSel = selected?.kind === 'schedule' && selected.id === n.id
                     const open = Boolean(expanded[n.id])
+                    const canExpand = Boolean(n.taskId)
+                    const indentPx = 8 + row.depth * 22
                     return (
                       <FragmentRows key={`s-${n.id}`}>
                         <tr
                           onClick={() =>
                             setSelected({ kind: 'schedule', id: n.id, name: n.name, wbs: n.wbs })
                           }
-                          className={`cursor-pointer border-b border-slate-50 hover:bg-slate-50 ${
+                          className={`cursor-pointer border-b border-slate-100 hover:bg-slate-50 ${
                             isSel ? 'bg-amber-50' : ''
                           }`}
                         >
-                          <td className="px-3 py-2">
+                          <td className={`${SCHEDULE_CELL} font-mono text-[11px] tabular-nums text-slate-600 text-center`}>
+                            {row.wbs}
+                          </td>
+                          <td className={`${SCHEDULE_CELL} overflow-hidden`}>
                             <div
-                              className="flex items-center gap-1"
-                              style={{ paddingInlineStart: n.depth * 14 }}
+                              className="flex items-center gap-0.5 min-w-0"
+                              style={{
+                                paddingInlineStart: indentPx,
+                                borderInlineStart:
+                                  row.depth > 0 ? '2px solid rgb(226 232 240)' : undefined,
+                              }}
                             >
-                              <button
-                                type="button"
-                                className="p-0.5 rounded hover:bg-slate-200"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setExpanded((x) => ({ ...x, [n.id]: !open }))
-                                }}
-                              >
-                                {open ? (
-                                  <ChevronDown className="h-3.5 w-3.5" />
-                                ) : (
-                                  <ChevronLeft className="h-3.5 w-3.5" />
-                                )}
-                              </button>
-                              <span className="font-medium">{n.name}</span>
+                              {canExpand ? (
+                                <button
+                                  type="button"
+                                  className="p-0.5 rounded hover:bg-slate-200 shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setExpanded((x) => ({ ...x, [n.id]: !open }))
+                                  }}
+                                >
+                                  {open ? (
+                                    <ChevronDown className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <ChevronLeft className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
+                              ) : (
+                                <span className="w-4 shrink-0" />
+                              )}
+                              <span className="font-medium text-slate-900 truncate text-xs leading-snug">
+                                {n.name}
+                              </span>
                               {n.packages.length > 0 && (
-                                <span className="text-[11px] text-slate-400">
+                                <span className="text-[11px] text-slate-400 shrink-0">
                                   ({n.packages.length})
                                 </span>
                               )}
+                              {!readOnly && n.taskId && (
+                                <button
+                                  type="button"
+                                  title="افزودن زیرشاخه"
+                                  className="ms-1 rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900 shrink-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    startInlineCreate({
+                                      kind: 'schedule',
+                                      id: n.id,
+                                      name: n.name,
+                                      wbs: n.wbs,
+                                    })
+                                  }}
+                                >
+                                  <Plus className="h-3.5 w-3.5" />
+                                </button>
+                              )}
                             </div>
                           </td>
-                          <td className="px-3 py-2 text-slate-500">{n.wbs ?? '—'}</td>
-                          <td className="px-3 py-2 text-slate-400">—</td>
-                          <td className="px-3 py-2 text-slate-400">—</td>
-                          <td className="px-3 py-2 text-slate-400">—</td>
-                          <td className="px-3 py-2 text-slate-400">—</td>
-                          <td className="px-3 py-2 text-slate-400">پایه</td>
+                          <td className={`${SCHEDULE_CELL} text-[11px] text-slate-600 tabular-nums leading-tight`}>
+                            {formatActivityDateShort(row.startDate, row.finishDate)}
+                          </td>
+                          <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
+                          <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
+                          <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
+                          <td className={`${SCHEDULE_CELL} tabular-nums text-[11px] text-slate-700 text-center`}>
+                            {formatScheduleWeightDisplay(n.scheduleWeight)}
+                          </td>
+                          <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
+                          <td className={`${SCHEDULE_CELL} text-slate-500 text-[11px]`}>پایه</td>
                         </tr>
                         {!readOnly &&
                           inlineDraft &&
                           inlineDraft.parentKind === 'schedule' &&
-                          inlineDraft.parentId === n.id && (
+                          inlineDraft.parentId === n.taskId && (
                             <InlineCreateRow
                               draft={inlineDraft}
                               setDraft={setInlineDraft}
@@ -546,8 +837,11 @@ export function ScheduleWorkspace() {
                   const p = row.pkg
                   const isSel = selected?.kind === 'package' && selected.id === p.id
                   const open = Boolean(expanded[`pkg:${p.id}`])
-                  const canEdit = !readOnly && canEditPackageContent(p.approvalStatus)
+                  const canEdit =
+                    !readOnly &&
+                    canEditWorkshopPackageRow(p.approvalStatus, p.origin ?? 'user_added')
                   const e = getEdit(p)
+                  const indentPx = 8 + row.depth * 22
 
                   return (
                     <FragmentRows key={`p-${p.id}`}>
@@ -555,14 +849,20 @@ export function ScheduleWorkspace() {
                         onClick={() =>
                           setSelected({ kind: 'package', id: p.id, name: p.name, pkg: p })
                         }
-                        className={`cursor-pointer border-b border-slate-50 hover:bg-emerald-50/40 ${
+                        className={`cursor-pointer border-b border-slate-100 hover:bg-emerald-50/50 ${
                           isSel ? 'bg-emerald-50' : ''
                         }`}
                       >
-                        <td className="px-3 py-2">
+                        <td className={`${SCHEDULE_CELL} font-mono text-[11px] tabular-nums text-emerald-800 text-center`}>
+                          {row.wbs}
+                        </td>
+                        <td className={`${SCHEDULE_CELL} overflow-hidden`}>
                           <div
-                            className="flex items-center gap-1"
-                            style={{ paddingInlineStart: row.depth * 14 }}
+                            className="flex items-center gap-0.5 min-w-0"
+                            style={{
+                              paddingInlineStart: indentPx,
+                              borderInlineStart: '2px solid rgb(167 243 208)',
+                            }}
                           >
                             {p.children.length > 0 ? (
                               <button
@@ -583,9 +883,27 @@ export function ScheduleWorkspace() {
                               <span className="w-4" />
                             )}
                             <ClipboardList className="h-3.5 w-3.5 text-emerald-700 shrink-0" />
+                            {!readOnly && (
+                              <button
+                                type="button"
+                                title="افزودن زیرشاخه"
+                                className="rounded p-1 text-emerald-700 hover:bg-emerald-100"
+                                onClick={(ev) => {
+                                  ev.stopPropagation()
+                                  startInlineCreate({
+                                    kind: 'package',
+                                    id: p.id,
+                                    name: p.name,
+                                    pkg: p,
+                                  })
+                                }}
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                             {canEdit ? (
                               <input
-                                className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-1.5 py-1 text-sm"
+                                className="min-w-0 w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-xs"
                                 value={e.name}
                                 onClick={(ev) => ev.stopPropagation()}
                                 onChange={(ev) => setEditField(p.id, p, { name: ev.target.value })}
@@ -594,15 +912,17 @@ export function ScheduleWorkspace() {
                                 }}
                               />
                             ) : (
-                              <span>{p.name}</span>
+                              <span className="truncate text-xs">{p.name}</span>
                             )}
                           </div>
                         </td>
-                        <td className="px-3 py-2 text-slate-400">—</td>
-                        <td className="px-3 py-2">
+                        <td className={`${SCHEDULE_CELL} text-[11px] text-slate-500 tabular-nums leading-tight`}>
+                          {formatActivityDateShort(row.startDate, row.finishDate)}
+                        </td>
+                        <td className={SCHEDULE_CELL}>
                           {canEdit ? (
                             <input
-                              className="w-full rounded border border-slate-200 bg-white px-1.5 py-1 text-sm"
+                              className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-xs"
                               value={e.location}
                               onClick={(ev) => ev.stopPropagation()}
                               onChange={(ev) =>
@@ -617,11 +937,11 @@ export function ScheduleWorkspace() {
                             p.location ?? '—'
                           )}
                         </td>
-                        <td className="px-3 py-2">
+                        <td className={SCHEDULE_CELL}>
                           {canEdit ? (
                             <input
                               type="number"
-                              className="w-full rounded border border-slate-200 bg-white px-1.5 py-1 text-sm tabular-nums"
+                              className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-xs tabular-nums"
                               value={e.quantity}
                               onClick={(ev) => ev.stopPropagation()}
                               onChange={(ev) =>
@@ -635,10 +955,10 @@ export function ScheduleWorkspace() {
                             <span className="tabular-nums">{p.quantity}</span>
                           )}
                         </td>
-                        <td className="px-3 py-2">
+                        <td className={SCHEDULE_CELL}>
                           {canEdit ? (
                             <select
-                              className="w-full rounded border border-slate-200 bg-white px-1 py-1 text-sm"
+                              className="w-full rounded border border-slate-200 bg-white px-0.5 py-0.5 text-xs"
                               value={e.uom}
                               onClick={(ev) => ev.stopPropagation()}
                               onChange={(ev) => {
@@ -656,6 +976,9 @@ export function ScheduleWorkspace() {
                                       uom: next.uom,
                                       location: next.location,
                                       crew: next.crew,
+                                      weightPercent: next.weightPercent.trim()
+                                        ? Number(next.weightPercent)
+                                        : null,
                                     }),
                                   })
                                   if (res.ok) await load()
@@ -672,14 +995,37 @@ export function ScheduleWorkspace() {
                             p.uom
                           )}
                         </td>
-                        <td className="px-3 py-2">
+                        <td className={SCHEDULE_CELL}>
+                          {canEdit ? (
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.01}
+                              className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-xs tabular-nums"
+                              value={e.weightPercent}
+                              onClick={(ev) => ev.stopPropagation()}
+                              onChange={(ev) =>
+                                setEditField(p.id, p, { weightPercent: ev.target.value })
+                              }
+                              onBlur={() => {
+                                if (isDirty(p)) void savePackage(p)
+                              }}
+                              placeholder="وزن"
+                            />
+                          ) : (
+                            <span className="tabular-nums text-xs">
+                              {p.weightPercent != null ? p.weightPercent : '—'}
+                            </span>
+                          )}
+                        </td>
+                        <td className={SCHEDULE_CELL}>
                           <span
-                            className={`text-[11px] rounded-full px-2 py-0.5 ${approvalBadgeClass(p.approvalStatus)}`}
+                            className={`text-[10px] rounded-full px-1.5 py-0.5 ${approvalBadgeClass(p.approvalStatus)}`}
                           >
                             {approvalStatusFa(p.approvalStatus)}
                           </span>
                         </td>
-                        <td className="px-3 py-2">{statusFa(p.status)}</td>
+                        <td className={`${SCHEDULE_CELL} text-[11px]`}>{statusFa(p.status)}</td>
                       </tr>
                       {!readOnly &&
                         inlineDraft &&
@@ -700,181 +1046,6 @@ export function ScheduleWorkspace() {
             </table>
           </div>
         </section>
-
-        <aside className="rounded-2xl border border-slate-200 bg-white p-4 h-fit space-y-3">
-          {readOnly ? (
-            !selected ? (
-              <>
-                <h2 className="font-semibold">مشاهده برنامه</h2>
-                <p className="text-sm text-slate-600">
-                  یک ردیف را انتخاب کنید. برای کامنت و جزئیات بیشتر به «لیست‌ها» بروید.
-                </p>
-              </>
-            ) : (
-              <>
-                <h2 className="font-semibold">ردیف انتخاب‌شده</h2>
-                <p className="text-sm">{selected.name}</p>
-                {selectedPackage && (
-                  <div className="space-y-2 text-xs text-slate-600">
-                    <p>
-                      تأیید:{' '}
-                      <span className="font-medium text-slate-800">
-                        {approvalStatusFa(selectedPackage.approvalStatus)}
-                      </span>
-                    </p>
-                    {selectedPackage.location && <p>محل: {selectedPackage.location}</p>}
-                    <p>
-                      مقدار: {selectedPackage.quantity} {selectedPackage.uom}
-                    </p>
-                    {selectedPackage.crew && <p>گروه: {selectedPackage.crew}</p>}
-                    {selectedPackage.note && <p>یادداشت: {selectedPackage.note}</p>}
-                    {selectedPackage.lastPmComment && (
-                      <p className="rounded-lg bg-amber-50 border border-amber-100 p-2 text-amber-900">
-                        کامنت مدیر: {selectedPackage.lastPmComment}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </>
-            )
-          ) : !selected ? (
-            <>
-              <h2 className="font-semibold">از اینجا شروع کنید</h2>
-              <ol className="list-decimal list-inside space-y-2 text-sm text-slate-600">
-                <li>یک فعالیت را انتخاب کنید</li>
-                <li>«زیرمجموعه» بزنید و در جدول پر کنید</li>
-                <li>«ارسال به مدیر پروژه»</li>
-              </ol>
-            </>
-          ) : (
-            <>
-              <h2 className="font-semibold">ردیف انتخاب‌شده</h2>
-              <p className="text-sm">{selected.name}</p>
-              {selectedPackage && (
-                <div className="space-y-2 text-xs text-slate-600">
-                  <p>
-                    تأیید:{' '}
-                    <span className="font-medium text-slate-800">
-                      {approvalStatusFa(selectedPackage.approvalStatus)}
-                    </span>
-                  </p>
-                  {editable && (
-                    <p className="text-emerald-700">در جدول مستقیم ویرایش کنید (با blur ذخیره می‌شود).</p>
-                  )}
-                  {selectedPackage.lastPmComment && (
-                    <p className="rounded-lg bg-amber-50 border border-amber-100 p-2 text-amber-900">
-                      کامنت مدیر: {selectedPackage.lastPmComment}
-                    </p>
-                  )}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={startInlineCreate}
-                className="w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white"
-              >
-                + زیرمجموعه
-              </button>
-              {canSubmit && (
-                <button
-                  type="button"
-                  onClick={() => void submitApproval()}
-                  className="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm text-white"
-                >
-                  ارسال به مدیر پروژه
-                </button>
-              )}
-              {deletable && (
-                <button
-                  type="button"
-                  onClick={() => void deleteSelected()}
-                  className="w-full rounded-lg border border-rose-300 text-rose-800 px-3 py-2 text-sm"
-                >
-                  حذف این مورد
-                </button>
-              )}
-              {showTodayQty && approved && (
-                <div className="space-y-2 border-t pt-3">
-                  <label className="block text-sm">
-                    مقدار امروز
-                    <input
-                      type="number"
-                      className="mt-1 w-full rounded-lg border px-3 py-2"
-                      value={todayQty}
-                      onChange={(ev) => setTodayQty(ev.target.value)}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => void sendToday()}
-                    className="w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white"
-                  >
-                    تأیید ارسال به امروز
-                  </button>
-                </div>
-              )}
-              {changePanel && changeForm && (
-                <div className="space-y-2 border-t pt-3">
-                  <h3 className="text-sm font-semibold">درخواست تغییر</h3>
-                  <input
-                    className="w-full rounded border px-2 py-1.5 text-sm"
-                    value={changeForm.name}
-                    onChange={(ev) => setChangeForm({ ...changeForm, name: ev.target.value })}
-                    placeholder="نام"
-                  />
-                  <input
-                    className="w-full rounded border px-2 py-1.5 text-sm"
-                    value={changeForm.location}
-                    onChange={(ev) => setChangeForm({ ...changeForm, location: ev.target.value })}
-                    placeholder="محل"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="number"
-                      className="rounded border px-2 py-1.5 text-sm"
-                      value={changeForm.quantity}
-                      onChange={(ev) =>
-                        setChangeForm({ ...changeForm, quantity: ev.target.value })
-                      }
-                    />
-                    <select
-                      className="rounded border px-2 py-1.5 text-sm"
-                      value={changeForm.uom}
-                      onChange={(ev) => setChangeForm({ ...changeForm, uom: ev.target.value })}
-                    >
-                      {WORKSHOP_UOMS.map((u) => (
-                        <option key={u} value={u}>
-                          {u}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <textarea
-                    className="w-full rounded border px-2 py-1.5 text-sm min-h-[60px]"
-                    value={changeComment}
-                    onChange={(ev) => setChangeComment(ev.target.value)}
-                    placeholder="دلیل تغییر"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => void submitChangeRequest()}
-                    className="w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white"
-                  >
-                    ارسال درخواست
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setChangePanel(false)}
-                    className="w-full rounded-lg border px-3 py-2 text-sm"
-                  >
-                    انصراف
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </aside>
-      </div>
     </div>
   )
 }
@@ -896,41 +1067,46 @@ function InlineCreateRow({
   onCancel: () => void
   saving: boolean
 }) {
+  const canSave = draft.name.trim().length > 0 && Number(draft.quantity) > 0
+
   return (
     <tr className="bg-sky-50/80 border-b border-sky-100">
-      <td className="px-3 py-2">
-        <div className="flex items-center gap-1" style={{ paddingInlineStart: draft.depth * 14 }}>
-          <Plus className="h-3.5 w-3.5 text-sky-700 shrink-0" />
+      <td className={`${SCHEDULE_CELL} font-mono text-[11px] tabular-nums text-sky-800 font-semibold text-center`}>
+        {draft.previewWbs}
+      </td>
+      <td className={`${SCHEDULE_CELL} overflow-hidden`}>
+        <div className="flex items-center gap-0.5 min-w-0" style={{ paddingInlineStart: 8 + draft.depth * 22 }}>
+          <Plus className="h-3 w-3 text-sky-700 shrink-0" />
           <input
             autoFocus
-            className="min-w-0 flex-1 rounded border border-sky-200 bg-white px-1.5 py-1 text-sm"
-            placeholder="نام زیرمجموعه *"
+            className="min-w-0 w-full rounded border border-sky-200 bg-white px-1 py-0.5 text-xs"
+            placeholder="نام *"
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           />
         </div>
       </td>
-      <td className="px-3 py-2 text-slate-400 text-xs">جدید</td>
-      <td className="px-3 py-2">
+      <td className={`${SCHEDULE_CELL} text-[11px] text-slate-400`}>—</td>
+      <td className={SCHEDULE_CELL}>
         <input
-          className="w-full rounded border border-sky-200 bg-white px-1.5 py-1 text-sm"
+          className="w-full rounded border border-sky-200 bg-white px-1 py-0.5 text-xs"
           placeholder="محل"
           value={draft.location}
           onChange={(e) => setDraft({ ...draft, location: e.target.value })}
         />
       </td>
-      <td className="px-3 py-2">
+      <td className={SCHEDULE_CELL}>
         <input
           type="number"
-          className="w-full rounded border border-sky-200 bg-white px-1.5 py-1 text-sm"
+          className="w-full rounded border border-sky-200 bg-white px-1 py-0.5 text-xs"
           placeholder="مقدار *"
           value={draft.quantity}
           onChange={(e) => setDraft({ ...draft, quantity: e.target.value })}
         />
       </td>
-      <td className="px-3 py-2">
+      <td className={SCHEDULE_CELL}>
         <select
-          className="w-full rounded border border-sky-200 bg-white px-1 py-1 text-sm"
+          className="w-full rounded border border-sky-200 bg-white px-0.5 py-0.5 text-xs"
           value={draft.uom}
           onChange={(e) => setDraft({ ...draft, uom: e.target.value })}
         >
@@ -941,11 +1117,22 @@ function InlineCreateRow({
           ))}
         </select>
       </td>
-      <td className="px-3 py-2" colSpan={2}>
-        <div className="flex gap-1">
+      <td className={SCHEDULE_CELL}>
+        <input
+          type="number"
+          min={0}
+          step={0.01}
+          className="w-full rounded border border-sky-200 bg-white px-1 py-0.5 text-xs tabular-nums"
+          placeholder="وزن"
+          value={draft.weightPercent}
+          onChange={(e) => setDraft({ ...draft, weightPercent: e.target.value })}
+        />
+      </td>
+      <td className={SCHEDULE_CELL}>
+        <div className="flex flex-wrap gap-1 items-center">
           <button
             type="button"
-            disabled={saving}
+            disabled={saving || !canSave}
             onClick={onSave}
             className="rounded bg-slate-900 px-2 py-1 text-xs text-white disabled:opacity-40"
           >
@@ -960,37 +1147,33 @@ function InlineCreateRow({
           </button>
         </div>
       </td>
+      <td className={SCHEDULE_CELL}>
+        {!canSave && <span className="text-[10px] text-rose-700">نام و مقدار الزامی</span>}
+      </td>
     </tr>
   )
 }
 
-function findPackage(nodes: ScheduleTreeNode[], id: string): WorkshopPackageNode | null {
-  function walk(pkgs: WorkshopPackageNode[]): WorkshopPackageNode | null {
-    for (const p of pkgs) {
-      if (p.id === id) return p
-      const child = walk(p.children)
-      if (child) return child
-    }
-    return null
-  }
-  for (const n of nodes) {
-    const found = walk(n.packages)
-    if (found) return found
-  }
-  return null
+function formatActivityDateShort(start: string | null, finish: string | null): string {
+  if (!start && !finish) return '—'
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleDateString('fa-IR', { month: '2-digit', day: '2-digit' })
+  if (start && finish) return `${fmt(start)}–${fmt(finish)}`
+  if (start) return fmt(start)
+  return finish ? fmt(finish) : '—'
 }
 
-function findPackageDepth(
-  pkgs: WorkshopPackageNode[],
-  id: string,
-  depth: number
-): number | null {
-  for (const p of pkgs) {
-    if (p.id === id) return depth
-    const child = findPackageDepth(p.children, id, depth + 1)
-    if (child != null) return child
-  }
-  return null
+function formatActivityDate(start: string | null, finish: string | null): string {
+  if (!start && !finish) return '—'
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleDateString('fa-IR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+  if (start && finish) return `${fmt(start)} – ${fmt(finish)}`
+  if (start) return fmt(start)
+  return finish ? fmt(finish) : '—'
 }
 
 function approvalBadgeClass(s: string) {

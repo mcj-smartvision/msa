@@ -7,6 +7,7 @@ export type QcRequestStatus =
   | 'cancelled'
 
 export type QcInspectorVerdict = 'approved' | 'rejected'
+export type QcInspectionHistoryEvent = 'submitted' | 'rejected' | 'approved' | 'resubmitted'
 export type QcVerdict = 'pass' | 'fail' | 'na'
 export type QcNcrSeverity = 'minor' | 'major' | 'critical'
 export type QcNcrStatus = 'open' | 'in_progress' | 'pending_verify' | 'closed' | 'waived'
@@ -42,11 +43,29 @@ export type QcRequestDrawing = {
   kind?: 'marked' | 'office'
 }
 
+export type QcInspectionRequestHistoryEntry = {
+  id: string
+  requestId: string
+  eventType: QcInspectionHistoryEvent
+  occurredAt: string
+  actorId: string | null
+  activityType: string | null
+  floor: string | null
+  gridFrom: string | null
+  gridTo: string | null
+  requestNotes: string | null
+  inspectorNotes: string | null
+  inspectorClassified: string | null
+  itemCodes: string[]
+  cycleNumber: number
+}
+
 export type QcInspectionRequest = {
   id: string
   projectId: string
   activityType: string
   requestedAt: string
+  createdAt: string
   status: QcRequestStatus
   notes: string | null
   floor: string | null
@@ -62,6 +81,11 @@ export type QcInspectionRequest = {
   inspectorNotes: string | null
   inspectorClassified: string | null
   priority: QcRequestPriority
+  firstSubmittedAt: string | null
+  lastRejectedAt: string | null
+  updatedAt: string | null
+  reinspectCount: number
+  history: QcInspectionRequestHistoryEntry[]
 }
 
 export type QcChecklistRow = {
@@ -76,12 +100,14 @@ export type QcChecklistRow = {
 
 export type QcResultPhoto = {
   id: string
+  requestId: string
   resultId: string
   itemId: string
   itemCode: string
   storageRef: string
   url: string | null
   caption: string | null
+  mediaKind: 'image' | 'video'
 }
 
 export type QcEngineNcr = {

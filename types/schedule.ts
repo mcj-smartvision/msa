@@ -26,6 +26,10 @@ export interface ProjectTask {
   baseline_finish: string | null
   percent_complete: number
   is_critical: boolean
+  /** MSP activity weight (وزن) from custom field */
+  schedule_weight?: number | null
+  /** MSP summary row (WBS group / زیرشاخه) */
+  is_summary?: boolean
   /** Registered project subcontractor (migration 42) */
   subcontractor_id?: string | null
   created_at: string
@@ -92,6 +96,8 @@ export interface ScheduleImport {
   imported_by: string | null
   created_at: string
   completed_at: string | null
+  storage_path?: string | null
+  storage_bucket?: string | null
 }
 
 /** Structured output from AI daily report parsing (design contract). */

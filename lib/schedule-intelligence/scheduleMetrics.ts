@@ -6,6 +6,8 @@ import type {
   ScheduleAnalysisConfig,
   ScheduleTask,
 } from '@/types/schedule-intelligence'
+import { durationDaysFromMinutes } from '@/lib/schedule-intelligence/durationUtils'
+import { compareWbs } from '@/lib/schedule/wbs-utils'
 
 function leafTasks(tasks: ScheduleTask[]): ScheduleTask[] {
   return tasks.filter((t) => !t.isSummary)
@@ -194,4 +196,32 @@ export function topActivitiesBy(
     return ascending ? av - bv : bv - av
   })
   return sorted.slice(0, n)
+}
+
+/** Task duration in working days (falls back to CPM early dates when XML duration is 0). */
+export function effectiveTaskDurationDays(task: ScheduleTask, minutesPerDay: number): number {
+  if (task.durationMinutes > 0) return task.durationDays
+  if (
+    task.earlyStartMinutes != null &&
+    task.earlyFinishMinutes != null &&
+    task.earlyFinishMinutes > task.earlyStartMinutes
+  ) {
+    return durationDaysFromMinutes(
+      task.earlyFinishMinutes - task.earlyStartMinutes,
+      minutesPerDay
+    )
+  }
+  return task.durationDays
+}
+
+/** Share of CPM project network duration (0–100%). */
+export function taskDurationSharePercent(
+  task: ScheduleTask,
+  projectDurationDays: number,
+  minutesPerDay: number
+): number {
+  if (projectDurationDays <= 0) return 0
+  const days = effectiveTaskDurationDays(task, minutesPerDay)
+  if (days <= 0) return 0
+  return Math.round((days / projectDurationDays) * 1000) / 10
 }

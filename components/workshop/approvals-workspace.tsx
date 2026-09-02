@@ -20,7 +20,7 @@ type InboxItem = {
   updated_at: string
 }
 
-export function ApprovalsWorkspace() {
+export function ApprovalsWorkspace({ showBanner = true }: { showBanner?: boolean }) {
   const projectId = useSearchParams().get('projectId') ?? ''
   const [items, setItems] = useState<InboxItem[]>([])
   const [canDecide, setCanDecide] = useState(false)
@@ -77,6 +77,7 @@ export function ApprovalsWorkspace() {
   return (
     <div className="space-y-4" dir="rtl">
       <PageHeader
+        showBanner={showBanner}
         title="تأییدات"
         description="مدیر پروژه موارد ارسالی دفتر فنی را تأیید، رد یا با کامنت برمی‌گرداند."
       />

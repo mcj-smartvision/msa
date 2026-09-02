@@ -1,5 +1,8 @@
 import { WorkshopError } from './domain'
 
+/** Temporary: save auto-approves packages; PM submit step disabled in UI */
+export const WORKSHOP_SKIP_PM_APPROVAL = true
+
 export type ApprovalStatus =
   | 'draft'
   | 'pending_approval'
@@ -9,11 +12,28 @@ export type ApprovalStatus =
 
 export function canEditPackageContent(approvalStatus: ApprovalStatus | null | undefined): boolean {
   const s = approvalStatus ?? 'draft'
-  // Editable until PM has approved (incl. while waiting / after reject).
+  if (WORKSHOP_SKIP_PM_APPROVAL) {
+    return s !== 'change_requested'
+  }
   return s === 'draft' || s === 'rejected' || s === 'pending_approval'
 }
 
+/** Row-level edit in schedule workspace (includes user-added sub-branches). */
+export function canEditWorkshopPackageRow(
+  approvalStatus: ApprovalStatus | null | undefined,
+  origin?: string | null
+): boolean {
+  if (WORKSHOP_SKIP_PM_APPROVAL) {
+    return (approvalStatus ?? 'draft') !== 'change_requested'
+  }
+  if (origin === 'user_added') return true
+  return canEditPackageContent(approvalStatus)
+}
+
 export function canDeletePackage(approvalStatus: ApprovalStatus | null | undefined): boolean {
+  if (WORKSHOP_SKIP_PM_APPROVAL) {
+    return canEditPackageContent(approvalStatus)
+  }
   return canEditPackageContent(approvalStatus)
 }
 
@@ -21,8 +41,11 @@ export function canReviseChangeRequest(approvalStatus: ApprovalStatus | null | u
   return (approvalStatus ?? 'draft') === 'change_requested'
 }
 
-export function assertCanEditPackage(approvalStatus: ApprovalStatus | null | undefined) {
-  if (!canEditPackageContent(approvalStatus)) {
+export function assertCanEditPackage(
+  approvalStatus: ApprovalStatus | null | undefined,
+  origin?: string | null
+) {
+  if (!canEditWorkshopPackageRow(approvalStatus, origin ?? 'user_added')) {
     throw new WorkshopError(
       'VALIDATION',
       'این مورد تأیید شده است. برای تغییر باید «درخواست تغییر» بدهید تا مدیر پروژه تأیید کند.'
@@ -53,6 +76,13 @@ export function assertCanRequestChange(approvalStatus: ApprovalStatus | null | u
 }
 
 export function assertCanSendToToday(approvalStatus: ApprovalStatus | null | undefined) {
+  if (WORKSHOP_SKIP_PM_APPROVAL) {
+    const s = approvalStatus ?? 'draft'
+    if (s === 'change_requested') {
+      throw new WorkshopError('VALIDATION', 'ابتدا درخواست تغییر را از مدیر پروژه پیگیری کنید')
+    }
+    return
+  }
   if ((approvalStatus ?? 'draft') !== 'approved') {
     throw new WorkshopError(
       'VALIDATION',

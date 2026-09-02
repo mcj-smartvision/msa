@@ -22,6 +22,12 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
       note: body.note,
       flagForReview: body.flagForReview ?? body.flag_for_review,
       reviewReason: body.reviewReason ?? body.review_reason,
+      weightPercent:
+        body.weightPercent !== undefined
+          ? body.weightPercent
+          : body.weight_percent !== undefined
+            ? body.weight_percent
+            : undefined,
     })
     return NextResponse.json({ package: pkg })
   } catch (error) {

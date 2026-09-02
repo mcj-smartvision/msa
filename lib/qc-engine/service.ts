@@ -3,12 +3,25 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
 import { isQcActivityType, QC_CHECKLIST_BY_ACTIVITY } from '@/lib/qc-engine/activity-types'
 import {
+  appendQcNoteMarker,
+  hasQcNoteMarker,
+  inferApprovedAtFromRequest,
+  inferInspectorVerdictFromRequest,
+  inferLastRejectedAtFromRequest,
+  parseQcNoteMarker,
+  QC_APPROVED_AT_MARKER,
+  QC_REJECTED_AT_MARKER,
+  QC_RESUBMIT_MARKER,
+} from '@/lib/qc-engine/note-markers'
+import {
   parseQcRequestPriority,
   type QcChecklistRow,
   type QcEngineDashboard,
   type QcEngineNcr,
   type QcInspectableItem,
+  type QcInspectionHistoryEvent,
   type QcInspectionRequest,
+  type QcInspectionRequestHistoryEntry,
   type QcInspectorVerdict,
   type QcOfficeDrawing,
   type QcRequestDrawing,
@@ -82,6 +95,168 @@ function mapItem(row: Record<string, unknown>): QcInspectableItem {
     gridX: row.grid_x ? String(row.grid_x) : null,
     gridY: row.grid_y ? String(row.grid_y) : null,
   }
+}
+
+function mapHistoryEntry(row: Record<string, unknown>): QcInspectionRequestHistoryEntry {
+  const itemCodes = Array.isArray(row.item_codes) ? row.item_codes.map((code) => String(code)) : []
+  const eventType = String(row.event_type)
+  const normalizedEvent: QcInspectionHistoryEvent =
+    eventType === 'submitted' ||
+    eventType === 'rejected' ||
+    eventType === 'approved' ||
+    eventType === 'resubmitted'
+      ? eventType
+      : 'submitted'
+  return {
+    id: String(row.id),
+    requestId: String(row.request_id),
+    eventType: normalizedEvent,
+    occurredAt: String(row.occurred_at),
+    actorId: row.actor_id ? String(row.actor_id) : null,
+    activityType: row.activity_type ? String(row.activity_type) : null,
+    floor: row.floor ? String(row.floor) : null,
+    gridFrom: row.grid_from ? String(row.grid_from) : null,
+    gridTo: row.grid_to ? String(row.grid_to) : null,
+    requestNotes: row.request_notes ? String(row.request_notes) : null,
+    inspectorNotes: row.inspector_notes ? String(row.inspector_notes) : null,
+    inspectorClassified: row.inspector_classified ? String(row.inspector_classified) : null,
+    itemCodes,
+    cycleNumber: Number(row.cycle_number ?? 1),
+  }
+}
+
+type RequestHistorySnapshot = {
+  activityType: string
+  floor: string | null
+  gridFrom: string | null
+  gridTo: string | null
+  requestNotes: string | null
+  itemCodes: string[]
+  firstSubmittedAt: string | null
+  reinspectCount: number
+}
+
+async function loadRequestHistorySnapshot(requestId: string): Promise<RequestHistorySnapshot> {
+  const db = engine(createServiceClient())
+  const { data, error } = await db.from('inspection_request').select('*').eq('id', requestId).maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error('درخواست پیدا نشد.')
+
+  const { data: linkRows } = await db
+    .from('inspection_request_item')
+    .select('inspectable_item_id')
+    .eq('request_id', requestId)
+    .order('sort_order')
+  const itemIds = (linkRows ?? []).map((row) => String(row.inspectable_item_id))
+  let itemCodes: string[] = []
+  if (itemIds.length) {
+    const { data: itemRows } = await db.from('inspectable_item').select('id, code').in('id', itemIds)
+    const codeById = new Map((itemRows ?? []).map((row) => [String(row.id), String(row.code)]))
+    itemCodes = itemIds.map((id) => codeById.get(id) ?? id)
+  }
+
+  return {
+    activityType: String(data.activity_type),
+    floor: data.floor ? String(data.floor) : null,
+    gridFrom: data.grid_from ? String(data.grid_from) : null,
+    gridTo: data.grid_to ? String(data.grid_to) : null,
+    requestNotes: data.notes ? String(data.notes) : null,
+    itemCodes,
+    firstSubmittedAt: data.first_submitted_at ? String(data.first_submitted_at) : null,
+    reinspectCount: Number(data.reinspect_count ?? 0),
+  }
+}
+
+function inspectionCycleNumber(reinspectCount: number) {
+  return reinspectCount + 1
+}
+
+async function appendInspectionRequestHistory(input: {
+  requestId: string
+  eventType: QcInspectionHistoryEvent
+  actorId?: string
+  occurredAt?: string
+  cycleNumber: number
+  snapshot?: RequestHistorySnapshot
+  inspectorNotes?: string | null
+  inspectorClassified?: string | null
+}) {
+  const db = engine(createServiceClient())
+  const snapshot = input.snapshot
+  const { error } = await db.from('inspection_request_history').insert({
+    request_id: input.requestId,
+    event_type: input.eventType,
+    occurred_at: input.occurredAt ?? new Date().toISOString(),
+    actor_id: input.actorId ?? null,
+    activity_type: snapshot?.activityType ?? null,
+    floor: snapshot?.floor ?? null,
+    grid_from: snapshot?.gridFrom ?? null,
+    grid_to: snapshot?.gridTo ?? null,
+    request_notes: snapshot?.requestNotes ?? null,
+    inspector_notes: input.inspectorNotes ?? null,
+    inspector_classified: input.inspectorClassified ?? null,
+    item_codes: snapshot?.itemCodes ?? [],
+    cycle_number: input.cycleNumber,
+  })
+  if (error && !/inspection_request_history|column|schema cache/i.test(error.message)) {
+    throw new Error(error.message)
+  }
+}
+
+async function backfillReinspectionNoteMarkers(
+  requestId: string,
+  row: Record<string, unknown>,
+  history: QcInspectionRequestHistoryEntry[]
+) {
+  const status = String(row.status)
+  if (status === 'draft' || status === 'cancelled') return null
+  if (row.inspector_verdict === 'approved' || row.inspector_verdict === 'rejected') return null
+
+  let notes = row.notes ? String(row.notes) : null
+  let changed = false
+
+  const rejectedHistory = history.filter((entry) => entry.eventType === 'rejected').pop()
+  const resubmittedHistory = history.filter((entry) => entry.eventType === 'resubmitted').pop()
+  const reinspectCount = Number(row.reinspect_count ?? 0)
+
+  const rejectedIso =
+    row.last_rejected_at
+      ? String(row.last_rejected_at)
+      : rejectedHistory?.occurredAt ?? parseQcNoteMarker(notes, QC_REJECTED_AT_MARKER)
+
+  const isResubmit =
+    reinspectCount > 0 ||
+    Boolean(resubmittedHistory) ||
+    hasQcNoteMarker(notes, QC_RESUBMIT_MARKER)
+
+  const createdMs = new Date(String(row.created_at ?? row.requested_at)).getTime()
+  const requestedMs = new Date(String(row.requested_at)).getTime()
+  const likelyResubmit =
+    (status === 'submitted' || status === 'scheduled' || status === 'in_progress') &&
+    !row.inspector_verdict &&
+    requestedMs - createdMs > 2 * 60 * 1000
+
+  if (!isResubmit && !rejectedIso && !likelyResubmit) return null
+
+  if (rejectedIso && !hasQcNoteMarker(notes, QC_REJECTED_AT_MARKER)) {
+    notes = appendQcNoteMarker(notes, QC_REJECTED_AT_MARKER, rejectedIso)
+    changed = true
+  }
+
+  if ((isResubmit || likelyResubmit) && !hasQcNoteMarker(notes, QC_RESUBMIT_MARKER)) {
+    const resubmitIso = resubmittedHistory?.occurredAt ?? String(row.requested_at)
+    notes = appendQcNoteMarker(notes, QC_RESUBMIT_MARKER, resubmitIso)
+    changed = true
+  }
+
+  if (!changed) return null
+
+  const db = engine(createServiceClient())
+  const { error } = await db.from('inspection_request').update({ notes }).eq('id', requestId)
+  if (error && !/column|schema cache/i.test(error.message)) {
+    throw new Error(error.message)
+  }
+  return notes
 }
 
 export async function requireQcEngineUser(userClient: SupabaseClient) {
@@ -206,7 +381,48 @@ export async function loadQcEngineDashboard(projectId: string): Promise<QcEngine
   }
   const officeById = new Map(officeDrawings.map((drawing) => [drawing.id, drawing.title]))
 
+  const historyByRequest = new Map<string, QcInspectionRequestHistoryEntry[]>()
+  if (requestIds.length) {
+    const { data: historyRows, error: historyError } = await db
+      .from('inspection_request_history')
+      .select('*')
+      .in('request_id', requestIds)
+      .order('occurred_at', { ascending: true })
+    if (!historyError && historyRows) {
+      for (const row of historyRows) {
+        const entry = mapHistoryEntry(row as Record<string, unknown>)
+        const list = historyByRequest.get(entry.requestId) ?? []
+        list.push(entry)
+        historyByRequest.set(entry.requestId, list)
+      }
+    }
+  }
+
+  for (const row of requestRows ?? []) {
+    const id = String(row.id)
+    const history = historyByRequest.get(id) ?? []
+    const patchedNotes = await backfillReinspectionNoteMarkers(id, row as Record<string, unknown>, history)
+    if (patchedNotes) row.notes = patchedNotes
+  }
+
   const requests: QcInspectionRequest[] = (requestRows ?? []).map((row) => {
+    const id = String(row.id)
+    const history = historyByRequest.get(id) ?? []
+    const notes = row.notes ? String(row.notes) : null
+    const inferenceInput = {
+      status: String(row.status),
+      inspectorVerdict:
+        row.inspector_verdict === 'approved' || row.inspector_verdict === 'rejected'
+          ? (row.inspector_verdict as QcInspectorVerdict)
+          : null,
+      notes,
+      inspectorNotes: row.inspector_notes ? String(row.inspector_notes) : null,
+      inspectorClassified: row.inspector_classified ? String(row.inspector_classified) : null,
+      lastRejectedAt: row.last_rejected_at ? String(row.last_rejected_at) : null,
+      updatedAt: row.updated_at ? String(row.updated_at) : null,
+      history,
+    }
+    const inspectorVerdict = inferInspectorVerdictFromRequest(inferenceInput)
     const itemIds = links
       .filter((link) => String(link.request_id) === String(row.id))
       .map((link) => String(link.inspectable_item_id))
@@ -220,6 +436,7 @@ export async function loadQcEngineDashboard(projectId: string): Promise<QcEngine
       projectId: String(row.project_id),
       activityType: String(row.activity_type),
       requestedAt: String(row.requested_at),
+      createdAt: String(row.created_at ?? row.requested_at),
       status: row.status as QcRequestStatus,
       notes: row.notes ? String(row.notes) : null,
       floor: row.floor ? String(row.floor) : null,
@@ -230,13 +447,15 @@ export async function loadQcEngineDashboard(projectId: string): Promise<QcEngine
       requestedByName: requesterNames.get(String(row.requested_by)) || null,
       itemIds,
       itemCodes: itemIds.map((id) => itemsById.get(id)?.code ?? id),
-      inspectorVerdict:
-        row.inspector_verdict === 'approved' || row.inspector_verdict === 'rejected'
-          ? (row.inspector_verdict as QcInspectorVerdict)
-          : null,
+      inspectorVerdict,
       inspectorNotes: row.inspector_notes ? String(row.inspector_notes) : null,
       inspectorClassified: row.inspector_classified ? String(row.inspector_classified) : null,
       priority: parseQcRequestPriority(row.priority),
+      firstSubmittedAt: row.first_submitted_at ? String(row.first_submitted_at) : null,
+      lastRejectedAt: inferLastRejectedAtFromRequest({ ...inferenceInput, inspectorVerdict }),
+      updatedAt: row.updated_at ? String(row.updated_at) : null,
+      reinspectCount: Number(row.reinspect_count ?? 0),
+      history,
       drawings: (() => {
         const latest = new Map<string, { drawing: QcRequestDrawing; rank: number }>()
         for (const drawing of drawingRows.filter((item) => String(item.request_id) === String(row.id))) {
@@ -261,13 +480,14 @@ export async function loadQcEngineDashboard(projectId: string): Promise<QcEngine
 
   const { data: resultRows } = await db
     .from('inspection_result')
-    .select('id, inspectable_item_id')
+    .select('id, inspectable_item_id, request_id')
     .in(
       'request_id',
       requestIds.length ? requestIds : ['00000000-0000-0000-0000-000000000000']
     )
   const resultIds = (resultRows ?? []).map((row) => String(row.id))
   const resultItem = new Map((resultRows ?? []).map((row) => [String(row.id), String(row.inspectable_item_id)]))
+  const resultRequest = new Map((resultRows ?? []).map((row) => [String(row.id), String(row.request_id)]))
 
   let photos: QcResultPhoto[] = []
   if (resultIds.length) {
@@ -287,12 +507,14 @@ export async function loadQcEngineDashboard(projectId: string): Promise<QcEngine
         .createSignedUrl(String(row.storage_ref), 60 * 30)
       photos.push({
         id: String(row.id),
+        requestId: resultRequest.get(String(row.result_id)) ?? '',
         resultId: String(row.result_id),
         itemId,
         itemCode: itemsById.get(itemId)?.code ?? itemId,
         storageRef: String(row.storage_ref),
         url: signed?.signedUrl ?? null,
         caption: row.caption ? String(row.caption) : null,
+        mediaKind: qcStorageMediaKind(String(row.storage_ref)),
       })
     }
   }
@@ -512,16 +734,26 @@ export async function signRequestDrawing(drawingId: string): Promise<{ url: stri
   return { url: signed.signedUrl, fileName: String(data.file_name) }
 }
 
-export function isRequestEditable(status: string) {
-  return status === 'draft' || status === 'submitted'
+export function isRequestEditable(status: string, inspectorVerdict?: string | null) {
+  if (status === 'draft' || status === 'submitted') return true
+  return status === 'completed' && inspectorVerdict === 'rejected'
+}
+
+export function isRejectedAwaitingResubmit(status: string, inspectorVerdict?: string | null) {
+  return status === 'completed' && inspectorVerdict === 'rejected'
 }
 
 export async function assertRequestEditable(requestId: string) {
   const db = engine(createServiceClient())
-  const { data, error } = await db.from('inspection_request').select('status').eq('id', requestId).maybeSingle()
+  const { data, error } = await db
+    .from('inspection_request')
+    .select('status, inspector_verdict')
+    .eq('id', requestId)
+    .maybeSingle()
   if (error) throw new Error(error.message)
   if (!data) throw new Error('درخواست پیدا نشد.')
-  if (!isRequestEditable(String(data.status))) {
+  const verdict = data.inspector_verdict ? String(data.inspector_verdict) : null
+  if (!isRequestEditable(String(data.status), verdict)) {
     throw new Error('پس از باز شدن درخواست توسط بازرس، ویرایش ممکن نیست.')
   }
 }
@@ -572,6 +804,36 @@ export async function setRequestStatus(requestId: string, status: QcRequestStatu
   if (error) throw new Error(error.message)
 }
 
+export async function submitInspectionRequest(requestId: string, actorId?: string) {
+  const db = engine(createServiceClient())
+  const snapshot = await loadRequestHistorySnapshot(requestId)
+  const now = new Date().toISOString()
+  const patch: Record<string, unknown> = {
+    status: 'submitted',
+    updated_at: now,
+    requested_at: now,
+  }
+  if (!snapshot.firstSubmittedAt) patch.first_submitted_at = now
+  let { error } = await db.from('inspection_request').update(patch).eq('id', requestId)
+  if (error && /first_submitted_at|column|schema cache/i.test(error.message)) {
+    const retry = await db
+      .from('inspection_request')
+      .update({ status: 'submitted', updated_at: now, requested_at: now })
+      .eq('id', requestId)
+    error = retry.error
+  }
+  if (error) throw new Error(error.message)
+
+  await appendInspectionRequestHistory({
+    requestId,
+    eventType: 'submitted',
+    actorId,
+    occurredAt: now,
+    snapshot,
+    cycleNumber: 1,
+  })
+}
+
 export async function recordInspectorDecision(input: {
   requestId: string
   inspectorId: string
@@ -594,26 +856,63 @@ export async function recordInspectorDecision(input: {
   const now = new Date().toISOString()
   const notes = input.notes?.trim() || null
   const classified = input.classified?.trim() || null
-  const patch: Record<string, unknown> = {
-    status: 'completed',
+  const snapshot = await loadRequestHistorySnapshot(input.requestId)
+  const cycleNumber = inspectionCycleNumber(snapshot.reinspectCount)
+  const verdictLine = input.verdict === 'approved' ? 'تأیید بازرس' : 'رد بازرس'
+  const decisionMarker =
+    input.verdict === 'approved' ? QC_APPROVED_AT_MARKER : QC_REJECTED_AT_MARKER
+  const notesWithMarker = appendQcNoteMarker(
+    existing.notes ? String(existing.notes) : null,
+    decisionMarker,
+    now
+  )
+
+  const { error: coreError } = await db
+    .from('inspection_request')
+    .update({ status: 'completed', notes: notesWithMarker, updated_at: now })
+    .eq('id', input.requestId)
+  if (coreError) throw new Error(coreError.message)
+
+  const optionalPatch: Record<string, unknown> = {
     inspector_verdict: input.verdict,
     inspector_notes: notes,
     inspector_classified: classified,
     assigned_inspector_id: input.inspectorId,
     updated_at: now,
   }
-  let { error } = await db.from('inspection_request').update(patch).eq('id', input.requestId)
-  if (error && /inspector_verdict|inspector_notes|inspector_classified|column|schema cache/i.test(error.message)) {
-    const fallback = [existing.notes, classified, notes, input.verdict === 'approved' ? 'تأیید بازرس' : 'رد بازرس']
-      .filter(Boolean)
-      .join('\n\n')
-    const retry = await db
+  if (input.verdict === 'rejected') optionalPatch.last_rejected_at = now
+
+  const { error: optionalError } = await db
+    .from('inspection_request')
+    .update(optionalPatch)
+    .eq('id', input.requestId)
+
+  if (
+    optionalError &&
+    /inspector_verdict|inspector_notes|inspector_classified|last_rejected|assigned_inspector|column|schema cache/i.test(
+      optionalError.message
+    )
+  ) {
+    const fallbackNotes = [notesWithMarker, classified, notes, verdictLine].filter(Boolean).join('\n\n')
+    const { error: notesError } = await db
       .from('inspection_request')
-      .update({ status: 'completed', notes: fallback || null, updated_at: now })
+      .update({ notes: fallbackNotes, updated_at: now })
       .eq('id', input.requestId)
-    error = retry.error
+    if (notesError) throw new Error(notesError.message)
+  } else if (optionalError) {
+    throw new Error(optionalError.message)
   }
-  if (error) throw new Error(error.message)
+
+  await appendInspectionRequestHistory({
+    requestId: input.requestId,
+    eventType: input.verdict === 'approved' ? 'approved' : 'rejected',
+    actorId: input.inspectorId,
+    occurredAt: now,
+    snapshot,
+    cycleNumber,
+    inspectorNotes: notes,
+    inspectorClassified: classified,
+  })
 }
 
 export async function deleteInspectionRequests(projectId: string, requestIds: string[]) {
@@ -702,12 +1001,13 @@ export async function updateInspectionRequest(input: {
   const db = engine(createServiceClient())
   const { data: existing, error: existingError } = await db
     .from('inspection_request')
-    .select('status')
+    .select('status, inspector_verdict')
     .eq('id', input.requestId)
     .maybeSingle()
   if (existingError) throw new Error(existingError.message)
   if (!existing) throw new Error('درخواست پیدا نشد.')
-  if (!isRequestEditable(String(existing.status))) {
+  const verdict = existing.inspector_verdict ? String(existing.inspector_verdict) : null
+  if (!isRequestEditable(String(existing.status), verdict)) {
     throw new Error('پس از باز شدن درخواست توسط بازرس، ویرایش ممکن نیست.')
   }
   if (input.projectId && input.itemUpdates?.length) {
@@ -746,6 +1046,136 @@ export async function markRequestOpenedByInspector(requestId: string) {
   if (!data) throw new Error('درخواست پیدا نشد.')
   if (!isRequestEditable(String(data.status))) return
   await setRequestStatus(requestId, 'in_progress')
+}
+
+export async function resubmitRejectedInspectionRequest(input: {
+  requestId: string
+  projectId?: string
+  activityType?: string
+  floor?: string
+  gridFrom?: string
+  gridTo?: string
+  sourceDrawingId?: string | null
+  itemIds?: string[]
+  itemUpdates?: { id: string; code?: string; floor?: string; name?: string }[]
+  notes?: string
+}) {
+  const db = engine(createServiceClient())
+  const { data: existing, error: existingError } = await db
+    .from('inspection_request')
+    .select('status, inspector_verdict, notes, inspector_notes, inspector_classified, last_rejected_at, updated_at')
+    .eq('id', input.requestId)
+    .maybeSingle()
+  if (existingError) throw new Error(existingError.message)
+  if (!existing) throw new Error('درخواست پیدا نشد.')
+
+  const status = String(existing.status)
+  const verdict = existing.inspector_verdict ? String(existing.inspector_verdict) : null
+  if (!isRejectedAwaitingResubmit(status, verdict)) {
+    throw new Error('این درخواست برای بازرسی مجدد واجد شرایط نیست.')
+  }
+
+  if (input.projectId && input.itemUpdates?.length) {
+    await updateInspectableItems(input.projectId, input.itemUpdates)
+  }
+
+  const snapshot = await loadRequestHistorySnapshot(input.requestId)
+  const newReinspectCount = snapshot.reinspectCount + 1
+  const cycleNumber = inspectionCycleNumber(newReinspectCount)
+  const editedNotes =
+    input.notes !== undefined ? input.notes.trim() : snapshot.requestNotes?.trim() || null
+  const now = new Date().toISOString()
+  let notesBase = editedNotes
+  if (!hasQcNoteMarker(notesBase, QC_REJECTED_AT_MARKER)) {
+    const rejectedIso = existing.last_rejected_at
+      ? String(existing.last_rejected_at)
+      : parseQcNoteMarker(snapshot.requestNotes, QC_REJECTED_AT_MARKER) ??
+        (existing.updated_at ? String(existing.updated_at) : null)
+    if (rejectedIso) {
+      notesBase = appendQcNoteMarker(notesBase, QC_REJECTED_AT_MARKER, rejectedIso)
+    }
+  }
+  const notesWithMarkers = appendQcNoteMarker(notesBase, QC_RESUBMIT_MARKER, now)
+
+  const patch: Record<string, unknown> = {
+    status: 'submitted',
+    inspector_verdict: null,
+    inspector_notes: null,
+    inspector_classified: null,
+    assigned_inspector_id: null,
+    notes: notesWithMarkers,
+    updated_at: now,
+    requested_at: now,
+    reinspect_count: newReinspectCount,
+  }
+  if (input.activityType !== undefined) patch.activity_type = input.activityType
+  if (input.floor !== undefined) patch.floor = input.floor.trim() || null
+  if (input.gridFrom !== undefined) patch.grid_from = input.gridFrom.trim() || null
+  if (input.gridTo !== undefined) patch.grid_to = input.gridTo.trim() || null
+  if (input.sourceDrawingId !== undefined) patch.source_drawing_id = input.sourceDrawingId || null
+
+  let { error } = await db.from('inspection_request').update(patch).eq('id', input.requestId)
+  if (
+    error &&
+    /inspector_verdict|inspector_notes|inspector_classified|assigned_inspector|reinspect_count|column|schema cache/i.test(
+      error.message
+    )
+  ) {
+    const fallbackPatch: Record<string, unknown> = {
+      status: 'submitted',
+      notes: notesWithMarkers,
+      updated_at: now,
+      requested_at: now,
+    }
+    if (input.activityType !== undefined) fallbackPatch.activity_type = input.activityType
+    if (input.floor !== undefined) fallbackPatch.floor = input.floor.trim() || null
+    if (input.gridFrom !== undefined) fallbackPatch.grid_from = input.gridFrom.trim() || null
+    if (input.gridTo !== undefined) fallbackPatch.grid_to = input.gridTo.trim() || null
+    if (input.sourceDrawingId !== undefined) fallbackPatch.source_drawing_id = input.sourceDrawingId || null
+    const retry = await db.from('inspection_request').update(fallbackPatch).eq('id', input.requestId)
+    error = retry.error
+  }
+  if (error) throw new Error(error.message)
+
+  if (input.itemIds) {
+    const { error: deleteError } = await db.from('inspection_request_item').delete().eq('request_id', input.requestId)
+    if (deleteError) throw new Error(deleteError.message)
+    if (input.itemIds.length) {
+      const { error: linkError } = await db.from('inspection_request_item').insert(
+        input.itemIds.map((id, index) => ({
+          request_id: input.requestId,
+          inspectable_item_id: id,
+          sort_order: index,
+        }))
+      )
+      if (linkError) throw new Error(linkError.message)
+    }
+  }
+
+  const resubmitSnapshot: RequestHistorySnapshot = {
+    activityType: input.activityType ?? snapshot.activityType,
+    floor: input.floor !== undefined ? input.floor.trim() || null : snapshot.floor,
+    gridFrom: input.gridFrom !== undefined ? input.gridFrom.trim() || null : snapshot.gridFrom,
+    gridTo: input.gridTo !== undefined ? input.gridTo.trim() || null : snapshot.gridTo,
+    requestNotes: editedNotes,
+    itemCodes: input.itemIds?.length
+      ? await (async () => {
+          const { data: itemRows } = await db.from('inspectable_item').select('id, code').in('id', input.itemIds!)
+          const codeById = new Map((itemRows ?? []).map((row) => [String(row.id), String(row.code)]))
+          return input.itemIds!.map((id) => codeById.get(id) ?? id)
+        })()
+      : snapshot.itemCodes,
+    firstSubmittedAt: snapshot.firstSubmittedAt,
+    reinspectCount: newReinspectCount,
+  }
+
+  await appendInspectionRequestHistory({
+    requestId: input.requestId,
+    eventType: 'resubmitted',
+    occurredAt: now,
+    snapshot: resubmitSnapshot,
+    cycleNumber,
+  })
 }
 
 async function ensureActivityTemplate(activityType: string) {
@@ -951,13 +1381,19 @@ export async function uploadResultPhoto(input: {
   file: File
   caption?: string
 }) {
+  if (!isAllowedInspectionMedia(input.file)) {
+    throw new Error('فقط تصویر یا فیلم برای مستندسازی بازرسی پذیرفته می‌شود.')
+  }
   const storage = createServiceClient()
   await ensurePhotoBucket(storage)
   const db = engine(storage)
   const ext = input.file.name.split('.').pop()?.toLowerCase() || 'jpg'
   const path = `${input.itemId}/${input.resultId}/${crypto.randomUUID()}.${ext}`
+  const contentType =
+    input.file.type ||
+    (qcStorageMediaKind(path) === 'video' ? 'video/mp4' : 'image/jpeg')
   const { error: uploadError } = await storage.storage.from(PHOTO_BUCKET).upload(path, input.file, {
-    contentType: input.file.type || 'image/jpeg',
+    contentType,
     upsert: false,
   })
   if (uploadError) throw new Error(uploadError.message)
@@ -974,4 +1410,116 @@ export async function uploadResultPhoto(input: {
     .single()
   if (error) throw new Error(error.message)
   return data.id as string
+}
+
+function qcStorageMediaKind(storageRef: string): 'image' | 'video' {
+  const ext = storageRef.split('.').pop()?.toLowerCase() ?? ''
+  if (ext === 'mp4' || ext === 'webm' || ext === 'mov' || ext === 'm4v' || ext === 'avi') return 'video'
+  return 'image'
+}
+
+function isAllowedInspectionMedia(file: File) {
+  if (file.type.startsWith('image/') || file.type.startsWith('video/')) return true
+  return /\.(jpg|jpeg|png|webp|gif|bmp|mp4|webm|mov|m4v|avi)$/i.test(file.name)
+}
+
+async function ensureRequestMediaResult(requestId: string, inspectorId: string) {
+  await assertRequestInspectable(requestId)
+  const db = engine(createServiceClient())
+  const { data: linkRow, error: linkError } = await db
+    .from('inspection_request_item')
+    .select('inspectable_item_id')
+    .eq('request_id', requestId)
+    .order('sort_order')
+    .limit(1)
+    .maybeSingle()
+  if (linkError) throw new Error(linkError.message)
+  const itemId = linkRow?.inspectable_item_id ? String(linkRow.inspectable_item_id) : null
+  if (!itemId) throw new Error('آیتم بازرسی برای این درخواست پیدا نشد.')
+
+  const { data: request, error: requestError } = await db
+    .from('inspection_request')
+    .select('activity_type, status')
+    .eq('id', requestId)
+    .maybeSingle()
+  if (requestError || !request) throw new Error(requestError?.message || 'درخواست پیدا نشد.')
+
+  const templateItems = await ensureActivityTemplate(String(request.activity_type))
+  const templateItemId = templateItems[0]?.id
+  if (!templateItemId) throw new Error('چک‌لیست برای این فعالیت پیدا نشد.')
+
+  const status = String(request.status)
+  if (status === 'submitted' || status === 'scheduled') {
+    await setRequestStatus(requestId, 'in_progress')
+  }
+
+  const { data: existing } = await db
+    .from('inspection_result')
+    .select('id')
+    .eq('request_id', requestId)
+    .eq('inspectable_item_id', itemId)
+    .eq('template_item_id', templateItemId)
+    .maybeSingle()
+
+  if (existing?.id) return { resultId: String(existing.id), itemId }
+
+  const { data, error } = await db
+    .from('inspection_result')
+    .insert({
+      request_id: requestId,
+      inspectable_item_id: itemId,
+      template_item_id: templateItemId,
+      verdict: 'na',
+      notes: null,
+      inspector_id: inspectorId,
+    })
+    .select('id')
+    .single()
+  if (error) throw new Error(error.message)
+  return { resultId: String(data.id), itemId }
+}
+
+export async function saveInspectorReport(input: {
+  requestId: string
+  inspectorId: string
+  notes?: string
+  classified?: string
+}) {
+  await assertRequestInspectable(input.requestId)
+  const db = engine(createServiceClient())
+  const now = new Date().toISOString()
+  const patch: Record<string, unknown> = {
+    inspector_notes: input.notes?.trim() || null,
+    inspector_classified: input.classified?.trim() || null,
+    assigned_inspector_id: input.inspectorId,
+    updated_at: now,
+  }
+  const { error } = await db.from('inspection_request').update(patch).eq('id', input.requestId)
+  if (error && !/inspector_notes|inspector_classified|assigned_inspector|column|schema cache/i.test(error.message)) {
+    throw new Error(error.message)
+  }
+
+  const { data } = await db.from('inspection_request').select('status').eq('id', input.requestId).maybeSingle()
+  const status = data ? String(data.status) : ''
+  if (status === 'submitted' || status === 'scheduled') {
+    await setRequestStatus(input.requestId, 'in_progress')
+  }
+}
+
+export async function uploadRequestInspectionMedia(input: {
+  requestId: string
+  inspectorId: string
+  file: File
+  caption?: string
+}) {
+  if (!isAllowedInspectionMedia(input.file)) {
+    throw new Error('فقط تصویر یا فیلم برای مستندسازی بازرسی پذیرفته می‌شود.')
+  }
+  const { resultId, itemId } = await ensureRequestMediaResult(input.requestId, input.inspectorId)
+  return uploadResultPhoto({
+    resultId,
+    itemId,
+    file: input.file,
+    caption: input.caption,
+  })
 }

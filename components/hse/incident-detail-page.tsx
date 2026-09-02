@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { ArrowRight, Download } from 'lucide-react'
 import { SeverityBadge, StatusBadge, statusLabel } from '@/components/hse/badges'
 import { formatDateTime } from '@/components/hse/format'
@@ -40,6 +41,15 @@ const CA_STATUS_LABEL: Record<HseIncident['correctiveActions'][number]['status']
 }
 
 export function IncidentDetailPage({ id }: { id: string }) {
+  const searchParams = useSearchParams()
+  const returnTo = searchParams.get('returnTo')
+  const backHref = returnTo?.startsWith('/') ? returnTo : `${HSE_BASE}/incidents`
+  const backLabel = returnTo?.includes('site-supervisor')
+    ? 'بازگشت به ایمنی و اخطارها'
+    : returnTo
+      ? 'بازگشت'
+      : 'بازگشت'
+
   const incident = getIncidentById(id)
 
   if (!incident) {
@@ -55,9 +65,9 @@ export function IncidentDetailPage({ id }: { id: string }) {
           </EmptyRow>
           <div className="mt-2 text-center">
             <Button asChild size="sm" variant="outline">
-              <Link href={`${HSE_BASE}/incidents`}>
+              <Link href={backHref}>
                 <ArrowRight className="h-3.5 w-3.5" />
-                بازگشت به حوادث
+                {backLabel}
               </Link>
             </Button>
           </div>
@@ -97,9 +107,9 @@ export function IncidentDetailPage({ id }: { id: string }) {
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild size="sm" variant="outline">
-              <Link href={`${HSE_BASE}/incidents`}>
+              <Link href={backHref}>
                 <ArrowRight className="h-3.5 w-3.5" />
-                بازگشت
+                {backLabel}
               </Link>
             </Button>
             <Button size="sm" onClick={exportReport}>

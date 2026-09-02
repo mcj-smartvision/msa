@@ -27,6 +27,7 @@ interface ScheduleCatchUpPanelProps {
   projectId: string
   tasks: ProjectTask[]
   actualStart: string | null
+  scheduleVersion?: string | null
   onTasksUpdated: (tasks: ProjectTask[]) => void
 }
 
@@ -36,6 +37,7 @@ export function ScheduleCatchUpPanel({
   projectId,
   tasks,
   actualStart,
+  scheduleVersion,
   onTasksUpdated,
 }: ScheduleCatchUpPanelProps) {
   const { locale, dir } = useLocale()
@@ -54,12 +56,13 @@ export function ScheduleCatchUpPanel({
   const [error, setError] = useState<string | null>(null)
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
 
-  // Reset wizard only when actual start changes (not after saving progress)
+  // Reset wizard when actual start or schedule import changes (new XML upload)
   useEffect(() => {
     setMode('ask')
+    setDraftPct({})
     setSavedMsg(null)
     setError(null)
-  }, [actualStart])
+  }, [actualStart, scheduleVersion])
 
   const dueTaskKey = compliance.rows.map((r) => r.taskId).join('|')
 

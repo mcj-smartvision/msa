@@ -7,7 +7,6 @@ import { SITE_ROLE_LABELS } from '@/lib/dashboard/roles'
 import type { WidgetRenderContext } from '@/types/dashboard'
 import { WidgetGrid, WidgetGridItem } from '@/components/widgets/widget-shell'
 import { PageHeader } from '@/components/admin/shared'
-import { Label } from '@/components/ui/label'
 import {
   UiBlockCustomizePanel,
   UiBlockGuard,
@@ -19,7 +18,6 @@ interface RoleDashboardProps {
   widgetKeys: string[]
   visibleBlockCodes?: string[]
   showAdminBlockCodes?: boolean
-  onProjectChange?: (projectId: string) => void
 }
 
 export function RoleDashboard({
@@ -27,7 +25,6 @@ export function RoleDashboard({
   widgetKeys,
   visibleBlockCodes = [],
   showAdminBlockCodes = false,
-  onProjectChange,
 }: RoleDashboardProps) {
   const widgets = useMemo(
     () =>
@@ -55,24 +52,6 @@ export function RoleDashboard({
           title={`داشبورد ${roleLabel}`}
           description={`${context.user.fullName} عزیز، خوش آمدید. فضای کاری مطابق نقش شما تنظیم شده است.`}
         />
-
-        {context.user.projects.length > 1 ? (
-          <div className="max-w-sm space-y-2">
-            <Label htmlFor="project-select">پروژه فعال</Label>
-            <select
-              id="project-select"
-              value={context.projectId ?? ''}
-              onChange={(e) => onProjectChange?.(e.target.value)}
-              className="msa-field flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm"
-            >
-              {context.user.projects.map(({ project }) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : null}
 
         {widgets.length === 0 ? (
           <p className="text-sm text-muted-foreground">ویجتی برای نقش شما پیکربندی نشده است.</p>

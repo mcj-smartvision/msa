@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   MessageCircle,
   Search,
@@ -46,11 +47,11 @@ function chatSubtitle(c: MessengerConversation | null | undefined) {
   return c.peer?.fullName ?? ''
 }
 
-type Tab = 'chats' | 'contacts'
+type Tab = 'chats' | 'members'
 
 const MIN_W = 360
 const MIN_H = 420
-const DEFAULT_W = 720
+const DEFAULT_W = 920
 const DEFAULT_H = 640
 
 export function MessengerButton({
@@ -74,7 +75,7 @@ export function MessengerButton({
         typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search).get('projectId')
           : null
-      setProjectId(fromUrl || readProjectCookie())
+      setProjectId(readProjectCookie() || fromUrl)
     }
     sync()
     window.addEventListener('focus', sync)
@@ -157,63 +158,67 @@ export function MessengerButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={cn(
-          variant === 'nav'
-            ? 'relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900'
-            : variant === 'fab'
-              ? cn(
-                  'relative inline-flex h-10 items-center gap-2 rounded-full px-3.5 sm:px-4 text-sm font-medium text-white',
-                  'border border-sky-300/50 bg-sky-500/70 backdrop-blur-md shadow-lg shadow-sky-500/30',
-                  'ring-1 ring-inset ring-sky-200/40 hover:bg-sky-500/85 transition-colors',
-                  pulse && 'shadow-sky-400/50 shadow-xl'
-                )
-              : cn(
-                  'relative inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-white shadow-md transition-all',
-                  'bg-gradient-to-l from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500',
-                  pulse && 'ring-2 ring-rose-400 ring-offset-2 ring-offset-background scale-105'
-                ),
-          className
-        )}
-        title={messengerLabel}
-        aria-label={messengerLabel}
-      >
-        <MessageCircle
+      {!open && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
           className={cn(
-            variant === 'fab' ? 'h-5 w-5' : 'h-4 w-4 shrink-0',
-            pulse && variant === 'default' && 'animate-bounce'
+            variant === 'nav'
+              ? 'relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900'
+              : variant === 'fab'
+                ? cn(
+                    'relative inline-flex h-10 items-center gap-2 rounded-full px-3.5 sm:px-4 text-sm font-medium text-white',
+                    'border border-sky-300/50 bg-sky-500/70 backdrop-blur-md shadow-lg shadow-sky-500/30',
+                    'ring-1 ring-inset ring-sky-200/40 hover:bg-sky-500/85 transition-colors',
+                    pulse && 'shadow-sky-400/50 shadow-xl'
+                  )
+                : cn(
+                    'relative inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-white shadow-md transition-all',
+                    'bg-gradient-to-l from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-500',
+                    pulse && 'ring-2 ring-rose-400 ring-offset-2 ring-offset-background scale-105'
+                  ),
+            className
           )}
-        />
-        {variant === 'default' || variant === 'fab' ? (
-          <span className={cn(variant === 'fab' ? 'text-[13px] font-semibold' : 'hidden sm:inline')}>
-            {messengerLabel}
-          </span>
-        ) : null}
-        {variant === 'nav' ? <span className="flex-1 text-start">{messengerLabel}</span> : null}
-        {unread > 0 && (
-          <span
+          title={messengerLabel}
+          aria-label={messengerLabel}
+        >
+          <MessageCircle
             className={cn(
-              variant === 'nav'
-                ? 'inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white'
-                : variant === 'fab'
-                  ? 'absolute -top-1.5 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-600 text-[10px] font-bold flex items-center justify-center px-0.5 border-2 border-white text-white shadow-sm'
-                  : 'absolute -top-1.5 -start-1.5 min-w-[20px] h-[20px] rounded-full bg-red-600 text-[11px] font-bold flex items-center justify-center px-1 shadow-lg border-2 border-white text-white animate-pulse'
+              variant === 'fab' ? 'h-5 w-5' : 'h-4 w-4 shrink-0',
+              pulse && variant === 'default' && 'animate-bounce'
             )}
-          >
-            {unread > 99 ? '99+' : unread}
-          </span>
-        )}
-      </button>
-
-      {open && (
-        <MessengerPanel
-          projectId={projectId}
-          onClose={() => setOpen(false)}
-          onUnreadChange={setUnread}
-        />
+          />
+          {variant === 'default' || variant === 'fab' ? (
+            <span className={cn(variant === 'fab' ? 'text-[13px] font-semibold' : 'hidden sm:inline')}>
+              {messengerLabel}
+            </span>
+          ) : null}
+          {variant === 'nav' ? <span className="flex-1 text-start">{messengerLabel}</span> : null}
+          {unread > 0 && (
+            <span
+              className={cn(
+                variant === 'nav'
+                  ? 'inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white'
+                  : variant === 'fab'
+                    ? 'absolute -top-1.5 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-600 text-[10px] font-bold flex items-center justify-center px-0.5 border-2 border-white text-white shadow-sm'
+                    : 'absolute -top-1.5 -start-1.5 min-w-[20px] h-[20px] rounded-full bg-red-600 text-[11px] font-bold flex items-center justify-center px-1 shadow-lg border-2 border-white text-white animate-pulse'
+              )}
+            >
+              {unread > 99 ? '99+' : unread}
+            </span>
+          )}
+        </button>
       )}
+
+      {open &&
+        createPortal(
+          <MessengerPanel
+            projectId={projectId}
+            onClose={() => setOpen(false)}
+            onUnreadChange={setUnread}
+          />,
+          document.body
+        )}
     </>
   )
 }
@@ -233,7 +238,8 @@ function MessengerPanel({
   const [activeId, setActiveId] = useState<string | null>(null)
   const [messages, setMessages] = useState<MessengerMessage[]>([])
   const [draft, setDraft] = useState('')
-  const [query, setQuery] = useState('')
+  const [chatQuery, setChatQuery] = useState('')
+  const [memberQuery, setMemberQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -356,7 +362,7 @@ function MessengerPanel({
       const dh = ev.clientY - resizing.current.y
       setSize({
         w: Math.min(Math.max(MIN_W, resizing.current.w + dw), window.innerWidth - 24),
-        h: Math.min(Math.max(MIN_H, resizing.current.h + dh), window.innerHeight - 24),
+        h: Math.min(Math.max(MIN_H, resizing.current.h + dh), window.innerHeight - 96),
       })
     }
     const onUp = () => {
@@ -475,7 +481,7 @@ function MessengerPanel({
   }
 
   const filteredContacts = contacts.filter((c) => {
-    const q = query.trim()
+    const q = memberQuery.trim()
     if (!q) return true
     return (
       c.positionLabel.includes(q) ||
@@ -485,12 +491,14 @@ function MessengerPanel({
   })
 
   const filteredChats = conversations.filter((c) => {
-    const q = query.trim()
+    const q = chatQuery.trim()
     if (!q) return true
     const title = chatTitle(c)
     const name = c.peer?.fullName ?? ''
     return title.includes(q) || name.includes(q) || (c.lastMessage?.body ?? '').includes(q)
   })
+
+  const activePeerId = activeConversation?.peer?.userId ?? null
 
   const hubChats = filteredChats.filter((c) => c.folder === 'hub' || c.isProjectHub)
   const directChats = filteredChats.filter((c) => c.folder !== 'hub' && !c.isProjectHub)
@@ -500,22 +508,27 @@ function MessengerPanel({
     conversations.find((c) => c.id === incoming?.conversationId)?.peer?.positionLabel ??
     'همکار'
 
+  const panelHeight = Math.min(
+    size.h,
+    typeof window !== 'undefined' ? window.innerHeight - 96 : size.h
+  )
+  const panelWidth = Math.min(
+    size.w,
+    typeof window !== 'undefined' ? window.innerWidth - 24 : size.w
+  )
+
   return (
-    <div className="fixed inset-0 z-[80]" dir="rtl">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
-        aria-label="بستن"
-        onClick={onClose}
-      />
-      <div
-        className="absolute top-3 start-3 flex flex-col rounded-2xl overflow-hidden shadow-2xl border border-white/10"
-        style={{
-          width: Math.min(size.w, typeof window !== 'undefined' ? window.innerWidth - 24 : size.w),
-          height: Math.min(size.h, typeof window !== 'undefined' ? window.innerHeight - 24 : size.h),
-          background: 'linear-gradient(165deg, #0f172a 0%, #0b141a 40%, #111b21 100%)',
-        }}
-      >
+    <div
+      className="fixed bottom-20 left-4 sm:left-5 z-[80] flex flex-col rounded-2xl overflow-hidden shadow-2xl shadow-sky-900/40 border border-sky-300/50 pointer-events-auto ring-1 ring-sky-200/40 backdrop-blur-sm"
+      dir="rtl"
+      style={{
+        width: panelWidth,
+        height: panelHeight,
+        maxHeight: 'calc(100vh - 6rem)',
+        background:
+          'linear-gradient(165deg, #bae6fd 0%, #38bdf8 15%, #2563eb 45%, #1e3a8a 75%, #0f172a 100%)',
+      }}
+    >
         {/* Resize: bottom-start (= راست پنل در RTL) — دور از دکمه ارسال سمت چپ */}
         <button
           type="button"
@@ -550,7 +563,7 @@ function MessengerPanel({
         )}
 
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-l from-[#1f2c34] to-[#202c33] border-b border-white/5 shrink-0">
+        <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-l from-sky-600/95 to-blue-900/95 border-b border-sky-300/20 shrink-0">
           {activeId ? (
             <button
               type="button"
@@ -560,7 +573,7 @@ function MessengerPanel({
               <ArrowRight className="h-5 w-5" />
             </button>
           ) : (
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-900/40">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-900/40">
               <MessageCircle className="h-5 w-5 text-white" />
             </div>
           )}
@@ -568,7 +581,7 @@ function MessengerPanel({
             <p className="font-semibold text-[15px] text-white truncate">
               {activeConversation ? chatTitle(activeConversation) : `پیام‌رسان ${APP_NAME}`}
             </p>
-            <p className="text-[11px] text-emerald-200/70 truncate">
+            <p className="text-[11px] text-sky-200/70 truncate">
               {activeConversation
                 ? chatSubtitle(activeConversation)
                 : 'یک پوشه برای هر نفر · ویس · ویدیو · بازارسال'}
@@ -579,7 +592,7 @@ function MessengerPanel({
               <button
                 type="button"
                 onClick={() => void startCall('audio')}
-                className="h-9 w-9 rounded-full bg-white/10 hover:bg-emerald-600 text-white flex items-center justify-center"
+                className="h-9 w-9 rounded-full bg-white/10 hover:bg-sky-600 text-white flex items-center justify-center"
                 title="تماس صوتی"
               >
                 <Phone className="h-4 w-4" />
@@ -587,7 +600,7 @@ function MessengerPanel({
               <button
                 type="button"
                 onClick={() => void startCall('video')}
-                className="h-9 w-9 rounded-full bg-white/10 hover:bg-emerald-600 text-white flex items-center justify-center"
+                className="h-9 w-9 rounded-full bg-white/10 hover:bg-sky-600 text-white flex items-center justify-center"
                 title="تماس تصویری"
               >
                 <Video className="h-4 w-4" />
@@ -609,116 +622,18 @@ function MessengerPanel({
           </div>
         ) : (
           <div className="flex-1 flex min-h-0">
-            <div
-              className={cn(
-                'flex flex-col border-e border-white/5 bg-[#0b141a]/80 w-full sm:w-[42%] sm:min-w-[240px] shrink-0',
-                activeId && 'hidden sm:flex'
-              )}
-            >
-              <div className="p-3 space-y-2">
-                <div className="flex rounded-xl bg-[#1a252d] p-0.5 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setTab('chats')}
-                    className={cn(
-                      'flex-1 rounded-lg py-2 font-medium transition-colors',
-                      tab === 'chats'
-                        ? 'bg-gradient-to-l from-emerald-600 to-teal-600 text-white shadow'
-                        : 'text-white/55 hover:text-white'
-                    )}
-                  >
-                    گفتگوها
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTab('contacts')}
-                    className={cn(
-                      'flex-1 rounded-lg py-2 font-medium inline-flex items-center justify-center gap-1 transition-colors',
-                      tab === 'contacts'
-                        ? 'bg-gradient-to-l from-emerald-600 to-teal-600 text-white shadow'
-                        : 'text-white/55 hover:text-white'
-                    )}
-                  >
-                    <Users className="h-3.5 w-3.5" />
-                    مخاطبین
-                  </button>
-                </div>
-                <div className="relative">
-                  <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
-                  <input
-                    className="w-full rounded-xl bg-[#1a252d] border border-white/5 ps-8 pe-3 py-2 text-sm text-white placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    placeholder="جستجو بر اساس مسئولیت…"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                </div>
-              </div>
+            {/* اعضای پروژه — سمت راست در RTL */}
+            <ProjectMembersPanel
+              className="hidden sm:flex"
+              contacts={filteredContacts}
+              loading={loading}
+              activePeerId={activePeerId}
+              memberQuery={memberQuery}
+              onMemberQueryChange={setMemberQuery}
+              onSelect={(c) => void openChatWith(c)}
+            />
 
-              <div className="flex-1 overflow-y-auto">
-                {loading && <p className="p-4 text-xs text-white/45">در حال بارگذاری…</p>}
-                {error && (
-                  <p className="mx-3 mb-2 rounded-xl bg-rose-500/20 text-rose-100 text-xs px-3 py-2 border border-rose-400/20">
-                    {error}
-                  </p>
-                )}
-
-                {tab === 'chats' && !loading && filteredChats.length === 0 && (
-                  <p className="p-4 text-xs text-white/45">
-                    هنوز گفتگویی نیست. از تب مخاطبین شروع کنید.
-                  </p>
-                )}
-
-                {tab === 'chats' && hubChats.length > 0 && (
-                  <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 text-[10px] font-semibold text-emerald-300/80 uppercase tracking-wide">
-                    <UsersRound className="h-3 w-3" />
-                    گروه پروژه
-                  </div>
-                )}
-                {tab === 'chats' &&
-                  hubChats.map((c) => (
-                    <ChatRow
-                      key={c.id}
-                      conversation={c}
-                      active={activeId === c.id}
-                      onOpen={() => setActiveId(c.id)}
-                      hub
-                    />
-                  ))}
-
-                {tab === 'chats' && directChats.length > 0 && (
-                  <div className="px-3 pt-3 pb-1 flex items-center gap-1.5 text-[10px] font-semibold text-white/45">
-                    <Folder className="h-3 w-3" />
-                    پوشه گفتگو با هر نفر
-                  </div>
-                )}
-                {tab === 'chats' &&
-                  directChats.map((c) => (
-                    <ChatRow
-                      key={c.id}
-                      conversation={c}
-                      active={activeId === c.id}
-                      onOpen={() => setActiveId(c.id)}
-                    />
-                  ))}
-
-                {tab === 'contacts' &&
-                  filteredContacts.map((c) => (
-                    <button
-                      key={c.userId}
-                      type="button"
-                      onClick={() => void openChatWith(c)}
-                      className="w-full text-right px-3 py-3 flex gap-3 hover:bg-white/[0.04] border-b border-white/[0.04]"
-                    >
-                      <Avatar label={c.positionLabel} />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-white truncate">{c.positionLabel}</p>
-                        <p className="text-[11px] text-white/40 truncate">{c.fullName}</p>
-                      </div>
-                    </button>
-                  ))}
-              </div>
-            </div>
-
+            {/* ناحیه گفتگو — وسط */}
             <div
               className={cn(
                 'flex-1 flex flex-col min-w-0 relative',
@@ -726,17 +641,17 @@ function MessengerPanel({
               )}
               style={{
                 backgroundImage:
-                  'radial-gradient(ellipse at top, rgba(16,185,129,0.08), transparent 50%), linear-gradient(180deg,#0b141a,#0d1b22)',
+                  'radial-gradient(ellipse at top, rgba(56,189,248,0.15), transparent 50%), linear-gradient(180deg,#1e3a8a,#0f172a)',
               }}
             >
               {!activeId ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-white/45 gap-3 p-6">
-                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500/30 to-teal-700/30 border border-white/10 flex items-center justify-center">
-                    <MessageCircle className="h-8 w-8 text-emerald-300/80" />
+                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-sky-400/40 to-blue-800/50 border border-sky-300/25 flex items-center justify-center">
+                    <MessageCircle className="h-8 w-8 text-sky-200/90" />
                   </div>
-                  <p className="text-sm text-white/70">یک گفتگو یا مخاطب انتخاب کنید</p>
+                  <p className="text-sm text-white/70">یک گفتگو یا عضو انتخاب کنید</p>
                   <p className="text-xs text-center max-w-xs text-white/40">
-                    یک پوشه برای هر نفر · گروه جلسات · ویس و ویدیو · بازارسال
+                    از لیست اعضای پروژه در سمت راست شروع کنید
                   </p>
                 </div>
               ) : (
@@ -751,18 +666,18 @@ function MessengerPanel({
                           className={cn(
                             'relative max-w-[88%] rounded-2xl px-3 py-2 text-sm shadow-md',
                             m.mine
-                              ? 'bg-gradient-to-br from-[#005c4b] to-[#064e3b] rounded-be-md text-white'
-                              : 'bg-[#1f2c34] rounded-bs-md text-white border border-white/5'
+                              ? 'bg-gradient-to-br from-sky-600 to-blue-900 rounded-be-md text-white'
+                              : 'bg-blue-900/70 rounded-bs-md text-white border border-sky-400/20'
                           )}
                         >
                           {m.isForwarded && (
-                            <p className="text-[10px] text-emerald-200/80 mb-1 flex items-center gap-1">
+                            <p className="text-[10px] text-sky-200/80 mb-1 flex items-center gap-1">
                               <Forward className="h-3 w-3" />
                               بازارسال‌شده
                             </p>
                           )}
                           {!m.mine && (
-                            <p className="text-[10px] text-emerald-300/90 mb-0.5 font-medium">
+                            <p className="text-[10px] text-sky-300/90 mb-0.5 font-medium">
                               {m.senderPositionLabel}
                             </p>
                           )}
@@ -787,7 +702,7 @@ function MessengerPanel({
                             <button
                               type="button"
                               onClick={() => setForwardMessageId(m.id)}
-                              className="text-[10px] text-white/45 hover:text-emerald-300 inline-flex items-center gap-0.5"
+                              className="text-[10px] text-white/45 hover:text-sky-300 inline-flex items-center gap-0.5"
                               title="بازارسال"
                             >
                               <Forward className="h-3 w-3" />
@@ -833,7 +748,7 @@ function MessengerPanel({
                     </div>
                   )}
 
-                  <div className="p-3 bg-[#1a252d]/95 border-t border-white/5 flex items-end gap-2 shrink-0">
+                  <div className="p-3 bg-blue-950/80 border-t border-sky-300/15 flex items-end gap-2 shrink-0">
                     <input
                       ref={fileRef}
                       type="file"
@@ -861,7 +776,7 @@ function MessengerPanel({
                     />
                     <textarea
                       rows={1}
-                      className="flex-1 resize-none rounded-2xl bg-[#2a3942] border border-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-emerald-500 max-h-28"
+                      className="flex-1 resize-none rounded-2xl bg-blue-900/60 border border-sky-300/20 px-3 py-2.5 text-sm text-white placeholder:text-sky-100/40 focus:outline-none focus:ring-1 focus:ring-sky-400 max-h-28"
                       placeholder={
                         activeConversation?.isProjectHub
                           ? 'موارد مهم یا قرار جلسه…'
@@ -880,7 +795,7 @@ function MessengerPanel({
                       type="button"
                       disabled={(!draft.trim() && pendingFiles.length === 0) || sending}
                       onClick={() => void send()}
-                      className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center disabled:opacity-40 hover:brightness-110 shrink-0 shadow-lg shadow-emerald-900/40"
+                      className="h-10 w-10 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center disabled:opacity-40 hover:brightness-110 shrink-0 shadow-lg shadow-blue-900/40"
                     >
                       <Send className="h-4 w-4 text-white" />
                     </button>
@@ -888,15 +803,128 @@ function MessengerPanel({
                 </>
               )}
             </div>
+
+            {/* لیست گفتگوها — سمت چپ در RTL */}
+            <div
+              className={cn(
+                'flex flex-col border-s border-sky-300/15 bg-blue-950/40 w-full sm:w-[34%] sm:min-w-[200px] shrink-0',
+                activeId && 'hidden sm:flex'
+              )}
+            >
+              <div className="p-3 space-y-2">
+                <div className="flex rounded-xl bg-blue-900/50 p-0.5 text-xs sm:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setTab('chats')}
+                    className={cn(
+                      'flex-1 rounded-lg py-2 font-medium transition-colors',
+                      tab === 'chats'
+                        ? 'bg-gradient-to-l from-sky-600 to-blue-700 text-white shadow'
+                        : 'text-white/55 hover:text-white'
+                    )}
+                  >
+                    گفتگوها
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTab('members')}
+                    className={cn(
+                      'flex-1 rounded-lg py-2 font-medium inline-flex items-center justify-center gap-1 transition-colors',
+                      tab === 'members'
+                        ? 'bg-gradient-to-l from-sky-600 to-blue-700 text-white shadow'
+                        : 'text-white/55 hover:text-white'
+                    )}
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    اعضا
+                  </button>
+                </div>
+                <p className="hidden sm:block text-xs font-semibold text-sky-200/90 px-1">گفتگوها</p>
+                {tab === 'chats' && (
+                  <div className="relative">
+                    <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
+                    <input
+                      className="w-full rounded-xl bg-blue-900/40 border border-sky-300/15 ps-8 pe-3 py-2 text-sm text-white placeholder:text-sky-100/40 focus:outline-none focus:ring-1 focus:ring-sky-400"
+                      placeholder="جستجو در گفتگوها…"
+                      value={chatQuery}
+                      onChange={(e) => setChatQuery(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {tab === 'members' && (
+                  <ProjectMembersPanel
+                    className="sm:hidden flex-1 min-h-0"
+                    contacts={filteredContacts}
+                    loading={loading}
+                    activePeerId={activePeerId}
+                    memberQuery={memberQuery}
+                    onMemberQueryChange={setMemberQuery}
+                    onSelect={(c) => void openChatWith(c)}
+                    embedded
+                  />
+                )}
+
+                {tab === 'chats' && loading && (
+                  <p className="p-4 text-xs text-white/45">در حال بارگذاری…</p>
+                )}
+                {tab === 'chats' && error && (
+                  <p className="mx-3 mb-2 rounded-xl bg-rose-500/20 text-rose-100 text-xs px-3 py-2 border border-rose-400/20">
+                    {error}
+                  </p>
+                )}
+
+                {tab === 'chats' && !loading && filteredChats.length === 0 && (
+                  <p className="p-4 text-xs text-white/45">
+                    هنوز گفتگویی نیست. از اعضای پروژه شروع کنید.
+                  </p>
+                )}
+
+                {tab === 'chats' && hubChats.length > 0 && (
+                  <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 text-[10px] font-semibold text-sky-300/80 uppercase tracking-wide">
+                    <UsersRound className="h-3 w-3" />
+                    گروه پروژه
+                  </div>
+                )}
+                {tab === 'chats' &&
+                  hubChats.map((c) => (
+                    <ChatRow
+                      key={c.id}
+                      conversation={c}
+                      active={activeId === c.id}
+                      onOpen={() => setActiveId(c.id)}
+                      hub
+                    />
+                  ))}
+
+                {tab === 'chats' && directChats.length > 0 && (
+                  <div className="px-3 pt-3 pb-1 flex items-center gap-1.5 text-[10px] font-semibold text-white/45">
+                    <Folder className="h-3 w-3" />
+                    پوشه گفتگو با هر نفر
+                  </div>
+                )}
+                {tab === 'chats' &&
+                  directChats.map((c) => (
+                    <ChatRow
+                      key={c.id}
+                      conversation={c}
+                      active={activeId === c.id}
+                      onOpen={() => setActiveId(c.id)}
+                    />
+                  ))}
+              </div>
+            </div>
           </div>
         )}
 
         {forwardMessageId && (
           <div className="absolute inset-0 z-50 flex items-end sm:items-center justify-center bg-black/55 p-3">
-            <div className="w-full max-w-sm rounded-2xl bg-[#1f2c34] border border-white/10 shadow-2xl overflow-hidden">
+            <div className="w-full max-w-sm rounded-2xl bg-blue-900 border border-sky-400/25 shadow-2xl overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
                 <p className="text-sm font-medium text-white flex items-center gap-2">
-                  <Forward className="h-4 w-4 text-emerald-400" />
+                  <Forward className="h-4 w-4 text-sky-400" />
                   بازارسال به…
                 </p>
                 <button
@@ -935,8 +963,112 @@ function MessengerPanel({
             </div>
           </div>
         )}
+    </div>
+  )
+}
+
+function ProjectMembersPanel({
+  contacts,
+  loading,
+  activePeerId,
+  memberQuery,
+  onMemberQueryChange,
+  onSelect,
+  className,
+  embedded,
+}: {
+  contacts: MessengerContact[]
+  loading: boolean
+  activePeerId: string | null
+  memberQuery: string
+  onMemberQueryChange: (q: string) => void
+  onSelect: (c: MessengerContact) => void
+  className?: string
+  /** داخل تب موبایل — بدون هدر جدا */
+  embedded?: boolean
+}) {
+  return (
+    <div
+      className={cn(
+        'flex flex-col border-e border-sky-300/15 bg-blue-950/50 shrink-0',
+        !embedded && 'w-[26%] min-w-[170px] max-w-[220px]',
+        className
+      )}
+    >
+      {!embedded && (
+        <div className="px-3 pt-3 pb-2 shrink-0">
+          <p className="text-xs font-semibold text-sky-200/90 flex items-center gap-1.5 mb-2">
+            <Users className="h-3.5 w-3.5" />
+            اعضای پروژه
+          </p>
+          <div className="relative">
+            <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
+            <input
+              className="w-full rounded-xl bg-blue-900/40 border border-sky-300/15 ps-8 pe-3 py-2 text-sm text-white placeholder:text-sky-100/40 focus:outline-none focus:ring-1 focus:ring-sky-400"
+              placeholder="جستجو نام یا مسئولیت…"
+              value={memberQuery}
+              onChange={(e) => onMemberQueryChange(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
+      {embedded && (
+        <div className="px-3 pb-2 shrink-0">
+          <div className="relative">
+            <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
+            <input
+              className="w-full rounded-xl bg-blue-900/40 border border-sky-300/15 ps-8 pe-3 py-2 text-sm text-white placeholder:text-sky-100/40 focus:outline-none focus:ring-1 focus:ring-sky-400"
+              placeholder="جستجو اعضا…"
+              value={memberQuery}
+              onChange={(e) => onMemberQueryChange(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {loading && <p className="p-4 text-xs text-white/45">در حال بارگذاری…</p>}
+        {!loading && contacts.length === 0 && (
+          <p className="p-4 text-xs text-white/45">عضوی در این پروژه نیست.</p>
+        )}
+        {contacts.map((c) => (
+          <MemberRow
+            key={c.userId}
+            contact={c}
+            active={activePeerId === c.userId}
+            onSelect={() => onSelect(c)}
+          />
+        ))}
       </div>
     </div>
+  )
+}
+
+function MemberRow({
+  contact: c,
+  active,
+  onSelect,
+}: {
+  contact: MessengerContact
+  active: boolean
+  onSelect: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'w-full text-right px-3 py-2.5 flex gap-2.5 hover:bg-white/[0.06] border-b border-white/[0.04] transition-colors',
+        active && 'bg-sky-500/20 ring-1 ring-inset ring-sky-400/30'
+      )}
+      title={`شروع گفتگو با ${c.fullName}`}
+    >
+      <Avatar label={c.positionLabel} />
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-[13px] text-white truncate">{c.positionLabel}</p>
+        <p className="text-[11px] text-white/45 truncate">{c.fullName}</p>
+      </div>
+      <MessageCircle className="h-4 w-4 text-sky-300/50 shrink-0 self-center" />
+    </button>
   )
 }
 
@@ -957,7 +1089,7 @@ function ChatRow({
       onClick={onOpen}
       className={cn(
         'w-full text-right px-3 py-3 flex gap-3 hover:bg-white/[0.04] border-b border-white/[0.04] transition-colors',
-        active && 'bg-emerald-500/10'
+        active && 'bg-sky-500/15'
       )}
     >
       <Avatar label={chatTitle(c)} hub={hub} />
@@ -965,7 +1097,7 @@ function ChatRow({
         <div className="flex items-center justify-between gap-2">
           <p className="font-medium text-sm text-white truncate">{chatTitle(c)}</p>
           {c.unreadCount > 0 && (
-            <span className="rounded-full bg-emerald-500 text-[10px] font-bold px-1.5 py-0.5 text-white shadow">
+            <span className="rounded-full bg-sky-500 text-[10px] font-bold px-1.5 py-0.5 text-white shadow">
               {c.unreadCount}
             </span>
           )}
@@ -992,7 +1124,7 @@ function Avatar({ label, hub }: { label: string; hub?: boolean }) {
     .map((w) => w[0])
     .join('')
   return (
-    <div className="h-11 w-11 rounded-full bg-gradient-to-br from-emerald-400 to-teal-700 flex items-center justify-center text-xs font-bold shrink-0 text-white shadow-md shadow-emerald-900/30 ring-2 ring-white/10">
+    <div className="h-11 w-11 rounded-full bg-gradient-to-br from-sky-400 to-blue-800 flex items-center justify-center text-xs font-bold shrink-0 text-white shadow-md shadow-blue-900/30 ring-2 ring-sky-200/20">
       {initials || '؟'}
     </div>
   )
@@ -1022,7 +1154,7 @@ function AttachmentBubble({
   if (isAudio && attachment.url) {
     return (
       <div className="mb-1.5 min-w-[200px]">
-        <p className="text-[10px] text-emerald-200/80 mb-1">🎤 پیام صوتی</p>
+        <p className="text-[10px] text-sky-200/80 mb-1">🎤 پیام صوتی</p>
         <audio controls src={attachment.url} className="w-full h-9" />
       </div>
     )
@@ -1030,7 +1162,7 @@ function AttachmentBubble({
   if (isVideo && attachment.url) {
     return (
       <div className="mb-1.5">
-        <p className="text-[10px] text-emerald-200/80 mb-1">🎬 پیام ویدیویی</p>
+        <p className="text-[10px] text-sky-200/80 mb-1">🎬 پیام ویدیویی</p>
         <video
           controls
           src={attachment.url}
@@ -1046,7 +1178,7 @@ function AttachmentBubble({
       rel="noreferrer"
       className="flex items-center gap-2 rounded-xl bg-black/20 border border-white/10 px-2.5 py-2 mb-1.5 hover:bg-black/30"
     >
-      <FileText className="h-4 w-4 shrink-0 text-emerald-300" />
+      <FileText className="h-4 w-4 shrink-0 text-sky-300" />
       <div className="min-w-0">
         <p className="text-xs truncate">{attachment.fileName ?? 'فایل'}</p>
         {attachment.fileSize != null && (

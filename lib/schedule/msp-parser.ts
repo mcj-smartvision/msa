@@ -1,5 +1,10 @@
 import { XMLParser } from 'fast-xml-parser'
 import type { MspParsedDependency, MspParsedTask } from '@/lib/schedule/msp-import'
+import {
+  resolveWeightFieldIds,
+  inferWeightFieldIdFromRawTasks,
+  extractTaskScheduleWeight,
+} from '@/lib/schedule/msp-weight'
 
 /** MSP PredecessorLink Type: 0=FF, 1=FS, 2=SF, 3=SS */
 const MSP_LINK_TYPES: Record<number, MspParsedDependency['relation_type']> = {
@@ -96,6 +101,10 @@ export function parseMspXml(xmlContent: string): {
 
   const tasks: MspParsedTask[] = []
   const dependencies: MspParsedDependency[] = []
+  let weightFieldIds = resolveWeightFieldIds(project)
+  if (weightFieldIds.size === 0) {
+    weightFieldIds = inferWeightFieldIdFromRawTasks(rawTasks)
+  }
 
   for (const raw of rawTasks) {
     const task = raw as Record<string, unknown>
@@ -105,8 +114,7 @@ export function parseMspXml(xmlContent: string): {
     const name = textValue(task.Name)
     if (!name) continue
 
-    if (boolValue(task.Summary)) continue
-
+    const isSummary = boolValue(task.Summary)
     const wbs = textValue(task.OutlineNumber) || textValue(task.WBS) || null
 
     tasks.push({
@@ -117,7 +125,11 @@ export function parseMspXml(xmlContent: string): {
       finish_planned: isoOrNull(task.Finish),
       percent_complete: Math.min(100, Math.max(0, numValue(task.PercentComplete, 0))),
       is_critical: boolValue(task.Critical),
+      is_summary: isSummary,
+      schedule_weight: extractTaskScheduleWeight(task, weightFieldIds),
     })
+
+    if (isSummary) continue
 
     const links = asArray(task.PredecessorLink)
     for (const link of links) {

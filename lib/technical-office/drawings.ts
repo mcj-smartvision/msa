@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { DashboardUserContext } from '@/types/dashboard'
-import type { DrawingFormat, ProjectDrawing } from '@/lib/technical-office/drawings-shared'
+import type { DrawingDiscipline, DrawingFormat, ProjectDrawing } from '@/lib/technical-office/drawings-shared'
+import { inferDrawingDiscipline } from '@/lib/technical-office/drawing-discipline'
 
 export type { DrawingFormat, ProjectDrawing } from '@/lib/technical-office/drawings-shared'
 export { DRAWING_MAX_FILES } from '@/lib/technical-office/drawings-shared'
@@ -14,6 +15,7 @@ type DrawingMeta = {
   fileName: string
   fileSize: number
   format: DrawingFormat
+  discipline?: DrawingDiscipline
   uploadedBy: string | null
   createdAt: string
 }
@@ -139,15 +141,23 @@ function mapTableRow(row: {
   content_type?: unknown
   created_at?: unknown
   uploaded_by?: unknown
+  discipline?: unknown
 }): ProjectDrawing {
   const fileName = String(row.file_name ?? 'drawing.pdf')
+  const title = String(row.title ?? fileName)
+  const storedDiscipline = row.discipline as DrawingDiscipline | undefined
   return {
     id: composeDrawingId(String(row.project_id), String(row.id)),
     projectId: String(row.project_id),
-    title: String(row.title ?? fileName),
+    title,
     fileName,
     fileSize: row.file_size == null ? null : Number(row.file_size),
     format: formatFromName(fileName, row.content_type ? String(row.content_type) : null),
+    discipline: inferDrawingDiscipline({
+      title,
+      fileName,
+      discipline: storedDiscipline,
+    }),
     createdAt: String(row.created_at ?? ''),
     uploadedBy: row.uploaded_by ? String(row.uploaded_by) : null,
   }
@@ -202,11 +212,30 @@ export async function listProjectDrawings(projectId: string): Promise<ProjectDra
 
   const { data, error } = await storage
     .from('project_drawings')
-    .select('id, project_id, title, file_name, file_size, content_type, created_at, uploaded_by')
+    .select(
+      'id, project_id, title, file_name, file_size, content_type, created_at, uploaded_by, discipline'
+    )
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
 
-  if (!error) return (data ?? []).map(mapTableRow)
+  if (!error) {
+    const rows = (data ?? []).map(mapTableRow)
+    const enriched: ProjectDrawing[] = []
+    for (const row of rows) {
+      const parsed = parseDrawingId(row.id)
+      let discipline = row.discipline
+      if (parsed) {
+        const meta = await readDrawingMeta(storage, parsed.projectId, parsed.id)
+        discipline = inferDrawingDiscipline({
+          title: row.title,
+          fileName: row.fileName,
+          discipline: meta?.discipline ?? row.discipline,
+        })
+      }
+      enriched.push({ ...row, discipline })
+    }
+    return enriched
+  }
   if (!isMissingDrawingsTable(error)) throw new Error(error.message)
 
   const listed = await storage.storage.from(DRAWINGS_BUCKET).list(projectId, {
@@ -230,11 +259,81 @@ export async function listProjectDrawings(projectId: string): Promise<ProjectDra
       fileName: meta?.fileName || file.name,
       fileSize: meta?.fileSize ?? (file.metadata as { size?: number } | undefined)?.size ?? null,
       format: meta?.format ?? format,
+      discipline: inferDrawingDiscipline({
+        title: meta?.title || file.name,
+        fileName: meta?.fileName || file.name,
+        discipline: meta?.discipline,
+      }),
       createdAt: meta?.createdAt || file.created_at || '',
       uploadedBy: meta?.uploadedBy ?? null,
     })
   }
   return drawings
+}
+
+/** Fetch one drawing by composite id (projectId--uuid), even if not in current project list. */
+export async function getProjectDrawing(rawId: string): Promise<ProjectDrawing | null> {
+  const parsed = parseDrawingId(rawId)
+  if (!parsed) return null
+
+  const storage = getDrawingsStorage()
+  await ensureDrawingsBucket(storage)
+
+  const { data, error } = await storage
+    .from('project_drawings')
+    .select(
+      'id, project_id, title, file_name, file_size, content_type, created_at, uploaded_by, discipline'
+    )
+    .eq('id', parsed.id)
+    .eq('project_id', parsed.projectId)
+    .maybeSingle()
+
+  if (!error && data) {
+    const row = mapTableRow(data)
+    const meta = await readDrawingMeta(storage, parsed.projectId, parsed.id)
+    return {
+      ...row,
+      discipline: inferDrawingDiscipline({
+        title: row.title,
+        fileName: row.fileName,
+        discipline: meta?.discipline ?? row.discipline,
+      }),
+    }
+  }
+
+  if (error && !isMissingDrawingsTable(error)) {
+    throw new Error(error.message)
+  }
+
+  const meta = await readDrawingMeta(storage, parsed.projectId, parsed.id)
+  const listed = await storage.storage.from(DRAWINGS_BUCKET).list(parsed.projectId, {
+    limit: 200,
+    sortBy: { column: 'created_at', order: 'desc' },
+  })
+  const file = (listed.data ?? []).find(
+    (item) => item.name === `${parsed.id}.pdf` || item.name === `${parsed.id}.dwg`
+  )
+  if (!file && !meta) return null
+
+  const format = meta?.format ?? (file?.name.toLowerCase().endsWith('.dwg') ? 'dwg' : 'pdf')
+  const fileName = meta?.fileName || file?.name || `${parsed.id}.${format}`
+  const title = meta?.title || fileName.replace(/\.(pdf|dwg)$/i, '')
+
+  return {
+    id: composeDrawingId(parsed.projectId, parsed.id),
+    projectId: parsed.projectId,
+    title,
+    fileName,
+    fileSize: meta?.fileSize ?? (file?.metadata as { size?: number } | undefined)?.size ?? null,
+    format,
+    discipline: inferDrawingDiscipline({
+      title,
+      fileName,
+      discipline: meta?.discipline,
+    }),
+    createdAt: meta?.createdAt || file?.created_at || '',
+    uploadedBy: meta?.uploadedBy ?? null,
+  }
 }
 
 export async function saveDrawingToStorage(opts: {
@@ -243,6 +342,7 @@ export async function saveDrawingToStorage(opts: {
   fileName: string
   file: File
   uploadedBy: string
+  discipline?: DrawingDiscipline
 }): Promise<ProjectDrawing> {
   const format = getDrawingFormat(opts.file)
   if (!format) throw new Error('فقط فایل PDF یا DWG پذیرفته می‌شود.')
@@ -252,11 +352,17 @@ export async function saveDrawingToStorage(opts: {
   const id = crypto.randomUUID()
   const paths = drawingPaths(opts.projectId, id, format)
   const createdAt = new Date().toISOString()
+  const discipline = inferDrawingDiscipline({
+    title: opts.title,
+    fileName: opts.fileName,
+    discipline: opts.discipline,
+  })
   const meta: DrawingMeta = {
     title: opts.title,
     fileName: opts.fileName,
     fileSize: opts.file.size,
     format,
+    discipline,
     uploadedBy: opts.uploadedBy,
     createdAt,
   }
@@ -293,6 +399,7 @@ export async function saveDrawingToStorage(opts: {
     file_size: opts.file.size,
     content_type: drawingContentType(format),
     uploaded_by: opts.uploadedBy,
+    discipline,
   })
   if (tableError && !isMissingDrawingsTable(tableError)) {
     console.warn('project_drawings insert skipped:', tableError.message)
@@ -305,6 +412,7 @@ export async function saveDrawingToStorage(opts: {
     fileName: opts.fileName,
     fileSize: opts.file.size,
     format,
+    discipline,
     createdAt,
     uploadedBy: opts.uploadedBy,
   }

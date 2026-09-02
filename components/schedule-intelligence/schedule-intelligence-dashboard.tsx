@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
+import { readProjectCookie } from '@/lib/project/project-cookie'
 import {
   Bar,
   BarChart,
@@ -20,9 +21,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { analyzeScheduleFromXml } from '@/lib/schedule-intelligence'
 import { exportAnalysisJson, exportTasksToCsv } from '@/lib/schedule-intelligence/exportUtils'
-import { topActivitiesBy } from '@/lib/schedule-intelligence/scheduleMetrics'
+import { topActivitiesBy, effectiveTaskDurationDays, taskDurationSharePercent } from '@/lib/schedule-intelligence/scheduleMetrics'
 import type { ScheduleDashboardResult, ScheduleTask } from '@/types/schedule-intelligence'
+import { compareWbs } from '@/lib/schedule/wbs-utils'
 import { ScheduleUpload, ExportButtons } from '@/components/schedule-intelligence/schedule-upload'
+import { ScheduleDownloadButton } from '@/components/schedule/schedule-download-button'
 import { cn } from '@/lib/utils'
 
 const RISK_COLORS: Record<string, string> = {
@@ -63,24 +66,39 @@ function ActivitiesTable({
   tasks,
   onSelect,
   filter,
+  projectDurationDays,
+  minutesPerDay = 480,
 }: {
   tasks: ScheduleTask[]
   onSelect: (t: ScheduleTask) => void
   filter?: string
+  projectDurationDays?: number
+  minutesPerDay?: number
 }) {
   const [search, setSearch] = useState('')
   const q = filter ?? search
-  const rows = tasks.filter(
-    (t) =>
-      !t.isSummary &&
-      (q === '' ||
-        t.name.includes(q) ||
-        (t.wbs?.includes(q) ?? false) ||
-        t.uid.includes(q))
-  )
+  const rows = tasks
+    .filter(
+      (t) =>
+        !t.isSummary &&
+        (q === '' ||
+          t.name.includes(q) ||
+          (t.wbs?.includes(q) ?? false) ||
+          t.uid.includes(q))
+    )
+    .sort((a, b) => compareWbs(a.wbs, b.wbs))
 
   return (
     <div className="space-y-3">
+      {projectDurationDays != null && projectDurationDays > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          مدت کل پروژه (CPM):{' '}
+          <span className="font-semibold tabular-nums">
+            {projectDurationDays.toLocaleString('fa-IR')} روز
+          </span>
+          — ستون «سهم از کل» = مدت هر فعالیت ÷ مدت کل پروژه
+        </p>
+      ) : null}
       <Input
         placeholder="جستجو نام، WBS، UID..."
         value={search}
@@ -94,14 +112,23 @@ function ActivitiesTable({
               <th className="p-2">نام</th>
               <th className="p-2">WBS</th>
               <th className="p-2">مدت (روز)</th>
-              <th className="p-2">%</th>
+              {projectDurationDays != null ? (
+                <th className="p-2">سهم از کل</th>
+              ) : null}
+              <th className="p-2">پیشرفت</th>
               <th className="p-2">شناوری</th>
               <th className="p-2">ریسک</th>
               <th className="p-2">بحرانی</th>
             </tr>
           </thead>
           <tbody>
-            {rows.slice(0, 200).map((t) => (
+            {rows.slice(0, 200).map((t) => {
+              const durationDays = effectiveTaskDurationDays(t, minutesPerDay)
+              const share =
+                projectDurationDays != null
+                  ? taskDurationSharePercent(t, projectDurationDays, minutesPerDay)
+                  : null
+              return (
               <tr
                 key={t.uid}
                 className="border-t hover:bg-muted/30 cursor-pointer"
@@ -109,11 +136,16 @@ function ActivitiesTable({
               >
                 <td className="p-2 max-w-[200px] truncate">{t.name}</td>
                 <td className="p-2">{t.wbs ?? '—'}</td>
-                <td className="p-2 tabular-nums">{t.durationDays.toLocaleString('fa-IR')}</td>
-                <td className="p-2">{t.percentComplete.toLocaleString('fa-IR')}</td>
+                <td className="p-2 tabular-nums">{durationDays.toLocaleString('fa-IR')}</td>
+                {share != null ? (
+                  <td className="p-2 tabular-nums font-medium text-primary">
+                    {share.toLocaleString('fa-IR')}٪
+                  </td>
+                ) : null}
+                <td className="p-2 tabular-nums">{t.percentComplete.toLocaleString('fa-IR')}٪</td>
                 <td className="p-2">
                   {t.totalFloatMinutes != null
-                    ? (t.totalFloatMinutes / 480).toLocaleString('fa-IR')
+                    ? (t.totalFloatMinutes / minutesPerDay).toLocaleString('fa-IR')
                     : '—'}
                 </td>
                 <td className="p-2">
@@ -125,7 +157,8 @@ function ActivitiesTable({
                 </td>
                 <td className="p-2">{t.calculatedCritical ? '✓' : ''}</td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -157,6 +190,9 @@ function ActivityDrawer({
         <dl className="space-y-2 text-sm">
           <div><dt className="text-muted-foreground">UID</dt><dd>{task.uid}</dd></div>
           <div><dt className="text-muted-foreground">WBS</dt><dd>{task.wbs ?? '—'}</dd></div>
+          <div><dt className="text-muted-foreground">مدت (روز)</dt>
+            <dd>{effectiveTaskDurationDays(task, 480).toLocaleString('fa-IR')}</dd>
+          </div>
           <div><dt className="text-muted-foreground">وضعیت</dt><dd>{STATUS_LABELS[task.status]}</dd></div>
           <div><dt className="text-muted-foreground">شناوری کل (روز)</dt>
             <dd>{task.totalFloatMinutes != null ? (task.totalFloatMinutes / 480).toLocaleString('fa-IR') : '—'}</dd>
@@ -190,9 +226,25 @@ export function ScheduleIntelligenceDashboard() {
   const [selected, setSelected] = useState<ScheduleTask | null>(null)
   const [analysisDate, setAnalysisDate] = useState(new Date().toISOString().slice(0, 10))
   const [tab, setTab] = useState<'overview' | 'activities' | 'risk' | 'validation'>('overview')
+  const [projectId, setProjectId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const sync = () => {
+      const fromUrl =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search).get('projectId')
+          : null
+      setProjectId(readProjectCookie() || fromUrl)
+    }
+    sync()
+    window.addEventListener('focus', sync)
+    return () => window.removeEventListener('focus', sync)
+  }, [])
 
   const handleAnalyze = (xml: string, fileName: string) => {
     setLoading(true)
+    setSelected(null)
+    setResult(null)
     try {
       const r = analyzeScheduleFromXml(xml, fileName, { analysisDate })
       setResult(r)
@@ -238,6 +290,16 @@ export function ScheduleIntelligenceDashboard() {
       <PageHeader
         title="تحلیل زمان‌بندی"
         description="داشبورد هوشمند زمان‌بندی ساخت — CPM قطعی، بدون هوش مصنوعی"
+        actions={
+          projectId ? (
+            <ScheduleDownloadButton
+              projectId={projectId}
+              variant="outline"
+              size="sm"
+              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+            />
+          ) : null
+        }
       />
 
       <div className="flex flex-wrap items-end gap-4">
@@ -275,6 +337,7 @@ export function ScheduleIntelligenceDashboard() {
             ))}
             <div className="mr-auto">
               <ExportButtons
+                projectId={projectId}
                 onExportJson={() => {
                   const blob = new Blob([exportAnalysisJson(result)], { type: 'application/json' })
                   const a = document.createElement('a')
@@ -361,7 +424,12 @@ export function ScheduleIntelligenceDashboard() {
 
           {tab === 'activities' ? (
             <SectionCard title="همه فعالیت‌ها">
-              <ActivitiesTable tasks={result.schedule.tasks} onSelect={setSelected} />
+              <ActivitiesTable
+                tasks={result.schedule.tasks}
+                onSelect={setSelected}
+                projectDurationDays={result.kpis.calculatedProjectDurationDays}
+                minutesPerDay={result.schedule.minutesPerDay}
+              />
             </SectionCard>
           ) : null}
 
@@ -371,6 +439,8 @@ export function ScheduleIntelligenceDashboard() {
                 <ActivitiesTable
                   tasks={topActivitiesBy(result.schedule.tasks, 'riskScore', 50)}
                   onSelect={setSelected}
+                  projectDurationDays={result.kpis.calculatedProjectDurationDays}
+                  minutesPerDay={result.schedule.minutesPerDay}
                 />
               </SectionCard>
               <SectionCard title="مسیر بحرانی">

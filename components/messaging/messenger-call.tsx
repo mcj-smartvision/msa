@@ -197,7 +197,7 @@ export function CallOverlay({
   }
 
   return (
-    <div className="absolute inset-0 z-20 bg-gradient-to-b from-[#0f2027] via-[#203a43] to-[#2c5364] flex flex-col">
+    <div className="absolute inset-0 z-20 bg-gradient-to-b from-sky-950 via-blue-950 to-slate-950 flex flex-col">
       <div className="flex-1 relative flex items-center justify-center p-4">
         {call.media === 'video' ? (
           <>
@@ -217,8 +217,8 @@ export function CallOverlay({
           </>
         ) : (
           <div className="text-center space-y-3">
-            <div className="mx-auto h-24 w-24 rounded-full bg-emerald-500/30 border border-emerald-300/40 flex items-center justify-center">
-              <Phone className="h-10 w-10 text-emerald-200" />
+            <div className="mx-auto h-24 w-24 rounded-full bg-sky-500/30 border border-sky-300/40 flex items-center justify-center">
+              <Phone className="h-10 w-10 text-sky-200" />
             </div>
             <p className="text-xl font-semibold text-white">{peerLabel}</p>
             <p className="text-sm text-white/70">
@@ -280,8 +280,8 @@ export function IncomingCallBanner({
   onReject: () => void
 }) {
   return (
-    <div className="absolute inset-x-3 top-3 z-30 rounded-2xl bg-[#202c33]/95 border border-emerald-500/40 shadow-2xl px-4 py-3 flex items-center gap-3 backdrop-blur">
-      <div className="h-11 w-11 rounded-full bg-emerald-600 flex items-center justify-center shrink-0 animate-pulse">
+    <div className="absolute inset-x-3 top-3 z-30 rounded-2xl bg-blue-950/95 border border-sky-400/40 shadow-2xl px-4 py-3 flex items-center gap-3 backdrop-blur">
+      <div className="h-11 w-11 rounded-full bg-sky-600 flex items-center justify-center shrink-0 animate-pulse">
         {call.media === 'video' ? (
           <Video className="h-5 w-5 text-white" />
         ) : (
@@ -304,7 +304,7 @@ export function IncomingCallBanner({
       <button
         type="button"
         onClick={onAccept}
-        className="h-10 w-10 rounded-full bg-emerald-500 text-white flex items-center justify-center"
+        className="h-10 w-10 rounded-full bg-sky-500 text-white flex items-center justify-center"
       >
         <Phone className="h-4 w-4" />
       </button>

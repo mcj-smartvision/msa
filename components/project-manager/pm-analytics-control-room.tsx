@@ -70,7 +70,6 @@ interface PmAnalyticsControlRoomProps {
   dataGaps?: PmDataGap[]
   projectOptions: { id: string; name: string }[]
   projectId: string | null
-  onProjectChange?: (id: string) => void
   isRtl?: boolean
   isFa?: boolean
 }
@@ -230,7 +229,6 @@ export function PmAnalyticsControlRoom({
   dataGaps = [],
   projectOptions,
   projectId,
-  onProjectChange,
   isRtl,
   isFa = true,
 }: PmAnalyticsControlRoomProps) {
@@ -280,20 +278,6 @@ export function PmAnalyticsControlRoom({
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-muted/30 px-4 py-3">
         <p className="text-sm font-semibold">لایه ۲ — جزئیات تحلیلی</p>
         <div className="flex flex-wrap gap-2">
-          {projectOptions.length > 1 && onProjectChange ? (
-            <Select value={projectId ?? undefined} onValueChange={onProjectChange}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="پروژه" />
-              </SelectTrigger>
-              <SelectContent>
-                {projectOptions.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null}
           <Select value={range} onValueChange={setRange}>
             <SelectTrigger className="w-[140px]">
               <CalendarRange className="h-4 w-4 me-2 opacity-70" />

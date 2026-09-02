@@ -1,17 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
 import { EmptyState } from '@/components/admin/shared'
 import { PmSubcontractorsPanel } from '@/components/project-manager/pm-subcontractors-panel'
-import { writeProjectCookie } from '@/lib/project/project-cookie'
+import { useSyncedProjectId } from '@/hooks/use-synced-project-id'
 import type { DashboardUserContext } from '@/types/dashboard'
 
 interface Props {
@@ -25,7 +16,7 @@ export function PmSubcontractorsPageClient({
   projectOptions,
   initialProjectId,
 }: Props) {
-  const [projectId, setProjectId] = useState(initialProjectId)
+  const projectId = useSyncedProjectId(initialProjectId)
 
   if (projectOptions.length === 0) {
     return <EmptyState title="پیمانکاران" description="پروژه‌ای تخصیص داده نشده است." />
@@ -36,36 +27,11 @@ export function PmSubcontractorsPageClient({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-1.5 max-w-sm">
-        <Label>پروژه</Label>
-        <Select
-          value={projectId ?? undefined}
-          onValueChange={(id) => {
-            setProjectId(id)
-            writeProjectCookie(id)
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {projectOptions.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {projectId ? (
-        <PmSubcontractorsPanel
-          key={projectId}
-          projectId={projectId}
-          projectName={projectName}
-          userId={initialContext.userId}
-        />
-      ) : null}
+      <PmSubcontractorsPanel
+        projectId={projectId ?? projectOptions[0].id}
+        projectName={projectName}
+        userId={initialContext.userId}
+      />
     </div>
   )
 }

@@ -39,7 +39,7 @@ import {
   UiBlockVisibilityProvider,
 } from '@/components/dashboard/ui-block-visibility'
 import { getStorekeeperMessages } from '@/lib/i18n/storekeeper'
-import { writeProjectCookie } from '@/lib/project/project-cookie'
+import { useSyncedProjectId } from '@/hooks/use-synced-project-id'
 import type { ExtractedInvoiceLine } from '@/lib/storekeeper/types'
 import type { DashboardUserContext } from '@/types/dashboard'
 import { useSupabase } from '@/hooks/useSupabase'
@@ -92,9 +92,7 @@ export function StorekeeperDashboard({
   const isRtl = dir === 'rtl'
 
   const [context] = useState(initialContext)
-  const [projectId, setProjectId] = useState<string | null>(
-    initialProjectId ?? initialContext.activeProjectId
-  )
+  const projectId = useSyncedProjectId(initialProjectId ?? initialContext.activeProjectId)
   const [items, setItems] = useState<InventoryItemRow[]>([])
   const [transactions, setTransactions] = useState<InventoryTransactionRow[]>([])
   const [kpis, setKpis] = useState<InventoryKpis | null>(null)
@@ -154,11 +152,9 @@ export function StorekeeperDashboard({
     }
   }, [scanPreview])
 
-  function handleProjectChange(nextProjectId: string) {
-    setProjectId(nextProjectId)
-    writeProjectCookie(nextProjectId)
+  useEffect(() => {
     resetScanner()
-  }
+  }, [projectId])
 
   function resetScanner() {
     setScanFile(null)
@@ -457,22 +453,6 @@ export function StorekeeperDashboard({
       <PageHeader
         title={t.title}
         description={t.description}
-        actions={
-          projectOptions.length > 1 ? (
-            <Select value={projectId} onValueChange={handleProjectChange}>
-              <SelectTrigger className="w-full min-h-11 sm:w-[220px]">
-                <SelectValue placeholder={t.selectProject} />
-              </SelectTrigger>
-              <SelectContent>
-                {projectOptions.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null
-        }
       />
 
       {error ? <ErrorBlock message={error} onRetry={loadData} /> : null}

@@ -4,6 +4,8 @@ import { parseMspXml } from '@/lib/schedule/msp-parser'
 import { computeBaselineStartFromTasks } from '@/lib/schedule/dates'
 import { setScheduleBaselineAfterImport } from '@/lib/schedule/apply-actual-start'
 import { compareWbs } from '@/lib/schedule/wbs-utils'
+import { storeScheduleXml } from '@/lib/schedule/schedule-files'
+import { wipeProjectScheduleBeforeImport } from '@/lib/schedule/wipe-project-schedule'
 
 export interface MspParsedTask {
   msp_uid: number
@@ -13,6 +15,9 @@ export interface MspParsedTask {
   finish_planned: string | null
   percent_complete: number
   is_critical: boolean
+  is_summary: boolean
+  /** Activity weight from MSP custom field (وزن) */
+  schedule_weight: number | null
 }
 
 export interface MspParsedDependency {
@@ -47,38 +52,68 @@ export async function importMspScheduleToProject(
 
   if (importError) throw new Error(importError.message)
 
+  let storagePath: string | null = null
   try {
-    // Replace dependency graph on each full import
-    const { error: deleteDepsError } = await supabase
-      .from('task_dependencies')
-      .delete()
-      .eq('project_id', projectId)
+    storagePath = await storeScheduleXml(projectId, importRow.id, xmlContent)
+    await supabase
+      .from('schedule_imports')
+      .update({ storage_path: storagePath, storage_bucket: 'project-schedules' })
+      .eq('id', importRow.id)
+  } catch {
+    /* import still proceeds if storage bucket is unavailable */
+  }
 
-    if (deleteDepsError) throw new Error(deleteDepsError.message)
+  try {
+    await wipeProjectScheduleBeforeImport(supabase, projectId)
+
+    const { error: weightColumnProbe } = await supabase
+      .from('project_tasks')
+      .select('schedule_weight')
+      .limit(0)
+
+    const scheduleWeightSupported =
+      !weightColumnProbe ||
+      !/schedule_weight/i.test(weightColumnProbe.message ?? '')
+
+    const { error: summaryColumnProbe } = await supabase
+      .from('project_tasks')
+      .select('is_summary')
+      .limit(0)
+
+    const summaryColumnSupported =
+      !summaryColumnProbe ||
+      !/is_summary/i.test(summaryColumnProbe.message ?? '')
 
     const uidToTaskId = new Map<number, string>()
     let tasksImported = 0
 
     for (const task of parsed.tasks) {
+      const row: Record<string, unknown> = {
+        project_id: projectId,
+        msp_uid: task.msp_uid,
+        wbs_code: task.wbs_code,
+        name: task.name,
+        start_planned: task.start_planned,
+        finish_planned: task.finish_planned,
+        baseline_start: task.start_planned,
+        baseline_finish: task.finish_planned,
+        start_current: task.start_planned,
+        finish_current: task.finish_planned,
+        percent_complete: task.percent_complete,
+        is_critical: task.is_critical,
+      }
+
+      if (scheduleWeightSupported) {
+        row.schedule_weight = task.schedule_weight
+      }
+
+      if (summaryColumnSupported) {
+        row.is_summary = task.is_summary
+      }
+
       const { data, error } = await supabase
         .from('project_tasks')
-        .upsert(
-          {
-            project_id: projectId,
-            msp_uid: task.msp_uid,
-            wbs_code: task.wbs_code,
-            name: task.name,
-            start_planned: task.start_planned,
-            finish_planned: task.finish_planned,
-            baseline_start: task.start_planned,
-            baseline_finish: task.finish_planned,
-            start_current: task.start_planned,
-            finish_current: task.finish_planned,
-            percent_complete: task.percent_complete,
-            is_critical: task.is_critical,
-          },
-          { onConflict: 'project_id,msp_uid' }
-        )
+        .upsert(row, { onConflict: 'project_id,msp_uid' })
         .select('id, msp_uid')
         .single()
 

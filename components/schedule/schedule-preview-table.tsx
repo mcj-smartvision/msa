@@ -40,6 +40,7 @@ export function SchedulePreviewTable({
             <th className="text-left px-3 py-3 font-medium text-muted-foreground w-[112px]">پایان</th>
             <th className="text-left px-3 py-3 font-medium text-muted-foreground w-[120px]">وضعیت</th>
             <th className="text-left px-3 py-3 font-medium text-muted-foreground min-w-[140px]">پیش‌نیازها</th>
+            <th className="text-right px-3 py-3 font-medium text-muted-foreground w-[64px]">وزن</th>
             <th className="text-right px-3 py-3 font-medium text-muted-foreground w-[52px]">%</th>
           </tr>
         </thead>

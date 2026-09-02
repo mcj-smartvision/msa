@@ -4,21 +4,27 @@ import { HeaderProjectSwitcher } from '@/components/project/header-project-switc
 import { HeaderUserMenu } from '@/components/account/header-user-menu'
 import { HeaderLanguageSwitcher } from '@/components/i18n/header-language-switcher'
 
-/** Header left cluster (RTL — user at screen left, then project, then language). */
+/** Header left cluster (RTL — user at screen left, project chip immediately after user). */
 export function HeaderUserControls({
   email,
   allowAllProject = false,
   showLanguage = false,
+  projectOptions = [],
 }: {
   email?: string
   allowAllProject?: boolean
   showLanguage?: boolean
+  projectOptions?: { id: string; name: string }[]
 }) {
   return (
     <div className="flex shrink-0 items-center gap-2 sm:gap-2">
-      {showLanguage ? <HeaderLanguageSwitcher /> : null}
-      <HeaderProjectSwitcher allowAll={allowAllProject} className="min-w-0 max-w-[140px] sm:max-w-none" />
       <HeaderUserMenu email={email} />
+      <HeaderProjectSwitcher
+        allowAll={allowAllProject}
+        initialProjects={projectOptions}
+        className="min-w-0 max-w-[160px] sm:max-w-[200px]"
+      />
+      {showLanguage ? <HeaderLanguageSwitcher /> : null}
     </div>
   )
 }

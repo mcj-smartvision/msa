@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select'
 import { FormattedDate } from '@/components/schedule/formatted-date'
 import { useSupabase } from '@/hooks/useSupabase'
+import { useSyncedProjectId } from '@/hooks/use-synced-project-id'
 import {
   getQcMessages,
   INSPECTION_STATUS_LABELS,
@@ -41,7 +42,6 @@ import type {
   QcKpis,
   QualityInspection,
 } from '@/lib/qc/types'
-import { writeProjectCookie } from '@/lib/project/project-cookie'
 import type { DashboardUserContext } from '@/types/dashboard'
 import {
   approveNcrDraft,
@@ -88,7 +88,7 @@ export function QcDashboard({
   const isInspector =
     initialContext.isSystemAdmin || initialContext.positionKeys.includes('qa_qc_inspector')
 
-  const [projectId, setProjectId] = useState<string | null>(initialProjectId)
+  const projectId = useSyncedProjectId(initialProjectId)
   const projectName = projectOptions.find((p) => p.id === projectId)?.name ?? ''
   const [inspections, setInspections] = useState<QualityInspection[]>([])
   const [ncrs, setNcrs] = useState<NcrRecord[]>([])
@@ -135,11 +135,6 @@ export function QcDashboard({
   useEffect(() => {
     void loadData()
   }, [loadData])
-
-  function handleProjectChange(id: string) {
-    setProjectId(id)
-    writeProjectCookie(id)
-  }
 
   function openInspect(row: QualityInspection) {
     setInspectTarget(row)
@@ -235,22 +230,6 @@ export function QcDashboard({
           isInspector
             ? t.inspectorSubtitle.replace('{project}', projectName || '—')
             : t.description
-        }
-        actions={
-          projectOptions.length > 1 ? (
-            <Select value={projectId ?? ''} onValueChange={handleProjectChange}>
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder={t.selectProject} />
-              </SelectTrigger>
-              <SelectContent>
-                {projectOptions.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null
         }
       />
 

@@ -36,7 +36,7 @@ import type {
   AttendanceTransit,
   PresencePerson,
 } from '@/lib/attendance/types'
-import { writeProjectCookie } from '@/lib/project/project-cookie'
+import { useSyncedProjectId } from '@/hooks/use-synced-project-id'
 import type { DashboardUserContext } from '@/types/dashboard'
 import { cn } from '@/lib/utils'
 import { GateCameraPanel } from '@/components/security/gate-camera-panel'
@@ -106,7 +106,7 @@ export function SecurityDashboard({
   initialProjectId = null,
   visibleBlockCodes = [],
 }: SecurityDashboardProps) {
-  const [projectId, setProjectId] = useState(initialProjectId)
+  const projectId = useSyncedProjectId(initialProjectId)
   const [snapshot, setSnapshot] = useState<AttendanceDashboardSnapshot | null>(null)
   const [members, setMembers] = useState<MemberOption[]>([])
   const [loading, setLoading] = useState(true)
@@ -172,13 +172,11 @@ export function SecurityDashboard({
     return () => clearInterval(timer)
   }, [projectId, load])
 
-  async function onProjectChange(id: string) {
-    setProjectId(id)
-    writeProjectCookie(id)
+  useEffect(() => {
     setSelectedUserId('')
     setSelectedGateId('')
     setFlash(null)
-  }
+  }, [projectId])
 
   async function submitTransit(opts?: {
     identificationStatus?: 'success' | 'failed' | 'unauthorized'
@@ -256,20 +254,6 @@ export function SecurityDashboard({
           description={`${projectName} — ثبت تردد، افراد داخل، و تأیید لحظه‌ای`}
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              {projectOptions.length > 0 ? (
-                <Select value={projectId ?? undefined} onValueChange={onProjectChange}>
-                  <SelectTrigger className="w-[220px]">
-                    <SelectValue placeholder="انتخاب پروژه" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projectOptions.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : null}
               <Button
                 type="button"
                 variant="outline"

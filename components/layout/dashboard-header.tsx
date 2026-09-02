@@ -12,9 +12,15 @@ interface DashboardHeaderProps {
   email: string
   isAdmin: boolean
   roleNavLinks?: RoleNavLink[]
+  projectOptions?: { id: string; name: string }[]
 }
 
-export function DashboardHeader({ email, isAdmin, roleNavLinks = [] }: DashboardHeaderProps) {
+export function DashboardHeader({
+  email,
+  isAdmin,
+  roleNavLinks = [],
+  projectOptions = [],
+}: DashboardHeaderProps) {
   const { app } = useLocale()
   const pathname = usePathname()
 
@@ -30,8 +36,15 @@ export function DashboardHeader({ email, isAdmin, roleNavLinks = [] }: Dashboard
   const homeHref = isAdmin ? '/admin' : roleNav[0]?.href ?? '/dashboard'
   const tailNav = [{ href: '/settings', label: app.settings }]
 
+  const adminNav = [...baseNav]
+  for (const link of roleNav) {
+    if (!adminNav.some((item) => item.href === link.href)) {
+      adminNav.push(link)
+    }
+  }
+
   const navItems = isAdmin
-    ? [...baseNav, ...tailNav]
+    ? [...adminNav, ...tailNav]
     : [
         ...(roleNav.length > 0 ? roleNav : [{ href: '/dashboard', label: 'داشبورد' }]),
         ...tailNav,
@@ -40,7 +53,7 @@ export function DashboardHeader({ email, isAdmin, roleNavLinks = [] }: Dashboard
   return (
     <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-sm">
       <div className="container mx-auto flex h-14 items-center justify-between gap-4 px-4">
-        <nav className="flex min-w-0 items-center gap-1 sm:gap-2 overflow-x-auto">
+        <nav className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2 overflow-x-auto">
           <Link href={homeHref} className="flex items-center gap-2 font-bold shrink-0 mr-2">
             <BrandLogo size="sm" withName />
           </Link>
@@ -64,7 +77,11 @@ export function DashboardHeader({ email, isAdmin, roleNavLinks = [] }: Dashboard
           })}
         </nav>
 
-        <HeaderUserControls email={email} allowAllProject={isAdmin} />
+        <HeaderUserControls
+          email={email}
+          allowAllProject={isAdmin}
+          projectOptions={projectOptions}
+        />
       </div>
     </header>
   )

@@ -50,7 +50,13 @@ export default async function SiteSupervisorPage({
       initialTasks={tasks}
       initialAlerts={alerts}
       visibleBlockCodes={visibleBlockCodes}
-      initialSection={searchParams?.section === 'inspection' ? 'inspection' : undefined}
+      initialSection={
+        searchParams?.section === 'inspection'
+          ? 'inspection'
+          : searchParams?.section === 'drawings'
+            ? 'drawings'
+            : 'daily-report'
+      }
     />
   )
 }

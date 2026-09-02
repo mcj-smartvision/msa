@@ -62,7 +62,7 @@ export function getRoleNavLinks(context: DashboardUserContext): RoleNavLink[] {
     })
   }
 
-  // Layer 2 Site Ops — PM / supervisor / technical office / admin
+  // Layer 2 Site Ops — PM approvals only (workshop ops live under Technical Office dashboard)
   if (
     (context.isSystemAdmin || context.positionKeys.includes('project_manager')) &&
     !seen.has('/site-ops/approvals')
@@ -71,24 +71,6 @@ export function getRoleNavLinks(context: DashboardUserContext): RoleNavLink[] {
       href: '/site-ops/approvals',
       label: 'تأییدات کارگاه',
       roleKey: 'project_manager',
-    })
-  }
-
-  if (
-    (context.isSystemAdmin ||
-      context.positionKeys.includes('site_supervisor') ||
-      context.positionKeys.includes('technical_office')) &&
-    !seen.has('/site-ops') &&
-    !seen.has('/site-ops/approvals')
-  ) {
-    links.push({
-      href: context.positionKeys.includes('site_supervisor')
-        ? '/site-ops/prepared?as=supervisor'
-        : '/site-ops/schedule',
-      label: context.positionKeys.includes('site_supervisor') ? 'لیست‌های کارگاه' : 'عملیات کارگاه',
-      roleKey: context.positionKeys.includes('technical_office')
-        ? 'technical_office'
-        : 'site_supervisor',
     })
   }
 

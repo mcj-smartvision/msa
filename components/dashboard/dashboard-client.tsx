@@ -38,29 +38,14 @@ export function DashboardClient({
   )
 
   useEffect(() => {
+    setContext(initialContext)
+  }, [initialContext])
+
+  useEffect(() => {
     loadWidgets(context)
       .catch((err) => setError(err instanceof Error ? err.message : 'بارگذاری داشبورد ناموفق بود'))
       .finally(() => setLoading(false))
   }, [context, loadWidgets])
-
-  async function handleProjectChange(projectId: string) {
-    setLoading(true)
-    setError(null)
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user?.email) return
-
-      const next = await fetchDashboardUserContext(supabase, user.id, user.email, projectId)
-      setContext(next)
-      await loadWidgets(next)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تغییر پروژه ناموفق بود')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   if (loading && widgetKeys.length === 0) {
     return <LoadingBlock label="در حال بارگذاری داشبورد شما..." />
@@ -76,7 +61,6 @@ export function DashboardClient({
       widgetKeys={widgetKeys}
       visibleBlockCodes={visibleBlockCodes}
       showAdminBlockCodes={context.isSystemAdmin}
-      onProjectChange={handleProjectChange}
     />
   )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { LastPresenceSidebarFooter } from '@/components/layout/last-presence-sidebar-footer'
 
 export type SupervisorNavId =
   | 'safety'
@@ -9,6 +10,7 @@ export type SupervisorNavId =
   | 'drawings'
   | 'inspection'
   | 'today'
+  | 'daily-report'
   | 'lookahead'
   | 'issues'
   | 'resources'
@@ -46,51 +48,54 @@ export function SupervisorWorkspaceShell({
       dir="rtl"
     >
       {/* سمت راست: تیترها */}
-      <nav
-        aria-label="بخش‌های داشبورد سرپرست"
-        className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm lg:sticky lg:top-3"
-      >
-        <p className="mb-2 px-2 text-[11px] font-semibold text-slate-500">فهرست بخش‌ها</p>
-        <ul className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
-          {items.map((item) => {
-            const selected = item.id === activeId
-            const showBadge = typeof item.badge === 'number' && item.badge > 0
-            return (
-              <li key={item.id} className="shrink-0 lg:w-full">
-                <button
-                  type="button"
-                  onClick={() => onSelect(item.id)}
-                  className={cn(
-                    'relative flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-2 text-right text-sm font-medium transition-colors',
-                    selected
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-700 hover:bg-slate-100'
-                  )}
-                >
-                  <span className="truncate">{item.label}</span>
-                  {showBadge ? (
-                    <span
-                      className={cn(
-                        'inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums',
-                        item.badgeTone === 'danger' || item.id === 'safety'
-                          ? selected
-                            ? 'bg-rose-500 text-white'
-                            : 'bg-rose-600 text-white'
-                          : selected
-                            ? 'bg-white/20 text-white'
-                            : 'bg-slate-200 text-slate-700'
-                      )}
-                      aria-label={`${item.badge} اعلان`}
-                    >
-                      {item.badge}
-                    </span>
-                  ) : null}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      </nav>
+      <div className="flex flex-col gap-2 lg:sticky lg:top-3">
+        <nav
+          aria-label="بخش‌های داشبورد سرپرست"
+          className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm"
+        >
+          <p className="mb-2 px-2 text-[11px] font-semibold text-slate-500">فهرست بخش‌ها</p>
+          <ul className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
+            {items.map((item) => {
+              const selected = item.id === activeId
+              const showBadge = typeof item.badge === 'number' && item.badge > 0
+              return (
+                <li key={item.id} className="shrink-0 lg:w-full">
+                  <button
+                    type="button"
+                    onClick={() => onSelect(item.id)}
+                    className={cn(
+                      'relative flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-2 text-right text-sm font-medium transition-colors',
+                      selected
+                        ? 'bg-slate-900 text-white'
+                        : 'text-slate-700 hover:bg-slate-100'
+                    )}
+                  >
+                    <span className="truncate">{item.label}</span>
+                    {showBadge ? (
+                      <span
+                        className={cn(
+                          'inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums',
+                          item.badgeTone === 'danger' || item.id === 'safety'
+                            ? selected
+                              ? 'bg-rose-500 text-white'
+                              : 'bg-rose-600 text-white'
+                            : selected
+                              ? 'bg-white/20 text-white'
+                              : 'bg-slate-200 text-slate-700'
+                        )}
+                        aria-label={`${item.badge} اعلان`}
+                      >
+                        {item.badge}
+                      </span>
+                    ) : null}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
+        <LastPresenceSidebarFooter />
+      </div>
 
       {/* سمت چپ: محتوا */}
       <section className="min-w-0 rounded-lg border border-slate-200 bg-white shadow-sm">

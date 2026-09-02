@@ -52,9 +52,11 @@ function safeDashboardReturnTo(value: string | null) {
 export function QcOfficeDrawingsPage({
   projectId,
   returnTo: returnToProp = null,
+  requestId: requestIdProp = null,
 }: {
   projectId: string | null
   returnTo?: string | null
+  requestId?: string | null
 }) {
   const { locale, dir } = useLocale()
   const t = getQcMessages(locale)
@@ -67,7 +69,7 @@ export function QcOfficeDrawingsPage({
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [discipline, setDiscipline] = useState<QcDrawingDiscipline>('structure')
   const [viewingId, setViewingId] = useState<string | null>(null)
-  const [saveTarget, setSaveTarget] = useState('')
+  const [saveTarget, setSaveTarget] = useState(requestIdProp ?? '')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -119,6 +121,10 @@ export function QcOfficeDrawingsPage({
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (requestIdProp) setSaveTarget(requestIdProp)
+  }, [requestIdProp])
 
   const grouped = useMemo(() => {
     const buckets: Record<QcDrawingDiscipline, QcOfficeDrawing[]> = {

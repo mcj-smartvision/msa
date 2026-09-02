@@ -5,23 +5,21 @@ import Link from 'next/link'
 import { Bot, Loader2 } from 'lucide-react'
 import { useLocale } from '@/components/i18n/locale-provider'
 import { PageHeader, LoadingBlock, ErrorBlock, EmptyState } from '@/components/admin/shared'
-import { ProjectDrawingsPanel } from '@/components/technical-office/project-drawings-panel'
-import { ScheduleDateToolbar } from '@/components/schedule/schedule-date-toolbar'
+import { SupervisorDrawingsZoningPanel } from '@/components/supervisor/supervisor-drawings-zoning-panel'
+import { DailyReportPanel } from '@/components/supervisor/daily-report-panel'
 import { ScheduleDateInput } from '@/components/schedule/schedule-date-input'
-import { SupervisorSummaryCards } from '@/components/supervisor/supervisor-summary-cards'
+import { SupervisorOverviewPanel } from '@/components/supervisor/supervisor-overview-panel'
 import { TodayActivitiesTable } from '@/components/supervisor/today-activities-table'
 import { LookaheadPanel } from '@/components/supervisor/lookahead-panel'
 import { ResourcesPanel } from '@/components/supervisor/resources-panel'
 import { IssuesAlertsPanel } from '@/components/supervisor/issues-alerts-panel'
-import {
-  SupervisorSafetyActionsPanel,
-  countOpenSupervisorSafetyActions,
-} from '@/components/hse/supervisor-safety-actions-panel'
+import { SafetyAlertsPage, countOpenSafetyAlertMocks } from '@/components/hse/safety-alerts-page'
 import {
   SupervisorWorkspaceShell,
   type SupervisorNavId,
 } from '@/components/supervisor/supervisor-workspace-shell'
 import { QuickReportDialog } from '@/components/supervisor/quick-report-dialog'
+import { PackageProgressDialog } from '@/components/supervisor/package-progress-dialog'
 import { AiDraftViewer } from '@/components/shared/ai-draft-viewer'
 import { ModalOverlay } from '@/components/supervisor/modal-overlay'
 import { Button } from '@/components/ui/button'
@@ -37,17 +35,15 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { useScheduleViewDate } from '@/hooks/useScheduleViewDate'
+import { useSyncedProjectId } from '@/hooks/use-synced-project-id'
 import { useSupabase } from '@/hooks/useSupabase'
-import { writeProjectCookie } from '@/lib/project/project-cookie'
 import { getSiteSupervisorMessages } from '@/lib/i18n/site-supervisor'
 import { QcEnginePanels } from '@/components/qc/qc-engine-panels'
 import { getQcMessages } from '@/lib/i18n/qc'
 import {
   alertsToIssues,
   buildResourceSummary,
-  computeSupervisorKpis,
   tasksToLookahead,
-  tasksToTodayActivities,
 } from '@/lib/supervisor/transforms'
 import { VoiceToTextButton } from '@/components/shared/voice-to-text-button'
 import { getSupervisorRouteCopy } from '@/lib/shared/ai-action-routing'
@@ -93,7 +89,7 @@ export function SiteSupervisorDashboard({
   initialTasks,
   initialAlerts,
   visibleBlockCodes = [],
-  initialSection = 'safety',
+  initialSection = 'daily-report',
 }: SiteSupervisorDashboardProps) {
   const supabase = useSupabase()
   const { locale, dir } = useLocale()
@@ -117,7 +113,7 @@ export function SiteSupervisorDashboard({
     }
   }
 
-  const [projectId, setProjectId] = useState<string | null>(initialProjectId)
+  const projectId = useSyncedProjectId(initialProjectId)
   const [tasks, setTasks] = useState(initialTasks)
   const [alerts, setAlerts] = useState(initialAlerts)
   const [inventory, setInventory] = useState<Awaited<ReturnType<typeof fetchInventoryItems>>>([])
@@ -126,6 +122,8 @@ export function SiteSupervisorDashboard({
   const [error, setError] = useState<string | null>(null)
 
   const [quickReportActivity, setQuickReportActivity] = useState<TodayActivity | null>(null)
+  const [packageProgressActivity, setPackageProgressActivity] = useState<TodayActivity | null>(null)
+  const [todayActivities, setTodayActivities] = useState<TodayActivity[]>([])
   const [actionDialog, setActionDialog] = useState<ActionDialog>(null)
   const [actionTaskId, setActionTaskId] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
@@ -162,8 +160,26 @@ export function SiteSupervisorDashboard({
   }
 
   useEffect(() => {
-    setSafetyBadge(countOpenSupervisorSafetyActions())
+    setSafetyBadge(countOpenSafetyAlertMocks())
   }, [])
+
+  const loadTodayActivities = useCallback(async () => {
+    if (!projectId) {
+      setTodayActivities([])
+      return
+    }
+    try {
+      const res = await fetch(
+        `/api/supervisor/today-activities?projectId=${encodeURIComponent(projectId)}&date=${encodeURIComponent(viewDate)}`
+      )
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setTodayActivities((data.activities as TodayActivity[]) ?? [])
+      }
+    } catch {
+      setTodayActivities([])
+    }
+  }, [projectId, viewDate])
 
   const loadData = useCallback(async () => {
     if (!projectId) {
@@ -176,47 +192,49 @@ export function SiteSupervisorDashboard({
 
     setLoading(true)
     setError(null)
+    const [taskRows, alertRows, invRows, drafts] = await Promise.all([
+      fetchAllProjectTasks(supabase, projectId).catch((err) => {
+        console.error('[site-supervisor] tasks load failed', err)
+        return []
+      }),
+      fetchUnresolvedAlerts(supabase, projectId).catch((err) => {
+        console.error('[site-supervisor] alerts load failed', err)
+        return []
+      }),
+      fetchInventoryItems(supabase, projectId).catch(() => []),
+      fetchSupervisorAiDrafts(supabase, projectId, initialContext.userId).catch(() => []),
+    ])
+    setTasks(taskRows)
+    setAlerts(alertRows)
+    setInventory(invRows)
+    setAiDrafts(drafts)
     try {
-      const [taskRows, alertRows, invRows, drafts] = await Promise.all([
-        fetchAllProjectTasks(supabase, projectId),
-        fetchUnresolvedAlerts(supabase, projectId),
-        fetchInventoryItems(supabase, projectId).catch(() => []),
-        fetchSupervisorAiDrafts(supabase, projectId, initialContext.userId).catch(() => []),
-      ])
-      setTasks(taskRows)
-      setAlerts(alertRows)
-      setInventory(invRows)
-      setAiDrafts(drafts)
+      await loadTodayActivities()
     } catch (err) {
       setError(err instanceof Error ? err.message : t.loadError)
     } finally {
       setLoading(false)
     }
-  }, [projectId, supabase, initialContext.userId, t.loadError])
+  }, [projectId, supabase, initialContext.userId, t.loadError, loadTodayActivities])
 
   useEffect(() => {
     void loadData()
   }, [loadData])
 
-  const todayActivities = useMemo(
-    () => tasksToTodayActivities(tasks, viewDate, inventory),
-    [tasks, viewDate, inventory]
-  )
+  useEffect(() => {
+    void loadTodayActivities()
+  }, [loadTodayActivities])
+
   const lookahead = useMemo(() => tasksToLookahead(tasks, viewDate), [tasks, viewDate])
-  const resources = useMemo(
-    () => buildResourceSummary(inventory, todayActivities.length),
-    [inventory, todayActivities.length]
+  const scheduleTodayRows = useMemo(
+    () => todayActivities.filter((a) => a.kind === 'schedule'),
+    [todayActivities]
   )
-  const kpis = useMemo(
-    () => computeSupervisorKpis(tasks, todayActivities, viewDate),
-    [tasks, todayActivities, viewDate]
+  const resources = useMemo(
+    () => buildResourceSummary(inventory, scheduleTodayRows.length),
+    [inventory, scheduleTodayRows.length]
   )
   const issues = useMemo(() => alertsToIssues(alerts, tasks), [alerts, tasks])
-
-  function handleProjectChange(id: string) {
-    setProjectId(id)
-    writeProjectCookie(id)
-  }
 
   async function handleCreateAction(type: ActionDialog) {
     if (!projectId || !type) return
@@ -238,7 +256,7 @@ export function SiteSupervisorDashboard({
         payload = { severity: hseSeverity, description: hseDesc }
       } else if (type === 'instruction') {
         const task = tasks.find((x) => x.id === actionTaskId)
-        const todayRow = todayActivities.find((a) => a.id === actionTaskId)
+        const todayRow = scheduleTodayRows.find((a) => a.id === actionTaskId)
         payload = {
           activity_name: task?.name ?? todayRow?.name ?? 'Activity',
           wbs_code: task?.wbs_code ?? todayRow?.wbs_code ?? '',
@@ -296,25 +314,7 @@ export function SiteSupervisorDashboard({
       <PageHeader
         title={t.title}
         description={t.description}
-        actions={
-          projectOptions.length > 1 ? (
-            <Select value={projectId ?? undefined} onValueChange={handleProjectChange}>
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder={t.selectProject} />
-              </SelectTrigger>
-              <SelectContent>
-                {projectOptions.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null
-        }
       />
-
-      <ScheduleDateToolbar />
 
       {loading && tasks.length === 0 ? <LoadingBlock label={t.saving} /> : null}
       {error ? <ErrorBlock message={error} onRetry={() => void loadData()} /> : null}
@@ -323,6 +323,11 @@ export function SiteSupervisorDashboard({
         activeId={activeSection}
         onSelect={selectSection}
         items={[
+          {
+            id: 'daily-report',
+            label: 'ثبت گزارش روزانه',
+            hint: 'پیشرفت روزانه فعالیت‌های برنامه زمان‌بندی',
+          },
           {
             id: 'safety',
             label: 'ایمنی و اخطارها',
@@ -336,14 +341,9 @@ export function SiteSupervisorDashboard({
             hint: 'شاخص‌های روزانه کارگاه',
           },
           {
-            id: 'workshop',
-            label: 'لیست‌های کارگاه',
-            hint: 'دفتر فنی و وضعیت تأیید مدیر پروژه',
-          },
-          {
             id: 'drawings',
-            label: 'نقشه‌ها',
-            hint: 'نقشه‌های PDF و DWG بارگذاری‌شده توسط دفتر فنی',
+            label: 'نقشه و زون‌بندی پروژه',
+            hint: 'نقشه‌های بارگذاری‌شده توسط دفتر فنی — به تفکیک رشته و زون‌های عملیاتی',
           },
           {
             id: 'inspection',
@@ -377,23 +377,30 @@ export function SiteSupervisorDashboard({
             hint: 'پیش‌نویس‌های در انتظار تأیید',
             badge: aiDrafts.length || undefined,
           },
+          {
+            id: 'workshop',
+            label: 'لیست‌های کارگاه',
+            hint: 'دفتر فنی و وضعیت تأیید مدیر پروژه',
+          },
         ]}
       >
         {activeSection === 'safety' ? (
-          <SupervisorSafetyActionsPanel
+          <SafetyAlertsPage
             embedded
+            showSidebar={false}
             onQueueChange={setSafetyBadge}
           />
         ) : null}
 
         {activeSection === 'overview' ? (
-          <UiBlockGuard code="SS-KPI-01">
-            <SupervisorSummaryCards kpis={kpis} labels={t} />
-          </UiBlockGuard>
+          <SupervisorOverviewPanel
+            projectId={projectId}
+            onViewSafety={() => selectSection('safety')}
+          />
         ) : null}
 
         {activeSection === 'drawings' ? (
-          <ProjectDrawingsPanel projectId={projectId ?? ''} canUpload={false} fa={isRtl} />
+          <SupervisorDrawingsZoningPanel projectId={projectId} />
         ) : null}
 
         {activeSection === 'inspection' ? (
@@ -420,12 +427,16 @@ export function SiteSupervisorDashboard({
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" size="sm" asChild>
-                  <Link href={`/site-ops/prepared?projectId=${projectId}&as=supervisor`}>
+                  <Link
+                    href={`/dashboard/technical-office?section=schedule&workshopTab=prepared&projectId=${projectId}&as=supervisor`}
+                  >
                     {isRtl ? 'لیست‌های کارگاه' : 'Workshop lists'}
                   </Link>
                 </Button>
                 <Button type="button" size="sm" variant="outline" asChild>
-                  <Link href={`/site-ops/schedule?projectId=${projectId}&as=supervisor`}>
+                  <Link
+                    href={`/dashboard/technical-office?section=schedule&workshopTab=schedule&projectId=${projectId}&as=supervisor`}
+                  >
                     {isRtl ? 'مشاهده برنامه (فقط خواندنی)' : 'View schedule (read-only)'}
                   </Link>
                 </Button>
@@ -443,8 +454,12 @@ export function SiteSupervisorDashboard({
               labels={t}
               isRtl={isRtl}
               onOpenQuickReport={(id) => {
-                const act = todayActivities.find((a) => a.id === id) ?? null
+                const act = todayActivities.find((a) => a.id === id && a.kind === 'schedule') ?? null
                 setQuickReportActivity(act)
+              }}
+              onOpenPackageProgress={(id) => {
+                const act = todayActivities.find((a) => a.id === id && a.kind === 'package') ?? null
+                setPackageProgressActivity(act)
               }}
               onCreateInstruction={(id) => {
                 setActionTaskId(id)
@@ -454,6 +469,13 @@ export function SiteSupervisorDashboard({
               }}
             />
           </UiBlockGuard>
+        ) : null}
+
+        {activeSection === 'daily-report' ? (
+          <DailyReportPanel
+            projectId={projectId}
+            projectName={projectOptions.find((p) => p.id === projectId)?.name ?? ''}
+          />
         ) : null}
 
         {activeSection === 'lookahead' ? (
@@ -575,6 +597,19 @@ export function SiteSupervisorDashboard({
         }}
       />
       </UiBlockGuard>
+
+      <PackageProgressDialog
+        open={!!packageProgressActivity}
+        onClose={() => setPackageProgressActivity(null)}
+        activity={packageProgressActivity}
+        viewDate={viewDate}
+        labels={t}
+        locale={locale === 'fa' ? 'fa' : 'en'}
+        onSaved={() => {
+          void loadTodayActivities()
+          void loadData()
+        }}
+      />
 
       <ModalOverlay
         open={actionDialog !== null}

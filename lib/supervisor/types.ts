@@ -22,6 +22,9 @@ export interface ReadinessStatus {
 
 export interface TodayActivity {
   id: string
+  kind: 'schedule' | 'package'
+  parentId?: string | null
+  depth: number
   wbs_code: string
   name: string
   location?: string
@@ -31,6 +34,14 @@ export interface TodayActivity {
   actual_progress_percent: number
   readiness: ReadinessStatus
   subcontractor_name?: string
+  /** Workshop sub-branch (دفتر فنی) */
+  packageId?: string
+  assignmentId?: string | null
+  quantity?: number
+  uom?: string
+  plannedQtyToday?: number | null
+  approvalStatus?: string
+  workshopNote?: string | null
 }
 
 export interface LookaheadActivity {

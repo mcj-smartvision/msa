@@ -14,6 +14,7 @@ import { useScheduleViewDate } from '@/hooks/useScheduleViewDate'
 import { compareWbs } from '@/lib/schedule/wbs-utils'
 import type { ProjectTask, ScheduleImport } from '@/types/schedule'
 import { CalendarRange, CheckCircle2, FileUp, Loader2, AlertTriangle } from 'lucide-react'
+import { ScheduleDownloadButton } from '@/components/schedule/schedule-download-button'
 
 interface ScheduleImportPanelProps {
   projectId: string
@@ -74,6 +75,8 @@ export function ScheduleImportPanel({
 
   const displayTasks = useMemo(() => (tasks.length > 0 ? tasks : sortTasks(previewTasks)), [tasks, previewTasks])
   const hasSchedule = taskCount > 0 || displayTasks.length > 0
+  const latestImportId =
+    initialImports.find((item) => item.status === 'completed')?.id ?? null
 
   /** Banner reflects applied start, or draft selection before first apply. */
   const bannerStart = actualStart ?? draftStart ?? baselineStart
@@ -123,9 +126,10 @@ export function ScheduleImportPanel({
       if (!response.ok) throw new Error(data.error || 'ورود فایل ناموفق بود')
 
       setImportSuccess(
-        `${data.tasks_imported} فعالیت و ${data.dependencies_imported} وابستگی وارد شد.`
+        `${data.tasks_imported} فعالیت و ${data.dependencies_imported} وابستگی وارد شد. برنامه قبلی پاک شد.`
       )
       localRescheduleRef.current = false
+      setTasks([])
       setBaselineStart(data.baseline_start ?? null)
       setActualStart(null)
       setDraftStart(null)
@@ -141,61 +145,29 @@ export function ScheduleImportPanel({
 
   return (
     <div className="space-y-6">
-      <ScheduleDateToolbar
-        viewDate={viewDate}
-        onViewDateChange={setViewDate}
-        onResetToday={resetToToday}
-      />
-
-      {bannerStart ? (
-        <p className="text-sm rounded-lg border bg-primary/5 px-4 py-3">
-          <span className="text-muted-foreground">
-            {actualStart ? 'شروع واقعی: ' : 'شروع پروژه: '}
-          </span>
-          <strong className="text-primary tabular-nums">
-            <FormattedDate value={bannerStart} />
-          </strong>
-          {!actualStart && draftStart ? (
-            <span className="text-muted-foreground text-xs ms-2">(در انتظار اعمال)</span>
-          ) : null}
-        </p>
-      ) : null}
-
-      {hasSchedule ? (
-        <ActualStartPanel
-          projectId={projectId}
-          baselineStart={baselineStart}
-          actualStart={actualStart}
-          taskCount={taskCount}
-          onDraftChange={handleDraftChange}
-          onRescheduled={handleRescheduled}
-        />
-      ) : null}
-
-      {hasSchedule && actualStart ? (
-        <ScheduleCatchUpPanel
-          projectId={projectId}
-          tasks={displayTasks}
-          actualStart={actualStart}
-          onTasksUpdated={(next) => {
-            localRescheduleRef.current = true
-            setTasks(sortTasks(next))
-          }}
-        />
-      ) : null}
-
       <Card className="shadow-card border-primary/20">
         <CardHeader className="border-b bg-muted/20">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <CalendarRange className="h-5 w-5" />
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <CalendarRange className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base">ورود برنامه MSP</CardTitle>
+                <CardDescription>
+                  فایل XML جدید جایگزین کامل برنامه قبلی می‌شود (فعالیت‌ها، زیرشاخه‌های کارگاه، پیشرفت ثبت‌شده و هشدارهای زمان‌بندی پاک می‌شوند).
+                </CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-base">ورود برنامه MSP</CardTitle>
-              <CardDescription>
-                فایل XML مایکروسافت پروجکت را آپلود کنید؛ سپس شروع واقعی را تنظیم کنید تا کل برنامه بازسازی شود.
-              </CardDescription>
-            </div>
+            {hasSchedule ? (
+              <ScheduleDownloadButton
+                projectId={projectId}
+                importId={latestImportId}
+                originalOnly
+                variant="outline"
+                size="sm"
+              />
+            ) : null}
           </div>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
@@ -242,6 +214,50 @@ export function ScheduleImportPanel({
           </Button>
         </CardContent>
       </Card>
+
+      <ScheduleDateToolbar
+        viewDate={viewDate}
+        onViewDateChange={setViewDate}
+        onResetToday={resetToToday}
+      />
+
+      {bannerStart ? (
+        <p className="text-sm rounded-lg border bg-primary/5 px-4 py-3">
+          <span className="text-muted-foreground">
+            {actualStart ? 'شروع واقعی: ' : 'شروع پروژه: '}
+          </span>
+          <strong className="text-primary tabular-nums">
+            <FormattedDate value={bannerStart} />
+          </strong>
+          {!actualStart && draftStart ? (
+            <span className="text-muted-foreground text-xs ms-2">(در انتظار اعمال)</span>
+          ) : null}
+        </p>
+      ) : null}
+
+      {hasSchedule ? (
+        <ActualStartPanel
+          projectId={projectId}
+          baselineStart={baselineStart}
+          actualStart={actualStart}
+          taskCount={taskCount}
+          onDraftChange={handleDraftChange}
+          onRescheduled={handleRescheduled}
+        />
+      ) : null}
+
+      {hasSchedule && actualStart ? (
+        <ScheduleCatchUpPanel
+          projectId={projectId}
+          tasks={displayTasks}
+          actualStart={actualStart}
+          scheduleVersion={latestImportId}
+          onTasksUpdated={(next) => {
+            localRescheduleRef.current = true
+            setTasks(sortTasks(next))
+          }}
+        />
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
@@ -294,7 +310,20 @@ export function ScheduleImportPanel({
                     {item.error_message ? ` · ${item.error_message}` : ''}
                   </p>
                 </div>
-                {statusBadge(item.status)}
+                <div className="flex items-center gap-2">
+                  {item.status === 'completed' ? (
+                    <ScheduleDownloadButton
+                      projectId={projectId}
+                      importId={item.id}
+                      fileName={item.file_name}
+                      originalOnly
+                      variant="ghost"
+                      size="sm"
+                      label="دانلود"
+                    />
+                  ) : null}
+                  {statusBadge(item.status)}
+                </div>
               </div>
             ))}
           </CardContent>

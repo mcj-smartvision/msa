@@ -74,6 +74,9 @@ export function tasksToTodayActivities(
     })
     .map((task) => ({
       id: task.id,
+      kind: 'schedule' as const,
+      parentId: null,
+      depth: 0,
       wbs_code: task.wbs_code ?? '—',
       name: task.name,
       location: undefined,

@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import { Upload, FileJson, FileSpreadsheet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ScheduleDownloadButton } from '@/components/schedule/schedule-download-button'
 
 interface ScheduleUploadProps {
   onAnalyzed: (xml: string, fileName: string) => void
@@ -66,12 +67,22 @@ export function ScheduleUpload({ onAnalyzed, loading }: ScheduleUploadProps) {
 export function ExportButtons({
   onExportJson,
   onExportCsv,
+  projectId,
 }: {
   onExportJson: () => void
   onExportCsv: () => void
+  projectId?: string | null
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      {projectId ? (
+        <ScheduleDownloadButton
+          projectId={projectId}
+          variant="outline"
+          size="sm"
+          label="XML برنامه"
+        />
+      ) : null}
       <Button type="button" variant="outline" size="sm" onClick={onExportJson}>
         <FileJson className="h-4 w-4 ml-1" />
         JSON

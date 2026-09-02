@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { PageHeader } from '@/components/admin/shared'
+import { VoiceToTextButton } from '@/components/shared/voice-to-text-button'
 
-export function TodayWorkspace() {
+export function TodayWorkspace({ showBanner = true }: { showBanner?: boolean }) {
   const projectId = useSearchParams().get('projectId') ?? ''
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [items, setItems] = useState<Array<Record<string, unknown>>>([])
@@ -51,6 +52,7 @@ export function TodayWorkspace() {
   return (
     <div className="space-y-4" dir="rtl">
       <PageHeader
+        showBanner={showBanner}
         title="امروز"
         description="کارهای ارسال‌شده به امروز و ثبت عملکرد"
         actions={
@@ -118,13 +120,23 @@ export function TodayWorkspace() {
                   </label>
                   <label className="text-sm">
                     یادداشت
-                    <input
-                      className="mt-1 w-full rounded-lg border px-3 py-2"
-                      value={form.note}
-                      onChange={(e) =>
-                        setActualForms((f) => ({ ...f, [id]: { ...form, note: e.target.value } }))
-                      }
-                    />
+                    <div className="mt-1 flex gap-2">
+                      <input
+                        className="w-full rounded-lg border px-3 py-2"
+                        value={form.note}
+                        onChange={(e) =>
+                          setActualForms((f) => ({ ...f, [id]: { ...form, note: e.target.value } }))
+                        }
+                      />
+                      <VoiceToTextButton
+                        onTranscript={(text) =>
+                          setActualForms((f) => ({
+                            ...f,
+                            [id]: { ...form, note: form.note ? `${form.note} ${text}` : text },
+                          }))
+                        }
+                      />
+                    </div>
                   </label>
                 </div>
                 <button

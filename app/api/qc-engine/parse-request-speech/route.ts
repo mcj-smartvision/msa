@@ -5,6 +5,7 @@ import {
   formatSpeechSummary,
   mergeParsedSpeech,
   parseRequestSpeech,
+  consolidateInspectionItems,
   type ParsedQcRequestSpeech,
   type QcSpeechItem,
 } from '@/lib/qc-engine/parse-request-speech'
@@ -16,7 +17,7 @@ The input is a speech-to-text transcript. It may contain wrong words, filler, an
 
 1) Correct construction terms (اتصالات، تیر، ستون، طبقه، آرماتوربندی، قالب‌بندی، بتن‌ریزی، جوشکاری، نما، نازک‌کاری، عایق‌بندی، بادبندی).
 2) Delete greetings, filler, and extra words.
-3) Classify into one or more inspection items. Split when the speaker mentions different floors, activities, or subjects.
+3) Classify into inspection item(s). Default to ONE item when the speaker describes a single inspection request.
 4) Choose activityType from the spoken trade. Examples: نما → facade, نازک‌کاری → finishing, عایق‌بندی → insulation, بازرسی جوش → welding, بادبندی → bracing.
 5) Do NOT copy the raw transcript into topic.
 
@@ -41,17 +42,20 @@ Return ONLY JSON:
   ]
 }
 
-Rules:
-- One object per distinct inspection (different floor or different subject/activity).
-- Never merge several floors into one object. "طبقه سوم و چهارم" or "طبقه سوم تا پنجم" → one item per floor.
-- topic = the spoken inspection subject, short Persian. Example: "بررسی اتصالات تیر به ستون". Do NOT put only the trade name (آرماتوربندی) in topic if a more specific subject was spoken.
-- floor = Persian floor name as spoken: همکف، اول، دوم، سوم، چهارم، بام. Never a long sentence. Prefer "سوم" not "3".
-- If they say "طبقه سوم و چهارم" with the same subject, return two items (one per floor).
-- If they mention two activities, return two items.
+Rules — single vs multiple items (IMPORTANT):
+- ONE spoken request → ONE item, even if a future activity is mentioned only as deadline/context.
+  Example: "بازرسی آرماتور سقف طبقه سوم قبل از بتن‌ریزی؛ بتن‌ریزی در تاریخ ۱۷ شهریور" → ONE item only (activityType: rebar, topic about rebar inspection before pour). Do NOT add a second item for بتن‌ریزی.
+- Split into multiple items ONLY when the speaker clearly asks for separate inspections:
+  • numbered list (۱) ... ۲) ...)
+  • explicit separators: همچنین، مورد بعدی، درخواست دیگر
+  • genuinely different work at different floors WITHOUT a range (e.g. آرماتور طبقه سوم و قالب‌بندی طبقه پنجم)
+- "طبقه سوم و چهارم" with the SAME subject → one item per floor (two items), not one merged item.
+- Never merge several floors into one object when floors are explicitly listed as separate.
+- topic = the spoken inspection subject, short Persian. Example: "بازرسی آرماتور سقف قبل از بتن‌ریزی". Do NOT put only the trade name in topic if a more specific subject was spoken.
+- floor = Persian floor name: همکف، اول، دوم، سوم، چهارم، بام. Prefer "سوم" not "3".
 - elementType = ستون or تیر or دیوار or سقف if mentioned
 - discipline = سازه or معماری or برق or مکانیک if mentioned
-- null if unknown. Do not invent.
-- Return every item. Do not drop floors or subjects.`
+- null if unknown. Do not invent.`
 
 type SpeechApiJson = Partial<ParsedQcRequestSpeech> & { items?: Partial<QcSpeechItem>[] }
 
@@ -100,6 +104,7 @@ export async function POST(request: NextRequest) {
       : undefined
     const activityType = raw.activityType && isQcActivityType(raw.activityType) ? raw.activityType : null
     const merged = mergeParsedSpeech(local, { ...raw, activityType, items, transcript: text })
+    merged.items = consolidateInspectionItems(merged.items, text)
     merged.summary = formatSpeechSummary(merged)
     return NextResponse.json(merged)
   } catch {

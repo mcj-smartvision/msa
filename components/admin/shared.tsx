@@ -6,23 +6,49 @@ interface PageHeaderProps {
   title: string
   description?: string
   actions?: ReactNode
+  /** Banner image; set false on embedded views (e.g. technical office tabs). */
+  showBanner?: boolean
 }
 
-export function PageHeader({ title, description, actions }: PageHeaderProps) {
+export function PageHeader({ title, description, actions, showBanner = true }: PageHeaderProps) {
   return (
-    <section className="relative h-[148px] overflow-hidden rounded-[12px] bg-[#1a2330]">
-      <img
-        src="/brand/header-banner.png"
-        alt=""
-        className="pointer-events-none absolute inset-0 h-full w-full object-cover object-left"
-      />
-      <div className="relative flex h-full items-center px-5 sm:px-7">
+    <section
+      className={cn(
+        'relative overflow-hidden rounded-[12px]',
+        showBanner ? 'h-[148px] bg-[#1a2330]' : 'border border-slate-200 bg-white py-4'
+      )}
+    >
+      {showBanner ? (
+        <img
+          src="/brand/header-banner.png"
+          alt=""
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-left"
+        />
+      ) : null}
+      <div
+        className={cn(
+          'relative flex items-center px-5 sm:px-7',
+          showBanner ? 'h-full' : 'min-h-0'
+        )}
+      >
         <div className="min-w-0 max-w-xl">
-          <h1 className="whitespace-nowrap text-[1.85rem] sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-sm">
+          <h1
+            className={cn(
+              'whitespace-nowrap text-[1.85rem] sm:text-3xl font-extrabold tracking-tight',
+              showBanner ? 'text-white drop-shadow-sm' : 'text-slate-900'
+            )}
+          >
             {title}
           </h1>
           {description ? (
-            <p className="mt-1 text-sm font-medium text-white/80">{description}</p>
+            <p
+              className={cn(
+                'mt-1 text-sm font-medium',
+                showBanner ? 'text-white/80' : 'text-slate-600'
+              )}
+            >
+              {description}
+            </p>
           ) : null}
           {actions ? (
             <div className="mt-2.5 flex flex-wrap items-center gap-2">{actions}</div>

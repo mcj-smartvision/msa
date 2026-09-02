@@ -47,10 +47,10 @@ import {
   getPayableTypeLabel,
   getPaymentMethodLabel,
 } from '@/lib/i18n/payables'
-import { writeProjectCookie } from '@/lib/project/project-cookie'
 import { cn } from '@/lib/utils'
 import type { DashboardUserContext } from '@/types/dashboard'
 import { useSupabase } from '@/hooks/useSupabase'
+import { useSyncedProjectId } from '@/hooks/use-synced-project-id'
 import {
   buildPayableSummary,
   cancelContractorPayable,
@@ -108,7 +108,7 @@ export function ContractorPayables({
   const isFa = locale === 'fa' || locale === 'ar'
   const money = (n: number) => formatRial(n, isFa ? 'fa' : 'en')
 
-  const [projectId, setProjectId] = useState<string | null>(initialProjectId)
+  const projectId = useSyncedProjectId(initialProjectId)
   const [rows, setRows] = useState<VendorBillRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -132,10 +132,6 @@ export function ContractorPayables({
   const [payMethod, setPayMethod] = useState<PaymentMethod>('cash')
   const [payRef, setPayRef] = useState('')
   const [payNotes, setPayNotes] = useState('')
-
-  useEffect(() => {
-    setProjectId(initialProjectId)
-  }, [initialProjectId])
 
   const loadData = useCallback(async () => {
     if (!projectId) {
@@ -169,11 +165,6 @@ export function ContractorPayables({
   }, [success])
 
   const summary = useMemo(() => buildPayableSummary(rows), [rows])
-
-  function handleProjectChange(id: string) {
-    setProjectId(id)
-    writeProjectCookie(id)
-  }
 
   function resetForm() {
     setFormContractor('')
@@ -290,18 +281,6 @@ export function ContractorPayables({
                 <Button type="button" variant="outline" asChild>
                   <Link href="/finance/expenses">{t.manageExpenses}</Link>
                 </Button>
-                <Select value={projectId} onValueChange={handleProjectChange}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder={t.selectProject} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projectOptions.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </>
             ) : null}
             {canEdit ? (

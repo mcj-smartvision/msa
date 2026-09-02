@@ -11,6 +11,7 @@ import {
   MessageSquare,
   AlertCircle,
   ClipboardCheck,
+  CalendarRange,
   type LucideIcon,
 } from 'lucide-react'
 import { BrandLogo } from '@/components/brand/brand-logo'
@@ -133,6 +134,12 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
         icon={ClipboardCheck}
         active={linkActive('/dashboard/qc')}
       />
+      <FlatLink
+        href="/dashboard/schedule-intelligence"
+        label={fa ? 'تحلیل زمان‌بندی' : 'Schedule Intelligence'}
+        icon={CalendarRange}
+        active={linkActive('/dashboard/schedule-intelligence')}
+      />
       <FlatAction
         label={fa ? 'داشبورد اعضا' : 'Member Dashboards'}
         icon={Users}
@@ -233,7 +240,6 @@ export function ProjectAdminNav({ projectId, projectName }: ProjectNavProps) {
   const items = [
     { href: `${base}/members`, label: 'اعضا' },
     { href: `${base}/positions`, label: 'سمت‌ها' },
-    { href: `${base}/schedule`, label: 'برنامه زمان‌بندی' },
     { href: `${base}/routing`, label: 'اعلان‌ها' },
     { href: `${base}/widgets`, label: 'نمایش' },
   ]

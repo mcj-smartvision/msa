@@ -73,10 +73,10 @@ import {
   type FinancialCostType,
 } from '@/lib/finance/types'
 import { getExpenseMessages } from '@/lib/i18n/expenses'
-import { writeProjectCookie } from '@/lib/project/project-cookie'
 import { cn } from '@/lib/utils'
 import type { DashboardUserContext } from '@/types/dashboard'
 import { useSupabase } from '@/hooks/useSupabase'
+import { useSyncedProjectId } from '@/hooks/use-synced-project-id'
 import {
   cancelExpenseDocument,
   createCorrectionDocument,
@@ -145,7 +145,7 @@ export function ExpenseManagement({
   const isFa = locale === 'fa' || locale === 'ar'
   const money = (n: number) => formatRial(n, isFa ? 'fa' : 'en')
 
-  const [projectId, setProjectId] = useState<string | null>(initialProjectId)
+  const projectId = useSyncedProjectId(initialProjectId)
   const [rows, setRows] = useState<AccountingDocument[]>([])
   const [legacyCosts, setLegacyCosts] = useState<FinancialCost[]>([])
   const [categories, setCategories] = useState<ExpenseCategory[]>([])
@@ -300,11 +300,9 @@ export function ExpenseManagement({
     editDoc,
   ])
 
-  // Keep in sync when header project switcher calls router.refresh()
   useEffect(() => {
-    setProjectId(initialProjectId)
     setPage(1)
-  }, [initialProjectId])
+  }, [projectId])
 
   const loadData = useCallback(async () => {
     if (!projectId) {
@@ -370,12 +368,6 @@ export function ExpenseManagement({
     const timer = setTimeout(() => setSuccess(null), 4000)
     return () => clearTimeout(timer)
   }, [success])
-
-  function handleProjectChange(id: string) {
-    setProjectId(id)
-    writeProjectCookie(id)
-    setPage(1)
-  }
 
   async function handleMigrateLegacy() {
     if (!projectId || !canEdit || legacyCosts.length === 0) return
@@ -932,18 +924,6 @@ export function ExpenseManagement({
                     {isFa ? 'بدهی پیمانکاران' : 'Contractor Payables'}
                   </Link>
                 </Button>
-                <Select value={projectId} onValueChange={handleProjectChange}>
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder={t.selectProject} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projectOptions.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </>
             ) : null}
             <Button type="button" variant="outline" onClick={() => void handleExportCsv()}>

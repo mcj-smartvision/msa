@@ -15,6 +15,7 @@ interface TodayActivitiesTableProps {
   labels: SiteSupervisorMessages
   isRtl?: boolean
   onOpenQuickReport: (activityId: string) => void
+  onOpenPackageProgress: (activityId: string) => void
   onCreateInstruction: (activityId: string) => void
 }
 
@@ -30,11 +31,20 @@ const plannedLabelsEn: Record<TodayActivity['planned_status'], string> = {
   shouldFinish: 'Finish',
 }
 
+const approvalLabelsFa: Record<string, string> = {
+  draft: 'پیش‌نویس',
+  pending_approval: 'در انتظار تأیید',
+  approved: 'تأیید شده',
+  rejected: 'رد شده',
+  change_requested: 'درخواست تغییر',
+}
+
 export function TodayActivitiesTable({
   activities,
   labels,
   isRtl,
   onOpenQuickReport,
+  onOpenPackageProgress,
   onCreateInstruction,
 }: TodayActivitiesTableProps) {
   const plannedLabels = isRtl ? plannedLabelsFa : plannedLabelsEn
@@ -55,59 +65,135 @@ export function TodayActivitiesTable({
             <tr className="border-b text-muted-foreground">
               <th className="px-4 py-2 font-medium text-start">{labels.wbs}</th>
               <th className="px-4 py-2 font-medium text-start">{isRtl ? 'فعالیت' : 'Activity'}</th>
-              <th className="px-4 py-2 font-medium text-start hidden md:table-cell">{isRtl ? 'برنامه' : 'Plan'}</th>
+              <th className="px-4 py-2 font-medium text-start hidden md:table-cell">
+                {isRtl ? 'برنامه' : 'Plan'}
+              </th>
               <th className="px-4 py-2 font-medium text-start">{isRtl ? 'پیشرفت' : 'Progress'}</th>
-              <th className="px-4 py-2 font-medium text-start hidden lg:table-cell">{isRtl ? 'آمادگی' : 'Readiness'}</th>
+              <th className="px-4 py-2 font-medium text-start hidden lg:table-cell">
+                {isRtl ? 'آمادگی' : 'Readiness'}
+              </th>
               <th className="px-4 py-2 font-medium text-end">{isRtl ? 'اقدامات' : 'Actions'}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {activities.map((a) => (
-              <tr key={a.id} className="hover:bg-muted/30">
-                <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{a.wbs_code}</td>
-                <td className="px-4 py-3 min-w-[160px]">
-                  <div className="font-medium leading-snug">{a.name}</div>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {a.is_critical ? <CriticalBadge /> : null}
-                    {a.subcontractor_name ? (
-                      <Badge variant="outline" className="text-xs">
-                        {a.subcontractor_name}
-                      </Badge>
-                    ) : null}
-                  </div>
-                </td>
-                <td className="px-4 py-3 hidden md:table-cell">
-                  <Badge variant="secondary">{plannedLabels[a.planned_status]}</Badge>
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <span className="font-semibold">{a.actual_progress_percent}%</span>
-                  <span className="text-muted-foreground text-xs ms-1">({a.actual_status})</span>
-                </td>
-                <td className="px-4 py-3 hidden lg:table-cell">
-                  <ReadinessDots
-                    readiness={a.readiness}
-                    labels={{ materials: labels.materials, manpower: labels.manpower, access: labels.access }}
-                  />
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap justify-end gap-1">
-                    <Button type="button" size="sm" variant="outline" onClick={() => onOpenQuickReport(a.id)}>
-                      {labels.quickReport}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      title={labels.aiInstruction}
-                      aria-label={labels.aiInstruction}
-                      onClick={() => onCreateInstruction(a.id)}
+            {activities.map((a) => {
+              const isPackage = a.kind === 'package'
+              const indent = (a.depth ?? 0) * 14
+              return (
+                <tr
+                  key={a.id}
+                  className={cn(
+                    'hover:bg-muted/30',
+                    isPackage && 'bg-emerald-50/40 hover:bg-emerald-50/60'
+                  )}
+                >
+                  <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                    {isPackage ? '↳' : a.wbs_code}
+                  </td>
+                  <td className="px-4 py-3 min-w-[160px]">
+                    <div
+                      className="font-medium leading-snug"
+                      style={{ paddingInlineStart: indent > 0 ? indent : undefined }}
                     >
-                      <MessageSquare className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      {a.name}
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1" style={{ paddingInlineStart: indent > 0 ? indent : undefined }}>
+                      {isPackage ? (
+                        <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-800">
+                          {labels.subBranch}
+                        </Badge>
+                      ) : null}
+                      {!isPackage && a.is_critical ? <CriticalBadge /> : null}
+                      {isPackage && a.approvalStatus ? (
+                        <Badge variant="secondary" className="text-xs">
+                          {isRtl
+                            ? approvalLabelsFa[a.approvalStatus] ?? a.approvalStatus
+                            : a.approvalStatus}
+                        </Badge>
+                      ) : null}
+                      {a.subcontractor_name ? (
+                        <Badge variant="outline" className="text-xs">
+                          {a.subcontractor_name}
+                        </Badge>
+                      ) : null}
+                      {isPackage && a.location ? (
+                        <span className="text-xs text-muted-foreground">{a.location}</span>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    {isPackage ? (
+                      <span className="text-xs text-muted-foreground">
+                        {a.plannedQtyToday != null
+                          ? `${labels.plannedToday}: ${a.plannedQtyToday} ${a.uom ?? ''}`
+                          : '—'}
+                      </span>
+                    ) : (
+                      <Badge variant="secondary">{plannedLabels[a.planned_status]}</Badge>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="font-semibold">{a.actual_progress_percent}%</span>
+                    {isPackage && a.quantity != null ? (
+                      <span className="text-muted-foreground text-xs ms-1">
+                        ({a.quantity} {a.uom})
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs ms-1">({a.actual_status})</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 hidden lg:table-cell">
+                    {isPackage ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : (
+                      <ReadinessDots
+                        readiness={a.readiness}
+                        labels={{
+                          materials: labels.materials,
+                          manpower: labels.manpower,
+                          access: labels.access,
+                        }}
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap justify-end gap-1">
+                      {isPackage ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onOpenPackageProgress(a.id)}
+                        >
+                          {labels.saveProgress}
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onOpenQuickReport(a.id)}
+                        >
+                          {labels.quickReport}
+                        </Button>
+                      )}
+                      {!isPackage ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          title={labels.aiInstruction}
+                          aria-label={labels.aiInstruction}
+                          onClick={() => onCreateInstruction(a.id)}
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

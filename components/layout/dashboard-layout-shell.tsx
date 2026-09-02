@@ -10,15 +10,18 @@ export function DashboardLayoutShell({
   email,
   isAdmin,
   roleNavLinks = [],
+  projectOptions = [],
   children,
 }: {
   email: string
   isAdmin: boolean
   roleNavLinks?: RoleNavLink[]
+  projectOptions?: { id: string; name: string }[]
   children: React.ReactNode
 }) {
   const pathname = usePathname()
   const isAdminRoute = pathname.startsWith('/admin')
+  const wideScheduleLayout = pathname.includes('/dashboard/technical-office')
 
   if (isAdminRoute) {
     return <>{children}</>
@@ -26,8 +29,21 @@ export function DashboardLayoutShell({
 
   return (
     <div className="min-h-screen bg-[#5a7088]">
-      <DashboardHeader email={email} isAdmin={isAdmin} roleNavLinks={roleNavLinks} />
-      <main className="container mx-auto px-4 py-8">{children}</main>
+      <DashboardHeader
+        email={email}
+        isAdmin={isAdmin}
+        roleNavLinks={roleNavLinks}
+        projectOptions={projectOptions}
+      />
+      <main
+        className={
+          wideScheduleLayout
+            ? 'w-full max-w-none px-2 sm:px-3 py-6'
+            : 'container mx-auto px-4 py-8'
+        }
+      >
+        {children}
+      </main>
       <GlobalMessengerFab />
     </div>
   )

@@ -20,14 +20,24 @@ import {
   assertCanSendToToday,
   assertCanSubmitForApproval,
   canReviseChangeRequest,
+  WORKSHOP_SKIP_PM_APPROVAL,
   type ApprovalStatus,
 } from './approvals'
 import {
   inferReviewReason,
   validateCreatePackage,
-  wbsDepth,
   WorkshopError,
 } from './domain'
+import {
+  encodePackageWeightInNote,
+  resolvePackageWeight,
+  stripPackageWeightFromNote,
+} from './package-weight'
+import {
+  buildScheduleHierarchy,
+  enrichScheduleTreeWithWbs,
+  nextChildWbs,
+} from './wbs-numbering'
 import type {
   CreatePackageInput,
   PackageChangePayload,
@@ -37,21 +47,25 @@ import type {
 } from './types'
 
 function mapPackage(row: Record<string, unknown>, children: WorkshopPackageNode[] = []): WorkshopPackageNode {
+  const storedWbs = (row.wbs_code as string) ?? null
   return {
     id: String(row.id),
     kind: 'package',
+    wbs: storedWbs,
     name: String(row.name),
     location: (row.location as string) ?? null,
     quantity: Number(row.quantity),
     uom: String(row.uom),
     crew: (row.crew as string) ?? null,
-    note: (row.note as string) ?? null,
+    note: stripPackageWeightFromNote(row.note as string) || null,
     status: row.status as WorkshopPackageNode['status'],
     approvalStatus: ((row.approval_status as ApprovalStatus) ?? 'draft') as WorkshopPackageNode['approvalStatus'],
     lastPmComment: (row.last_pm_comment as string) ?? null,
     pendingChange: (row.pending_change as PackageChangePayload) ?? null,
     flagForReview: Boolean(row.flag_for_review),
     reviewReason: (row.review_reason as string) ?? null,
+    weightPercent: resolvePackageWeight(row),
+    origin: (row.origin as string) ?? null,
     children,
   }
 }
@@ -108,15 +122,15 @@ async function resolveWorkshopRoles(
   const admin = await isSystemAdmin(supabase, userId)
   const hasWritePosition = keys.some((k) => WORKSHOP_WRITE_POSITIONS.has(k))
 
-  // Workshop write follows project positions — never blanket system-admin write.
-  // Otherwise admin testing the supervisor dashboard always sees edit controls.
-  if (admin && hasWritePosition) {
+  if (admin) {
     roles.add('TECHNICAL_OFFICE')
     roles.add('PM')
     roles.add('SITE_MANAGER')
     roles.add('PROJECT_CONTROLS')
-  } else if (admin && keys.length === 0) {
-    // Admin with no position on this project: view-only in workshop.
+  }
+
+  // Supervisor-only members without write positions
+  if (!admin && keys.includes('site_supervisor') && !hasWritePosition) {
     roles.add('SUPERVISOR')
   }
 
@@ -208,6 +222,87 @@ function normalizeChangePayload(input: UpdatePackageInput | PackageChangePayload
   return out
 }
 
+function clampPackageWeight(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  return Math.max(0, Math.round(value * 10000) / 10000)
+}
+
+const OPTIONAL_PACKAGE_COLUMNS = ['weight_percent', 'wbs_code'] as const
+
+function isMissingColumnError(message: string, column: string): boolean {
+  return new RegExp(column, 'i').test(message) && /column|schema|could not find/i.test(message)
+}
+
+/** Insert workshop_packages row, omitting optional columns if DB schema lacks them. */
+async function insertPackageRow(
+  supabase: SupabaseClient,
+  row: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  let payload = { ...row }
+
+  for (let attempt = 0; attempt <= OPTIONAL_PACKAGE_COLUMNS.length; attempt += 1) {
+    const { data, error } = await supabase
+      .from('workshop_packages')
+      .insert(payload)
+      .select('*')
+      .single()
+
+    if (!error && data) return data as Record<string, unknown>
+
+    if (!error) throw new WorkshopError('VALIDATION', 'ذخیره نشد')
+
+    const missing = OPTIONAL_PACKAGE_COLUMNS.find(
+      (col) => payload[col] !== undefined && isMissingColumnError(error.message, col)
+    )
+    if (missing) {
+      const next = { ...payload }
+      delete next[missing]
+      payload = next
+      continue
+    }
+
+    throw new WorkshopError('VALIDATION', error.message)
+  }
+
+  throw new WorkshopError('VALIDATION', 'ذخیره نشد')
+}
+
+/** Update workshop_packages row, omitting optional columns if DB schema lacks them. */
+async function updatePackageRow(
+  supabase: SupabaseClient,
+  packageId: string,
+  patch: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  let payload = { ...patch }
+
+  for (let attempt = 0; attempt <= OPTIONAL_PACKAGE_COLUMNS.length; attempt += 1) {
+    const { data, error } = await supabase
+      .from('workshop_packages')
+      .update(payload)
+      .eq('id', packageId)
+      .select('*')
+      .single()
+
+    if (!error && data) return data as Record<string, unknown>
+
+    if (!error) throw new WorkshopError('VALIDATION', 'ذخیره نشد')
+
+    const missing = OPTIONAL_PACKAGE_COLUMNS.find(
+      (col) => payload[col] !== undefined && isMissingColumnError(error.message, col)
+    )
+    if (missing) {
+      const next = { ...payload }
+      delete next[missing]
+      payload = next
+      continue
+    }
+
+    throw new WorkshopError('VALIDATION', error.message)
+  }
+
+  throw new WorkshopError('VALIDATION', 'ذخیره نشد')
+}
+
 function nestPackages(rows: Record<string, unknown>[]): {
   byTask: Map<string, WorkshopPackageNode[]>
   rootsUnderPackages: WorkshopPackageNode[]
@@ -251,23 +346,126 @@ export async function getScheduleTree(supabase: SupabaseClient, projectId: strin
     .order('created_at', { ascending: true })
   if (error) throw new WorkshopError('VALIDATION', error.message)
 
-  const { byTask } = nestPackages((packages ?? []) as Record<string, unknown>[])
+  const { byTask, rootsUnderPackages } = nestPackages((packages ?? []) as Record<string, unknown>[])
 
-  const nodes: ScheduleTreeNode[] = tasks
-    .slice()
-    .sort((a, b) => String(a.wbs_code ?? '').localeCompare(String(b.wbs_code ?? ''), undefined, { numeric: true }))
-    .map((t) => ({
-      id: t.id,
-      kind: 'schedule' as const,
-      mspUid: t.msp_uid,
-      taskId: t.id,
-      wbs: t.wbs_code,
-      name: t.name,
-      depth: wbsDepth(t.wbs_code),
-      packages: byTask.get(t.id) ?? [],
-    }))
+  const nodes: ScheduleTreeNode[] = enrichScheduleTreeWithWbs(
+    buildScheduleHierarchy(tasks, byTask)
+  )
 
-  return { nodes, packageCount: packages?.length ?? 0, capabilities }
+  return {
+    nodes,
+    orphanPackages: rootsUnderPackages,
+    packageCount: packages?.length ?? 0,
+    capabilities,
+  }
+}
+
+async function countPackageSiblings(
+  supabase: SupabaseClient,
+  projectId: string,
+  parentPackageId: string | null,
+  projectTaskId: string | null
+): Promise<number> {
+  let query = supabase
+    .from('workshop_packages')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', projectId)
+
+  if (parentPackageId) {
+    query = query.eq('parent_package_id', parentPackageId)
+  } else if (projectTaskId) {
+    query = query.eq('project_task_id', projectTaskId).is('parent_package_id', null)
+  } else {
+    return 0
+  }
+
+  const { count, error } = await query
+  if (error) throw new WorkshopError('VALIDATION', error.message)
+  return count ?? 0
+}
+
+async function resolvePackageWbsCode(
+  supabase: SupabaseClient,
+  packageId: string
+): Promise<string | null> {
+  const { data: pkg, error } = await supabase
+    .from('workshop_packages')
+    .select('id, wbs_code, parent_package_id, project_task_id')
+    .eq('id', packageId)
+    .maybeSingle()
+  if (error) throw new WorkshopError('VALIDATION', error.message)
+  if (!pkg) return null
+  if (pkg.wbs_code) return String(pkg.wbs_code)
+
+  if (pkg.parent_package_id) {
+    const parentWbs = await resolvePackageWbsCode(supabase, String(pkg.parent_package_id))
+    if (!parentWbs) return null
+    const { data: siblings } = await supabase
+      .from('workshop_packages')
+      .select('id')
+      .eq('parent_package_id', pkg.parent_package_id)
+      .order('created_at', { ascending: true })
+    const index = (siblings ?? []).findIndex((s) => s.id === pkg.id)
+    return nextChildWbs(parentWbs, index >= 0 ? index : 0)
+  }
+
+  if (pkg.project_task_id) {
+    const { data: task } = await supabase
+      .from('project_tasks')
+      .select('wbs_code')
+      .eq('id', pkg.project_task_id)
+      .maybeSingle()
+    const { data: siblings } = await supabase
+      .from('workshop_packages')
+      .select('id')
+      .eq('project_task_id', pkg.project_task_id)
+      .is('parent_package_id', null)
+      .order('created_at', { ascending: true })
+    const index = (siblings ?? []).findIndex((s) => s.id === pkg.id)
+    return nextChildWbs(task?.wbs_code ?? null, index >= 0 ? index : 0)
+  }
+
+  return null
+}
+
+async function computePackageWbsCode(
+  supabase: SupabaseClient,
+  projectId: string,
+  input: CreatePackageInput
+): Promise<string> {
+  const clientWbs = input.wbsCode?.trim()
+  if (clientWbs) return clientWbs
+
+  if (input.parentPackageId) {
+    const parentWbs = await resolvePackageWbsCode(supabase, input.parentPackageId)
+    if (!parentWbs) throw new WorkshopError('VALIDATION', 'کد WBS والد مشخص نیست')
+    const siblingCount = await countPackageSiblings(
+      supabase,
+      projectId,
+      input.parentPackageId,
+      null
+    )
+    return nextChildWbs(parentWbs, siblingCount)
+  }
+
+  if (input.parentScheduleNodeId) {
+    const { data: task } = await supabase
+      .from('project_tasks')
+      .select('wbs_code')
+      .eq('id', input.parentScheduleNodeId)
+      .eq('project_id', projectId)
+      .maybeSingle()
+    if (!task) throw new WorkshopError('NOT_FOUND', 'ردیف برنامه پیدا نشد')
+    const siblingCount = await countPackageSiblings(
+      supabase,
+      projectId,
+      null,
+      input.parentScheduleNodeId
+    )
+    return nextChildWbs(task.wbs_code ?? null, siblingCount)
+  }
+
+  throw new WorkshopError('VALIDATION', 'والد نامعتبر است')
 }
 
 export async function createPackage(supabase: SupabaseClient, input: CreatePackageInput) {
@@ -287,44 +485,66 @@ export async function createPackage(supabase: SupabaseClient, input: CreatePacka
     if (!task) throw new WorkshopError('NOT_FOUND', 'ردیف برنامه پیدا نشد')
   }
 
+  if (input.parentPackageId) {
+    const { data: parentPkg } = await supabase
+      .from('workshop_packages')
+      .select('id')
+      .eq('id', input.parentPackageId)
+      .eq('project_id', input.projectId)
+      .maybeSingle()
+    if (!parentPkg) throw new WorkshopError('NOT_FOUND', 'زیرمجموعه والد پیدا نشد')
+  }
+
+  const wbsCode = await computePackageWbsCode(supabase, input.projectId, input)
+
   const inferred = inferReviewReason({
     flagForReview: fields.flag_for_review,
     parentMissingBasis: false,
   })
 
-  const { data, error } = await supabase
-    .from('workshop_packages')
-    .insert({
-      project_id: input.projectId,
-      project_task_id: input.parentScheduleNodeId ?? null,
-      parent_package_id: input.parentPackageId ?? null,
-      name: fields.name,
-      location: fields.location,
-      quantity: fields.quantity,
-      uom: fields.uom,
-      crew: fields.crew,
-      note: fields.note,
-      status: inferred.flag ? 'needs_review' : 'ready',
-      approval_status: 'draft',
-      origin: 'user_added',
-      flag_for_review: inferred.flag || fields.flag_for_review,
-      review_reason: fields.review_reason ?? inferred.note,
-      created_by: user.id,
-      updated_at: new Date().toISOString(),
-    })
-    .select('*')
-    .single()
-  if (error) throw new WorkshopError('VALIDATION', error.message)
+  const insertBase: Record<string, unknown> = {
+    project_id: input.projectId,
+    project_task_id: input.parentScheduleNodeId ?? null,
+    parent_package_id: input.parentPackageId ?? null,
+    name: fields.name,
+    location: fields.location,
+    quantity: fields.quantity,
+    uom: fields.uom,
+    crew: fields.crew,
+    note: encodePackageWeightInNote(
+      fields.note,
+      input.weightPercent != null && Number.isFinite(input.weightPercent)
+        ? clampPackageWeight(input.weightPercent)
+        : null
+    ),
+    status: inferred.flag ? 'needs_review' : 'ready',
+    approval_status: WORKSHOP_SKIP_PM_APPROVAL ? 'approved' : 'draft',
+    approved_at: WORKSHOP_SKIP_PM_APPROVAL ? new Date().toISOString() : null,
+    approved_by: WORKSHOP_SKIP_PM_APPROVAL ? user.id : null,
+    origin: 'user_added',
+    flag_for_review: inferred.flag || fields.flag_for_review,
+    review_reason: fields.review_reason ?? inferred.note,
+    created_by: user.id,
+    updated_at: new Date().toISOString(),
+  }
 
-  if (data.flag_for_review) {
+  if (input.weightPercent != null && Number.isFinite(input.weightPercent)) {
+    insertBase.weight_percent = clampPackageWeight(input.weightPercent)
+  }
+
+  insertBase.wbs_code = wbsCode
+
+  const created = await insertPackageRow(supabase, insertBase)
+
+  if (created.flag_for_review) {
     await supabase.from('workshop_review_flags').insert({
       project_id: input.projectId,
       entity_type: 'package',
-      entity_id: data.id,
+      entity_id: created.id,
       reason_code: inferred.reasonCode ?? 'needs_technical_mapping',
       severity: 'warn',
       status: 'open',
-      note: data.review_reason,
+      note: created.review_reason,
       created_by: user.id,
     })
   }
@@ -334,11 +554,11 @@ export async function createPackage(supabase: SupabaseClient, input: CreatePacka
     actorId: user.id,
     action: 'workshop.package.create',
     entityType: 'workshop_package',
-    entityId: data.id,
-    payload: { name: data.name, parent_task: input.parentScheduleNodeId },
+    entityId: String(created.id),
+    payload: { name: created.name, parent_task: input.parentScheduleNodeId, wbs_code: wbsCode },
   })
 
-  return data
+  return { ...created, wbs_code: created.wbs_code ?? wbsCode }
 }
 
 export async function updatePackage(
@@ -352,7 +572,7 @@ export async function updatePackage(
   const roles = await resolveRoles(supabase, user.id, pkg.project_id)
   assertHasRole(roles, WORKSHOP_WRITE_ROLES)
 
-  assertCanEditPackage(pkg.approval_status as ApprovalStatus)
+  assertCanEditPackage(pkg.approval_status as ApprovalStatus, (pkg.origin as string) ?? 'user_added')
 
   const fields = normalizeChangePayload(input)
   const dbPatch: Record<string, unknown> = {
@@ -365,14 +585,32 @@ export async function updatePackage(
   if (input.reviewReason !== undefined) {
     dbPatch.review_reason = input.reviewReason?.trim() || null
   }
+  if (input.weightPercent !== undefined) {
+    const weight =
+      input.weightPercent == null ? null : clampPackageWeight(Number(input.weightPercent))
+    dbPatch.weight_percent = weight
+    const baseNote =
+      input.note !== undefined
+        ? input.note?.trim() || null
+        : stripPackageWeightFromNote(String(pkg.note ?? '')) || null
+    dbPatch.note = encodePackageWeightInNote(baseNote, weight)
+  } else if (input.note !== undefined) {
+    dbPatch.note = encodePackageWeightInNote(
+      input.note?.trim() || null,
+      resolvePackageWeight(pkg)
+    )
+  }
 
-  const { data, error } = await supabase
-    .from('workshop_packages')
-    .update(dbPatch)
-    .eq('id', packageId)
-    .select('*')
-    .single()
-  if (error) throw new WorkshopError('VALIDATION', error.message)
+  if (WORKSHOP_SKIP_PM_APPROVAL) {
+    const s = pkg.approval_status as ApprovalStatus
+    if (s !== 'change_requested') {
+      dbPatch.approval_status = 'approved'
+      dbPatch.approved_at = new Date().toISOString()
+      dbPatch.approved_by = user.id
+    }
+  }
+
+  const data = await updatePackageRow(supabase, packageId, dbPatch)
 
   await writeSiteOpsAudit(supabase, {
     projectId: pkg.project_id,
@@ -424,6 +662,23 @@ export async function submitPackageForApproval(supabase: SupabaseClient, package
   await assertProjectAccess(supabase, user.id, pkg.project_id)
   const roles = await resolveRoles(supabase, user.id, pkg.project_id)
   assertHasRole(roles, WORKSHOP_WRITE_ROLES)
+
+  if (WORKSHOP_SKIP_PM_APPROVAL) {
+    const { data, error } = await supabase
+      .from('workshop_packages')
+      .update({
+        approval_status: 'approved',
+        approved_at: new Date().toISOString(),
+        approved_by: user.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', packageId)
+      .select('*')
+      .single()
+    if (error) throw new WorkshopError('VALIDATION', error.message)
+    return data
+  }
+
   assertCanSubmitForApproval(pkg.approval_status as ApprovalStatus)
 
   const { data, error } = await supabase
@@ -955,6 +1210,110 @@ export async function addActual(
   })
 
   return data
+}
+
+export async function getPackageCumulativeActuals(
+  supabase: SupabaseClient,
+  projectId: string
+): Promise<Record<string, number>> {
+  const { data: assignments, error: aErr } = await supabase
+    .from('workshop_daily_assignments')
+    .select('id, package_id')
+    .eq('project_id', projectId)
+  if (aErr) throw new WorkshopError('VALIDATION', aErr.message)
+  if (!assignments?.length) return {}
+
+  const assignmentToPackage = new Map(
+    assignments.map((a) => [String(a.id), String(a.package_id)])
+  )
+  const assignmentIds = assignments.map((a) => a.id)
+
+  const { data: entries, error: eErr } = await supabase
+    .from('workshop_actual_entries')
+    .select('assignment_id, actual_qty')
+    .in('assignment_id', assignmentIds)
+  if (eErr) throw new WorkshopError('VALIDATION', eErr.message)
+
+  const totals: Record<string, number> = {}
+  for (const entry of entries ?? []) {
+    const packageId = assignmentToPackage.get(String(entry.assignment_id))
+    if (!packageId) continue
+    totals[packageId] = (totals[packageId] ?? 0) + Number(entry.actual_qty ?? 0)
+  }
+  return totals
+}
+
+const SUPERVISOR_PROGRESS_ROLES: SiteOpsRole[] = [
+  'SUPERVISOR',
+  'TECHNICAL_OFFICE',
+  'SITE_MANAGER',
+  'PM',
+  'PLANNER',
+  'PROJECT_CONTROLS',
+]
+
+export async function reportSupervisorPackageProgress(
+  supabase: SupabaseClient,
+  packageId: string,
+  body: { date: string; progressPercent: number; note?: string | null }
+) {
+  const user = await requireUser(supabase)
+  const pkg = await loadPackage(supabase, packageId)
+  await assertProjectAccess(supabase, user.id, pkg.project_id)
+  const roles = await resolveRoles(supabase, user.id, pkg.project_id)
+  assertHasRole(roles, SUPERVISOR_PROGRESS_ROLES)
+
+  const percent = Math.min(100, Math.max(0, Number(body.progressPercent)))
+  const quantity = Number(pkg.quantity) > 0 ? Number(pkg.quantity) : 1
+  const targetQty = (quantity * percent) / 100
+
+  const cumulativeMap = await getPackageCumulativeActuals(supabase, pkg.project_id)
+  const cumulative = cumulativeMap[packageId] ?? 0
+  const delta = targetQty - cumulative
+  const note = body.note?.trim() || null
+
+  const { data: asg, error: upErr } = await supabase
+    .from('workshop_daily_assignments')
+    .upsert(
+      {
+        project_id: pkg.project_id,
+        package_id: packageId,
+        plan_date: body.date,
+        planned_qty: quantity,
+        status: 'planned',
+        created_by: user.id,
+      },
+      { onConflict: 'package_id,plan_date' }
+    )
+    .select('*')
+    .single()
+  if (upErr) throw new WorkshopError('VALIDATION', upErr.message)
+
+  const status: 'done' | 'partial' | 'blocked' =
+    percent >= 100 ? 'done' : percent > 0 ? 'partial' : 'partial'
+
+  if (delta > 0 || note) {
+    await addActual(supabase, String(asg.id), {
+      actualQty: Math.max(0, delta),
+      status,
+      note,
+    })
+  } else if (percent >= 100 && cumulative >= quantity) {
+    await supabase
+      .from('workshop_packages')
+      .update({ status: 'done', updated_at: new Date().toISOString() })
+      .eq('id', packageId)
+  }
+
+  const updatedCumulative = cumulative + Math.max(0, delta)
+  const progressPercent = Math.min(100, Math.round((updatedCumulative / quantity) * 100))
+
+  return {
+    packageId,
+    progressPercent,
+    assignmentId: String(asg.id),
+    cumulativeQty: updatedCumulative,
+  }
 }
 
 export async function listToday(supabase: SupabaseClient, projectId: string, date: string) {

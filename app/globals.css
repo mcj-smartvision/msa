@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    --font-sans: Tahoma, 'Segoe UI', ui-sans-serif, sans-serif;
     --background: 211 20% 44%;
     --foreground: 220 20% 12%;
     --card: 0 0% 100%;

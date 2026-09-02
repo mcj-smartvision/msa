@@ -19,13 +19,13 @@ import { FormattedDate } from '@/components/schedule/formatted-date'
 import { ScheduleDateInput } from '@/components/schedule/schedule-date-input'
 import { MoneyInput, parseMoneyInput } from '@/components/finance/money-input'
 import { useSupabase } from '@/hooks/useSupabase'
+import { useSyncedProjectId } from '@/hooks/use-synced-project-id'
 import {
   FINANCIAL_COST_TYPES,
   FINANCIAL_COST_TYPE_LABELS,
   type FinancialCost,
   type FinancialCostType,
 } from '@/lib/finance/types'
-import { writeProjectCookie } from '@/lib/project/project-cookie'
 import type { DashboardUserContext } from '@/types/dashboard'
 import {
   buildCostSummary,
@@ -53,7 +53,7 @@ export function CostsDashboard({
   canEdit = false,
 }: CostsDashboardProps) {
   const supabase = useSupabase()
-  const [projectId, setProjectId] = useState<string | null>(initialProjectId)
+  const projectId = useSyncedProjectId(initialProjectId)
   const [rows, setRows] = useState<FinancialCost[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -146,11 +146,6 @@ export function CostsDashboard({
     }
   }
 
-  function handleProjectChange(id: string) {
-    setProjectId(id)
-    writeProjectCookie(id)
-  }
-
   if (projectOptions.length === 0) {
     return (
       <EmptyState
@@ -168,22 +163,6 @@ export function CostsDashboard({
       <PageHeader
         title="داشبورد هزینه‌ها"
         description="ثبت و بررسی هزینه‌های واقعی پروژه (AC) — مصالح، نیروی کار، تجهیزات، پیمانکاران، سربار."
-        actions={
-          projectOptions.length > 1 ? (
-            <Select value={projectId ?? undefined} onValueChange={handleProjectChange}>
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder="انتخاب پروژه" />
-              </SelectTrigger>
-              <SelectContent>
-                {projectOptions.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null
-        }
       />
 
       {error ? <ErrorBlock message={error} onRetry={() => void loadData()} /> : null}

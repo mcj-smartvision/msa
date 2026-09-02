@@ -40,16 +40,28 @@ export interface ScheduleTreeNode {
   id: string
   kind: 'schedule'
   mspUid: number | null
-  taskId: string
+  /** Real project_tasks.id; null for synthetic WBS group rows */
+  taskId: string | null
   wbs: string | null
   name: string
   depth: number
+  /** Summary/group row derived from WBS prefix (not editable, no packages) */
+  isSyntheticGroup?: boolean
+  startDate: string | null
+  finishDate: string | null
+  /** MSP activity weight (وزن) from project_tasks.schedule_weight */
+  scheduleWeight?: number | null
+  /** Imported / catch-up percent from project_tasks.percent_complete */
+  percentComplete?: number
   packages: WorkshopPackageNode[]
+  children: ScheduleTreeNode[]
 }
 
 export interface WorkshopPackageNode {
   id: string
   kind: 'package'
+  /** Hierarchical code under parent schedule WBS, e.g. 2.1.1 */
+  wbs: string | null
   name: string
   location: string | null
   quantity: number
@@ -62,6 +74,9 @@ export interface WorkshopPackageNode {
   pendingChange: PackageChangePayload | null
   flagForReview: boolean
   reviewReason: string | null
+  /** User-entered weight for this sub-branch */
+  weightPercent: number | null
+  origin: string | null
   children: WorkshopPackageNode[]
 }
 
@@ -74,6 +89,7 @@ export interface UpdatePackageInput {
   note?: string | null
   flagForReview?: boolean
   reviewReason?: string | null
+  weightPercent?: number | null
 }
 
 export interface CreatePackageInput {
@@ -88,4 +104,8 @@ export interface CreatePackageInput {
   note?: string | null
   flagForReview?: boolean
   reviewReason?: string | null
+  /** Client-computed WBS preview (e.g. 4.6.1); stored for stable references */
+  wbsCode?: string | null
+  /** User-entered weight */
+  weightPercent?: number | null
 }

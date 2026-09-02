@@ -6,8 +6,15 @@ import {
   assertCanEditPackage,
   assertCanSendToToday,
   canEditPackageContent,
+  canEditWorkshopPackageRow,
   canReviseChangeRequest,
+  WORKSHOP_SKIP_PM_APPROVAL,
 } from '../lib/workshop/approvals'
+import {
+  decodePackageWeightFromNote,
+  encodePackageWeightInNote,
+  resolvePackageWeight,
+} from '../lib/workshop/package-weight'
 import { inferReviewReason, validateCreatePackage, WorkshopError } from '../lib/workshop/domain'
 
 function assert(cond: unknown, msg: string) {
@@ -46,23 +53,54 @@ assert(flagged.flag && flagged.reasonCode === 'out_of_baseline_scope', 'flag rea
 assert(canEditPackageContent('draft'), 'draft editable')
 assert(canEditPackageContent('rejected'), 'rejected editable')
 assert(canEditPackageContent('pending_approval'), 'pending still editable')
-assert(!canEditPackageContent('approved'), 'approved locked')
+if (WORKSHOP_SKIP_PM_APPROVAL) {
+  assert(canEditPackageContent('approved'), 'approved editable when PM skip')
+  assert(canEditWorkshopPackageRow('approved', 'user_added'), 'user_added row editable')
+  assertCanEditPackage('approved', 'user_added')
+} else {
+  assert(!canEditPackageContent('approved'), 'approved locked')
+  let locked = false
+  try {
+    assertCanEditPackage('approved')
+  } catch (e) {
+    locked = e instanceof WorkshopError
+  }
+  assert(locked, 'edit blocked after approve')
+}
+assert(canEditWorkshopPackageRow('approved', 'user_added'), 'user_added always editable')
 assert(canReviseChangeRequest('change_requested'), 'revise change request')
 
-let locked = false
+let lockedChangeRequest = false
 try {
-  assertCanEditPackage('approved')
+  assertCanEditPackage('change_requested', 'user_added')
 } catch (e) {
-  locked = e instanceof WorkshopError
+  lockedChangeRequest = e instanceof WorkshopError
 }
-assert(locked, 'edit blocked after approve')
+assert(lockedChangeRequest, 'change_requested blocked')
 
-let sendBlocked = false
-try {
+if (WORKSHOP_SKIP_PM_APPROVAL) {
   assertCanSendToToday('draft')
-} catch (e) {
-  sendBlocked = e instanceof WorkshopError
+  let sendBlockedOnChange = false
+  try {
+    assertCanSendToToday('change_requested')
+  } catch (e) {
+    sendBlockedOnChange = e instanceof WorkshopError
+  }
+  assert(sendBlockedOnChange, 'send-to-today blocked on change request')
+} else {
+  let sendBlocked = false
+  try {
+    assertCanSendToToday('draft')
+  } catch (e) {
+    sendBlocked = e instanceof WorkshopError
+  }
+  assert(sendBlocked, 'send-to-today requires approval')
 }
-assert(sendBlocked, 'send-to-today requires approval')
+
+const encoded = encodePackageWeightInNote('یادداشت', 40)
+assert(encoded?.includes('40'), 'weight encoded in note')
+assert(resolvePackageWeight({ note: encoded }) === 40, 'weight read from note')
+assert(decodePackageWeightFromNote(encoded) === 40, 'decode note weight')
+assert(resolvePackageWeight({ weight_percent: 25, note: encoded }) === 25, 'column preferred over note')
 
 console.log('workshop domain tests: OK')

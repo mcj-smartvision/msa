@@ -10,8 +10,11 @@ import {
   deleteInspectionRequests,
   markRequestOpenedByInspector,
   recordInspectorDecision,
+  saveInspectorReport,
   requireQcEngineUser,
+  resubmitRejectedInspectionRequest,
   setRequestStatus,
+  submitInspectionRequest,
   updateInspectionRequest,
 } from '@/lib/qc-engine/service'
 import { parseQcRequestPriority, type QcRequestStatus } from '@/lib/qc-engine/types'
@@ -148,6 +151,19 @@ export async function POST(request: NextRequest) {
     if (!projectId) return NextResponse.json({ error: 'projectId لازم است' }, { status: 400 })
     await assertProjectMember(supabase, user.id, projectId, context.isSystemAdmin)
 
+    if (body.requestId && body.inspectorSaveReport) {
+      if (!canActAsQcInspector(context)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      await saveInspectorReport({
+        requestId: String(body.requestId),
+        inspectorId: user.id,
+        notes: body.notes == null ? undefined : String(body.notes),
+        classified: body.classified == null ? undefined : String(body.classified),
+      })
+      return NextResponse.json({ ok: true })
+    }
+
     if (body.requestId && body.inspectorDecision) {
       if (!canActAsQcInspector(context)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -167,6 +183,31 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
       await markRequestOpenedByInspector(String(body.requestId))
+      return NextResponse.json({ ok: true })
+    }
+
+    if (body.requestId && body.resubmitRejected) {
+      await resubmitRejectedInspectionRequest({
+        requestId: String(body.requestId),
+        projectId,
+        activityType: body.activityType,
+        floor: body.floor,
+        gridFrom: body.gridFrom,
+        gridTo: body.gridTo,
+        sourceDrawingId: body.sourceDrawingId ? String(body.sourceDrawingId) : null,
+        itemIds: Array.isArray(body.itemIds) ? body.itemIds.map(String) : undefined,
+        itemUpdates: Array.isArray(body.itemUpdates)
+          ? body.itemUpdates
+              .map((row: { id?: unknown; code?: unknown; floor?: unknown; name?: unknown }) => ({
+                id: String(row.id ?? ''),
+                code: row.code == null ? undefined : String(row.code),
+                floor: row.floor == null ? undefined : String(row.floor),
+                name: row.name == null ? undefined : String(row.name),
+              }))
+              .filter((row: { id: string }) => row.id)
+          : undefined,
+        notes: body.notes,
+      })
       return NextResponse.json({ ok: true })
     }
 
@@ -196,7 +237,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.requestId && body.status) {
-      await setRequestStatus(String(body.requestId), body.status as QcRequestStatus)
+      if (body.status === 'submitted') {
+        await submitInspectionRequest(String(body.requestId), user.id)
+      } else {
+        await setRequestStatus(String(body.requestId), body.status as QcRequestStatus)
+      }
       return NextResponse.json({ ok: true })
     }
 

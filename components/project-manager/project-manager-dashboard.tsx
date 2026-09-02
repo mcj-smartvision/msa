@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useLocale } from '@/components/i18n/locale-provider'
 import { PageHeader, EmptyState, LoadingBlock, ErrorBlock, SectionCard } from '@/components/admin/shared'
-import { ScheduleDateToolbar } from '@/components/schedule/schedule-date-toolbar'
 import { AiDraftViewer } from '@/components/shared/ai-draft-viewer'
 import { ModalOverlay } from '@/components/shared/modal-overlay'
 import { PmAnalyticsControlRoom } from '@/components/project-manager/pm-analytics-control-room'
@@ -23,6 +22,7 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { useSupabase } from '@/hooks/useSupabase'
+import { useSyncedProjectId } from '@/hooks/use-synced-project-id'
 import {
   getProjectManagerMessages,
   pmAiLabelsForItem,
@@ -30,7 +30,6 @@ import {
 } from '@/lib/i18n/project-manager'
 import type { ApprovalItem, ProjectManagerDashboardData } from '@/lib/project-manager/types'
 import type { ProjectSubcontractor } from '@/lib/project-manager/subcontractor-types'
-import { writeProjectCookie } from '@/lib/project/project-cookie'
 import type { DashboardUserContext } from '@/types/dashboard'
 import type { ProjectAlert, ProjectScheduleSummary, SiteDailyReport } from '@/types/schedule'
 import {
@@ -77,7 +76,7 @@ export function ProjectManagerDashboard({
   const t = getProjectManagerMessages(locale)
   const isRtl = dir === 'rtl'
 
-  const [projectId, setProjectId] = useState<string | null>(initialProjectId)
+  const projectId = useSyncedProjectId(initialProjectId)
   const [data, setData] = useState<ProjectManagerDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -132,11 +131,6 @@ export function ProjectManagerDashboard({
   useEffect(() => {
     void loadData()
   }, [loadData])
-
-  function handleProjectChange(id: string) {
-    setProjectId(id)
-    writeProjectCookie(id)
-  }
 
   async function openApproval(item: ApprovalItem) {
     setSelected(item)
@@ -287,7 +281,6 @@ export function ProjectManagerDashboard({
           dataGaps={data?.dataGaps ?? []}
           projectOptions={projectOptions}
           projectId={projectId}
-          onProjectChange={handleProjectChange}
           isRtl={isRtl}
           isFa={locale === 'fa' || locale === 'ar'}
         />
@@ -297,7 +290,6 @@ export function ProjectManagerDashboard({
         <UiBlockGuard code="PM-TBL-01">
           <div className="border-t pt-8 space-y-6">
             <PageHeader title={t.approvalCenter} description={t.description} />
-            <ScheduleDateToolbar />
 
             {projectId ? (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">

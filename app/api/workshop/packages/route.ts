@@ -18,6 +18,13 @@ export async function POST(request: NextRequest) {
       note: body.note,
       flagForReview: Boolean(body.flagForReview ?? body.flag_for_review),
       reviewReason: body.reviewReason ?? body.review_reason,
+      wbsCode: body.wbsCode ?? body.wbs_code ?? null,
+      weightPercent:
+        body.weightPercent !== undefined
+          ? body.weightPercent
+          : body.weight_percent !== undefined
+            ? body.weight_percent
+            : undefined,
     })
     return NextResponse.json({ package: pkg })
   } catch (error) {

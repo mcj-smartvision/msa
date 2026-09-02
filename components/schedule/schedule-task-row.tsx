@@ -8,6 +8,11 @@ import { wbsDepth } from '@/lib/schedule/wbs-utils'
 import type { ProjectTask } from '@/types/schedule'
 import { cn } from '@/lib/utils'
 
+function formatScheduleWeight(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return '—'
+  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '')
+}
+
 const INDENT_PX = 18
 
 export interface ScheduleTaskRowProps {
@@ -44,7 +49,14 @@ function ScheduleTaskRowComponent({
       </td>
 
       <td className="px-3 py-2.5 align-top min-w-[280px]" style={{ paddingInlineStart: `${8 + indent}px` }}>
-        <span className="font-medium leading-relaxed break-words">{task.name}</span>
+        <span
+          className={cn(
+            'leading-relaxed break-words',
+            task.is_summary ? 'font-semibold text-foreground' : 'font-medium'
+          )}
+        >
+          {task.name}
+        </span>
       </td>
 
       <td className="px-2 py-2.5 align-top text-center w-[72px]">
@@ -65,6 +77,10 @@ function ScheduleTaskRowComponent({
 
       <td className="px-3 py-2.5 align-top font-mono text-[11px] text-muted-foreground leading-relaxed break-words">
         {predecessorLabel}
+      </td>
+
+      <td className="px-3 py-2.5 align-top tabular-nums text-right text-muted-foreground">
+        {formatScheduleWeight(task.schedule_weight)}
       </td>
 
       <td className="px-3 py-2.5 align-top tabular-nums text-right">{task.percent_complete}%</td>
@@ -88,7 +104,9 @@ function rowPropsEqual(prev: ScheduleTaskRowProps, next: ScheduleTaskRowProps): 
     a.finish_planned === b.finish_planned &&
     a.finish_current === b.finish_current &&
     a.percent_complete === b.percent_complete &&
-    a.is_critical === b.is_critical
+    a.is_critical === b.is_critical &&
+    a.schedule_weight === b.schedule_weight &&
+    Boolean(a.is_summary) === Boolean(b.is_summary)
   )
 }
 

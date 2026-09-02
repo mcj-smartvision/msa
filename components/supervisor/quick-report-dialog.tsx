@@ -149,7 +149,16 @@ export function QuickReportDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="progress">{labels.actualProgress}</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="progress">{labels.actualProgress}</Label>
+                <VoiceToTextButton
+                  onTranscript={(text) => {
+                    const match = text.match(/(\d{1,3})\s*%?/)
+                    if (match) setProgress(Math.min(100, Number(match[1])))
+                    setSupervisorNote((prev) => (prev ? `${prev} ${text}` : text))
+                  }}
+                />
+              </div>
               <Input
                 id="progress"
                 type="number"

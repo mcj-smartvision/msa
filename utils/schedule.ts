@@ -6,6 +6,7 @@ import type {
   ProjectTask,
   SiteDailyReport,
 } from '@/types/schedule'
+import { normalizeScheduleWeightPercent, weightedProgressPercent } from '@/lib/schedule/weighted-progress'
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10)
@@ -150,7 +151,10 @@ export async function fetchProjectScheduleSummary(
   projectId: string
 ): Promise<ProjectScheduleSummary> {
   const [tasksResult, alertsResult] = await Promise.all([
-    supabase.from('project_tasks').select('percent_complete, is_critical, finish_planned').eq('project_id', projectId),
+    supabase
+      .from('project_tasks')
+      .select('percent_complete, is_critical, finish_planned, schedule_weight, is_summary')
+      .eq('project_id', projectId),
     supabase.from('alerts').select('id').eq('project_id', projectId).eq('is_resolved', false),
   ])
 
@@ -158,21 +162,29 @@ export async function fetchProjectScheduleSummary(
     throw new Error(tasksResult.error.message)
   }
 
-  const tasks = (tasksResult.data ?? []) as Pick<ProjectTask, 'percent_complete' | 'is_critical' | 'finish_planned'>[]
+  type TaskRow = Pick<
+    ProjectTask,
+    'percent_complete' | 'is_critical' | 'finish_planned' | 'schedule_weight' | 'is_summary'
+  >
+  const tasks = (tasksResult.data ?? []) as TaskRow[]
   const today = todayIsoDate()
 
-  const completedTasks = tasks.filter((t) => Number(t.percent_complete) >= 100).length
-  const delayedTasks = tasks.filter(
+  const leafTasks = tasks.filter((t) => !t.is_summary)
+
+  const completedTasks = leafTasks.filter((t) => Number(t.percent_complete) >= 100).length
+  const delayedTasks = leafTasks.filter(
     (t) => Number(t.percent_complete) < 100 && t.finish_planned && t.finish_planned.slice(0, 10) < today
   ).length
-  const criticalTasks = tasks.filter((t) => t.is_critical).length
-  const overallPercentComplete =
-    tasks.length === 0
-      ? 0
-      : Math.round(tasks.reduce((sum, t) => sum + Number(t.percent_complete), 0) / tasks.length)
+  const criticalTasks = leafTasks.filter((t) => t.is_critical).length
+  const overallPercentComplete = weightedProgressPercent(
+    leafTasks.map((t) => ({
+      progress: Number(t.percent_complete) || 0,
+      weight: normalizeScheduleWeightPercent(t.schedule_weight),
+    }))
+  )
 
   return {
-    totalTasks: tasks.length,
+    totalTasks: leafTasks.length,
     completedTasks,
     delayedTasks,
     criticalTasks,

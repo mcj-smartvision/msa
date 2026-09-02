@@ -60,10 +60,10 @@ import {
   getInvoiceStatusLabel,
   getVendorStatusLabel,
 } from '@/lib/i18n/accountant'
-import { writeProjectCookie } from '@/lib/project/project-cookie'
 import { cn } from '@/lib/utils'
 import type { DashboardUserContext } from '@/types/dashboard'
 import { useSupabase } from '@/hooks/useSupabase'
+import { useSyncedProjectId } from '@/hooks/use-synced-project-id'
 import {
   buildFinancialAlerts,
   buildInvoiceKpis,
@@ -143,7 +143,7 @@ export function AccountantDashboard({
   const isRtl = dir === 'rtl'
   const isFa = locale === 'fa' || locale === 'ar'
 
-  const [projectId, setProjectId] = useState<string | null>(initialProjectId)
+  const projectId = useSyncedProjectId(initialProjectId)
   const [invoices, setInvoices] = useState<FinancialInvoiceRow[]>([])
   const [costs, setCosts] = useState<FinancialCost[]>([])
   const [vendorBills, setVendorBills] = useState<VendorBillRow[]>([])
@@ -170,11 +170,6 @@ export function AccountantDashboard({
   const [editDueDate, setEditDueDate] = useState('')
 
   const [paymentAmount, setPaymentAmount] = useState('')
-
-  // Sync when header project switcher refreshes the server page
-  useEffect(() => {
-    setProjectId(initialProjectId)
-  }, [initialProjectId])
 
   const loadData = useCallback(async () => {
     if (!projectId) {
@@ -225,11 +220,6 @@ export function AccountantDashboard({
       buildFinancialAlerts(invoices, vendorKpis.overdueCount, isFa ? 'fa' : 'en'),
     [invoices, vendorKpis.overdueCount, isFa]
   )
-
-  function handleProjectChange(id: string) {
-    setProjectId(id)
-    writeProjectCookie(id)
-  }
 
   function openEditModal(inv: FinancialInvoiceRow) {
     setEditInvoice(inv)
@@ -360,20 +350,6 @@ export function AccountantDashboard({
           description={t.description}
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              {projectOptions.length > 0 ? (
-                <Select value={projectId ?? undefined} onValueChange={handleProjectChange}>
-                  <SelectTrigger className="w-[220px]">
-                    <SelectValue placeholder={t.selectProject} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projectOptions.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : null}
               <UiBlockGuard code="ACC-ACT-01">
                 <Button type="button" variant="outline" asChild>
                   <Link href="/finance/expenses">

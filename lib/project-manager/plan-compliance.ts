@@ -5,6 +5,7 @@ import {
   taskEffectiveStart,
   todayIso,
 } from '@/lib/schedule/task-view-date'
+import { compareWbs } from '@/lib/schedule/wbs-utils'
 import type { ProjectTask } from '@/types/schedule'
 
 export type PlanComplianceCheck = 'on_track' | 'behind' | 'done' | 'not_started'
@@ -83,14 +84,15 @@ export function buildPlanCompliance(
   const hasSchedule = tasks.length > 0
   const shouldShowChecklist = Boolean(actualStart && actualStart <= asOf && hasSchedule)
 
-  const dueTasks = tasks.filter((task) => {
-    const start = taskEffectiveStart(task)
-    if (!start) return false
-    return start <= asOf
-  })
+  const dueTasks = tasks
+    .filter((task) => {
+      const start = taskEffectiveStart(task)
+      if (!start) return false
+      return start <= asOf
+    })
+    .sort((a, b) => compareWbs(a.wbs_code, b.wbs_code))
 
-  const rows: PlanComplianceRow[] = dueTasks
-    .map((task) => {
+  const rows: PlanComplianceRow[] = dueTasks.map((task) => {
       const start = taskEffectiveStart(task)
       const finish = taskEffectiveFinish(task)
       const plannedPercent = plannedPercentByDate(task, asOf)
@@ -120,12 +122,6 @@ export function buildPlanCompliance(
         daysLate,
         scheduleStatus,
       }
-    })
-    .sort((a, b) => {
-      const rank = { behind: 0, not_started: 1, on_track: 2, done: 3 }
-      const d = rank[a.check] - rank[b.check]
-      if (d !== 0) return d
-      return (a.wbs ?? a.name).localeCompare(b.wbs ?? b.name, 'fa')
     })
 
   const onTrack = rows.filter((r) => r.check === 'on_track').length

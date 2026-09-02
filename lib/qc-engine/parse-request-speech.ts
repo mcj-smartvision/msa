@@ -1,4 +1,4 @@
-import { isQcActivityType, matchQcActivity, QC_ACTIVITY_FA, QC_ACTIVITY_RULES, type QcActivityType } from '@/lib/qc-engine/activity-types'
+import { isQcActivityType, matchQcActivity, QC_ACTIVITY_FA, QC_ACTIVITY_META, QC_ACTIVITY_RULES, QC_ACTIVITY_TYPES, type QcActivityType } from '@/lib/qc-engine/activity-types'
 
 export type QcSpeechItem = {
   topic: string | null
@@ -57,6 +57,15 @@ const FLOOR_TOKEN =
 
 const FILLER =
   /سلام|خسته نباشید|لطفاً?|خواهشاً?|می‌خوام|ميخوام|میخوام|بفرست|ثبت کن(?:ید)?|درخواست(?:\s*بازرسی)?|برای من|اینکه|این که|کنترل کیفیت/gi
+
+/** Future work mentioned only as deadline/context — not a separate inspection. */
+const PREP_BEFORE_WORK =
+  /قبل\s+از\s+بتن|پیش\s+از\s+بتن|تا\s+تاریخ\s+بتن|قبل\s+تاریخ\s+بتن|قبل\s+از\s+تاریخ\s+بتن|before\s+concrete/i
+
+const EXPLICIT_MULTI =
+  /(?:^|\s)(?:همچنین|به علاوه|و همچنین|مورد بعدی|درخواست\s+دیگر|یک\s+درخواست\s+دیگر|موضوع\s+دیگر)/i
+
+const NUMBERED_ITEM = /(?:^|\n)\s*\d+[).\-]\s+/
 
 export function toLatinDigits(value: string) {
   return value
@@ -241,7 +250,32 @@ function parseOneItem(text: string): QcSpeechItem {
   }
 }
 
+function activityKeywordAt(text: string, index: number): QcActivityType | null {
+  const slice = text.slice(index)
+  for (const key of QC_ACTIVITY_TYPES) {
+    const pattern = QC_ACTIVITY_META[key].pattern
+    pattern.lastIndex = 0
+    const match = pattern.exec(slice)
+    if (match && match.index === 0) return key
+  }
+  return null
+}
+
+function isContextualFutureWork(text: string, index: number, activity: QcActivityType | null): boolean {
+  if (!activity) return false
+  if (activity !== 'concrete_pour' && activity !== 'formwork') return false
+  const window = text.slice(Math.max(0, index - 55), Math.min(text.length, index + 30))
+  return PREP_BEFORE_WORK.test(window) || /قبل\s+از/.test(text.slice(Math.max(0, index - 25), index))
+}
+
 function splitByActivityKeywords(text: string): string[] {
+  if (!EXPLICIT_MULTI.test(text) && !NUMBERED_ITEM.test(text)) {
+    const primary = parseActivityType(text)
+    if (primary && PREP_BEFORE_WORK.test(text)) {
+      return [text]
+    }
+  }
+
   const alt = QC_ACTIVITY_RULES.map((rule) => rule.pattern.source).join('|')
   const re = new RegExp(`(?:${alt})`, 'gi')
   const hits: number[] = []
@@ -249,6 +283,8 @@ function splitByActivityKeywords(text: string): string[] {
   while ((match = re.exec(text))) {
     const last = hits[hits.length - 1]
     if (last != null && match.index - last < 3) continue
+    const activity = activityKeywordAt(text, match.index)
+    if (isContextualFutureWork(text, match.index, activity)) continue
     hits.push(match.index)
   }
   if (hits.length < 2) return [text]
@@ -289,6 +325,51 @@ function expandByFloors(item: QcSpeechItem, text: string): QcSpeechItem[] {
   return floors.map((floor) => ({ ...item, floor }))
 }
 
+/** Merge items that describe one inspection (e.g. rebar check before concrete pour). */
+export function consolidateInspectionItems(items: QcSpeechItem[], transcript: string): QcSpeechItem[] {
+  const filled = items.filter(itemHasContent)
+  if (filled.length <= 1) return filled
+
+  const text = transcript.trim()
+  const prepBeforeConcrete = PREP_BEFORE_WORK.test(text)
+
+  if (prepBeforeConcrete) {
+    const primaryTypes = new Set(['rebar', 'formwork', 'welding', 'steel_erection', 'bolting'])
+    const primary = filled.find((item) => item.activityType && primaryTypes.has(item.activityType))
+    const hasConcreteOnly = filled.some((item) => item.activityType === 'concrete_pour')
+    if (primary && hasConcreteOnly) {
+      const floors = [...new Set(filled.map((item) => item.floor).filter(Boolean))]
+      if (floors.length <= 1) {
+        const merged: QcSpeechItem = { ...primary }
+        merged.topic = preferTopic(
+          primary.topic,
+          filled
+            .filter((item) => item.activityType !== 'concrete_pour')
+            .map((item) => item.topic)
+            .join('؛ ')
+        )
+        merged.floor = merged.floor || floors[0] || null
+        for (const item of filled) {
+          if (item.elementType && !merged.elementType) merged.elementType = item.elementType
+          if (item.discipline && !merged.discipline) merged.discipline = item.discipline
+        }
+        return [merged]
+      }
+    }
+  }
+
+  if (!EXPLICIT_MULTI.test(text) && !NUMBERED_ITEM.test(text)) {
+    const floors = [...new Set(filled.map((item) => item.floor).filter(Boolean))]
+    const activities = [...new Set(filled.map((item) => item.activityType).filter(Boolean))]
+    if (floors.length <= 1 && activities.length > 1 && prepBeforeConcrete) {
+      const primary = filled.find((item) => item.activityType === 'rebar') ?? filled[0]
+      return [mergeItem(primary, filled.find((item) => item !== primary) ?? emptyItem())]
+    }
+  }
+
+  return filled
+}
+
 export function formatSpeechSummary(parsed: Partial<QcSpeechItem> & { items?: QcSpeechItem[] }) {
   const items = (parsed.items?.length ? parsed.items : [parsed as QcSpeechItem]).filter(itemHasContent)
   if (!items.length) return ''
@@ -315,7 +396,8 @@ export function formatSpeechSummary(parsed: Partial<QcSpeechItem> & { items?: Qc
 }
 
 export function parsedFromItems(items: QcSpeechItem[], transcript: string): ParsedQcRequestSpeech {
-  const filled = items.filter(itemHasContent)
+  const consolidated = consolidateInspectionItems(items, transcript)
+  const filled = consolidated.filter(itemHasContent)
   const first = filled[0] ?? emptyItem()
   const rangeItem = filled.find((item) => item.gridFrom && item.gridTo)
   const parsed: ParsedQcRequestSpeech = {

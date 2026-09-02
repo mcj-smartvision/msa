@@ -10,6 +10,7 @@ import {
   listProjectDrawings,
   saveDrawingToStorage,
 } from '@/lib/technical-office/drawings'
+import type { DrawingDiscipline } from '@/lib/technical-office/drawings-shared'
 
 function drawingTitle(sharedTitle: string, fileName: string, total: number) {
   const base = fileName.replace(/\.(pdf|dwg)$/i, '')
@@ -58,6 +59,15 @@ export async function POST(request: NextRequest) {
   const form = await request.formData()
   const projectId = String(form.get('projectId') ?? '').trim()
   const title = String(form.get('title') ?? '').trim()
+  const disciplineRaw = String(form.get('discipline') ?? '').trim()
+  const discipline: DrawingDiscipline | undefined =
+    disciplineRaw === 'structure' ||
+    disciplineRaw === 'architecture' ||
+    disciplineRaw === 'mechanical' ||
+    disciplineRaw === 'electrical' ||
+    disciplineRaw === 'other'
+      ? disciplineRaw
+      : undefined
   const files = [...form.getAll('file'), ...form.getAll('files')].filter(
     (item): item is File => item instanceof File && item.size > 0
   )
@@ -95,6 +105,7 @@ export async function POST(request: NextRequest) {
           fileName: safeName,
           file,
           uploadedBy: user.id,
+          discipline,
         })
       )
     } catch (error) {

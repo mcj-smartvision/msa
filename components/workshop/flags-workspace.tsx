@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { PageHeader } from '@/components/admin/shared'
 
-export function FlagsWorkspace() {
+export function FlagsWorkspace({ showBanner = true }: { showBanner?: boolean }) {
   const projectId = useSearchParams().get('projectId') ?? ''
   const [flags, setFlags] = useState<Array<Record<string, unknown>>>([])
 
@@ -18,6 +18,7 @@ export function FlagsWorkspace() {
   return (
     <div className="space-y-4" dir="rtl">
       <PageHeader
+        showBanner={showBanner}
         title="پرچم‌ها / نیاز به بررسی"
         description="صف بررسی دفتر فنی — ثبت کارگاه را متوقف نمی‌کند."
       />

@@ -18,9 +18,9 @@ import {
 } from '@/components/ui/select'
 import { FormattedDate } from '@/components/schedule/formatted-date'
 import { useSupabase } from '@/hooks/useSupabase'
+import { useSyncedProjectId } from '@/hooks/use-synced-project-id'
 import { getProcurementMessages, STATUS_LABELS, procurementAiLabels } from '@/lib/i18n/procurement'
 import type { ProcurementKpis, ProcurementRequest, ProcurementStatus } from '@/lib/procurement/types'
-import { writeProjectCookie } from '@/lib/project/project-cookie'
 import type { DashboardUserContext } from '@/types/dashboard'
 import { loadProcurementDashboard, updateProcurementStatus } from '@/utils/procurement/dashboard'
 import { cn } from '@/lib/utils'
@@ -55,7 +55,7 @@ export function ProcurementDashboard({
   const aiLabels = procurementAiLabels(t)
   const isRtl = dir === 'rtl'
 
-  const [projectId, setProjectId] = useState<string | null>(initialProjectId)
+  const projectId = useSyncedProjectId(initialProjectId)
   const [requests, setRequests] = useState<ProcurementRequest[]>([])
   const [kpis, setKpis] = useState<ProcurementKpis | null>(null)
   const [loading, setLoading] = useState(true)
@@ -145,20 +145,6 @@ export function ProcurementDashboard({
       <PageHeader
         title={t.title}
         description={t.description}
-        actions={
-          projectOptions.length > 1 ? (
-            <Select value={projectId ?? undefined} onValueChange={(id) => { setProjectId(id); writeProjectCookie(id) }}>
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder={t.selectProject} />
-              </SelectTrigger>
-              <SelectContent>
-                {projectOptions.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null
-        }
       />
 
       {loading && !kpis ? <LoadingBlock label={t.saving} /> : null}

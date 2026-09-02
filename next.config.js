@@ -13,5 +13,12 @@ const nextConfig = {
       bodySizeLimit: '12mb',
     },
   },
+  // Windows dev: webpack pack cache can corrupt routes (intermittent 404 on HMR).
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.cache = false
+    }
+    return config
+  },
 }
 module.exports = nextConfig

@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { readProjectCookie, writeProjectCookie } from '@/lib/project/project-cookie'
+import { resolveActiveProjectId } from '@/lib/project/resolve-active-project'
 import { PageHeader } from '@/components/admin/shared'
 
 const PRIMARY = [
@@ -54,17 +56,28 @@ export function SiteOpsShell({ children }: { children: React.ReactNode }) {
   }, [projectId, asSupervisor])
 
   useEffect(() => {
-    if (!projectId && projects[0]) {
-      writeProjectCookie(projects[0].id)
+    if (projects.length === 0) return
+
+    const fromCookie = readProjectCookie()
+    const cookieProject = resolveActiveProjectId(projects, fromCookie)
+
+    if (!projectId && cookieProject) {
+      if (!fromCookie) writeProjectCookie(cookieProject)
       const params = new URLSearchParams(searchParams.toString())
-      params.set('projectId', projects[0].id)
+      params.set('projectId', cookieProject)
       const target =
         pathname === '/site-ops' || pathname === '/site-ops/'
           ? `/site-ops/${asSupervisor ? 'prepared' : 'schedule'}?${params.toString()}`
           : `${pathname}?${params.toString()}`
       router.replace(target)
-    } else if (projectId) {
-      writeProjectCookie(projectId)
+      return
+    }
+
+    if (projectId && cookieProject && projectId !== cookieProject) {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('projectId', cookieProject)
+      if (asSupervisor) params.set('as', 'supervisor')
+      router.replace(`${pathname}?${params.toString()}`)
     }
   }, [projectId, projects, pathname, router, searchParams, asSupervisor])
 
@@ -83,19 +96,10 @@ export function SiteOpsShell({ children }: { children: React.ReactNode }) {
   const q = useMemo(() => {
     const params = new URLSearchParams()
     if (projectId) params.set('projectId', projectId)
-    if (asSupervisor || readOnly) params.set('as', 'supervisor')
+    if (asSupervisor) params.set('as', 'supervisor')
     const s = params.toString()
     return s ? `?${s}` : ''
-  }, [projectId, asSupervisor, readOnly])
-
-  function onProjectChange(id: string) {
-    writeProjectCookie(id)
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('projectId', id)
-    if (asSupervisor || readOnly) params.set('as', 'supervisor')
-    const base = pathname === '/site-ops' ? '/site-ops/schedule' : pathname
-    router.push(`${base}?${params.toString()}`)
-  }
+  }, [projectId, asSupervisor])
 
   return (
     <div className="space-y-5" dir="rtl">
@@ -108,46 +112,29 @@ export function SiteOpsShell({ children }: { children: React.ReactNode }) {
         }
       />
       <header className="space-y-3 border-b border-slate-200 pb-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="text-sm text-slate-600">
-            پروژه
-            <select
-              className="mt-1 block min-w-[220px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
-              value={projectId}
-              onChange={(e) => onProjectChange(e.target.value)}
-            >
-              <option value="">انتخاب پروژه</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <nav className="flex flex-wrap gap-2">
-            {PRIMARY.map((link) => {
-              const active = pathname === link.href || pathname.startsWith(link.href + '/')
-              return (
-                <Link
-                  key={link.href}
-                  href={`${link.href}${q}`}
-                  className={`rounded-lg px-3 py-1.5 text-sm ${
-                    active ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              )
-            })}
-          </nav>
-          <button
-            type="button"
-            onClick={() => setShowAdvanced((v) => !v)}
-            className="text-xs text-slate-500 underline underline-offset-2"
-          >
-            {showAdvanced ? 'مخفی کردن ابزار پیشرفته' : 'ابزار پیشرفته'}
-          </button>
-        </div>
+        <nav className="flex flex-wrap gap-2">
+          {PRIMARY.map((link) => {
+            const active = pathname === link.href || pathname.startsWith(link.href + '/')
+            return (
+              <Link
+                key={link.href}
+                href={`${link.href}${q}`}
+                className={`rounded-lg px-3 py-1.5 text-sm ${
+                  active ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                }`}
+              >
+                {link.label}
+              </Link>
+            )
+          })}
+        </nav>
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="text-xs text-slate-500 underline underline-offset-2"
+        >
+          {showAdvanced ? 'مخفی کردن ابزار پیشرفته' : 'ابزار پیشرفته'}
+        </button>
         {showAdvanced && (
           <nav className="flex flex-wrap gap-2 pt-1">
             {ADVANCED.map((link) => (

@@ -7,7 +7,7 @@ import { QcOfficeDrawingsPage } from '@/components/qc/qc-office-drawings-page'
 export default async function QcOfficeDrawingsRoute({
   searchParams,
 }: {
-  searchParams?: { returnTo?: string }
+  searchParams?: { returnTo?: string; requestId?: string }
 }) {
   const supabase = createClient()
   const {
@@ -21,5 +21,11 @@ export default async function QcOfficeDrawingsRoute({
   if (context.isFirstLogin) redirect('/first-login')
   if (!hasRoleDashboardAccess(context, 'qc')) redirect('/dashboard')
 
-  return <QcOfficeDrawingsPage projectId={activeProjectId} returnTo={searchParams?.returnTo} />
+  return (
+    <QcOfficeDrawingsPage
+      projectId={activeProjectId}
+      returnTo={searchParams?.returnTo}
+      requestId={searchParams?.requestId}
+    />
+  )
 }

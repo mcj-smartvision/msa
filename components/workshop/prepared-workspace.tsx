@@ -29,7 +29,7 @@ type CommentRow = {
   edited_at: string | null
 }
 
-export function PreparedWorkspace() {
+export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean }) {
   const projectId = useSearchParams().get('projectId') ?? ''
   const [items, setItems] = useState<PreparedItem[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -127,6 +127,7 @@ export function PreparedWorkspace() {
   return (
     <div className="space-y-4" dir="rtl">
       <PageHeader
+        showBanner={showBanner}
         title="لیست‌های تهیه‌شده"
         description="سرپرست کارگاه — نوشته‌های دفتر فنی، وضعیت تأیید مدیر پروژه، و گفتگو با کامنت."
       />

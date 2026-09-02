@@ -85,7 +85,7 @@ export function VoiceVideoRecorder({
         <button
           type="button"
           onClick={() => void start('audio')}
-          className="h-10 w-10 rounded-full bg-white/10 hover:bg-emerald-600/80 text-white flex items-center justify-center"
+          className="h-10 w-10 rounded-full bg-white/10 hover:bg-sky-600/80 text-white flex items-center justify-center"
           title="پیام صوتی (ویس)"
         >
           <Mic className="h-4 w-4" />
@@ -93,7 +93,7 @@ export function VoiceVideoRecorder({
         <button
           type="button"
           onClick={() => void start('video')}
-          className="h-10 w-10 rounded-full bg-white/10 hover:bg-emerald-600/80 text-white flex items-center justify-center"
+          className="h-10 w-10 rounded-full bg-white/10 hover:bg-sky-600/80 text-white flex items-center justify-center"
           title="پیام ویدیویی"
         >
           <Video className="h-4 w-4" />

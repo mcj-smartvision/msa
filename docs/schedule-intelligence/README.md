@@ -17,7 +17,13 @@ XML Upload (browser)
 
 ## Route
 
-`/dashboard/schedule-intelligence` — tab **تحلیل زمان‌بندی** in header nav (PM, technical office, admin).
+`/dashboard/schedule-intelligence` — **تحلیل زمان‌بندی** in header nav (PM, technical office, admin) and admin sidebar.
+
+## Outputs
+
+- **XML** — download project MSP schedule from server (`/api/schedule/download`, requires selected project)
+- **JSON** — full analysis export (browser)
+- **CSV** — activities table (browser)
 
 ## CPM Formulas (integer minutes)
 
