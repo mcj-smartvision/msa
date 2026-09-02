@@ -6,7 +6,7 @@ import { Bot, Loader2 } from 'lucide-react'
 import { useLocale } from '@/components/i18n/locale-provider'
 import { PageHeader, LoadingBlock, ErrorBlock, EmptyState } from '@/components/admin/shared'
 import { SupervisorDrawingsZoningPanel } from '@/components/supervisor/supervisor-drawings-zoning-panel'
-import { DailyReportPanel } from '@/components/supervisor/daily-report-panel'
+import { ScheduleDateToolbar } from '@/components/schedule/schedule-date-toolbar'
 import { ScheduleDateInput } from '@/components/schedule/schedule-date-input'
 import { SupervisorOverviewPanel } from '@/components/supervisor/supervisor-overview-panel'
 import { TodayActivitiesTable } from '@/components/supervisor/today-activities-table'
@@ -44,6 +44,7 @@ import {
   alertsToIssues,
   buildResourceSummary,
   tasksToLookahead,
+  tasksToTodayActivities,
 } from '@/lib/supervisor/transforms'
 import { VoiceToTextButton } from '@/components/shared/voice-to-text-button'
 import { getSupervisorRouteCopy } from '@/lib/shared/ai-action-routing'
@@ -123,7 +124,6 @@ export function SiteSupervisorDashboard({
 
   const [quickReportActivity, setQuickReportActivity] = useState<TodayActivity | null>(null)
   const [packageProgressActivity, setPackageProgressActivity] = useState<TodayActivity | null>(null)
-  const [todayActivities, setTodayActivities] = useState<TodayActivity[]>([])
   const [actionDialog, setActionDialog] = useState<ActionDialog>(null)
   const [actionTaskId, setActionTaskId] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
@@ -163,24 +163,6 @@ export function SiteSupervisorDashboard({
     setSafetyBadge(countOpenSafetyAlertMocks())
   }, [])
 
-  const loadTodayActivities = useCallback(async () => {
-    if (!projectId) {
-      setTodayActivities([])
-      return
-    }
-    try {
-      const res = await fetch(
-        `/api/supervisor/today-activities?projectId=${encodeURIComponent(projectId)}&date=${encodeURIComponent(viewDate)}`
-      )
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        setTodayActivities((data.activities as TodayActivity[]) ?? [])
-      }
-    } catch {
-      setTodayActivities([])
-    }
-  }, [projectId, viewDate])
-
   const loadData = useCallback(async () => {
     if (!projectId) {
       setTasks([])
@@ -192,47 +174,38 @@ export function SiteSupervisorDashboard({
 
     setLoading(true)
     setError(null)
-    const [taskRows, alertRows, invRows, drafts] = await Promise.all([
-      fetchAllProjectTasks(supabase, projectId).catch((err) => {
-        console.error('[site-supervisor] tasks load failed', err)
-        return []
-      }),
-      fetchUnresolvedAlerts(supabase, projectId).catch((err) => {
-        console.error('[site-supervisor] alerts load failed', err)
-        return []
-      }),
-      fetchInventoryItems(supabase, projectId).catch(() => []),
-      fetchSupervisorAiDrafts(supabase, projectId, initialContext.userId).catch(() => []),
-    ])
-    setTasks(taskRows)
-    setAlerts(alertRows)
-    setInventory(invRows)
-    setAiDrafts(drafts)
     try {
-      await loadTodayActivities()
+      const [taskRows, alertRows, invRows, drafts] = await Promise.all([
+        fetchAllProjectTasks(supabase, projectId),
+        fetchUnresolvedAlerts(supabase, projectId),
+        fetchInventoryItems(supabase, projectId).catch(() => []),
+        fetchSupervisorAiDrafts(supabase, projectId, initialContext.userId).catch(() => []),
+      ])
+      setTasks(taskRows)
+      setAlerts(alertRows)
+      setInventory(invRows)
+      setAiDrafts(drafts)
     } catch (err) {
       setError(err instanceof Error ? err.message : t.loadError)
     } finally {
       setLoading(false)
     }
-  }, [projectId, supabase, initialContext.userId, t.loadError, loadTodayActivities])
+  }, [projectId, supabase, initialContext.userId, t.loadError])
 
   useEffect(() => {
     void loadData()
   }, [loadData])
 
-  useEffect(() => {
-    void loadTodayActivities()
-  }, [loadTodayActivities])
-
-  const lookahead = useMemo(() => tasksToLookahead(tasks, viewDate), [tasks, viewDate])
-  const scheduleTodayRows = useMemo(
-    () => todayActivities.filter((a) => a.kind === 'schedule'),
-    [todayActivities]
+  /** Same date filter as before: current window + incomplete overdue (not all unfinished tasks). */
+  const todayActivities = useMemo(
+    () => tasksToTodayActivities(tasks, viewDate, inventory),
+    [tasks, viewDate, inventory]
   )
+  const scheduleTodayRows = todayActivities
+  const lookahead = useMemo(() => tasksToLookahead(tasks, viewDate), [tasks, viewDate])
   const resources = useMemo(
-    () => buildResourceSummary(inventory, scheduleTodayRows.length),
-    [inventory, scheduleTodayRows.length]
+    () => buildResourceSummary(inventory, todayActivities.length),
+    [inventory, todayActivities.length]
   )
   const issues = useMemo(() => alertsToIssues(alerts, tasks), [alerts, tasks])
 
@@ -316,6 +289,10 @@ export function SiteSupervisorDashboard({
         description={t.description}
       />
 
+      {activeSection === 'daily-report' || activeSection === 'today' ? (
+        <ScheduleDateToolbar />
+      ) : null}
+
       {loading && tasks.length === 0 ? <LoadingBlock label={t.saving} /> : null}
       {error ? <ErrorBlock message={error} onRetry={() => void loadData()} /> : null}
 
@@ -326,7 +303,7 @@ export function SiteSupervisorDashboard({
           {
             id: 'daily-report',
             label: 'ثبت گزارش روزانه',
-            hint: 'پیشرفت روزانه فعالیت‌های برنامه زمان‌بندی',
+            hint: 'فعالیت‌های متناسب با تاریخ انتخاب‌شده',
           },
           {
             id: 'safety',
@@ -349,11 +326,6 @@ export function SiteSupervisorDashboard({
             id: 'inspection',
             label: t.inspectionRequestNav,
             hint: t.inspectionRequestNavHint,
-          },
-          {
-            id: 'today',
-            label: 'فعالیت‌های امروز',
-            hint: 'گزارش سریع و دستور کار',
           },
           {
             id: 'lookahead',
@@ -447,7 +419,7 @@ export function SiteSupervisorDashboard({
           )
         ) : null}
 
-        {activeSection === 'today' ? (
+        {activeSection === 'daily-report' || activeSection === 'today' ? (
           <UiBlockGuard code="SS-TBL-01">
             <TodayActivitiesTable
               activities={todayActivities}
@@ -469,13 +441,6 @@ export function SiteSupervisorDashboard({
               }}
             />
           </UiBlockGuard>
-        ) : null}
-
-        {activeSection === 'daily-report' ? (
-          <DailyReportPanel
-            projectId={projectId}
-            projectName={projectOptions.find((p) => p.id === projectId)?.name ?? ''}
-          />
         ) : null}
 
         {activeSection === 'lookahead' ? (
@@ -606,7 +571,6 @@ export function SiteSupervisorDashboard({
         labels={t}
         locale={locale === 'fa' ? 'fa' : 'en'}
         onSaved={() => {
-          void loadTodayActivities()
           void loadData()
         }}
       />
