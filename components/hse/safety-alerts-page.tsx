@@ -308,7 +308,7 @@ function SummaryBar({
     id: SafetyQueueBucket
     label: string
     value: number
-    tone: typeof TONE.critical
+    tone: (typeof TONE)[keyof typeof TONE]
   }> = [
     { id: 'critical', label: 'بحرانی', value: countByBucket('critical'), tone: TONE.critical },
     {

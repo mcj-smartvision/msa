@@ -60,7 +60,7 @@ async function main() {
       actualStartDate: actualStart,
       alignedWithBaseline: false,
     })
-    console.log('Reschedule:', applied.shiftDays, 'days')
+    console.log('Reschedule:', applied.shift_days, 'days')
   }
 
   const { count } = await supabase

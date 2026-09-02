@@ -199,7 +199,7 @@ export function ProjectDrawingsPanel({
                 {fa ? 'رشته نقشه' : 'Discipline'}
               </Label>
               <div className="flex min-h-[1.5rem] flex-1 items-center justify-center">
-                <Select value={discipline} onValueChange={(v) => setDiscipline(v as DrawingDiscipline)} className="w-full">
+                <Select value={discipline} onValueChange={(v) => setDiscipline(v as DrawingDiscipline)}>
                   <SelectTrigger
                     id="drawing-discipline"
                     className="relative h-9 w-full border-0 bg-transparent px-8 text-sm shadow-none focus:ring-0 justify-center text-center [&>span]:line-clamp-none [&>span]:w-full [&>span]:text-center [&_svg]:absolute [&_svg]:end-2 [&_svg]:top-1/2 [&_svg]:-translate-y-1/2"

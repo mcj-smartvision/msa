@@ -1084,6 +1084,7 @@ export function QcEnginePanels({
       lastRejectedAt: null,
       reinspectCount: 0,
       history: [],
+      updatedAt: new Date().toISOString(),
       drawings: drawingsToAttach.map((row, index) => ({
         id: `local-${index}`,
         requestId: json.id || '',

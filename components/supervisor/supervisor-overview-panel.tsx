@@ -272,7 +272,7 @@ function ProgressSparkline({ series }: { series: ProjectProgressSeriesPoint[] })
         labels: {
           boxWidth: 12,
           boxHeight: 8,
-          font: { family: 'Vazirmatn, Tahoma, sans-serif', size: 12, weight: '600' as const },
+          font: { family: 'Vazirmatn, Tahoma, sans-serif', size: 12, weight: 'bold' as const },
           color: '#334155',
         },
       },
@@ -314,7 +314,7 @@ function ProgressSparkline({ series }: { series: ProjectProgressSeriesPoint[] })
           font: {
             family: 'Vazirmatn, Tahoma, sans-serif',
             size: 12,
-            weight: '600' as const,
+            weight: 'bold' as const,
           },
           color: '#0f172a',
           padding: 8,
@@ -336,7 +336,7 @@ function ProgressSparkline({ series }: { series: ProjectProgressSeriesPoint[] })
           font: {
             family: 'Vazirmatn, Tahoma, sans-serif',
             size: 12,
-            weight: '600' as const,
+            weight: 'bold' as const,
           },
           color: '#0f172a',
           padding: 8,

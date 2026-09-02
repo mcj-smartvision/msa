@@ -586,6 +586,10 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                       : selectedPackage.location ?? '',
                   crew:
                     pending?.crew !== undefined ? pending.crew ?? '' : selectedPackage.crew ?? '',
+                  weightPercent:
+                    selectedPackage.weightPercent != null
+                      ? String(selectedPackage.weightPercent)
+                      : '',
                 })
                 setChangePanel(true)
               }}

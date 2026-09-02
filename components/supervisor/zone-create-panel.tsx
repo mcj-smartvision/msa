@@ -398,6 +398,20 @@ export function ZoneCreatePanel({
         zone={previewZone}
         drawing={selectedDrawing}
         onClose={() => setPreviewOpen(false)}
+        onDownload={async (drawingId) => {
+          const res = await fetch(`/api/technical-office/drawings/${encodeURIComponent(drawingId)}`)
+          const data = (await res.json().catch(() => ({}))) as {
+            url?: string
+            fileName?: string
+          }
+          if (!res.ok || !data.url) return
+          const a = document.createElement('a')
+          a.href = data.url
+          a.download = data.fileName || selectedDrawing?.title || drawingId
+          a.target = '_blank'
+          a.rel = 'noreferrer'
+          a.click()
+        }}
       />
 
       {!polygon && !mapOpen ? (

@@ -80,11 +80,15 @@ export type FlatWorkshopRow =
       finishDate: string | null
     }
 
+type FlatWorkshopRowDraft =
+  | Omit<Extract<FlatWorkshopRow, { type: 'schedule' }>, 'rowNumber'>
+  | Omit<Extract<FlatWorkshopRow, { type: 'package' }>, 'rowNumber'>
+
 export function flattenWorkshopSchedule(
   nodes: ScheduleTreeNode[],
   expanded: Record<string, boolean>
 ): FlatWorkshopRow[] {
-  const rows: Omit<FlatWorkshopRow, 'rowNumber'>[] = []
+  const rows: FlatWorkshopRowDraft[] = []
 
   function walkPackages(
     pkgs: WorkshopPackageNode[],

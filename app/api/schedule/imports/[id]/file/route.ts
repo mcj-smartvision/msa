@@ -58,7 +58,13 @@ export async function GET(
     })
 
     const payload =
-      typeof body === 'string' ? body : Buffer.from(body instanceof ArrayBuffer ? body : new Uint8Array(body))
+      typeof body === 'string'
+        ? body
+        : Buffer.from(
+            body instanceof Uint8Array
+              ? body
+              : new Uint8Array(body as ArrayBuffer)
+          )
 
     return new NextResponse(payload, { headers: scheduleDownloadHeaders(fileName) })
   } catch (error) {
