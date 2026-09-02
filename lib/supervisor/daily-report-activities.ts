@@ -382,19 +382,15 @@ export function classifyDailyReportTiming(
   entries: DailyProgressEntry[],
   reportDate: string
 ): DailyReportTiming {
-  const pct = latestPercentForActivity(activity, entries, reportDate)
-  const hasProgress = pct > 0
+  // Planned start not reached yet — always future (ignore MSP/baseline %)
+  if (activity.plannedStartDate && activity.plannedStartDate > reportDate) {
+    return 'upcoming'
+  }
 
   if (isActivityScheduledOnDate(activity, reportDate)) return 'current'
 
-  // Work already started (report or MSP baseline) — not "future" even if MSP start is later
-  if (hasProgress) {
-    if (activity.plannedFinishDate && reportDate > activity.plannedFinishDate) return 'past'
-    return 'current'
-  }
-
+  if (activity.plannedFinishDate && reportDate > activity.plannedFinishDate) return 'past'
   if (!activity.plannedStartDate) return 'past'
-  if (activity.plannedStartDate > reportDate) return 'upcoming'
   return 'past'
 }
 
@@ -435,7 +431,7 @@ export function groupDailyReportActivitiesByParent(
   }))
 }
 
-/** Incomplete work relevant to the report date (today window + overdue), not every unfinished task. */
+/** Incomplete work relevant to the report date (today window + overdue). Future starts are hidden. */
 export function activitiesEligibleForDailyReport(
   activities: DailyReportActivity[],
   entries: DailyProgressEntry[],
@@ -454,13 +450,14 @@ function isDateRelevantIncompleteActivity(
 
   const start = activity.plannedStartDate || null
   const finish = activity.plannedFinishDate || null
+
+  // Start date not reached yet — never show in daily report
+  if (start && start > reportDate) return false
+
   if (!start && !finish) {
     // Orphan packages without dates: allow reporting
     return activity.kind === 'package'
   }
-
-  // Future (not started yet) — only via upcoming filter, not the main eligible set
-  if (start && start > reportDate && pct <= 0) return false
 
   // Active window for the selected date
   if (start && finish && start <= reportDate && finish >= reportDate) return true
@@ -471,9 +468,6 @@ function isDateRelevantIncompleteActivity(
 
   // Started with no finish date
   if (start && start <= reportDate && !finish) return true
-
-  // Already has progress but outside window — still reportable (catch-up)
-  if (pct > 0) return true
 
   return false
 }
@@ -490,17 +484,14 @@ export function partitionEligibleByTiming(
   }
 
   for (const activity of activities) {
-    const pct = latestPercentForActivity(activity, entries, reportDate)
-    if (pct >= 100) continue
+    // Hide activities whose planned start is still in the future
+    if (activity.plannedStartDate && activity.plannedStartDate > reportDate) continue
+
+    if (!isDateRelevantIncompleteActivity(activity, entries, reportDate)) continue
 
     const timing = classifyDailyReportTiming(activity, entries, reportDate)
-    if (timing === 'upcoming') {
-      buckets.upcoming.push(activity)
-      continue
-    }
-    if (isDateRelevantIncompleteActivity(activity, entries, reportDate)) {
-      buckets[timing].push(activity)
-    }
+    if (timing === 'upcoming') continue
+    buckets[timing].push(activity)
   }
 
   for (const key of Object.keys(buckets) as DailyReportTiming[]) {
