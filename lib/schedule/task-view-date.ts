@@ -1,4 +1,5 @@
 import { toIsoDateOnly } from '@/lib/schedule/dates'
+import { compareWbs } from '@/lib/schedule/wbs-utils'
 import type { ProjectTask } from '@/types/schedule'
 
 export type TaskScheduleStatus = 'not_started' | 'in_progress' | 'completed' | 'overdue'
@@ -9,6 +10,107 @@ export function taskEffectiveStart(task: ProjectTask): string | null {
 
 export function taskEffectiveFinish(task: ProjectTask): string | null {
   return toIsoDateOnly(task.finish_current ?? task.finish_planned)
+}
+
+/** Dates shown in schedule preview rows (planned preferred, same as ScheduleTaskRow). */
+export function taskPreviewStart(task: ProjectTask): string | null {
+  return toIsoDateOnly(task.start_planned ?? task.start_current)
+}
+
+export function taskPreviewFinish(task: ProjectTask): string | null {
+  return toIsoDateOnly(task.finish_planned ?? task.finish_current)
+}
+
+/**
+ * Chronological order for schedule preview:
+ * start date → finish date → MSP UID → WBS. Missing dates sort last.
+ */
+export function compareTasksByScheduleDate(a: ProjectTask, b: ProjectTask): number {
+  const aStart = taskPreviewStart(a)
+  const bStart = taskPreviewStart(b)
+  if (aStart && bStart && aStart !== bStart) return aStart.localeCompare(bStart)
+  if (aStart && !bStart) return -1
+  if (!aStart && bStart) return 1
+
+  const aFinish = taskPreviewFinish(a)
+  const bFinish = taskPreviewFinish(b)
+  if (aFinish && bFinish && aFinish !== bFinish) return aFinish.localeCompare(bFinish)
+  if (aFinish && !bFinish) return -1
+  if (!aFinish && bFinish) return 1
+
+  const aUid = a.msp_uid
+  const bUid = b.msp_uid
+  if (aUid != null && bUid != null && aUid !== bUid) return aUid - bUid
+
+  return compareWbs(a.wbs_code, b.wbs_code)
+}
+
+export function sortTasksByScheduleDate(tasks: ProjectTask[]): ProjectTask[] {
+  return [...tasks].sort(compareTasksByScheduleDate)
+}
+
+/**
+ * Preview order: chronological, but every predecessor row appears before its successors.
+ * Uses predecessor label strings ("1.2FS, 3.1SS+2d") when available.
+ */
+export function sortTasksForSchedulePreview(
+  tasks: ProjectTask[],
+  predecessorLabels?: Record<string, string> | null
+): ProjectTask[] {
+  if (!predecessorLabels || Object.keys(predecessorLabels).length === 0) {
+    return sortTasksByScheduleDate(tasks)
+  }
+
+  // Lazy import avoided — parse inline via regex for graph edges
+  const byWbs = new Map<string, ProjectTask>()
+  for (const task of tasks) {
+    if (task.wbs_code) byWbs.set(task.wbs_code, task)
+  }
+  const byId = new Map(tasks.map((t) => [t.id, t]))
+  const successors = new Map<string, Set<string>>()
+  const inDegree = new Map<string, number>()
+  for (const task of tasks) inDegree.set(task.id, 0)
+
+  for (const task of tasks) {
+    const label = predecessorLabels[task.id] ?? ''
+    for (const match of label.matchAll(/(\d+(?:\.\d+)*)(?:FS|SS|FF|SF)/gi)) {
+      const pred = byWbs.get(match[1]!)
+      if (!pred || pred.id === task.id) continue
+      let set = successors.get(pred.id)
+      if (!set) {
+        set = new Set()
+        successors.set(pred.id, set)
+      }
+      if (set.has(task.id)) continue
+      set.add(task.id)
+      inDegree.set(task.id, (inDegree.get(task.id) ?? 0) + 1)
+    }
+  }
+
+  const ready = tasks
+    .filter((t) => (inDegree.get(t.id) ?? 0) === 0)
+    .sort(compareTasksByScheduleDate)
+  const result: ProjectTask[] = []
+  const remaining = new Set(tasks.map((t) => t.id))
+
+  while (ready.length > 0) {
+    ready.sort(compareTasksByScheduleDate)
+    const next = ready.shift()!
+    if (!remaining.has(next.id)) continue
+    remaining.delete(next.id)
+    result.push(next)
+    for (const sid of successors.get(next.id) ?? []) {
+      const deg = (inDegree.get(sid) ?? 1) - 1
+      inDegree.set(sid, deg)
+      if (deg === 0) {
+        const succ = byId.get(sid)
+        if (succ && remaining.has(sid)) ready.push(succ)
+      }
+    }
+  }
+
+  const leftover = tasks.filter((t) => remaining.has(t.id)).sort(compareTasksByScheduleDate)
+  return [...result, ...leftover]
 }
 
 export function todayIso(): string {

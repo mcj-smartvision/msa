@@ -81,4 +81,37 @@ describe('project S-curve series', () => {
     expect(progressForSCurveAsOf(partial, [], '2026-01-16', '2026-02-01')).toBeLessThan(50)
     expect(progressForSCurveAsOf(partial, [], '2026-02-01', '2026-02-01')).toBe(50)
   })
+
+  it('stops Actual Progress after the last workshop report date', () => {
+    const activities = [
+      baseActivity({
+        id: 'schedule:a',
+        name: 'A',
+        plannedStartDate: '2026-01-01',
+        plannedFinishDate: '2026-03-01',
+        progressWeight: 100,
+        baselinePercentComplete: 80,
+      }),
+    ]
+    const entries: DailyProgressEntry[] = [
+      {
+        activityId: 'schedule:a',
+        reportDate: '2026-01-20',
+        percentComplete: 35,
+        savedAt: '2026-01-20T10:00:00.000Z',
+      },
+    ]
+    const series = buildProjectProgressSeries(
+      activities,
+      entries,
+      '2026-02-20',
+      '2026-01-01'
+    )
+    const onLastReport = series.find((p) => p.date === '2026-01-20')
+    const afterLastReport = series.filter((p) => p.date > '2026-01-20')
+    expect(onLastReport?.actual).toBe(35)
+    expect(afterLastReport.length).toBeGreaterThan(0)
+    expect(afterLastReport.every((p) => p.actual === null)).toBe(true)
+    expect(afterLastReport.every((p) => typeof p.planned === 'number')).toBe(true)
+  })
 })

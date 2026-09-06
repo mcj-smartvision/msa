@@ -376,14 +376,67 @@ export function isActivityScheduledOnDate(
 
 export type DailyReportTiming = 'current' | 'past' | 'upcoming'
 
+function isActivityCompleteForUnlock(
+  activity: DailyReportActivity,
+  entries: DailyProgressEntry[],
+  reportDate: string
+): boolean {
+  const reported = latestReportedPercentForActivity(activity, entries, reportDate)
+  const baseline = activity.baselinePercentComplete ?? 0
+  return Math.max(reported, baseline) >= 100
+}
+
+/**
+ * Immediate prior wave: activities that share the latest planned start strictly
+ * before this activity. Completing that wave unlocks the next schedule window early.
+ */
+export function immediatePriorStartCohort(
+  activity: DailyReportActivity,
+  activities: DailyReportActivity[]
+): DailyReportActivity[] {
+  const start = activity.plannedStartDate
+  if (!start) return []
+
+  let latestPriorStart: string | null = null
+  for (const other of activities) {
+    if (other.id === activity.id) continue
+    if (!other.plannedStartDate || other.plannedStartDate >= start) continue
+    if (!latestPriorStart || other.plannedStartDate > latestPriorStart) {
+      latestPriorStart = other.plannedStartDate
+    }
+  }
+  if (!latestPriorStart) return []
+
+  return activities.filter(
+    (other) => other.id !== activity.id && other.plannedStartDate === latestPriorStart
+  )
+}
+
+/** True when the previous schedule wave is fully done — unlock early start. */
+export function isUnlockedEarlyByCompletedPriors(
+  activity: DailyReportActivity,
+  activities: DailyReportActivity[],
+  entries: DailyProgressEntry[],
+  reportDate: string
+): boolean {
+  if (!activity.plannedStartDate || activity.plannedStartDate <= reportDate) return false
+  const priors = immediatePriorStartCohort(activity, activities)
+  if (priors.length === 0) return false
+  return priors.every((prior) => isActivityCompleteForUnlock(prior, entries, reportDate))
+}
+
 /** Classify activity relative to today's report date */
 export function classifyDailyReportTiming(
   activity: DailyReportActivity,
   entries: DailyProgressEntry[],
-  reportDate: string
+  reportDate: string,
+  activities: DailyReportActivity[] = []
 ): DailyReportTiming {
-  // Planned start not reached yet — always future (ignore MSP/baseline %)
+  // Planned start not reached — future unless prior wave finished early
   if (activity.plannedStartDate && activity.plannedStartDate > reportDate) {
+    if (isUnlockedEarlyByCompletedPriors(activity, activities, entries, reportDate)) {
+      return 'current'
+    }
     return 'upcoming'
   }
 
@@ -431,42 +484,75 @@ export function groupDailyReportActivitiesByParent(
   }))
 }
 
-/** Incomplete work relevant to the report date (today window + overdue). Future starts are hidden. */
+/**
+ * Incomplete work relevant to the report date (today window + overdue).
+ * Future starts stay hidden unless the previous schedule wave is already 100%.
+ */
 export function activitiesEligibleForDailyReport(
   activities: DailyReportActivity[],
   entries: DailyProgressEntry[],
   reportDate: string
 ): DailyReportActivity[] {
-  return activities.filter((a) => isDateRelevantIncompleteActivity(a, entries, reportDate))
+  return activities.filter((a) =>
+    isDateRelevantIncompleteActivity(a, entries, reportDate, activities)
+  )
 }
 
+/**
+ * Daily-report visibility:
+ * - upcoming (start > today): hidden, unless prior start-wave is fully complete
+ *   and this activity itself is still incomplete
+ * - current (start ≤ today ≤ finish): show until workshop report reaches 100%
+ *   (MSP baseline alone must not hide current work — supervisor still enters %)
+ * - past (finish < today): show only if still incomplete (report or MSP baseline < 100)
+ * - never show past-finish activities that are already 100%
+ */
 function isDateRelevantIncompleteActivity(
   activity: DailyReportActivity,
   entries: DailyProgressEntry[],
-  reportDate: string
+  reportDate: string,
+  allActivities: DailyReportActivity[]
 ): boolean {
-  const pct = latestPercentForActivity(activity, entries, reportDate)
-  if (pct >= 100) return false
-
   const start = activity.plannedStartDate || null
   const finish = activity.plannedFinishDate || null
 
-  // Start date not reached yet — never show in daily report
-  if (start && start > reportDate) return false
+  const reported = latestReportedPercentForActivity(activity, entries, reportDate)
+  if (reported >= 100) return false
 
-  if (!start && !finish) {
-    // Orphan packages without dates: allow reporting
-    return activity.kind === 'package'
+  const baseline = activity.baselinePercentComplete ?? 0
+  const alreadyComplete = Math.max(reported, baseline) >= 100
+
+  // Finish date passed and work already complete — never list for daily entry
+  if (finish && finish < reportDate && alreadyComplete) return false
+
+  // Start date not reached — show only when previous wave finished and this row is still open
+  if (start && start > reportDate) {
+    if (alreadyComplete) return false
+    return isUnlockedEarlyByCompletedPriors(activity, allActivities, entries, reportDate)
   }
 
-  // Active window for the selected date
-  if (start && finish && start <= reportDate && finish >= reportDate) return true
-  if (start === reportDate || finish === reportDate) return true
+  const inCurrentWindow =
+    Boolean(start) &&
+    start! <= reportDate &&
+    (!finish || finish >= reportDate)
 
-  // Overdue: should have started, planned finish passed, still incomplete
+  if (inCurrentWindow) {
+    // Current schedule window: visible for progress entry even if MSP says 100%
+    return true
+  }
+
+  if (!start && !finish) {
+    // Orphan packages without dates: allow until reported or baseline 100%
+    return activity.kind === 'package' && !alreadyComplete
+  }
+
+  // Past / overdue: hide when MSP or workshop already shows complete
+  if (alreadyComplete) return false
+
+  // Overdue: started, planned finish passed, still incomplete
   if (start && start <= reportDate && finish && finish < reportDate) return true
 
-  // Started with no finish date
+  // Started with no finish date (treat as still open)
   if (start && start <= reportDate && !finish) return true
 
   return false
@@ -484,12 +570,9 @@ export function partitionEligibleByTiming(
   }
 
   for (const activity of activities) {
-    // Hide activities whose planned start is still in the future
-    if (activity.plannedStartDate && activity.plannedStartDate > reportDate) continue
+    if (!isDateRelevantIncompleteActivity(activity, entries, reportDate, activities)) continue
 
-    if (!isDateRelevantIncompleteActivity(activity, entries, reportDate)) continue
-
-    const timing = classifyDailyReportTiming(activity, entries, reportDate)
+    const timing = classifyDailyReportTiming(activity, entries, reportDate, activities)
     if (timing === 'upcoming') continue
     buckets[timing].push(activity)
   }
@@ -582,8 +665,23 @@ export function calculatePlannedProjectProgress(
 export type ProjectProgressSeriesPoint = {
   date: string
   label: string
-  actual: number
+  /** null after last workshop report — chart stops drawing Actual there */
+  actual: number | null
   planned: number
+}
+
+/** Latest workshop report day within [startDate, endDate], if any. */
+export function latestWorkshopReportDateInRange(
+  entries: DailyProgressEntry[],
+  startDate: string,
+  endDate: string
+): string | null {
+  let latest: string | null = null
+  for (const e of entries) {
+    if (e.reportDate < startDate || e.reportDate > endDate) continue
+    if (!latest || e.reportDate > latest) latest = e.reportDate
+  }
+  return latest
 }
 
 function chartDateLabelFa(iso: string): string {
@@ -736,8 +834,10 @@ function collectCurveSampleDates(
 }
 
 /**
- * Full-project S-curve: schedule day-1 → today.
- * Prefer MSP leaf activities (weights from برنامه); optional packageRows overlay supervisor reports.
+ * Full-project S-curve: schedule day-1 → today (planned).
+ * Actual Progress is drawn only through the last workshop report date
+ * (null afterward so the chart line stops). With no reports yet, MSP-phased
+ * actual still fills the full range as a fallback.
  */
 export function buildProjectProgressSeries(
   activities: DailyReportActivity[],
@@ -752,19 +852,25 @@ export function buildProjectProgressSeries(
     scheduleStartDate
   )
   const sampleDates = collectCurveSampleDates(startDate, end, entries, 120)
+  const lastReportDate = latestWorkshopReportDateInRange(entries, startDate, end)
 
-  return sampleDates.map((iso) => ({
-    date: iso,
-    label: chartDateLabelFa(iso),
-    actual: calculateSCurveActualProgress(
-      activities,
-      entries,
-      iso,
-      endDate,
-      packageRows
-    ),
-    planned: calculatePlannedProjectProgress(activities, iso),
-  }))
+  return sampleDates.map((iso) => {
+    const pastLastReport = Boolean(lastReportDate && iso > lastReportDate)
+    return {
+      date: iso,
+      label: chartDateLabelFa(iso),
+      actual: pastLastReport
+        ? null
+        : calculateSCurveActualProgress(
+            activities,
+            entries,
+            iso,
+            endDate,
+            packageRows
+          ),
+      planned: calculatePlannedProjectProgress(activities, iso),
+    }
+  })
 }
 
 export function activityNeverReported(

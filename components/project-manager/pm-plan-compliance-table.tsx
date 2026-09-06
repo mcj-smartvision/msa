@@ -201,13 +201,19 @@ export function PmPlanComplianceTable({
               {compliance.rows.map((row) => {
                 const meta = CHECK_META[row.check]
                 const Icon = meta.icon
+                const isPastDueIncomplete =
+                  Boolean(row.finish) &&
+                  compliance.asOfDate > row.finish! &&
+                  row.actualPercent < 100
                 return (
                   <tr
                     key={row.taskId}
                     className={cn(
                       'hover:bg-muted/25',
-                      row.check === 'behind' && 'bg-red-50/40',
-                      row.check === 'done' && 'bg-emerald-50/30'
+                      isPastDueIncomplete &&
+                        'bg-orange-100/95 border-s-4 border-s-orange-500 hover:bg-orange-100',
+                      !isPastDueIncomplete && row.check === 'behind' && 'bg-red-50/40',
+                      !isPastDueIncomplete && row.check === 'done' && 'bg-emerald-50/30'
                     )}
                   >
                     <td className="px-3 py-2.5">
@@ -228,6 +234,11 @@ export function PmPlanComplianceTable({
                       <div className="font-medium leading-snug">{row.name}</div>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {row.isCritical ? <CriticalBadge /> : null}
+                        {isPastDueIncomplete ? (
+                          <Badge className="text-[10px] bg-orange-200 text-orange-950 border border-orange-400">
+                            {isFa ? 'تاریخ گذشته' : 'Past due'}
+                          </Badge>
+                        ) : null}
                         <Badge variant="outline" className={cn('text-[10px]', meta.className)}>
                           {isFa ? meta.fa : meta.en}
                         </Badge>

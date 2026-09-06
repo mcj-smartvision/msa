@@ -1,16 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { TaskRelationType } from '@/types/schedule'
+import { formatPredLabel } from '@/lib/schedule/predecessor-format'
 
-function formatPredLabel(
-  wbs: string,
-  relation: TaskRelationType,
-  lag: number
-): string {
-  const lagSuffix = lag !== 0 ? `${lag > 0 ? '+' : ''}${lag}` : ''
-  return `${wbs}${relation}${lagSuffix}`
-}
-
-/** successor_task_id → "1.1FS, 1.2SS+2" */
+/** successor_task_id → "1.1FS, 1.2SS+2d" */
 export async function fetchTaskPredecessorLabels(
   supabase: SupabaseClient,
   projectId: string

@@ -3,7 +3,7 @@ import type { MspImportResult, ProjectTask, ScheduleImport } from '@/types/sched
 import { parseMspXml } from '@/lib/schedule/msp-parser'
 import { computeBaselineStartFromTasks } from '@/lib/schedule/dates'
 import { setScheduleBaselineAfterImport } from '@/lib/schedule/apply-actual-start'
-import { compareWbs } from '@/lib/schedule/wbs-utils'
+import { sortTasksByScheduleDate } from '@/lib/schedule/task-view-date'
 import { storeScheduleXml } from '@/lib/schedule/schedule-files'
 import { wipeProjectScheduleBeforeImport } from '@/lib/schedule/wipe-project-schedule'
 
@@ -219,7 +219,7 @@ export async function fetchProjectTasksSummary(
     throw new Error(error.message)
   }
 
-  const tasks = ((data ?? []) as ProjectTask[]).sort((a, b) => compareWbs(a.wbs_code, b.wbs_code))
+  const tasks = sortTasksByScheduleDate((data ?? []) as ProjectTask[])
 
   return { count: count ?? 0, tasks }
 }

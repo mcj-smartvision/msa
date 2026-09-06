@@ -2,8 +2,7 @@
 
 import { useMemo } from 'react'
 import { ScheduleTaskRow } from '@/components/schedule/schedule-task-row'
-import { todayIso } from '@/lib/schedule/task-view-date'
-import { compareWbs } from '@/lib/schedule/wbs-utils'
+import { sortTasksForSchedulePreview, todayIso } from '@/lib/schedule/task-view-date'
 import type { ProjectTask } from '@/types/schedule'
 import { cn } from '@/lib/utils'
 
@@ -22,8 +21,8 @@ export function SchedulePreviewTable({
   className,
 }: SchedulePreviewTableProps) {
   const sorted = useMemo(
-    () => [...tasks].sort((a, b) => compareWbs(a.wbs_code, b.wbs_code)),
-    [tasks]
+    () => sortTasksForSchedulePreview(tasks, predecessorLabels),
+    [tasks, predecessorLabels]
   )
 
   if (sorted.length === 0) return null

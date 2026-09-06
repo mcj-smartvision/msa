@@ -228,8 +228,10 @@ function ProgressSparkline({ series }: { series: ProjectProgressSeriesPoint[] })
   const labels = series.map((p) => p.label)
   const actualData = series.map((p) => p.actual)
   const plannedData = series.map((p) => p.planned)
-  const allValues = [...actualData, ...plannedData]
-  const maxVal = allValues.length ? Math.max(...allValues, 0) : 0
+  const numericValues = [...actualData, ...plannedData].filter(
+    (v): v is number => typeof v === 'number' && Number.isFinite(v)
+  )
+  const maxVal = numericValues.length ? Math.max(...numericValues, 0) : 0
   const yMax = Math.min(100, Math.max(25, Math.ceil(maxVal / 5) * 5 + 5))
   const dense = series.length > 40
   const dates = series.map((p) => p.date)
@@ -248,6 +250,7 @@ function ProgressSparkline({ series }: { series: ProjectProgressSeriesPoint[] })
         pointBackgroundColor: '#1e3a5f',
         tension: 0.2,
         fill: false,
+        spanGaps: false,
       },
       {
         label: 'برنامه',
@@ -291,8 +294,13 @@ function ProgressSparkline({ series }: { series: ProjectProgressSeriesPoint[] })
               day: 'numeric',
             })
           },
-          label: (ctx: { dataset: { label?: string }; parsed: { y: number } }) =>
-            `${ctx.dataset.label ?? ''}: ${faNum(ctx.parsed.y)}٪`,
+          label: (ctx: {
+            dataset: { label?: string }
+            parsed: { y: number | null }
+          }) => {
+            if (ctx.parsed.y == null || !Number.isFinite(ctx.parsed.y)) return undefined
+            return `${ctx.dataset.label ?? ''}: ${faNum(ctx.parsed.y)}٪`
+          },
         },
       },
     },
@@ -616,8 +624,8 @@ export function SupervisorOverviewPanel({
             <div>
               <h2 className="text-sm font-bold text-slate-900">منحنی پیشرفت پروژه (S-Curve)</h2>
               <p className="text-[11px] text-slate-500">
-                از روز اول برنامه تا امروز — وزن و درصد از فعالیت‌های برگ MSP؛ گزارش سرپرست روی همان
-                فعالیت‌ها اعمال می‌شود
+                واقعی: از روز اول برنامه تا آخرین گزارش کارگاه — برنامه: توزیع خطی وزن تا امروز؛ وزن از
+                فعالیت‌های برگ MSP
               </p>
             </div>
           </div>

@@ -112,7 +112,7 @@ function ProgressBar({
 
 function MetaPill({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-md border border-slate-200/80 bg-white px-2 py-0.5 text-[11px] text-slate-600">
+    <span className="inline-flex items-center rounded-md border border-slate-200/80 bg-white px-2.5 py-1 text-sm font-medium text-slate-700">
       {children}
     </span>
   )
@@ -440,23 +440,17 @@ export function DailyReportPanel({
           {
             timing: 'current' as const,
             title: 'ایام جاری',
-            description: 'فعالیت‌هایی که امروز در بازه برنامه (شروع تا پایان) هستند یا قبلاً پیشرفت ثبت شده.',
+            description:
+              'فعالیت‌هایی که امروز در بازه برنامه (از شروع تا پایان) هستند — برای ثبت درصد پیشرفت.',
             shellClass: 'border-sky-200 bg-sky-50/40',
             titleClass: 'text-sky-900',
           },
           {
             timing: 'past' as const,
             title: 'کارهای قبلی (عقب‌افتاده)',
-            description: 'فعالیت‌های شروع‌شده که از بازه برنامه گذشته‌اند و هنوز ۱۰۰٪ نشده‌اند.',
+            description: 'فعالیت‌های قبلی که هنوز ۱۰۰٪ نشده‌اند (گزارش کارگاه یا برنامه).',
             shellClass: 'border-amber-200 bg-amber-50/40',
             titleClass: 'text-amber-900',
-          },
-          {
-            timing: 'upcoming' as const,
-            title: 'برنامه آینده',
-            description: 'فعالیت‌هایی که هنوز شروع نشده‌اند و پیشرفتی ثبت نشده.',
-            shellClass: 'border-slate-200 bg-slate-50/60',
-            titleClass: 'text-slate-700',
           },
         ] as const
       ).map((section) => ({
@@ -663,8 +657,8 @@ export function DailyReportPanel({
           </p>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-slate-600">
-          همه <strong>زیرشاخه‌های دفتر فنی</strong> و فعالیت‌های برنامه که هنوز ۱۰۰٪ نشده‌اند در سیستم
-          هستند — با «همه» یا جستجو (مثلاً WBS مثل ۱.۴) پیدا کنید. درصد امروز را ثبت کنید.
+          همه <strong>فعالیت‌های ایام جاری</strong> و کارهای قبلی که هنوز ۱۰۰٪ نشده‌اند اینجا می‌آیند.
+          اگر فعالیت قبلی ۱۰۰٪ شود، فعالیت بعدی حتی قبل از تاریخ شروع برنامه‌ای هم برای ثبت درصد می‌آید.
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
           <button
@@ -705,21 +699,6 @@ export function DailyReportPanel({
             <span className="h-2 w-2 rounded-full bg-current opacity-80" />
             کار قبلی ({faNum(timingCounts.past)})
           </button>
-          {timingCounts.upcoming > 0 ? (
-            <button
-              type="button"
-              onClick={() => setTimingFilter('upcoming')}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-semibold transition-colors',
-                timingFilter === 'upcoming'
-                  ? 'border-slate-600 bg-slate-600 text-white'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-              )}
-            >
-              <span className="h-2 w-2 rounded-full bg-current opacity-80" />
-              آینده ({faNum(timingCounts.upcoming)})
-            </button>
-          ) : null}
         </div>
         <div className="mt-3">
           <Input
@@ -745,13 +724,17 @@ export function DailyReportPanel({
 
       {eligible.length === 0 && activities.length > 0 ? (
         <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-600">
-          همه فعالیت‌ها ۱۰۰٪ ثبت شده‌اند.
+          فعالیت واجد شرایطی برای امروز نیست (ایام جاری یا کار قبلی ناتمام).
         </p>
       ) : displaySections.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-600">
           {searchQuery.trim()
             ? 'فعالیتی با این جستجو پیدا نشد.'
-            : 'همه فعالیت‌ها ۱۰۰٪ ثبت شده‌اند.'}
+            : timingFilter === 'current'
+              ? 'فعالیت ایام جاری برای ثبت امروز نیست.'
+              : timingFilter === 'past'
+                ? 'کار قبلی ناتمامی باقی نمانده است.'
+                : 'فعالیت واجد شرایطی برای نمایش نیست.'}
         </p>
       ) : (
         <div className="space-y-6">
@@ -819,7 +802,7 @@ export function DailyReportPanel({
                             reportDate={reportDate}
                             timing={
                               section.timing === 'all'
-                                ? classifyDailyReportTiming(activity, entries, reportDate)
+                                ? classifyDailyReportTiming(activity, entries, reportDate, activities)
                                 : section.timing
                             }
                             value={formValues[activity.id]}

@@ -1,11 +1,11 @@
 import { diffDaysIso, toIsoDateOnly } from '@/lib/schedule/dates'
 import {
+  compareTasksByScheduleDate,
   getTaskScheduleStatus,
   taskEffectiveFinish,
   taskEffectiveStart,
   todayIso,
 } from '@/lib/schedule/task-view-date'
-import { compareWbs } from '@/lib/schedule/wbs-utils'
 import type { ProjectTask } from '@/types/schedule'
 
 export type PlanComplianceCheck = 'on_track' | 'behind' | 'done' | 'not_started'
@@ -41,7 +41,10 @@ export interface PlanComplianceSummary {
   avgPlanned: number
   avgActual: number
   variance: number
+  /** Due by as-of (started on/before today) — KPIs and “yes, on plan” */
   rows: PlanComplianceRow[]
+  /** Full schedule for the progress editor, chronological */
+  allRows: PlanComplianceRow[]
 }
 
 /** Linear planned % for a task as of a calendar day. */
@@ -68,6 +71,37 @@ function classifyCheck(planned: number, actual: number): PlanComplianceCheck {
   return 'behind'
 }
 
+function toComplianceRow(task: ProjectTask, asOf: string): PlanComplianceRow {
+  const start = taskEffectiveStart(task)
+  const finish = taskEffectiveFinish(task)
+  const plannedPercent = plannedPercentByDate(task, asOf)
+  const actualPercent = Math.min(100, Math.max(0, Math.round(Number(task.percent_complete) || 0)))
+  const check = classifyCheck(plannedPercent, actualPercent)
+  const scheduleStatus = getTaskScheduleStatus(task, asOf)
+  let daysLate = 0
+  if (finish && asOf > finish && actualPercent < 100) {
+    daysLate = diffDaysIso(finish, asOf)
+  } else if (plannedPercent > actualPercent + 5 && start) {
+    const duration = finish && start ? Math.max(1, diffDaysIso(start, finish)) : 1
+    daysLate = Math.max(0, Math.round(((plannedPercent - actualPercent) / 100) * duration))
+  }
+
+  return {
+    taskId: task.id,
+    wbs: task.wbs_code,
+    name: task.name,
+    isCritical: Boolean(task.is_critical),
+    start,
+    finish,
+    plannedPercent,
+    actualPercent,
+    check,
+    remainingPercent: Math.max(0, 100 - actualPercent),
+    daysLate,
+    scheduleStatus,
+  }
+}
+
 /**
  * Tasks that were supposed to be underway or finished by asOf,
  * with planned-vs-actual checkmarks for PM control.
@@ -84,45 +118,9 @@ export function buildPlanCompliance(
   const hasSchedule = tasks.length > 0
   const shouldShowChecklist = Boolean(actualStart && actualStart <= asOf && hasSchedule)
 
-  const dueTasks = tasks
-    .filter((task) => {
-      const start = taskEffectiveStart(task)
-      if (!start) return false
-      return start <= asOf
-    })
-    .sort((a, b) => compareWbs(a.wbs_code, b.wbs_code))
-
-  const rows: PlanComplianceRow[] = dueTasks.map((task) => {
-      const start = taskEffectiveStart(task)
-      const finish = taskEffectiveFinish(task)
-      const plannedPercent = plannedPercentByDate(task, asOf)
-      const actualPercent = Math.min(100, Math.max(0, Math.round(Number(task.percent_complete) || 0)))
-      const check = classifyCheck(plannedPercent, actualPercent)
-      const scheduleStatus = getTaskScheduleStatus(task, asOf)
-      let daysLate = 0
-      if (finish && asOf > finish && actualPercent < 100) {
-        daysLate = diffDaysIso(finish, asOf)
-      } else if (plannedPercent > actualPercent + 5 && start) {
-        // Approximate lag from progress gap on the activity duration
-        const duration = finish && start ? Math.max(1, diffDaysIso(start, finish)) : 1
-        daysLate = Math.max(0, Math.round(((plannedPercent - actualPercent) / 100) * duration))
-      }
-
-      return {
-        taskId: task.id,
-        wbs: task.wbs_code,
-        name: task.name,
-        isCritical: Boolean(task.is_critical),
-        start,
-        finish,
-        plannedPercent,
-        actualPercent,
-        check,
-        remainingPercent: Math.max(0, 100 - actualPercent),
-        daysLate,
-        scheduleStatus,
-      }
-    })
+  const chronological = [...tasks].sort(compareTasksByScheduleDate)
+  const allRows = chronological.map((task) => toComplianceRow(task, asOf))
+  const rows = allRows.filter((row) => Boolean(row.start && row.start <= asOf))
 
   const onTrack = rows.filter((r) => r.check === 'on_track').length
   const behind = rows.filter((r) => r.check === 'behind').length
@@ -151,5 +149,6 @@ export function buildPlanCompliance(
     avgActual,
     variance: avgActual - avgPlanned,
     rows,
+    allRows,
   }
 }

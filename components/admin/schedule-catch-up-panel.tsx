@@ -64,12 +64,12 @@ export function ScheduleCatchUpPanel({
     setError(null)
   }, [actualStart, scheduleVersion])
 
-  const dueTaskKey = compliance.rows.map((r) => r.taskId).join('|')
+  const dueTaskKey = compliance.allRows.map((r) => r.taskId).join('|')
 
   useEffect(() => {
     setDraftPct((prev) => {
       const next: Record<string, number> = { ...prev }
-      for (const row of compliance.rows) {
+      for (const row of compliance.allRows) {
         if (next[row.taskId] == null) next[row.taskId] = row.actualPercent
       }
       return next
@@ -86,6 +86,8 @@ export function ScheduleCatchUpPanel({
     compliance.behind === 0 &&
     compliance.notStarted === 0 &&
     compliance.rows.every((r) => Math.abs(r.actualPercent - r.plannedPercent) <= 5)
+
+  const editorRows = compliance.allRows.length > 0 ? compliance.allRows : compliance.rows
 
   async function saveUpdates(updates: { task_id: string; percent_complete: number }[]) {
     setSaving(true)
@@ -124,7 +126,7 @@ export function ScheduleCatchUpPanel({
   }
 
   function confirmCustom() {
-    const updates = compliance.rows.map((row) => ({
+    const updates = editorRows.map((row) => ({
       task_id: row.taskId,
       percent_complete: draftPct[row.taskId] ?? row.actualPercent,
     }))
@@ -146,7 +148,7 @@ export function ScheduleCatchUpPanel({
   return (
     <Card
       className={cn(
-        'border-amber-300/80 shadow-card overflow-hidden',
+        'border-amber-300/80 shadow-card',
         isRtl && 'text-right'
       )}
       dir={isRtl ? 'rtl' : 'ltr'}
@@ -176,6 +178,14 @@ export function ScheduleCatchUpPanel({
           </Badge>
           <Badge variant="outline" className="bg-amber-50 text-amber-900 border-amber-200">
             {fa ? 'شروع‌نشده' : 'Not started'}: {compliance.notStarted}
+          </Badge>
+          <Badge variant="outline" className="bg-orange-100 text-orange-950 border-orange-300">
+            {fa ? 'تاریخ گذشته / ناتمام' : 'Past due / incomplete'}:{' '}
+            {
+              editorRows.filter(
+                (r) => r.finish && asOf > r.finish && r.actualPercent < 100
+              ).length
+            }
           </Badge>
           <span className="text-muted-foreground self-center">
             {fa ? 'میانگین برنامه' : 'Avg plan'} {compliance.avgPlanned}% ·{' '}
@@ -224,10 +234,16 @@ export function ScheduleCatchUpPanel({
         ) : null}
 
         {(mode === 'review' || mode === 'done' || (mode === 'ask' && allAligned)) && (
-          <div className="overflow-x-auto rounded-xl border">
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              {fa
+                ? `${editorRows.length} فعالیت — داخل کادر اسکرول کنید تا انتهای برنامه. ردیف‌های نارنجی: تاریخ پایان گذشته ولی هنوز ۱۰۰٪ نشده‌اند.`
+                : `${editorRows.length} activities — scroll inside the list. Orange rows: finish date passed but still incomplete.`}
+            </p>
+          <div className="overflow-y-scroll overflow-x-auto rounded-xl border max-h-[min(62vh,560px)] [scrollbar-gutter:stable]">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/40 text-muted-foreground">
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b bg-muted text-muted-foreground shadow-sm">
                   <th className="px-3 py-2 text-start font-medium">WBS</th>
                   <th className="px-3 py-2 text-start font-medium min-w-[10rem]">
                     {fa ? 'فعالیت' : 'Activity'}
@@ -243,15 +259,19 @@ export function ScheduleCatchUpPanel({
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {compliance.rows.map((row) => {
+                {editorRows.map((row) => {
                   const value = draftPct[row.taskId] ?? row.actualPercent
                   const gap = value - row.plannedPercent
+                  const isPastDueIncomplete =
+                    Boolean(row.finish) && asOf > row.finish! && value < 100
                   return (
                     <tr
                       key={row.taskId}
                       className={cn(
-                        row.check === 'behind' && 'bg-red-50/40',
-                        row.check === 'done' && 'bg-emerald-50/30'
+                        isPastDueIncomplete &&
+                          'bg-orange-100/95 border-s-4 border-s-orange-500 hover:bg-orange-100',
+                        !isPastDueIncomplete && row.check === 'behind' && 'bg-red-50/40',
+                        !isPastDueIncomplete && row.check === 'done' && 'bg-emerald-50/30'
                       )}
                     >
                       <td className="px-3 py-2 font-mono text-xs text-muted-foreground whitespace-nowrap">
@@ -261,6 +281,11 @@ export function ScheduleCatchUpPanel({
                         <div className="font-medium leading-snug">{row.name}</div>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {row.isCritical ? <CriticalBadge /> : null}
+                          {isPastDueIncomplete ? (
+                            <Badge className="text-[10px] bg-orange-200 text-orange-950 border border-orange-400">
+                              {fa ? 'تاریخ گذشته' : 'Past due'}
+                            </Badge>
+                          ) : null}
                           {row.check === 'behind' ? (
                             <Badge variant="destructive" className="text-[10px]">
                               {fa ? 'عقب' : 'Behind'}
@@ -352,10 +377,11 @@ export function ScheduleCatchUpPanel({
               </tbody>
             </table>
           </div>
+          </div>
         )}
 
         {mode === 'review' ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 sticky bottom-0 z-10 -mx-1 px-1 py-2 bg-card border-t">
             <Button type="button" disabled={saving} onClick={confirmCustom}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin me-1" /> : null}
               {fa ? 'ذخیره گزارش پیشرفت' : 'Save progress report'}
@@ -370,7 +396,7 @@ export function ScheduleCatchUpPanel({
               disabled={saving}
               onClick={() => {
                 const next: Record<string, number> = {}
-                for (const row of compliance.rows) next[row.taskId] = row.plannedPercent
+                for (const row of editorRows) next[row.taskId] = row.plannedPercent
                 setDraftPct(next)
               }}
             >

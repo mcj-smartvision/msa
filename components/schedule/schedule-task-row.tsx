@@ -33,12 +33,14 @@ function ScheduleTaskRowComponent({
   const status = getTaskScheduleStatus(task, statusAsOf)
   const start = task.start_planned ?? task.start_current
   const finish = task.finish_planned ?? task.finish_current
+  const isOverdue = status === 'overdue'
 
   return (
     <tr
       className={cn(
         'border-b last:border-0 hover:bg-muted/20',
-        isCriticalPath && 'bg-red-50/40 hover:bg-red-50/60'
+        isOverdue && 'bg-orange-100/95 border-s-4 border-s-orange-500 hover:bg-orange-100',
+        !isOverdue && isCriticalPath && 'bg-red-50/40 hover:bg-red-50/60'
       )}
     >
       <td

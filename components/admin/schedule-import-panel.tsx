@@ -11,7 +11,7 @@ import { ScheduleDateToolbar } from '@/components/schedule/schedule-date-toolbar
 import { SchedulePreviewTable } from '@/components/schedule/schedule-preview-table'
 import { FormattedDate } from '@/components/schedule/formatted-date'
 import { useScheduleViewDate } from '@/hooks/useScheduleViewDate'
-import { compareWbs } from '@/lib/schedule/wbs-utils'
+import { sortTasksForSchedulePreview } from '@/lib/schedule/task-view-date'
 import type { ProjectTask, ScheduleImport } from '@/types/schedule'
 import { CalendarRange, CheckCircle2, FileUp, Loader2, AlertTriangle } from 'lucide-react'
 import { ScheduleDownloadButton } from '@/components/schedule/schedule-download-button'
@@ -33,8 +33,11 @@ function statusBadge(status: ScheduleImport['status']) {
   return <Badge variant="outline">در انتظار</Badge>
 }
 
-function sortTasks(tasks: ProjectTask[]): ProjectTask[] {
-  return [...tasks].sort((a, b) => compareWbs(a.wbs_code, b.wbs_code))
+function sortTasks(
+  tasks: ProjectTask[],
+  labels: Record<string, string> = {}
+): ProjectTask[] {
+  return sortTasksForSchedulePreview(tasks, labels)
 }
 
 export function ScheduleImportPanel({
@@ -54,7 +57,7 @@ export function ScheduleImportPanel({
   const [error, setError] = useState<string | null>(null)
   const [importSuccess, setImportSuccess] = useState<string | null>(null)
 
-  const [tasks, setTasks] = useState(() => sortTasks(previewTasks))
+  const [tasks, setTasks] = useState(() => sortTasks(previewTasks, predecessorLabels))
   const [actualStart, setActualStart] = useState(initialActualStart)
   const [draftStart, setDraftStart] = useState<string | null>(null)
   const [baselineStart, setBaselineStart] = useState(scheduleBaselineStart)
@@ -62,8 +65,8 @@ export function ScheduleImportPanel({
 
   useEffect(() => {
     if (localRescheduleRef.current) return
-    setTasks(sortTasks(previewTasks))
-  }, [previewTasks])
+    setTasks(sortTasks(previewTasks, predecessorLabels))
+  }, [previewTasks, predecessorLabels])
 
   useEffect(() => {
     setActualStart(initialActualStart)
@@ -73,7 +76,13 @@ export function ScheduleImportPanel({
     setBaselineStart(scheduleBaselineStart)
   }, [scheduleBaselineStart])
 
-  const displayTasks = useMemo(() => (tasks.length > 0 ? tasks : sortTasks(previewTasks)), [tasks, previewTasks])
+  const displayTasks = useMemo(
+    () =>
+      tasks.length > 0
+        ? sortTasks(tasks, predecessorLabels)
+        : sortTasks(previewTasks, predecessorLabels),
+    [tasks, previewTasks, predecessorLabels]
+  )
   const hasSchedule = taskCount > 0 || displayTasks.length > 0
   const latestImportId =
     initialImports.find((item) => item.status === 'completed')?.id ?? null
@@ -89,12 +98,12 @@ export function ScheduleImportPanel({
     (payload: { tasks: ProjectTask[]; actualStart: string }) => {
       localRescheduleRef.current = true
       if (payload.tasks.length > 0) {
-        setTasks(sortTasks(payload.tasks))
+        setTasks(sortTasks(payload.tasks, predecessorLabels))
       }
       setActualStart(payload.actualStart)
       setDraftStart(null)
     },
-    []
+    [predecessorLabels]
   )
 
   async function handleImport() {
@@ -254,7 +263,7 @@ export function ScheduleImportPanel({
           scheduleVersion={latestImportId}
           onTasksUpdated={(next) => {
             localRescheduleRef.current = true
-            setTasks(sortTasks(next))
+            setTasks(sortTasks(next, predecessorLabels))
           }}
         />
       ) : null}
@@ -281,6 +290,9 @@ export function ScheduleImportPanel({
               پیش‌نمایش برنامه ({displayTasks.length}
               {taskCount > displayTasks.length ? ` از ${taskCount}` : ''})
             </CardTitle>
+            <CardDescription className="text-xs">
+              مرتب‌سازی: تاریخ شروع → پیش‌نیاز قبل از پس‌نیاز · تأخیر پیوندها به روز کاری
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-0 pt-0">
             <SchedulePreviewTable
