@@ -15,16 +15,18 @@ export function formatScheduleDate(
   value: string | null | undefined,
   calendar: ScheduleCalendar = 'jalali'
 ): string {
-  if (!value) return '—'
-  const d = parseIsoDate(value)
-  if (!d) return '—'
+  const iso = toIsoDateOnly(value)
+  if (!iso) return '—'
+
+  const [gy, gm, gd] = iso.split('-').map(Number)
+  if (!gy || !gm || !gd) return '—'
 
   if (calendar === 'jalali') {
-    const { jy, jm, jd } = toJalaali(d.getFullYear(), d.getMonth() + 1, d.getDate())
+    const { jy, jm, jd } = toJalaali(gy, gm, gd)
     return `${jy}/${pad2(jm)}/${pad2(jd)}`
   }
 
-  return d.toLocaleDateString('en-CA')
+  return `${gy}-${pad2(gm)}-${pad2(gd)}`
 }
 
 /** Value for calendar-aware text/date inputs (matches active calendar mode). */
@@ -83,19 +85,33 @@ export function formatScheduleDateTime(
   return `${datePart} ${time}`
 }
 
-/** YYYY-MM-DD in local timezone from ISO string. */
+/**
+ * Civil YYYY-MM-DD for schedule dates.
+ * - Pure `YYYY-MM-DD` is trusted as-is.
+ * - Timestamps use the **local** calendar day (not the UTC prefix), so MSP
+ *   midnights stored as e.g. `…T20:30:00.000Z` in Iran stay on the intended day.
+ */
 export function toIsoDateOnly(value: string | null | undefined): string | null {
   if (!value) return null
-  const d = parseIsoDate(value)
+  const trimmed = String(value).trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
+
+  const d = parseIsoDate(trimmed)
   if (!d) return null
-  return d.toISOString().slice(0, 10)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 /** Add calendar days to an ISO date string (YYYY-MM-DD). */
 export function addDaysIso(isoDate: string, days: number): string {
   const d = new Date(`${isoDate}T12:00:00`)
   d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 /** Difference in whole days: end - start. */

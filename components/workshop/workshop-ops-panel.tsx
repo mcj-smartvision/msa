@@ -1,14 +1,18 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ScheduleWorkspace } from '@/components/workshop/schedule-workspace'
+import { ScheduleGanttWorkspace } from '@/components/schedule/schedule-gantt-workspace'
+import { ScheduleActiveAlertsPanel } from '@/components/schedule/schedule-active-alerts-panel'
+import { MilestoneTrendPanel } from '@/components/schedule/milestone-trend-panel'
 import { ApprovalsWorkspace } from '@/components/workshop/approvals-workspace'
 import { PreparedWorkspace } from '@/components/workshop/prepared-workspace'
 import { cn } from '@/lib/utils'
 
 const TABS = [
   { id: 'schedule', label: 'برنامه' },
+  { id: 'gantt', label: 'گانت' },
   { id: 'approvals', label: 'تأییدات' },
   { id: 'prepared', label: 'لیست‌ها' },
 ] as const
@@ -17,6 +21,7 @@ type WorkshopTab = (typeof TABS)[number]['id']
 
 export function WorkshopOpsPanel() {
   const pathname = usePathname()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const embeddedInTechnicalOffice = pathname.includes('/dashboard/technical-office')
   const asSupervisor = searchParams.get('as') === 'supervisor'
@@ -25,7 +30,7 @@ export function WorkshopOpsPanel() {
   const projectId = searchParams.get('projectId') ?? ''
 
   const visibleTabs = asSupervisor
-    ? TABS.filter((t) => t.id === 'schedule' || t.id === 'prepared')
+    ? TABS.filter((t) => t.id === 'schedule' || t.id === 'gantt' || t.id === 'prepared')
     : TABS
 
   const activeTab = visibleTabs.some((t) => t.id === workshopTab)
@@ -34,7 +39,7 @@ export function WorkshopOpsPanel() {
 
   useEffect(() => {
     if (!projectId) return
-    void fetch(`/api/workshop/capabilities?projectId=${projectId}`)
+    void fetch(`/api/workshop/capabilities?projectId=${projectId}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (typeof data.readOnly === 'boolean') {
@@ -44,13 +49,13 @@ export function WorkshopOpsPanel() {
       .catch(() => setReadOnly(asSupervisor))
   }, [projectId, asSupervisor])
 
-  function tabHref(tab: WorkshopTab): string {
+  function goTab(tab: WorkshopTab) {
     const params = new URLSearchParams(searchParams.toString())
     params.set('section', 'schedule')
     params.set('workshopTab', tab)
     if (projectId) params.set('projectId', projectId)
     if (asSupervisor) params.set('as', 'supervisor')
-    return `/dashboard/technical-office?${params.toString()}`
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }
 
   return (
@@ -61,13 +66,21 @@ export function WorkshopOpsPanel() {
           : 'برنامه MSP را ببینید، زیرشاخه تعریف کنید، مقدار وارد کنید و به امروز بفرستید.'}
       </p>
 
+      {projectId ? (
+        <div className="space-y-3">
+          <ScheduleActiveAlertsPanel projectId={projectId} />
+          <MilestoneTrendPanel projectId={projectId} />
+        </div>
+      ) : null}
+
       <nav className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
         {visibleTabs.map((tab) => {
           const active = activeTab === tab.id
           return (
-            <a
+            <button
               key={tab.id}
-              href={tabHref(tab.id)}
+              type="button"
+              onClick={() => goTab(tab.id)}
               className={cn(
                 'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
                 active
@@ -76,14 +89,24 @@ export function WorkshopOpsPanel() {
               )}
             >
               {tab.label}
-            </a>
+            </button>
           )
         })}
       </nav>
 
-      {activeTab === 'schedule' ? (
+      {/* Keep schedule + gantt mounted so sync events update the hidden view immediately */}
+      <div
+        className={activeTab === 'schedule' ? 'block' : 'hidden'}
+        aria-hidden={activeTab !== 'schedule'}
+      >
         <ScheduleWorkspace showBanner={!embeddedInTechnicalOffice} />
-      ) : null}
+      </div>
+      <div
+        className={activeTab === 'gantt' ? 'block' : 'hidden'}
+        aria-hidden={activeTab !== 'gantt'}
+      >
+        <ScheduleGanttWorkspace />
+      </div>
       {activeTab === 'approvals' && !asSupervisor ? (
         <ApprovalsWorkspace showBanner={!embeddedInTechnicalOffice} />
       ) : null}

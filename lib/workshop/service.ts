@@ -38,6 +38,7 @@ import {
   enrichScheduleTreeWithWbs,
   nextChildWbs,
 } from './wbs-numbering'
+import { fetchTaskPredecessorLabels } from '@/lib/schedule/predecessor-labels'
 import type {
   CreatePackageInput,
   PackageChangePayload,
@@ -339,23 +340,43 @@ export async function getScheduleTree(supabase: SupabaseClient, projectId: strin
   const capabilities = await getWorkshopCapabilities(supabase, projectId)
 
   const tasks = await fetchAllProjectTasks(supabase, projectId)
-  const { data: packages, error } = await supabase
-    .from('workshop_packages')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true })
+  const [{ data: packages, error }, { data: calcs }, predecessorLabels] = await Promise.all([
+    supabase
+      .from('workshop_packages')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('schedule_calculations')
+      .select('task_id, total_float')
+      .eq('project_id', projectId),
+    fetchTaskPredecessorLabels(supabase, projectId).catch(() => ({} as Record<string, string>)),
+  ])
   if (error) throw new WorkshopError('VALIDATION', error.message)
+
+  const floatByTaskId = new Map<string, number>()
+  for (const c of calcs ?? []) {
+    floatByTaskId.set(c.task_id as string, Number(c.total_float) || 0)
+  }
 
   const { byTask, rootsUnderPackages } = nestPackages((packages ?? []) as Record<string, unknown>[])
 
   const nodes: ScheduleTreeNode[] = enrichScheduleTreeWithWbs(
-    buildScheduleHierarchy(tasks, byTask)
+    buildScheduleHierarchy(tasks, byTask, floatByTaskId, predecessorLabels)
   )
+
+  const dependencyLinkCount = Object.keys(predecessorLabels).reduce((n, id) => {
+    const label = predecessorLabels[id]
+    if (!label?.trim()) return n
+    return n + label.split(',').filter((p) => p.trim()).length
+  }, 0)
 
   return {
     nodes,
     orphanPackages: rootsUnderPackages,
     packageCount: packages?.length ?? 0,
+    dependencyLinkCount,
+    tasksWithPredecessors: Object.keys(predecessorLabels).length,
     capabilities,
   }
 }

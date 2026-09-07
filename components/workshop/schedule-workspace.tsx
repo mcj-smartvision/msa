@@ -12,6 +12,8 @@ import {
   Lock,
   Trash2,
   Save,
+  CheckCircle2,
+  RefreshCw,
 } from 'lucide-react'
 import {
   approvalStatusFa,
@@ -35,6 +37,17 @@ import { PageHeader } from '@/components/admin/shared'
 import { ScheduleDownloadButton } from '@/components/schedule/schedule-download-button'
 import { WORKSHOP_UOMS } from '@/lib/workshop/types'
 import { formatScheduleWeightDisplay } from '@/lib/workshop/package-weight'
+import {
+  formatScheduleDate,
+  isoToCalendarInput,
+  parseScheduleDateInput,
+  toIsoDateOnly,
+} from '@/lib/schedule/dates'
+import { useScheduleCalendar } from '@/hooks/useScheduleCalendar'
+import {
+  publishScheduleViewSync,
+  useScheduleViewSync,
+} from '@/lib/schedule/schedule-view-sync'
 
 type Selection =
   | { kind: 'schedule'; id: string; name: string; wbs: string | null }
@@ -65,17 +78,21 @@ type EditDraft = {
 }
 
 const SCHEDULE_COL_WIDTHS = [
+  '5%',
+  '20%',
+  '12%',
+  '16%',
   '6%',
-  '34%',
-  '11%',
-  '9%',
   '7%',
+  '5%',
+  '5%',
   '6%',
-  '8%',
-  '8%',
+  '7%',
   '11%',
 ] as const
+// WBS, نام, پیش‌نیاز, تاریخ, شناوری, محل, مقدار, واحد, وزن, تأیید, وضعیت
 
+const SCHEDULE_COL_COUNT = SCHEDULE_COL_WIDTHS.length
 const SCHEDULE_CELL = 'px-1 py-1.5 align-middle box-border'
 const SCHEDULE_HEAD = `${SCHEDULE_CELL} font-medium text-slate-600`
 
@@ -83,6 +100,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
   const searchParams = useSearchParams()
   const projectId = searchParams.get('projectId') ?? ''
   const forceSupervisorView = searchParams.get('as') === 'supervisor'
+  const { calendar } = useScheduleCalendar()
   const [nodes, setNodes] = useState<ScheduleTreeNode[]>([])
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [selected, setSelected] = useState<Selection>(null)
@@ -98,20 +116,27 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
   const [saving, setSaving] = useState(false)
   const [readOnly, setReadOnly] = useState(forceSupervisorView)
   const [canWriteServer, setCanWriteServer] = useState(false)
-
+  /** Pending date/float edits — flushed by «ثبت نهایی» */
+  const [taskDrafts, setTaskDrafts] = useState<
+    Record<string, { startDate?: string; finishDate?: string; totalFloat?: number | null }>
+  >({})
+  const [dependencyLinkCount, setDependencyLinkCount] = useState(0)
+  const [tasksWithPredecessors, setTasksWithPredecessors] = useState(0)
   const load = useCallback(async (expandAfter?: { kind: 'schedule' | 'package'; id: string }) => {
     if (!projectId) return []
     setLoading(true)
     try {
       const [treeRes, capRes] = await Promise.all([
-        fetch(`/api/workshop/schedule-tree?projectId=${projectId}`),
-        fetch(`/api/workshop/capabilities?projectId=${projectId}`),
+        fetch(`/api/workshop/schedule-tree?projectId=${projectId}`, { cache: 'no-store' }),
+        fetch(`/api/workshop/capabilities?projectId=${projectId}`, { cache: 'no-store' }),
       ])
       const data = await treeRes.json()
       const caps = capRes.ok ? await capRes.json() : data.capabilities
       if (!treeRes.ok) throw new Error(data.error || 'خطا در بارگذاری')
       const loadedNodes = enrichScheduleTreeWithWbs(data.nodes ?? [])
       setNodes(loadedNodes)
+      setDependencyLinkCount(Number(data.dependencyLinkCount) || 0)
+      setTasksWithPredecessors(Number(data.tasksWithPredecessors) || 0)
       const serverReadOnly = Boolean(caps?.readOnly ?? data.capabilities?.readOnly)
       setCanWriteServer(Boolean(caps?.canWrite))
       setReadOnly(forceSupervisorView || serverReadOnly)
@@ -133,6 +158,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       })
       setEdits({})
       setInlineDraft(null)
+      setTaskDrafts({})
       return loadedNodes
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'خطا')
@@ -142,9 +168,20 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     }
   }, [projectId, forceSupervisorView])
 
+  const workshopTab = searchParams.get('workshopTab') ?? 'schedule'
+  const scheduleTabActive = workshopTab === 'schedule'
+
   useEffect(() => {
     void load()
   }, [load])
+
+  useScheduleViewSync(
+    projectId,
+    () => {
+      void load()
+    },
+    { active: scheduleTabActive }
+  )
 
   const selectedPackage = selected?.kind === 'package' ? selected.pkg : null
   const selectedPackageId = selectedPackage?.id ?? null
@@ -288,6 +325,134 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       await load()
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'خطا')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /** Persist one task field patch (no UI saving flag — caller owns it). */
+  async function saveScheduleTaskFields(
+    taskId: string,
+    patch: { startDate?: string; finishDate?: string; totalFloat?: number | null }
+  ) {
+    if (!projectId || readOnly) return
+    const res = await fetch('/api/schedule/task-fields', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId, taskId, ...patch }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'ذخیره فعالیت ناموفق بود')
+  }
+
+  function patchTaskDraft(
+    taskId: string,
+    patch: { startDate?: string; finishDate?: string; totalFloat?: number | null }
+  ) {
+    setTaskDrafts((prev) => ({
+      ...prev,
+      [taskId]: { ...prev[taskId], ...patch },
+    }))
+  }
+
+  async function commitFinalSchedule() {
+    if (!projectId || readOnly) return
+    const entries = Object.entries(taskDrafts)
+    const packagesToSave = collectScheduleTaskNodes(nodes).length >= 0
+      ? (() => {
+          const dirty: WorkshopPackageNode[] = []
+          const walk = (list: WorkshopPackageNode[]) => {
+            for (const p of list) {
+              if (isDirty(p)) dirty.push(p)
+              if (p.children.length) walk(p.children)
+            }
+          }
+          for (const n of collectScheduleTaskNodes(nodes)) walk(n.packages)
+          return dirty
+        })()
+      : []
+
+    if (entries.length === 0 && packagesToSave.length === 0 && !inlineDraft) {
+      setMessage('تغییر جدیدی برای ثبت نیست')
+      return
+    }
+
+    setSaving(true)
+    setMessage(null)
+    try {
+      if (inlineDraft) {
+        const name = inlineDraft.name.trim()
+        const quantity = Number(inlineDraft.quantity)
+        if (!name || !(quantity > 0)) {
+          throw new Error('نام و مقدار زیرمجموعه را کامل کنید')
+        }
+        const res = await fetch('/api/workshop/packages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectId,
+            parentScheduleNodeId:
+              inlineDraft.parentKind === 'schedule' ? inlineDraft.parentId : null,
+            parentPackageId: inlineDraft.parentKind === 'package' ? inlineDraft.parentId : null,
+            name,
+            quantity,
+            uom: inlineDraft.uom,
+            location: inlineDraft.location || null,
+            crew: inlineDraft.crew || null,
+            wbsCode: inlineDraft.previewWbs,
+            weightPercent: inlineDraft.weightPercent.trim()
+              ? Number(inlineDraft.weightPercent)
+              : null,
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'ایجاد زیرمجموعه ناموفق بود')
+        setInlineDraft(null)
+      }
+
+      for (const pkg of packagesToSave) {
+        const e = getEdit(pkg)
+        const res = await fetch(`/api/workshop/packages/${pkg.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: e.name,
+            quantity: Number(e.quantity),
+            uom: e.uom,
+            location: e.location,
+            crew: e.crew,
+            weightPercent: e.weightPercent.trim() ? Number(e.weightPercent) : null,
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'ذخیره پکیج ناموفق بود')
+      }
+
+      for (const [taskId, patch] of entries) {
+        if (
+          patch.startDate === undefined &&
+          patch.finishDate === undefined &&
+          patch.totalFloat === undefined
+        ) {
+          continue
+        }
+        await saveScheduleTaskFields(taskId, patch)
+      }
+
+      setTaskDrafts({})
+      // Recalculate floats so برنامه and گانت stay aligned
+      try {
+        await fetch(`/api/schedule/calculate?projectId=${encodeURIComponent(projectId)}`, {
+          cache: 'no-store',
+        })
+      } catch {
+        /* dates already saved; float refresh is best-effort */
+      }
+      publishScheduleViewSync(projectId)
+      setMessage('ثبت نهایی شد — تاریخ و شناوری در گانت هم به‌روز شد')
+      await load()
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'خطا در ثبت نهایی')
     } finally {
       setSaving(false)
     }
@@ -466,6 +631,9 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
   }, [nodes, edits])
 
   const toolbarSaveEnabled = inlineDraftValid || dirtyPackages.length > 0
+  const hasTaskDrafts = Object.keys(taskDrafts).length > 0
+  const finalCommitEnabled =
+    !readOnly && (hasTaskDrafts || toolbarSaveEnabled) && !saving
 
   if (!projectId) {
     return <p className="text-sm text-slate-600">پروژه را از بالا انتخاب کنید.</p>
@@ -524,6 +692,26 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm">{message}</div>
       )}
 
+      {dependencyLinkCount > 0 ? (
+        <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-xs text-sky-950">
+          وابستگی MSP: <strong>{dependencyLinkCount}</strong> پیوند روی{' '}
+          <strong>{tasksWithPredecessors}</strong> فعالیت — ستون «پیش‌نیاز» را ببینید (مثال:{' '}
+          <span className="font-mono" dir="ltr">
+            1.2FS
+          </span>{' '}
+          یعنی بعد از پایان ۱.۲ شروع می‌شود؛{' '}
+          <span className="font-mono" dir="ltr">
+            SS+2d
+          </span>{' '}
+          یعنی هم‌زمان با شروع پیش‌نیاز + ۲ روز).
+        </div>
+      ) : projectId && !loading ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950">
+          برای این پروژه پیوند وابستگی‌ای در دیتابیس نیست — یا MSP بدون PredecessorLink ایمپورت
+          شده، یا هنوز ایمپورت نشده. بدون پیوند، فقط جابه‌جایی تقریبی فعالیت‌های بعدی اعمال می‌شود.
+        </div>
+      ) : null}
+
       <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden w-full max-w-full min-w-0">
           {!readOnly && (
           <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b bg-slate-50 px-3 py-2">
@@ -544,6 +732,31 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
             >
               <Send className="h-4 w-4" />
               ارسال به مدیر پروژه
+            </button>
+            <button
+              type="button"
+              disabled={!finalCommitEnabled}
+              onClick={() => void commitFinalSchedule()}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-40"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              ثبت نهایی
+              {hasTaskDrafts ? (
+                <span className="rounded-full bg-white/20 px-1.5 text-[10px]">
+                  {Object.keys(taskDrafts).length}
+                </span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              disabled={loading || saving}
+              onClick={() => {
+                void load().then(() => setMessage('برنامه بروزرسانی شد'))
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-40"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              بروزرسانی
             </button>
             <button
               type="button"
@@ -711,26 +924,34 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                 <tr>
                   <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[0] }}>WBS</th>
                   <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[1] }}>نام</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[2] }}>تاریخ</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[3] }}>محل</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[4] }}>مقدار</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[5] }}>واحد</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[6] }}>وزن</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[7] }}>تأیید</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[8] }}>وضعیت</th>
+                  <th
+                    className={SCHEDULE_HEAD}
+                    style={{ width: SCHEDULE_COL_WIDTHS[2] }}
+                    title="پیش‌نیاز از MSP — مثلاً 1.2FS یعنی Finish-to-Start"
+                  >
+                    پیش‌نیاز
+                  </th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[3] }}>تاریخ</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[4] }}>شناوری</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[5] }}>محل</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[6] }}>مقدار</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[7] }}>واحد</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[8] }}>وزن</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[9] }}>تأیید</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[10] }}>وضعیت</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
                   <tr>
-                    <td colSpan={9} className="px-3 py-8 text-center text-slate-500">
+                    <td colSpan={SCHEDULE_COL_COUNT} className="px-3 py-8 text-center text-slate-500">
                       در حال بارگذاری…
                     </td>
                   </tr>
                 )}
                 {!loading && visibleRows.length === 0 && !inlineDraft && (
                   <tr>
-                    <td colSpan={9} className="px-3 py-8 text-center text-slate-500">
+                    <td colSpan={SCHEDULE_COL_COUNT} className="px-3 py-8 text-center text-slate-500">
                       برنامه‌ای برای این پروژه import نشده.
                     </td>
                   </tr>
@@ -810,8 +1031,70 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               )}
                             </div>
                           </td>
+                          <td
+                            className={`${SCHEDULE_CELL} font-mono text-[10px] text-slate-700 leading-tight`}
+                            dir="ltr"
+                            title={n.predecessorLabel ?? undefined}
+                          >
+                            {n.predecessorLabel?.trim() ? n.predecessorLabel : '—'}
+                          </td>
                           <td className={`${SCHEDULE_CELL} text-[11px] text-slate-600 tabular-nums leading-tight`}>
-                            {formatActivityDateShort(row.startDate, row.finishDate)}
+                            {!readOnly && n.taskId && !n.isSyntheticGroup ? (
+                              <CompactJalaliDateRange
+                                startIso={
+                                  toIsoDateOnly(taskDrafts[n.taskId]?.startDate) ??
+                                  toIsoDateOnly(row.startDate)
+                                }
+                                finishIso={
+                                  toIsoDateOnly(taskDrafts[n.taskId]?.finishDate) ??
+                                  toIsoDateOnly(row.finishDate)
+                                }
+                                calendar={calendar}
+                                disabled={saving}
+                                onCommit={(startDate, finishDate) => {
+                                  patchTaskDraft(n.taskId!, { startDate, finishDate })
+                                }}
+                              />
+                            ) : (
+                              formatActivityDateShort(
+                                toIsoDateOnly(taskDrafts[n.taskId ?? '']?.startDate) ??
+                                  row.startDate,
+                                toIsoDateOnly(taskDrafts[n.taskId ?? '']?.finishDate) ??
+                                  row.finishDate,
+                                calendar
+                              )
+                            )}
+                          </td>
+                          <td className={`${SCHEDULE_CELL} text-center`}>
+                            {!readOnly && n.taskId && !n.isSyntheticGroup ? (
+                              <input
+                                type="number"
+                                step="0.5"
+                                className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] tabular-nums text-center"
+                                value={
+                                  taskDrafts[n.taskId]?.totalFloat !== undefined
+                                    ? taskDrafts[n.taskId]?.totalFloat ?? ''
+                                    : n.totalFloat != null && Number.isFinite(n.totalFloat)
+                                      ? String(n.totalFloat)
+                                      : ''
+                                }
+                                placeholder="—"
+                                disabled={saving}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(ev) => {
+                                  const raw = ev.target.value.trim()
+                                  const next = raw === '' ? null : Number(raw)
+                                  if (raw !== '' && !Number.isFinite(next as number)) return
+                                  patchTaskDraft(n.taskId!, { totalFloat: next })
+                                }}
+                              />
+                            ) : (
+                              <span className="tabular-nums text-[11px] text-slate-600">
+                                {n.totalFloat != null && Number.isFinite(n.totalFloat)
+                                  ? n.totalFloat
+                                  : '—'}
+                              </span>
+                            )}
                           </td>
                           <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
                           <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
@@ -920,9 +1203,11 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             )}
                           </div>
                         </td>
+                        <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
                         <td className={`${SCHEDULE_CELL} text-[11px] text-slate-500 tabular-nums leading-tight`}>
-                          {formatActivityDateShort(row.startDate, row.finishDate)}
+                          {formatActivityDateShort(row.startDate, row.finishDate, calendar)}
                         </td>
+                        <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
                         <td className={SCHEDULE_CELL}>
                           {canEdit ? (
                             <input
@@ -1091,6 +1376,8 @@ function InlineCreateRow({
         </div>
       </td>
       <td className={`${SCHEDULE_CELL} text-[11px] text-slate-400`}>—</td>
+      <td className={`${SCHEDULE_CELL} text-[11px] text-slate-400`}>—</td>
+      <td className={`${SCHEDULE_CELL} text-[11px] text-slate-400`}>—</td>
       <td className={SCHEDULE_CELL}>
         <input
           className="w-full rounded border border-sky-200 bg-white px-1 py-0.5 text-xs"
@@ -1158,26 +1445,108 @@ function InlineCreateRow({
   )
 }
 
-function formatActivityDateShort(start: string | null, finish: string | null): string {
+function CompactJalaliDateRange({
+  startIso,
+  finishIso,
+  calendar,
+  disabled,
+  onCommit,
+}: {
+  startIso: string | null
+  finishIso: string | null
+  calendar: 'jalali' | 'gregorian'
+  disabled?: boolean
+  onCommit: (startDate: string, finishDate: string) => void
+}) {
+  const [startText, setStartText] = useState(() => isoToCalendarInput(startIso, calendar))
+  const [finishText, setFinishText] = useState(() => isoToCalendarInput(finishIso, calendar))
+  const [invalid, setInvalid] = useState(false)
+
+  useEffect(() => {
+    setStartText(isoToCalendarInput(startIso, calendar))
+    setFinishText(isoToCalendarInput(finishIso, calendar))
+    setInvalid(false)
+  }, [startIso, finishIso, calendar])
+
+  function commit() {
+    const start = parseScheduleDateInput(startText, calendar)
+    const finish = parseScheduleDateInput(finishText, calendar)
+    if (!start || !finish) {
+      setInvalid(true)
+      setStartText(isoToCalendarInput(startIso, calendar))
+      setFinishText(isoToCalendarInput(finishIso, calendar))
+      return
+    }
+    setInvalid(false)
+    const s = start <= finish ? start : finish
+    const f = start <= finish ? finish : start
+    if (s === (startIso ?? '') && f === (finishIso ?? '')) {
+      setStartText(isoToCalendarInput(s, calendar))
+      setFinishText(isoToCalendarInput(f, calendar))
+      return
+    }
+    onCommit(s, f)
+  }
+
+  const placeholder = calendar === 'jalali' ? '1403/01/15' : '2026-04-21'
+
+  return (
+    <div
+      className="flex items-center gap-0.5 min-w-0"
+      onClick={(e) => e.stopPropagation()}
+      title={calendar === 'jalali' ? 'تاریخ شمسی — مثال 1403/01/15' : 'تاریخ میلادی'}
+    >
+      <input
+        type="text"
+        inputMode="numeric"
+        dir="ltr"
+        disabled={disabled}
+        placeholder={placeholder}
+        className={`min-w-0 flex-1 rounded border bg-white px-0.5 py-0 text-[9px] h-6 leading-none tabular-nums ${
+          invalid ? 'border-rose-400' : 'border-slate-200'
+        }`}
+        value={startText}
+        onChange={(e) => setStartText(e.target.value)}
+        onBlur={() => commit()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit()
+        }}
+      />
+      <span className="shrink-0 text-[9px] text-slate-400">–</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        dir="ltr"
+        disabled={disabled}
+        placeholder={placeholder}
+        className={`min-w-0 flex-1 rounded border bg-white px-0.5 py-0 text-[9px] h-6 leading-none tabular-nums ${
+          invalid ? 'border-rose-400' : 'border-slate-200'
+        }`}
+        value={finishText}
+        onChange={(e) => setFinishText(e.target.value)}
+        onBlur={() => commit()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit()
+        }}
+      />
+    </div>
+  )
+}
+
+function formatActivityDateShort(
+  start: string | null,
+  finish: string | null,
+  calendar: 'jalali' | 'gregorian' = 'jalali'
+): string {
   if (!start && !finish) return '—'
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString('fa-IR', { month: '2-digit', day: '2-digit' })
+  const fmt = (iso: string) => formatScheduleDate(iso, calendar)
   if (start && finish) return `${fmt(start)}–${fmt(finish)}`
   if (start) return fmt(start)
   return finish ? fmt(finish) : '—'
 }
 
 function formatActivityDate(start: string | null, finish: string | null): string {
-  if (!start && !finish) return '—'
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString('fa-IR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    })
-  if (start && finish) return `${fmt(start)} – ${fmt(finish)}`
-  if (start) return fmt(start)
-  return finish ? fmt(finish) : '—'
+  return formatActivityDateShort(start, finish, 'jalali')
 }
 
 function approvalBadgeClass(s: string) {

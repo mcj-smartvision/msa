@@ -37,8 +37,15 @@ export function enrichScheduleTreeWithWbs(nodes: ScheduleTreeNode[]): ScheduleTr
  */
 export function buildScheduleHierarchy(
   tasks: ProjectTask[],
-  packagesByTask: Map<string, WorkshopPackageNode[]>
+  packagesByTask: Map<string, WorkshopPackageNode[]>,
+  floatByTaskId?: Map<string, number>,
+  predecessorByTaskId?: Map<string, string> | Record<string, string>
 ): ScheduleTreeNode[] {
+  const predMap =
+    predecessorByTaskId instanceof Map
+      ? predecessorByTaskId
+      : new Map(Object.entries(predecessorByTaskId ?? {}))
+
   return [...tasks]
     .sort((a, b) => compareWbs(a.wbs_code, b.wbs_code))
     .map((t) => ({
@@ -54,6 +61,8 @@ export function buildScheduleHierarchy(
       finishDate: t.finish_current ?? t.finish_planned ?? null,
       scheduleWeight: t.schedule_weight ?? null,
       percentComplete: Number(t.percent_complete) || 0,
+      totalFloat: floatByTaskId?.has(t.id) ? floatByTaskId.get(t.id)! : null,
+      predecessorLabel: predMap.get(t.id) ?? null,
       packages: packagesByTask.get(t.id) ?? [],
       children: [],
     }))

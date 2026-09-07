@@ -30,6 +30,14 @@ export interface ProjectTask {
   schedule_weight?: number | null
   /** MSP summary row (WBS group / زیرشاخه) */
   is_summary?: boolean
+  /** Duration in days (migration 71) */
+  duration_days?: number | null
+  /** WBS parent task for expand/collapse tree (migration 71) */
+  parent_id?: string | null
+  /** MSP milestone (migration 71) */
+  is_milestone?: boolean
+  /** First CPM predicted date for milestone — immutable once set (migration 74) */
+  milestone_baseline_date?: string | null
   /** Registered project subcontractor (migration 42) */
   subcontractor_id?: string | null
   created_at: string

@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getScheduleTree, workshopErrorResponse } from '@/lib/workshop/service'
+import { getProjectGanttRows } from '@/lib/schedule/gantt-service'
+import { workshopErrorResponse } from '@/lib/workshop/service'
 
+/** GET /api/schedule/gantt?projectId=... */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
     const projectId = request.nextUrl.searchParams.get('projectId') ?? ''
     if (!projectId) {
-      return NextResponse.json({ error: 'projectId لازم است', code: 'VALIDATION' }, { status: 400 })
+      return NextResponse.json({ error: 'projectId لازم است' }, { status: 400 })
     }
-    const tree = await getScheduleTree(supabase, projectId)
-    return NextResponse.json(tree, {
+    const supabase = createClient()
+    const data = await getProjectGanttRows(supabase, projectId)
+    return NextResponse.json(data, {
       headers: { 'Cache-Control': 'no-store, max-age=0' },
     })
   } catch (error) {

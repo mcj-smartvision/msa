@@ -53,6 +53,10 @@ export interface ScheduleTreeNode {
   scheduleWeight?: number | null
   /** Imported / catch-up percent from project_tasks.percent_complete */
   percentComplete?: number
+  /** Latest CPM / manual total float (days) from schedule_calculations */
+  totalFloat?: number | null
+  /** MSP predecessor labels e.g. "1.2FS, 1.3SS+2d" */
+  predecessorLabel?: string | null
   packages: WorkshopPackageNode[]
   children: ScheduleTreeNode[]
 }
