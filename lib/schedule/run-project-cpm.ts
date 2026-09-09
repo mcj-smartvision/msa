@@ -3,7 +3,6 @@ import type { TaskRelationType } from '@/types/schedule'
 import {
   calculateCpm,
   type CpmActivityResult,
-  type CpmCalculateResult,
 } from '@/lib/schedule/cpm-calculate'
 import { DEFAULT_MSP_MINUTES_PER_DAY } from '@/lib/schedule/predecessor-format'
 import { diffDaysIso, toIsoDateOnly } from '@/lib/schedule/dates'
@@ -96,8 +95,8 @@ export async function runProjectCpmCalculation(
     lagDays: lagMinutesToDays(Number(d.lag_duration) || 0),
   }))
 
-  const cpm: CpmCalculateResult = calculateCpm(cpmInputActivities, cpmInputDeps)
-  if (!cpm.success) {
+  const cpm = calculateCpm(cpmInputActivities, cpmInputDeps)
+  if (cpm.success === false) {
     const err = new Error(cpm.message) as Error & {
       code?: string
       cycleIds?: string[]

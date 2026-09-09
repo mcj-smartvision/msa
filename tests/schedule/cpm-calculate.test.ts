@@ -24,7 +24,7 @@ describe('calculateCpm — required A/B/C/D network', () => {
   it('marks A, B, D critical; C float 2; project duration 14', () => {
     const result = calculateCpm(activities, dependencies)
     expect(result.success).toBe(true)
-    if (!result.success) return
+    if (result.success === false) return
 
     expect(result.projectDurationDays).toBe(14)
 
@@ -65,7 +65,7 @@ describe('calculateCpm — required A/B/C/D network', () => {
       ]
     )
     expect(result.success).toBe(false)
-    if (result.success) return
+    if (result.success === true) return
     expect(result.error).toBe('CYCLE_DETECTED')
     expect(result.cycleIds?.length).toBeGreaterThan(0)
   })
