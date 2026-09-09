@@ -1,6 +1,7 @@
 'use client'
 
 import { memo } from 'react'
+import { HelpCircle } from 'lucide-react'
 import { FormattedDate } from '@/components/schedule/formatted-date'
 import { CriticalBadge, TaskStatusBadge } from '@/components/schedule/task-status-badge'
 import { getTaskScheduleStatus } from '@/lib/schedule/task-view-date'
@@ -20,6 +21,14 @@ export interface ScheduleTaskRowProps {
   predecessorLabel: string
   statusAsOf: string
   isCriticalPath?: boolean
+  /** Effective weight (parent = sum of children when rolled up). */
+  displayWeight?: number | null
+  isWeightParent?: boolean
+  weightHelpText?: string | null
+  weightInvalid?: boolean
+  helpOpen?: boolean
+  onToggleWeightHelp?: () => void
+  onCloseWeightHelp?: () => void
 }
 
 function ScheduleTaskRowComponent({
@@ -27,6 +36,13 @@ function ScheduleTaskRowComponent({
   predecessorLabel,
   statusAsOf,
   isCriticalPath = false,
+  displayWeight,
+  isWeightParent = false,
+  weightHelpText = null,
+  weightInvalid = false,
+  helpOpen = false,
+  onToggleWeightHelp,
+  onCloseWeightHelp,
 }: ScheduleTaskRowProps) {
   const depth = wbsDepth(task.wbs_code)
   const indent = depth * INDENT_PX
@@ -34,13 +50,17 @@ function ScheduleTaskRowComponent({
   const start = task.start_planned ?? task.start_current
   const finish = task.finish_planned ?? task.finish_current
   const isOverdue = status === 'overdue'
+  const weightValue =
+    displayWeight !== undefined ? displayWeight : task.schedule_weight
+  const isHeader = Boolean(task.is_summary) || isWeightParent
 
   return (
     <tr
       className={cn(
         'border-b last:border-0 hover:bg-muted/20',
         isOverdue && 'bg-orange-100/95 border-s-4 border-s-orange-500 hover:bg-orange-100',
-        !isOverdue && isCriticalPath && 'bg-red-50/40 hover:bg-red-50/60'
+        !isOverdue && isCriticalPath && 'bg-red-50/40 hover:bg-red-50/60',
+        !isOverdue && isHeader && 'bg-slate-50/80'
       )}
     >
       <td
@@ -54,7 +74,7 @@ function ScheduleTaskRowComponent({
         <span
           className={cn(
             'leading-relaxed break-words',
-            task.is_summary ? 'font-semibold text-foreground' : 'font-medium'
+            isHeader ? 'font-semibold text-foreground' : 'font-medium'
           )}
         >
           {task.name}
@@ -81,8 +101,50 @@ function ScheduleTaskRowComponent({
         {predecessorLabel}
       </td>
 
-      <td className="px-3 py-2.5 align-top tabular-nums text-right text-muted-foreground">
-        {formatScheduleWeight(task.schedule_weight)}
+      <td className="relative px-3 py-2.5 align-top tabular-nums text-right">
+        <div className="inline-flex items-center justify-end gap-0.5">
+          <span
+            className={cn(
+              'inline-block min-w-[2.25rem] rounded px-1.5 py-0.5 text-muted-foreground',
+              isWeightParent && 'font-semibold text-sky-950 bg-sky-50',
+              weightInvalid &&
+                'border-2 border-red-500 bg-red-50 font-semibold text-red-900'
+            )}
+          >
+            {formatScheduleWeight(weightValue)}
+          </span>
+          {isWeightParent && weightHelpText && onToggleWeightHelp ? (
+            <button
+              type="button"
+              className="rounded-full p-0.5 text-sky-700 hover:bg-sky-100"
+              title="وزن سرشاخه از کجا آمده؟"
+              aria-label="وزن سرشاخه از کجا آمده؟"
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleWeightHelp()
+              }}
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+        </div>
+        {helpOpen && weightHelpText ? (
+          <div
+            className="absolute z-30 mt-1 inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-medium tabular-nums text-slate-800 shadow-lg"
+            style={{ insetInlineEnd: 8 }}
+            dir="rtl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span>{weightHelpText}</span>
+            <button
+              type="button"
+              className="shrink-0 text-[10px] text-sky-700 hover:underline"
+              onClick={() => onCloseWeightHelp?.()}
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
       </td>
 
       <td className="px-3 py-2.5 align-top tabular-nums text-right">{task.percent_complete}%</td>
@@ -94,6 +156,11 @@ function rowPropsEqual(prev: ScheduleTaskRowProps, next: ScheduleTaskRowProps): 
   if (prev.statusAsOf !== next.statusAsOf) return false
   if (prev.predecessorLabel !== next.predecessorLabel) return false
   if (prev.isCriticalPath !== next.isCriticalPath) return false
+  if (prev.displayWeight !== next.displayWeight) return false
+  if (prev.isWeightParent !== next.isWeightParent) return false
+  if (prev.weightHelpText !== next.weightHelpText) return false
+  if (prev.weightInvalid !== next.weightInvalid) return false
+  if (prev.helpOpen !== next.helpOpen) return false
 
   const a = prev.task
   const b = next.task

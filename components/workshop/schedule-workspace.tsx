@@ -14,6 +14,8 @@ import {
   Save,
   CheckCircle2,
   RefreshCw,
+  HelpCircle,
+  AlertCircle,
 } from 'lucide-react'
 import {
   approvalStatusFa,
@@ -37,6 +39,11 @@ import { PageHeader } from '@/components/admin/shared'
 import { ScheduleDownloadButton } from '@/components/schedule/schedule-download-button'
 import { WORKSHOP_UOMS } from '@/lib/workshop/types'
 import { formatScheduleWeightDisplay } from '@/lib/workshop/package-weight'
+import { wbsDepth } from '@/lib/schedule/wbs-utils'
+import {
+  applyParentWeightSum,
+  isDescendantWbs,
+} from '@/lib/schedule/parent-weight-rollup'
 import {
   formatScheduleDate,
   isoToCalendarInput,
@@ -45,7 +52,10 @@ import {
 } from '@/lib/schedule/dates'
 import { useScheduleCalendar } from '@/hooks/useScheduleCalendar'
 import {
+  clearScheduleFieldDrafts,
+  publishScheduleFieldDrafts,
   publishScheduleViewSync,
+  readScheduleFieldDrafts,
   useScheduleViewSync,
 } from '@/lib/schedule/schedule-view-sync'
 
@@ -116,12 +126,162 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
   const [saving, setSaving] = useState(false)
   const [readOnly, setReadOnly] = useState(forceSupervisorView)
   const [canWriteServer, setCanWriteServer] = useState(false)
-  /** Pending date/float edits — flushed by «ثبت نهایی» */
+  /** Pending date/float/weight edits — flushed by «ثبت نهایی» */
   const [taskDrafts, setTaskDrafts] = useState<
-    Record<string, { startDate?: string; finishDate?: string; totalFloat?: number | null }>
+    Record<
+      string,
+      {
+        startDate?: string
+        finishDate?: string
+        totalFloat?: number | null
+        scheduleWeight?: number | null
+      }
+    >
   >({})
   const [dependencyLinkCount, setDependencyLinkCount] = useState(0)
   const [tasksWithPredecessors, setTasksWithPredecessors] = useState(0)
+  const [helpWeightParentId, setHelpWeightParentId] = useState<string | null>(null)
+
+  const scheduleTaskFlat = useMemo(() => {
+    // Include summary/header rows (is_summary) — parent weight = sum of children
+    const out: ScheduleTreeNode[] = []
+    const walk = (list: ScheduleTreeNode[]) => {
+      for (const n of list) {
+        if (n.taskId) out.push(n)
+        if (n.children.length) walk(n.children)
+      }
+    }
+    walk(nodes)
+    return out
+  }, [nodes])
+
+  const weightRollup = useMemo(() => {
+    const rollNodes = scheduleTaskFlat.map((n) => {
+      const id = n.taskId!
+      const drafted = taskDrafts[id]?.scheduleWeight
+      return {
+        id,
+        wbs: n.wbs,
+        name: n.name,
+        // For parents, ignore stored/draft weight as input — children drive the sum.
+        // Drafts on leaves (and manual parent overrides) are applied below in display.
+        weight:
+          drafted !== undefined ? drafted ?? null : n.scheduleWeight ?? null,
+      }
+    })
+    return applyParentWeightSum(rollNodes)
+  }, [scheduleTaskFlat, taskDrafts])
+
+  function displayScheduleWeight(taskId: string, stored: number | null | undefined): number | null {
+    const isParent = weightRollup.parentIds.has(taskId)
+    const drafted = taskDrafts[taskId]?.scheduleWeight
+    const rolledRaw = weightRollup.weights[taskId]
+    const rolled =
+      rolledRaw == null || !Number.isFinite(Number(rolledRaw)) ? null : Number(rolledRaw)
+
+    if (isParent) {
+      // Live sum of children by default — no need for ثبت نهایی / بروزرسانی
+      // Keep a manual parent typed value only while it differs from the live sum
+      if (
+        drafted !== undefined &&
+        drafted != null &&
+        rolled != null &&
+        Number(drafted) !== rolled
+      ) {
+        return Number(drafted)
+      }
+      if (rolled != null) return rolled
+      if (drafted !== undefined) return drafted ?? null
+      return stored == null || !Number.isFinite(Number(stored)) ? null : Number(stored)
+    }
+
+    if (drafted !== undefined) return drafted ?? null
+    return stored == null || !Number.isFinite(Number(stored)) ? null : Number(stored)
+  }
+
+  function setScheduleWeight(taskId: string, next: number | null) {
+    setTaskDrafts((prev) => {
+      const merged: typeof prev = {
+        ...prev,
+        [taskId]: { ...prev[taskId], scheduleWeight: next },
+      }
+
+      const edited = scheduleTaskFlat.find((n) => n.taskId === taskId)
+      if (!edited?.wbs) return merged
+
+      const rollNodes = scheduleTaskFlat.map((n) => {
+        const id = n.taskId!
+        const drafted = merged[id]?.scheduleWeight
+        return {
+          id,
+          wbs: n.wbs,
+          name: n.name,
+          weight:
+            drafted !== undefined ? drafted ?? null : n.scheduleWeight ?? null,
+        }
+      })
+      const rolled = applyParentWeightSum(rollNodes)
+
+      // Manual edit on a parent/header — keep as typed; do not overwrite from children
+      if (rolled.parentIds.has(taskId)) {
+        return merged
+      }
+
+      // Child (or leaf) edit → push live sums onto every ancestor header
+      for (const n of scheduleTaskFlat) {
+        const id = n.taskId!
+        if (!rolled.parentIds.has(id) || !n.wbs) continue
+        if (!isDescendantWbs(n.wbs, edited.wbs)) continue
+        merged[id] = {
+          ...merged[id],
+          scheduleWeight: rolled.weights[id] ?? 0,
+        }
+      }
+      return merged
+    })
+  }
+
+  /** Root-level weights (headers + leaf activities without a parent) must sum to 100. */
+  const projectWeightCheck = useMemo(() => {
+    const contributorIds = new Set<string>()
+    let sum = 0
+    for (const n of scheduleTaskFlat) {
+      if (!n.taskId || wbsDepth(n.wbs) !== 0) continue
+      contributorIds.add(n.taskId)
+      const drafted = taskDrafts[n.taskId]?.scheduleWeight
+      const rolledRaw = weightRollup.weights[n.taskId]
+      const rolled =
+        rolledRaw == null || !Number.isFinite(Number(rolledRaw))
+          ? null
+          : Number(rolledRaw)
+      const isParent = weightRollup.parentIds.has(n.taskId)
+      let w: number | null = null
+      if (isParent) {
+        if (
+          drafted !== undefined &&
+          drafted != null &&
+          rolled != null &&
+          Number(drafted) !== rolled
+        ) {
+          w = Number(drafted)
+        } else if (rolled != null) {
+          w = rolled
+        } else if (drafted !== undefined) {
+          w = drafted
+        } else if (n.scheduleWeight != null && Number.isFinite(Number(n.scheduleWeight))) {
+          w = Number(n.scheduleWeight)
+        }
+      } else if (drafted !== undefined) {
+        w = drafted
+      } else if (n.scheduleWeight != null && Number.isFinite(Number(n.scheduleWeight))) {
+        w = Number(n.scheduleWeight)
+      }
+      if (w != null && w > 0) sum += w
+    }
+    sum = Math.round(sum * 100) / 100
+    const ok = contributorIds.size === 0 || Math.abs(sum - 100) < 0.05
+    return { sum, ok, contributorIds, gap: Math.round((100 - sum) * 100) / 100 }
+  }, [scheduleTaskFlat, taskDrafts, weightRollup])
   const load = useCallback(async (expandAfter?: { kind: 'schedule' | 'package'; id: string }) => {
     if (!projectId) return []
     setLoading(true)
@@ -159,6 +319,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       setEdits({})
       setInlineDraft(null)
       setTaskDrafts({})
+      setHelpWeightParentId(null)
       return loadedNodes
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'خطا')
@@ -182,6 +343,44 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     },
     { active: scheduleTabActive }
   )
+
+  // Push live drafts to ارسال برنامه so switching tabs needs no hard refresh
+  useEffect(() => {
+    if (!projectId || readOnly) return
+    const entries = Object.entries(taskDrafts)
+    if (entries.length === 0) return
+    const byTaskId: Record<
+      string,
+      {
+        startDate?: string
+        finishDate?: string
+        totalFloat?: number | null
+        scheduleWeight?: number | null
+      }
+    > = {}
+    for (const [id, patch] of entries) {
+      byTaskId[id] = { ...patch }
+    }
+    // Include rolled parent weights so send-preview matches edit UI
+    for (const n of scheduleTaskFlat) {
+      const id = n.taskId!
+      if (!weightRollup.parentIds.has(id)) continue
+      const shown = displayScheduleWeight(id, n.scheduleWeight)
+      byTaskId[id] = {
+        ...byTaskId[id],
+        scheduleWeight: shown,
+      }
+    }
+    publishScheduleFieldDrafts(projectId, byTaskId)
+  }, [projectId, readOnly, taskDrafts, scheduleTaskFlat, weightRollup])
+
+  // Restore in-progress edits when returning to ویرایش برنامه
+  useEffect(() => {
+    if (!projectId || readOnly) return
+    const stored = readScheduleFieldDrafts(projectId)
+    if (Object.keys(stored).length === 0) return
+    setTaskDrafts((prev) => (Object.keys(prev).length > 0 ? prev : stored))
+  }, [projectId, readOnly])
 
   const selectedPackage = selected?.kind === 'package' ? selected.pkg : null
   const selectedPackageId = selectedPackage?.id ?? null
@@ -333,7 +532,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
   /** Persist one task field patch (no UI saving flag — caller owns it). */
   async function saveScheduleTaskFields(
     taskId: string,
-    patch: { startDate?: string; finishDate?: string; totalFloat?: number | null }
+    patch: {
+      startDate?: string
+      finishDate?: string
+      totalFloat?: number | null
+      scheduleWeight?: number | null
+    }
   ) {
     if (!projectId || readOnly) return
     const res = await fetch('/api/schedule/task-fields', {
@@ -347,7 +551,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
 
   function patchTaskDraft(
     taskId: string,
-    patch: { startDate?: string; finishDate?: string; totalFloat?: number | null }
+    patch: {
+      startDate?: string
+      finishDate?: string
+      totalFloat?: number | null
+      scheduleWeight?: number | null
+    }
   ) {
     setTaskDrafts((prev) => ({
       ...prev,
@@ -373,7 +582,17 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       : []
 
     if (entries.length === 0 && packagesToSave.length === 0 && !inlineDraft) {
-      setMessage('تغییر جدیدی برای ثبت نیست')
+      setSaving(true)
+      setMessage(null)
+      try {
+        await load()
+        publishScheduleViewSync(projectId)
+        setMessage('برنامه بروزرسانی شد')
+      } catch (err) {
+        setMessage(err instanceof Error ? err.message : 'بروزرسانی ناموفق بود')
+      } finally {
+        setSaving(false)
+      }
       return
     }
 
@@ -432,7 +651,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         if (
           patch.startDate === undefined &&
           patch.finishDate === undefined &&
-          patch.totalFloat === undefined
+          patch.totalFloat === undefined &&
+          patch.scheduleWeight === undefined
         ) {
           continue
         }
@@ -440,6 +660,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       }
 
       setTaskDrafts({})
+      clearScheduleFieldDrafts(projectId)
       // Recalculate floats so برنامه and گانت stay aligned
       try {
         await fetch(`/api/schedule/calculate?projectId=${encodeURIComponent(projectId)}`, {
@@ -449,7 +670,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         /* dates already saved; float refresh is best-effort */
       }
       publishScheduleViewSync(projectId)
-      setMessage('ثبت نهایی شد — تاریخ و شناوری در گانت هم به‌روز شد')
+      setMessage('ثبت و بروزرسانی شد — تغییرات در گانت و ارسال برنامه هم اعمال شد')
       await load()
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'خطا در ثبت نهایی')
@@ -632,8 +853,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
 
   const toolbarSaveEnabled = inlineDraftValid || dirtyPackages.length > 0
   const hasTaskDrafts = Object.keys(taskDrafts).length > 0
-  const finalCommitEnabled =
-    !readOnly && (hasTaskDrafts || toolbarSaveEnabled) && !saving
+  const finalCommitEnabled = !readOnly && !saving && !loading
 
   if (!projectId) {
     return <p className="text-sm text-slate-600">پروژه را از بالا انتخاب کنید.</p>
@@ -738,26 +958,45 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
               disabled={!finalCommitEnabled}
               onClick={() => void commitFinalSchedule()}
               className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-40"
+              title="ذخیره تغییرات و بروزرسانی برنامه"
             >
-              <CheckCircle2 className="h-4 w-4" />
-              ثبت نهایی
+              {saving || loading ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4" />
+              )}
+              ثبت و بروزرسانی
               {hasTaskDrafts ? (
                 <span className="rounded-full bg-white/20 px-1.5 text-[10px]">
                   {Object.keys(taskDrafts).length}
                 </span>
               ) : null}
             </button>
-            <button
-              type="button"
-              disabled={loading || saving}
-              onClick={() => {
-                void load().then(() => setMessage('برنامه بروزرسانی شد'))
-              }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-40"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              بروزرسانی
-            </button>
+            {!projectWeightCheck.ok ? (
+              <div
+                className="inline-flex max-w-md items-start gap-1.5 rounded-lg border border-red-400 bg-red-50 px-2.5 py-1.5 text-[11px] leading-snug text-red-800"
+                role="alert"
+              >
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>
+                  خطای وزن‌دهی: جمع وزن سرتیترها و فعالیت‌های بدون‌فرزند سطح پروژه{' '}
+                  <strong className="tabular-nums">{projectWeightCheck.sum}</strong> است؛ باید{' '}
+                  <strong>۱۰۰</strong> باشد
+                  {projectWeightCheck.gap !== 0 ? (
+                    <>
+                      {' '}
+                      (اختلاف{' '}
+                      <strong className="tabular-nums">
+                        {projectWeightCheck.gap > 0 ? '+' : ''}
+                        {projectWeightCheck.gap}
+                      </strong>
+                      )
+                    </>
+                  ) : null}
+                  . کادرهای قرمز همان مقادیری هستند که در این جمع شرکت دارند.
+                </span>
+              </div>
+            ) : null}
             <button
               type="button"
               disabled={!toolbarSaveEnabled || saving}
@@ -1032,9 +1271,13 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             </div>
                           </td>
                           <td
-                            className={`${SCHEDULE_CELL} font-mono text-[10px] text-slate-700 leading-tight`}
+                            className={`${SCHEDULE_CELL} font-mono text-[10px] text-slate-700 leading-tight cursor-help`}
                             dir="ltr"
-                            title={n.predecessorLabel ?? undefined}
+                            title={
+                              n.predecessorTooltip?.trim() ||
+                              n.predecessorLabel ||
+                              undefined
+                            }
                           >
                             {n.predecessorLabel?.trim() ? n.predecessorLabel : '—'}
                           </td>
@@ -1099,8 +1342,112 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                           <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
                           <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
                           <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
-                          <td className={`${SCHEDULE_CELL} tabular-nums text-[11px] text-slate-700 text-center`}>
-                            {formatScheduleWeightDisplay(n.scheduleWeight)}
+                          <td className={`${SCHEDULE_CELL} text-center relative`}>
+                            {!readOnly && n.taskId ? (
+                              <div className="inline-flex items-center justify-center gap-0.5 max-w-full">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step="0.01"
+                                  className={(() => {
+                                    const isParent = weightRollup.parentIds.has(n.taskId)
+                                    const weightInvalid =
+                                      !projectWeightCheck.ok &&
+                                      projectWeightCheck.contributorIds.has(n.taskId)
+                                    if (weightInvalid) {
+                                      return 'w-14 rounded border-2 border-red-500 bg-red-50 px-1 py-0.5 text-[11px] tabular-nums text-center font-semibold text-red-900 shadow-[0_0_0_1px_rgba(239,68,68,0.35)]'
+                                    }
+                                    if (isParent) {
+                                      return 'w-14 rounded border border-sky-200 bg-sky-50 px-1 py-0.5 text-[11px] tabular-nums text-center font-semibold text-sky-950'
+                                    }
+                                    return 'w-14 rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] tabular-nums text-center'
+                                  })()}
+                                  value={(() => {
+                                    const shown = displayScheduleWeight(
+                                      n.taskId,
+                                      n.scheduleWeight
+                                    )
+                                    return shown == null ? '' : String(shown)
+                                  })()}
+                                  placeholder="—"
+                                  disabled={saving}
+                                  title={
+                                    !projectWeightCheck.ok &&
+                                    projectWeightCheck.contributorIds.has(n.taskId)
+                                      ? `این وزن در جمع سطح پروژه (${projectWeightCheck.sum}) شرکت دارد — باید مجموع ۱۰۰ شود`
+                                      : weightRollup.parentIds.has(n.taskId)
+                                        ? 'وزن سرشاخه = جمع فرزندان (زنده؛ قابل ویرایش دستی)'
+                                        : 'وزن فعالیت'
+                                  }
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(ev) => {
+                                    const raw = ev.target.value.trim()
+                                    const next = raw === '' ? null : Number(raw)
+                                    if (raw !== '' && !Number.isFinite(next as number)) return
+                                    if (next != null && next < 0) return
+                                    setScheduleWeight(n.taskId!, next)
+                                  }}
+                                />
+                                {weightRollup.parentIds.has(n.taskId) ? (
+                                  <button
+                                    type="button"
+                                    className="shrink-0 rounded-full p-0.5 text-sky-700 hover:bg-sky-100"
+                                    title="وزن سرشاخه از کجا آمده؟"
+                                    aria-label="وزن سرشاخه از کجا آمده؟"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setHelpWeightParentId((id) =>
+                                        id === n.taskId ? null : n.taskId
+                                      )
+                                    }}
+                                  >
+                                    <HelpCircle className="h-3.5 w-3.5" />
+                                  </button>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <span className="inline-flex items-center justify-center gap-0.5 tabular-nums text-[11px] text-slate-700">
+                                {formatScheduleWeightDisplay(
+                                  n.taskId
+                                    ? displayScheduleWeight(n.taskId, n.scheduleWeight)
+                                    : n.scheduleWeight
+                                )}
+                                {n.taskId && weightRollup.parentIds.has(n.taskId) ? (
+                                  <button
+                                    type="button"
+                                    className="rounded-full p-0.5 text-sky-700 hover:bg-sky-100"
+                                    title="وزن سرشاخه از کجا آمده؟"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setHelpWeightParentId((id) =>
+                                        id === n.taskId ? null : n.taskId
+                                      )
+                                    }}
+                                  >
+                                    <HelpCircle className="h-3.5 w-3.5" />
+                                  </button>
+                                ) : null}
+                              </span>
+                            )}
+                            {n.taskId &&
+                            helpWeightParentId === n.taskId &&
+                            weightRollup.explanations.get(n.taskId) ? (
+                              <div
+                                className="absolute z-30 mt-1 inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-sky-200 bg-white px-3 py-1.5 text-[11px] font-medium tabular-nums text-slate-800 shadow-lg"
+                                style={{ insetInlineEnd: 4 }}
+                                dir="rtl"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <span>{weightRollup.explanations.get(n.taskId)!.text}</span>
+                                <button
+                                  type="button"
+                                  className="shrink-0 text-[10px] text-sky-700 hover:underline"
+                                  onClick={() => setHelpWeightParentId(null)}
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ) : null}
                           </td>
                           <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
                           <td className={`${SCHEDULE_CELL} text-slate-500 text-[11px]`}>پایه</td>

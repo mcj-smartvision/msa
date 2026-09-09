@@ -11,7 +11,13 @@ import { ScheduleDateToolbar } from '@/components/schedule/schedule-date-toolbar
 import { SchedulePreviewTable } from '@/components/schedule/schedule-preview-table'
 import { FormattedDate } from '@/components/schedule/formatted-date'
 import { useScheduleViewDate } from '@/hooks/useScheduleViewDate'
-import { sortTasksForSchedulePreview } from '@/lib/schedule/task-view-date'
+import { compareWbs } from '@/lib/schedule/wbs-utils'
+import {
+  publishScheduleViewSync,
+  useScheduleFieldDrafts,
+  useScheduleViewSync,
+  type ScheduleTaskFieldDraft,
+} from '@/lib/schedule/schedule-view-sync'
 import type { ProjectTask, ScheduleImport } from '@/types/schedule'
 import { CalendarRange, CheckCircle2, FileUp, Loader2, AlertTriangle } from 'lucide-react'
 import { ScheduleDownloadButton } from '@/components/schedule/schedule-download-button'
@@ -35,19 +41,44 @@ function statusBadge(status: ScheduleImport['status']) {
 
 function sortTasks(
   tasks: ProjectTask[],
-  labels: Record<string, string> = {}
+  _labels: Record<string, string> = {}
 ): ProjectTask[] {
-  return sortTasksForSchedulePreview(tasks, labels)
+  // Align with ویرایش برنامه: WBS hierarchy (parent before children)
+  return [...tasks].sort((a, b) => compareWbs(a.wbs_code, b.wbs_code))
+}
+
+function applyFieldDrafts(
+  tasks: ProjectTask[],
+  drafts: Record<string, ScheduleTaskFieldDraft>
+): ProjectTask[] {
+  if (!drafts || Object.keys(drafts).length === 0) return tasks
+  return tasks.map((t) => {
+    const d = drafts[t.id]
+    if (!d) return t
+    const next: ProjectTask = { ...t }
+    if (d.scheduleWeight !== undefined) {
+      next.schedule_weight = d.scheduleWeight
+    }
+    if (d.startDate) {
+      next.start_current = `${d.startDate}T12:00:00.000Z`
+      next.start_planned = `${d.startDate}T12:00:00.000Z`
+    }
+    if (d.finishDate) {
+      next.finish_current = `${d.finishDate}T12:00:00.000Z`
+      next.finish_planned = `${d.finishDate}T12:00:00.000Z`
+    }
+    return next
+  })
 }
 
 export function ScheduleImportPanel({
   projectId,
   initialImports,
-  taskCount,
+  taskCount: initialTaskCount,
   previewTasks,
   scheduleBaselineStart,
   scheduleActualStart: initialActualStart,
-  predecessorLabels,
+  predecessorLabels: initialPredecessorLabels,
 }: ScheduleImportPanelProps) {
   const router = useRouter()
   const { viewDate, setViewDate, resetToToday } = useScheduleViewDate()
@@ -57,16 +88,58 @@ export function ScheduleImportPanel({
   const [error, setError] = useState<string | null>(null)
   const [importSuccess, setImportSuccess] = useState<string | null>(null)
 
-  const [tasks, setTasks] = useState(() => sortTasks(previewTasks, predecessorLabels))
+  const [tasks, setTasks] = useState(() => sortTasks(previewTasks, initialPredecessorLabels))
+  const [taskCount, setTaskCount] = useState(initialTaskCount)
+  const [predecessorLabels, setPredecessorLabels] = useState(initialPredecessorLabels)
+  const [fieldDrafts, setFieldDrafts] = useState<Record<string, ScheduleTaskFieldDraft>>({})
   const [actualStart, setActualStart] = useState(initialActualStart)
   const [draftStart, setDraftStart] = useState<string | null>(null)
   const [baselineStart, setBaselineStart] = useState(scheduleBaselineStart)
   const localRescheduleRef = useRef(false)
 
+  const reloadPreview = useCallback(async () => {
+    if (!projectId) return
+    try {
+      const res = await fetch(
+        `/api/schedule/preview?projectId=${encodeURIComponent(projectId)}`,
+        { cache: 'no-store' }
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'بارگذاری برنامه ناموفق بود')
+      localRescheduleRef.current = false
+      setTasks(sortTasks((data.tasks ?? []) as ProjectTask[], data.predecessorLabels ?? {}))
+      setTaskCount(Number(data.count) || 0)
+      setPredecessorLabels((data.predecessorLabels ?? {}) as Record<string, string>)
+      if (data.scheduleBaselineStart !== undefined) {
+        setBaselineStart(data.scheduleBaselineStart ?? null)
+      }
+      if (data.scheduleActualStart !== undefined) {
+        setActualStart(data.scheduleActualStart ?? null)
+      }
+    } catch {
+      /* keep current snapshot */
+    }
+  }, [projectId])
+
+  useScheduleViewSync(projectId, () => {
+    void reloadPreview()
+    router.refresh()
+  })
+
+  useScheduleFieldDrafts(projectId, setFieldDrafts)
+
   useEffect(() => {
     if (localRescheduleRef.current) return
     setTasks(sortTasks(previewTasks, predecessorLabels))
   }, [previewTasks, predecessorLabels])
+
+  useEffect(() => {
+    setTaskCount(initialTaskCount)
+  }, [initialTaskCount])
+
+  useEffect(() => {
+    setPredecessorLabels(initialPredecessorLabels)
+  }, [initialPredecessorLabels])
 
   useEffect(() => {
     setActualStart(initialActualStart)
@@ -76,13 +149,13 @@ export function ScheduleImportPanel({
     setBaselineStart(scheduleBaselineStart)
   }, [scheduleBaselineStart])
 
-  const displayTasks = useMemo(
-    () =>
+  const displayTasks = useMemo(() => {
+    const base =
       tasks.length > 0
         ? sortTasks(tasks, predecessorLabels)
-        : sortTasks(previewTasks, predecessorLabels),
-    [tasks, previewTasks, predecessorLabels]
-  )
+        : sortTasks(previewTasks, predecessorLabels)
+    return applyFieldDrafts(base, fieldDrafts)
+  }, [tasks, previewTasks, predecessorLabels, fieldDrafts])
   const hasSchedule = taskCount > 0 || displayTasks.length > 0
   const latestImportId =
     initialImports.find((item) => item.status === 'completed')?.id ?? null
@@ -264,6 +337,7 @@ export function ScheduleImportPanel({
           onTasksUpdated={(next) => {
             localRescheduleRef.current = true
             setTasks(sortTasks(next, predecessorLabels))
+            publishScheduleViewSync(projectId)
           }}
         />
       ) : null}
@@ -291,7 +365,8 @@ export function ScheduleImportPanel({
               {taskCount > displayTasks.length ? ` از ${taskCount}` : ''})
             </CardTitle>
             <CardDescription className="text-xs">
-              مرتب‌سازی: تاریخ شروع → پیش‌نیاز قبل از پس‌نیاز · تأخیر پیوندها به روز کاری
+              مرتب‌سازی بر اساس WBS (مادر قبل از فرزندان) · وزن سرشاخه = جمع فرزندان · همان داده‌های
+              ذخیره‌شده در ویرایش برنامه
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0 pt-0">

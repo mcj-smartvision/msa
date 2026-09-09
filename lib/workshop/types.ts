@@ -57,6 +57,8 @@ export interface ScheduleTreeNode {
   totalFloat?: number | null
   /** MSP predecessor labels e.g. "1.2FS, 1.3SS+2d" */
   predecessorLabel?: string | null
+  /** Full Persian explanation(s) for hover on پیش‌نیاز */
+  predecessorTooltip?: string | null
   packages: WorkshopPackageNode[]
   children: ScheduleTreeNode[]
 }

@@ -1,11 +1,11 @@
 import { diffDaysIso, toIsoDateOnly } from '@/lib/schedule/dates'
 import {
-  compareTasksByScheduleDate,
   getTaskScheduleStatus,
   taskEffectiveFinish,
   taskEffectiveStart,
   todayIso,
 } from '@/lib/schedule/task-view-date'
+import { compareWbs, wbsDepth } from '@/lib/schedule/wbs-utils'
 import type { ProjectTask } from '@/types/schedule'
 
 export type PlanComplianceCheck = 'on_track' | 'behind' | 'done' | 'not_started'
@@ -15,6 +15,12 @@ export interface PlanComplianceRow {
   wbs: string | null
   name: string
   isCritical: boolean
+  /** Outline depth from WBS (0 = top level) */
+  depth: number
+  /** MSP وزن (percent-points), null if missing */
+  scheduleWeight: number | null
+  /** Summary / header row from MSP */
+  isSummary: boolean
   start: string | null
   finish: string | null
   /** Expected % complete by as-of date (linear time-phased) */
@@ -43,7 +49,7 @@ export interface PlanComplianceSummary {
   variance: number
   /** Due by as-of (started on/before today) — KPIs and “yes, on plan” */
   rows: PlanComplianceRow[]
-  /** Full schedule for the progress editor, chronological */
+  /** Full schedule for the progress editor, WBS hierarchy order */
   allRows: PlanComplianceRow[]
 }
 
@@ -86,11 +92,19 @@ function toComplianceRow(task: ProjectTask, asOf: string): PlanComplianceRow {
     daysLate = Math.max(0, Math.round(((plannedPercent - actualPercent) / 100) * duration))
   }
 
+  const weight =
+    task.schedule_weight != null && Number.isFinite(Number(task.schedule_weight))
+      ? Number(task.schedule_weight)
+      : null
+
   return {
     taskId: task.id,
     wbs: task.wbs_code,
     name: task.name,
     isCritical: Boolean(task.is_critical),
+    depth: wbsDepth(task.wbs_code),
+    scheduleWeight: weight,
+    isSummary: Boolean(task.is_summary),
     start,
     finish,
     plannedPercent,
@@ -105,6 +119,7 @@ function toComplianceRow(task: ProjectTask, asOf: string): PlanComplianceRow {
 /**
  * Tasks that were supposed to be underway or finished by asOf,
  * with planned-vs-actual checkmarks for PM control.
+ * List order follows WBS outline (parent, then children) — not calendar start date.
  */
 export function buildPlanCompliance(
   tasks: ProjectTask[],
@@ -118,8 +133,8 @@ export function buildPlanCompliance(
   const hasSchedule = tasks.length > 0
   const shouldShowChecklist = Boolean(actualStart && actualStart <= asOf && hasSchedule)
 
-  const chronological = [...tasks].sort(compareTasksByScheduleDate)
-  const allRows = chronological.map((task) => toComplianceRow(task, asOf))
+  const hierarchical = [...tasks].sort((a, b) => compareWbs(a.wbs_code, b.wbs_code))
+  const allRows = hierarchical.map((task) => toComplianceRow(task, asOf))
   const rows = allRows.filter((row) => Boolean(row.start && row.start <= asOf))
 
   const onTrack = rows.filter((r) => r.check === 'on_track').length

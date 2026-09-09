@@ -1,4 +1,5 @@
 import type { TaskRelationType } from '@/types/schedule'
+import { explainDependencyLink } from '@/lib/schedule/dependency-explain'
 
 export type GanttLinkDto = {
   predecessorId: string
@@ -16,6 +17,11 @@ export type GanttBarAnchor = {
   finishX: number
   midY: number
   isMilestone?: boolean
+}
+
+export type GanttTaskMeta = {
+  name: string
+  wbs: string | null
 }
 
 const STUB = 10
@@ -98,10 +104,7 @@ export function buildGanttLinkPath(
   return { d, fromX, fromY, toX, toY }
 }
 
-export function buildAllGanttLinkPaths(
-  links: GanttLinkDto[],
-  anchors: Map<string, GanttBarAnchor>
-): Array<{
+export type GanttLinkDrawing = {
   key: string
   d: string
   type: TaskRelationType
@@ -110,17 +113,17 @@ export function buildAllGanttLinkPaths(
   toY: number
   enterLeft: boolean
   label: string
-}> {
-  const out: Array<{
-    key: string
-    d: string
-    type: TaskRelationType
-    lagDays: number
-    toX: number
-    toY: number
-    enterLeft: boolean
-    label: string
-  }> = []
+  tooltip: string
+  predecessorId: string
+  successorId: string
+}
+
+export function buildAllGanttLinkPaths(
+  links: GanttLinkDto[],
+  anchors: Map<string, GanttBarAnchor>,
+  taskMeta?: Map<string, GanttTaskMeta>
+): GanttLinkDrawing[] {
+  const out: GanttLinkDrawing[] = []
 
   for (const link of links) {
     const from = anchors.get(link.predecessorId)
@@ -129,12 +132,22 @@ export function buildAllGanttLinkPaths(
     const built = buildGanttLinkPath(from, to, link.type)
     if (!built) continue
     const enterLeft = link.type === 'FS' || link.type === 'SS'
-    const lag =
-      link.lagDays && Number.isFinite(link.lagDays)
-        ? link.lagDays > 0
-          ? `+${link.lagDays}d`
-          : `${link.lagDays}d`
-        : ''
+    const predMeta = taskMeta?.get(link.predecessorId)
+    const succMeta = taskMeta?.get(link.successorId)
+    const explained = explainDependencyLink({
+      type: link.type,
+      lagDays: link.lagDays,
+      predecessor: {
+        id: link.predecessorId,
+        wbs: predMeta?.wbs,
+        name: predMeta?.name,
+      },
+      successor: {
+        id: link.successorId,
+        wbs: succMeta?.wbs,
+        name: succMeta?.name,
+      },
+    })
     out.push({
       key: `${link.predecessorId}->${link.successorId}:${link.type}`,
       d: built.d,
@@ -143,7 +156,10 @@ export function buildAllGanttLinkPaths(
       toX: built.toX,
       toY: built.toY,
       enterLeft,
-      label: `${link.type}${lag}`,
+      label: explained.shortLabel,
+      tooltip: explained.tooltip,
+      predecessorId: link.predecessorId,
+      successorId: link.successorId,
     })
   }
   return out

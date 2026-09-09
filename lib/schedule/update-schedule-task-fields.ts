@@ -12,7 +12,8 @@ import { getWorkshopCapabilities } from '@/lib/workshop/service'
 import { WorkshopError } from '@/lib/workshop/domain'
 
 /**
- * Update schedule task dates and/or manual total_float (used by برنامه table → گانت sync).
+ * Update schedule task dates, total_float, and/or schedule_weight
+ * (برنامه table → گانت / catch-up / progress sync).
  * Date edits cascade to dependency successors (and WBS parents).
  */
 export async function updateScheduleTaskFields(
@@ -23,10 +24,12 @@ export async function updateScheduleTaskFields(
     startDate?: string | null
     finishDate?: string | null
     totalFloat?: number | null
+    scheduleWeight?: number | null
   }
 ): Promise<{
   updated: Array<{ id: string; startDate: string; finishDate: string; durationDays: number }>
   totalFloat: number | null
+  scheduleWeight: number | null
 }> {
   const user = await requireUser(supabase)
   await assertProjectAccess(supabase, user.id, input.projectId)
@@ -41,6 +44,10 @@ export async function updateScheduleTaskFields(
     input.totalFloat === undefined || input.totalFloat === null
       ? null
       : Number(input.totalFloat)
+  let scheduleWeight: number | null =
+    input.scheduleWeight === undefined || input.scheduleWeight === null
+      ? null
+      : Number(input.scheduleWeight)
 
   const wantsDates = input.startDate != null || input.finishDate != null
   if (wantsDates) {
@@ -177,5 +184,32 @@ export async function updateScheduleTaskFields(
       .eq('project_id', input.projectId)
   }
 
-  return { updated, totalFloat }
+  if (input.scheduleWeight !== undefined) {
+    const sw =
+      input.scheduleWeight === null || input.scheduleWeight === ('' as unknown)
+        ? null
+        : Number(input.scheduleWeight)
+    if (sw != null && (!Number.isFinite(sw) || sw < 0 || sw > 10000)) {
+      throw new WorkshopError('VALIDATION', 'وزن نامعتبر است')
+    }
+    scheduleWeight = sw
+
+    const { error: weightError } = await supabase
+      .from('project_tasks')
+      .update({ schedule_weight: sw })
+      .eq('id', input.taskId)
+      .eq('project_id', input.projectId)
+
+    if (weightError) {
+      if (/schedule_weight/i.test(weightError.message)) {
+        throw new WorkshopError(
+          'VALIDATION',
+          'ستون schedule_weight در دیتابیس وجود ندارد — migration 66 را در Supabase اجرا کنید.'
+        )
+      }
+      throw new WorkshopError('VALIDATION', `ذخیره وزن ناموفق: ${weightError.message}`)
+    }
+  }
+
+  return { updated, totalFloat, scheduleWeight }
 }

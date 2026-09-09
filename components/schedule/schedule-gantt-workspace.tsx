@@ -55,6 +55,11 @@ export function ScheduleGanttWorkspace() {
   const [error, setError] = useState<string | null>(null)
   const [draft, setDraft] = useState<Record<string, { startDate: string; finishDate: string }>>({})
   const [showDependencies, setShowDependencies] = useState(false)
+  const [depTooltip, setDepTooltip] = useState<{
+    text: string
+    x: number
+    y: number
+  } | null>(null)
 
   const labelScrollRef = useRef<HTMLDivElement>(null)
   const chartScrollRef = useRef<HTMLDivElement>(null)
@@ -333,8 +338,10 @@ export function ScheduleGanttWorkspace() {
 
   const linkDrawings = useMemo(() => {
     const anchors = new Map<string, GanttBarAnchor>()
+    const taskMeta = new Map<string, { name: string; wbs: string | null }>()
     displayRows.forEach((row, rowIndex) => {
       if (row.kind === 'package') return
+      taskMeta.set(row.id, { name: row.name, wbs: row.wbs })
       const start = toIsoDateOnly(row.startDate)
       const finish = toIsoDateOnly(row.finishDate)
       if (!start || !finish) return
@@ -354,8 +361,12 @@ export function ScheduleGanttWorkspace() {
         isMilestone: span === 0 || row.isMilestone,
       })
     })
-    return buildAllGanttLinkPaths(links, anchors)
+    return buildAllGanttLinkPaths(links, anchors, taskMeta)
   }, [displayRows, links, timeline.min])
+
+  useEffect(() => {
+    if (!showDependencies) setDepTooltip(null)
+  }, [showDependencies])
 
   const missingDates = displayRows.filter((r) => !r.startDate || !r.finishDate).length
   const chartHeight = displayRows.length * ROW_H
@@ -550,7 +561,6 @@ export function ScheduleGanttWorkspace() {
                     className="pointer-events-none absolute inset-0 z-[15]"
                     width={timeline.widthPx}
                     height={chartHeight}
-                    aria-hidden
                   >
                     <defs>
                       <marker
@@ -567,15 +577,39 @@ export function ScheduleGanttWorkspace() {
                     </defs>
                     {linkDrawings.map((link) => (
                       <g key={link.key}>
+                        {/* Wide invisible stroke for easier hover */}
+                        <path
+                          d={link.d}
+                          fill="none"
+                          stroke="transparent"
+                          strokeWidth={12}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          style={{ pointerEvents: 'stroke', cursor: 'help' }}
+                          onMouseEnter={(e) => {
+                            setDepTooltip({
+                              text: link.tooltip,
+                              x: e.clientX,
+                              y: e.clientY,
+                            })
+                          }}
+                          onMouseMove={(e) => {
+                            setDepTooltip({
+                              text: link.tooltip,
+                              x: e.clientX,
+                              y: e.clientY,
+                            })
+                          }}
+                          onMouseLeave={() => setDepTooltip(null)}
+                        />
                         <path
                           d={link.d}
                           fill="none"
                           stroke="#334155"
                           strokeWidth={1.35}
                           markerEnd="url(#gantt-dep-arrow)"
-                        >
-                          <title>{link.label}</title>
-                        </path>
+                          style={{ pointerEvents: 'none' }}
+                        />
                       </g>
                     ))}
                   </svg>
@@ -729,13 +763,27 @@ export function ScheduleGanttWorkspace() {
             </defs>
             <line x1="0" y1="4" x2="14" y2="4" stroke="#334155" strokeWidth="1.5" markerEnd="url(#legend-arrow)" />
           </svg>
-          پیوند وابستگی (مثل MSP)
+          پیوند وابستگی — موس را روی فلش نگه دارید
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="h-0.5 w-6 bg-slate-300" /> شناوری (حداکثر {GANTT_FLOAT_DISPLAY_CAP_DAYS} روز نمایشی)
         </span>
         <span>◆ مایلستون</span>
       </div>
+
+      {depTooltip ? (
+        <div
+          className="pointer-events-none fixed z-[80] max-w-sm rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-xs leading-relaxed text-white shadow-xl"
+          style={{
+            left: Math.min(depTooltip.x + 14, typeof window !== 'undefined' ? window.innerWidth - 340 : depTooltip.x + 14),
+            top: Math.min(depTooltip.y + 14, typeof window !== 'undefined' ? window.innerHeight - 280 : depTooltip.y + 14),
+          }}
+          dir="rtl"
+          lang="fa"
+        >
+          <pre className="whitespace-pre-wrap font-sans text-[11px]">{depTooltip.text}</pre>
+        </div>
+      ) : null}
     </div>
   )
 }

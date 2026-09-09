@@ -39,12 +39,17 @@ export function buildScheduleHierarchy(
   tasks: ProjectTask[],
   packagesByTask: Map<string, WorkshopPackageNode[]>,
   floatByTaskId?: Map<string, number>,
-  predecessorByTaskId?: Map<string, string> | Record<string, string>
+  predecessorByTaskId?: Map<string, string> | Record<string, string>,
+  predecessorTooltipByTaskId?: Map<string, string> | Record<string, string>
 ): ScheduleTreeNode[] {
   const predMap =
     predecessorByTaskId instanceof Map
       ? predecessorByTaskId
       : new Map(Object.entries(predecessorByTaskId ?? {}))
+  const tipMap =
+    predecessorTooltipByTaskId instanceof Map
+      ? predecessorTooltipByTaskId
+      : new Map(Object.entries(predecessorTooltipByTaskId ?? {}))
 
   return [...tasks]
     .sort((a, b) => compareWbs(a.wbs_code, b.wbs_code))
@@ -63,6 +68,7 @@ export function buildScheduleHierarchy(
       percentComplete: Number(t.percent_complete) || 0,
       totalFloat: floatByTaskId?.has(t.id) ? floatByTaskId.get(t.id)! : null,
       predecessorLabel: predMap.get(t.id) ?? null,
+      predecessorTooltip: tipMap.get(t.id) ?? null,
       packages: packagesByTask.get(t.id) ?? [],
       children: [],
     }))

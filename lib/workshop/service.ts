@@ -38,7 +38,7 @@ import {
   enrichScheduleTreeWithWbs,
   nextChildWbs,
 } from './wbs-numbering'
-import { fetchTaskPredecessorLabels } from '@/lib/schedule/predecessor-labels'
+import { fetchTaskPredecessorDisplay } from '@/lib/schedule/predecessor-labels'
 import type {
   CreatePackageInput,
   PackageChangePayload,
@@ -340,7 +340,7 @@ export async function getScheduleTree(supabase: SupabaseClient, projectId: strin
   const capabilities = await getWorkshopCapabilities(supabase, projectId)
 
   const tasks = await fetchAllProjectTasks(supabase, projectId)
-  const [{ data: packages, error }, { data: calcs }, predecessorLabels] = await Promise.all([
+  const [{ data: packages, error }, { data: calcs }, predecessorDisplay] = await Promise.all([
     supabase
       .from('workshop_packages')
       .select('*')
@@ -350,7 +350,10 @@ export async function getScheduleTree(supabase: SupabaseClient, projectId: strin
       .from('schedule_calculations')
       .select('task_id, total_float')
       .eq('project_id', projectId),
-    fetchTaskPredecessorLabels(supabase, projectId).catch(() => ({} as Record<string, string>)),
+    fetchTaskPredecessorDisplay(supabase, projectId).catch(() => ({
+      labels: {} as Record<string, string>,
+      tooltips: {} as Record<string, string>,
+    })),
   ])
   if (error) throw new WorkshopError('VALIDATION', error.message)
 
@@ -360,9 +363,16 @@ export async function getScheduleTree(supabase: SupabaseClient, projectId: strin
   }
 
   const { byTask, rootsUnderPackages } = nestPackages((packages ?? []) as Record<string, unknown>[])
+  const predecessorLabels = predecessorDisplay.labels
 
   const nodes: ScheduleTreeNode[] = enrichScheduleTreeWithWbs(
-    buildScheduleHierarchy(tasks, byTask, floatByTaskId, predecessorLabels)
+    buildScheduleHierarchy(
+      tasks,
+      byTask,
+      floatByTaskId,
+      predecessorLabels,
+      predecessorDisplay.tooltips
+    )
   )
 
   const dependencyLinkCount = Object.keys(predecessorLabels).reduce((n, id) => {
