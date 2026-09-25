@@ -42,6 +42,8 @@ export interface ScheduleTreeNode {
   mspUid: number | null
   /** Real project_tasks.id; null for synthetic WBS group rows */
   taskId: string | null
+  /** Complete source activity used by the full-column schedule editor. */
+  task?: import('@/types/schedule').ProjectTask
   wbs: string | null
   name: string
   depth: number
@@ -71,6 +73,8 @@ export interface WorkshopPackageNode {
   name: string
   location: string | null
   quantity: number
+  quantityCertainty: 'حدودی' | 'قطعی'
+  unitPrice: number
   uom: string
   crew: string | null
   note: string | null
@@ -83,12 +87,23 @@ export interface WorkshopPackageNode {
   /** User-entered weight for this sub-branch */
   weightPercent: number | null
   origin: string | null
+  /** Own schedule dates (ISO YYYY-MM-DD); null → inherit parent */
+  startDate: string | null
+  finishDate: string | null
+  /** Direct contractor override; null means inherit from parent. */
+  subcontractorId?: string | null
+  /** Effective contractor after inheritance. */
+  resolvedSubcontractorId?: string | null
+  /** Values for the extended schedule columns shown in the unified table. */
+  scheduleFields?: Record<string, unknown>
   children: WorkshopPackageNode[]
 }
 
 export interface UpdatePackageInput {
   name?: string
   quantity?: number
+  quantityCertainty?: 'حدودی' | 'قطعی'
+  unitPrice?: number
   uom?: string
   location?: string | null
   crew?: string | null
@@ -96,6 +111,10 @@ export interface UpdatePackageInput {
   flagForReview?: boolean
   reviewReason?: string | null
   weightPercent?: number | null
+  startDate?: string | null
+  finishDate?: string | null
+  subcontractorId?: string | null
+  scheduleFields?: Record<string, unknown>
 }
 
 export interface CreatePackageInput {
@@ -104,6 +123,8 @@ export interface CreatePackageInput {
   parentPackageId?: string | null
   name: string
   quantity: number
+  quantityCertainty?: 'حدودی' | 'قطعی'
+  unitPrice?: number
   uom: string
   location?: string | null
   crew?: string | null
@@ -114,4 +135,8 @@ export interface CreatePackageInput {
   wbsCode?: string | null
   /** User-entered weight */
   weightPercent?: number | null
+  startDate?: string | null
+  finishDate?: string | null
+  subcontractorId?: string | null
+  scheduleFields?: Record<string, unknown>
 }

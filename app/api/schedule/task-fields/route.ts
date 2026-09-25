@@ -5,8 +5,8 @@ import { workshopErrorResponse } from '@/lib/workshop/service'
 
 /**
  * PATCH /api/schedule/task-fields
- * Body: { projectId, taskId, startDate?, finishDate?, totalFloat?, scheduleWeight? }
- * Syncs برنامه edits → project_tasks / schedule_calculations (گانت / پیشرفت).
+ * Body: { projectId, taskId, startDate?, finishDate?, totalFloat?, scheduleWeight?, predecessorLabel? }
+ * Syncs برنامه edits → project_tasks / schedule_calculations / task_dependencies.
  */
 export async function PATCH(request: NextRequest) {
   try {
@@ -35,6 +35,12 @@ export async function PATCH(request: NextRequest) {
           : body.scheduleWeight === null || body.scheduleWeight === ''
             ? null
             : Number(body.scheduleWeight),
+      predecessorLabel:
+        body.predecessorLabel === undefined
+          ? undefined
+          : body.predecessorLabel == null
+            ? ''
+            : String(body.predecessorLabel),
     })
     return NextResponse.json(result)
   } catch (error) {

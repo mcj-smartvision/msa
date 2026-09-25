@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loadRolePageData } from '@/lib/dashboard/load-role-page'
-import { loadUiBlockVisibility } from '@/lib/dashboard/load-ui-block-visibility'
 import { hasRoleDashboardAccess } from '@/lib/schedule/access'
 import { fetchAllProjectTasks, fetchUnresolvedAlerts } from '@/utils/schedule'
 import { SiteSupervisorDashboard } from '@/components/schedule/site-supervisor-dashboard'
@@ -34,13 +33,6 @@ export default async function SiteSupervisorPage({
       ])
     : [[], []]
 
-  const visibleBlockCodes = await loadUiBlockVisibility(
-    supabase,
-    context,
-    activeProjectId,
-    'site-supervisor'
-  )
-
   return (
     <SiteSupervisorDashboard
       key={activeProjectId ?? 'no-project'}
@@ -49,13 +41,12 @@ export default async function SiteSupervisorPage({
       initialProjectId={activeProjectId}
       initialTasks={tasks}
       initialAlerts={alerts}
-      visibleBlockCodes={visibleBlockCodes}
       initialSection={
         searchParams?.section === 'inspection'
           ? 'inspection'
           : searchParams?.section === 'drawings'
-            ? 'drawings'
-            : 'daily-report'
+              ? 'drawings'
+              : 'daily-report'
       }
     />
   )

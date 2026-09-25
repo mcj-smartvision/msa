@@ -55,19 +55,21 @@ assert(canEditPackageContent('rejected'), 'rejected editable')
 assert(canEditPackageContent('pending_approval'), 'pending still editable')
 if (WORKSHOP_SKIP_PM_APPROVAL) {
   assert(canEditPackageContent('approved'), 'approved editable when PM skip')
-  assert(canEditWorkshopPackageRow('approved', 'user_added'), 'user_added row editable')
   assertCanEditPackage('approved', 'user_added')
 } else {
   assert(!canEditPackageContent('approved'), 'approved locked')
   let locked = false
   try {
-    assertCanEditPackage('approved')
+    assertCanEditPackage('approved', 'imported')
   } catch (e) {
     locked = e instanceof WorkshopError
   }
-  assert(locked, 'edit blocked after approve')
+  assert(locked, 'imported blocked after approve')
 }
+// User-added sub-branches stay editable after save/approve
 assert(canEditWorkshopPackageRow('approved', 'user_added'), 'user_added always editable')
+assert(canEditWorkshopPackageRow('approved', null), 'null origin treated as user_added')
+assertCanEditPackage('approved', 'user_added')
 assert(canReviseChangeRequest('change_requested'), 'revise change request')
 
 let lockedChangeRequest = false

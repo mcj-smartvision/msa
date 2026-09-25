@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyWeightedParentRollup } from '@/lib/schedule/parent-progress-rollup'
+import { applyWeightedParentRollup, formatProgressRollupFormula } from '@/lib/schedule/parent-progress-rollup'
 
 describe('applyWeightedParentRollup', () => {
   it('computes foundation parent from weighted children (user example)', () => {
@@ -45,8 +45,12 @@ describe('applyWeightedParentRollup', () => {
     expect(percents.p4).toBe(41)
     expect(percents.c41).toBe(80)
     expect(parentIds.has('p4')).toBe(true)
-    expect(explanations.get('p4')?.text).toContain('میانگین وزنی')
-    expect(explanations.get('p4')?.text).toContain('4.3')
+    expect(explanations.get('p4')?.text).toBe(
+      '(80×7 + 50×5 + 0×8) / (7 + 5 + 8) = 41%'
+    )
+    expect(formatProgressRollupFormula(explanations.get('p4')!)).toBe(
+      '(80×7 + 50×5 + 0×8) / (7 + 5 + 8) = 41%'
+    )
   })
 
   it('rolls nested parents bottom-up', () => {

@@ -5,10 +5,10 @@ import { importMspScheduleToProject } from '@/lib/schedule/msp-import'
 
 /**
  * POST /api/schedule/import-msp
- * multipart/form-data: project_id, file (MSP XML)
+ * multipart/form-data: project_id, file (MSP XML), dry_run?=1, confirm?=1
  *
- * Parses MSP XML and stores tasks + dependencies in Supabase.
- * Real XML parsing is stubbed in lib/schedule/msp-import.ts for now.
+ * dry_run=1 → parse + validate + report only (no DB wipe)
+ * otherwise → commit import (blocked if cycle detected)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -25,6 +25,12 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const projectId = String(formData.get('project_id') ?? '')
     const file = formData.get('file')
+    const dryRun =
+      String(formData.get('dry_run') ?? '') === '1' ||
+      String(formData.get('dry_run') ?? '').toLowerCase() === 'true'
+    const confirm =
+      String(formData.get('confirm') ?? '') === '1' ||
+      String(formData.get('confirm') ?? '').toLowerCase() === 'true'
 
     if (!projectId) {
       return NextResponse.json({ error: 'project_id is required' }, { status: 400 })
@@ -49,12 +55,17 @@ export async function POST(request: NextRequest) {
     }
 
     const xmlContent = await file.text()
+
+    // Default to dry-run preview unless confirm=1 (two-step import UX)
+    const shouldDryRun = dryRun || !confirm
+
     const result = await importMspScheduleToProject(
       supabase,
       projectId,
       file.name,
       xmlContent,
-      user.id
+      user.id,
+      { dryRun: shouldDryRun }
     )
 
     return NextResponse.json(result)

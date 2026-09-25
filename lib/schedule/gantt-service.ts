@@ -15,10 +15,13 @@ import {
   resolveGanttBarTone,
   type GanttBarTone,
 } from '@/lib/schedule/gantt-tone'
+import type { AlertQuadrant } from '@/lib/schedule/progress-alert-quadrant'
 import type { ScheduleAlertSeverity } from '@/lib/schedule/float-alerts'
 import { DEFAULT_MSP_MINUTES_PER_DAY } from '@/lib/schedule/predecessor-format'
 import type { TaskRelationType } from '@/types/schedule'
 import { compareWbs, wbsDepth } from '@/lib/schedule/wbs-utils'
+import { loadProjectAlertSettings } from '@/lib/schedule/run-float-alerts'
+import { DEFAULT_PROJECT_ALERT_SETTINGS } from '@/lib/schedule/float-alerts'
 import { assertProjectAccess, requireUser } from '@/lib/site-ops/auth'
 import { getWorkshopCapabilities } from '@/lib/workshop/service'
 import { WorkshopError } from '@/lib/workshop/domain'
@@ -53,8 +56,16 @@ export async function getProjectGanttRows(
   await assertProjectAccess(supabase, user.id, projectId)
   const capabilities = await getWorkshopCapabilities(supabase, projectId)
 
+  let nearCriticalDays = DEFAULT_PROJECT_ALERT_SETTINGS.nearCriticalDays
+  try {
+    const alertSettings = await loadProjectAlertSettings(supabase, projectId)
+    nearCriticalDays = alertSettings.nearCriticalDays
+  } catch {
+    // optional
+  }
+
   const [
-    { data: tasks, error: tasksError },
+    tasksResult,
     { data: calcs },
     { data: alerts },
     { data: packages },
@@ -63,7 +74,7 @@ export async function getProjectGanttRows(
     supabase
       .from('project_tasks')
       .select(
-        'id, name, wbs_code, parent_id, duration_days, is_summary, is_milestone, is_critical, start_planned, finish_planned, start_current, finish_current'
+        'id, name, wbs_code, parent_id, duration_days, is_summary, is_milestone, is_critical, alert_quadrant, start_planned, finish_planned, start_current, finish_current'
       )
       .eq('project_id', projectId)
       .order('wbs_code', { ascending: true }),
@@ -78,7 +89,7 @@ export async function getProjectGanttRows(
       .eq('acknowledged', false),
     supabase
       .from('workshop_packages')
-      .select('id, name, wbs_code, project_task_id, parent_package_id')
+      .select('id, name, wbs_code, project_task_id, parent_package_id, start_date, finish_date')
       .eq('project_id', projectId)
       .order('created_at', { ascending: true }),
     supabase
@@ -86,6 +97,20 @@ export async function getProjectGanttRows(
       .select('predecessor_task_id, successor_task_id, relation_type, lag_duration')
       .eq('project_id', projectId),
   ])
+
+  let tasks = tasksResult.data
+  let tasksError = tasksResult.error
+  if (tasksError && /alert_quadrant|does not exist|42703/i.test(tasksError.message)) {
+    const fallback = await supabase
+      .from('project_tasks')
+      .select(
+        'id, name, wbs_code, parent_id, duration_days, is_summary, is_milestone, is_critical, start_planned, finish_planned, start_current, finish_current'
+      )
+      .eq('project_id', projectId)
+      .order('wbs_code', { ascending: true })
+    tasks = fallback.data
+    tasksError = fallback.error
+  }
 
   if (tasksError) throw new WorkshopError('VALIDATION', tasksError.message)
   if (depsError && depsError.code !== '42P01') {
@@ -133,6 +158,11 @@ export async function getProjectGanttRows(
         isCritical,
         totalFloat,
         alertSeverity,
+        alertQuadrant:
+          'alert_quadrant' in (t as object)
+            ? ((t as { alert_quadrant?: AlertQuadrant | null }).alert_quadrant ?? null)
+            : null,
+        nearCriticalDays,
       })
 
       return {
@@ -229,14 +259,19 @@ export async function getProjectGanttRows(
     const scheduleTaskId = resolveScheduleTaskId(pkg)
     if (!scheduleTaskId) continue
     const parentTask = taskIndex.get(scheduleTaskId)
-    if (!parentTask?.startDate || !parentTask.finishDate) continue
+    if (!parentTask) continue
 
     const parentPkgId = pkg.parent_package_id ? String(pkg.parent_package_id) : null
     const ganttParentId = parentPkgId ? `pkg:${parentPkgId}` : scheduleTaskId
     const wbs =
       ((pkg.wbs_code as string | null)?.trim() || null) ??
       (parentTask.wbs ? `${parentTask.wbs}.p` : null)
-    const spanDays = durationDaysFromRange(parentTask.startDate, parentTask.finishDate)
+    const startDate =
+      toIsoDateOnly(pkg.start_date as string | null | undefined) ?? parentTask.startDate
+    const finishDate =
+      toIsoDateOnly(pkg.finish_date as string | null | undefined) ?? parentTask.finishDate
+    if (!startDate || !finishDate) continue
+    const spanDays = durationDaysFromRange(startDate, finishDate)
 
     packageRows.push({
       id: `pkg:${String(pkg.id)}`,
@@ -244,8 +279,8 @@ export async function getProjectGanttRows(
       wbs,
       parentId: ganttParentId,
       depth: (parentTask.depth ?? 0) + (parentPkgId ? 2 : 1),
-      startDate: parentTask.startDate,
-      finishDate: parentTask.finishDate,
+      startDate,
+      finishDate,
       durationDays: spanDays,
       isSummary: false,
       isMilestone: false,

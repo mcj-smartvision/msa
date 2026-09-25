@@ -12,7 +12,7 @@ import { getWorkshopCapabilities } from '@/lib/workshop/service'
 import { WorkshopError } from '@/lib/workshop/domain'
 
 /**
- * Update schedule task dates, total_float, and/or schedule_weight
+ * Update schedule task dates, total_float, schedule_weight, and/or predecessor label
  * (برنامه table → گانت / catch-up / progress sync).
  * Date edits cascade to dependency successors (and WBS parents).
  */
@@ -25,11 +25,13 @@ export async function updateScheduleTaskFields(
     finishDate?: string | null
     totalFloat?: number | null
     scheduleWeight?: number | null
+    predecessorLabel?: string | null
   }
 ): Promise<{
   updated: Array<{ id: string; startDate: string; finishDate: string; durationDays: number }>
   totalFloat: number | null
   scheduleWeight: number | null
+  predecessorLabel?: string
 }> {
   const user = await requireUser(supabase)
   await assertProjectAccess(supabase, user.id, input.projectId)
@@ -48,6 +50,7 @@ export async function updateScheduleTaskFields(
     input.scheduleWeight === undefined || input.scheduleWeight === null
       ? null
       : Number(input.scheduleWeight)
+  let predecessorLabel: string | undefined
 
   const wantsDates = input.startDate != null || input.finishDate != null
   if (wantsDates) {
@@ -179,7 +182,7 @@ export async function updateScheduleTaskFields(
 
     await supabase
       .from('project_tasks')
-      .update({ is_critical: isCritical })
+      .update({ total_float_days: tf, is_critical: isCritical })
       .eq('id', input.taskId)
       .eq('project_id', input.projectId)
   }
@@ -196,7 +199,7 @@ export async function updateScheduleTaskFields(
 
     const { error: weightError } = await supabase
       .from('project_tasks')
-      .update({ schedule_weight: sw })
+      .update({ schedule_weight: sw, physical_weight: sw })
       .eq('id', input.taskId)
       .eq('project_id', input.projectId)
 
@@ -211,5 +214,18 @@ export async function updateScheduleTaskFields(
     }
   }
 
-  return { updated, totalFloat, scheduleWeight }
+  if (input.predecessorLabel !== undefined) {
+    const { replaceTaskPredecessorsFromLabel } = await import(
+      '@/lib/schedule/replace-task-predecessors'
+    )
+    const result = await replaceTaskPredecessorsFromLabel(
+      supabase,
+      input.projectId,
+      input.taskId,
+      String(input.predecessorLabel ?? '')
+    )
+    predecessorLabel = result.label
+  }
+
+  return { updated, totalFloat, scheduleWeight, predecessorLabel }
 }

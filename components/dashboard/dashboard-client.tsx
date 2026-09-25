@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useSupabase } from '@/hooks/useSupabase'
-import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
 import { resolveVisibleWidgetKeys } from '@/utils/dashboard'
 import { RoleDashboard } from '@/components/dashboard/role-dashboard'
 import { LoadingBlock, ErrorBlock } from '@/components/admin/shared'
@@ -10,10 +9,8 @@ import type { DashboardUserContext } from '@/types/dashboard'
 
 export function DashboardClient({
   initialContext,
-  visibleBlockCodes = [],
 }: {
   initialContext: DashboardUserContext
-  visibleBlockCodes?: string[]
 }) {
   const supabase = useSupabase()
   const [context, setContext] = useState(initialContext)
@@ -59,8 +56,6 @@ export function DashboardClient({
     <RoleDashboard
       context={{ user: context, projectId: context.activeProjectId }}
       widgetKeys={widgetKeys}
-      visibleBlockCodes={visibleBlockCodes}
-      showAdminBlockCodes={context.isSystemAdmin}
     />
   )
 }

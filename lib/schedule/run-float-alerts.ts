@@ -19,14 +19,29 @@ export async function loadProjectAlertSettings(
   supabase: SupabaseClient,
   projectId: string
 ): Promise<ProjectAlertSettings> {
-  const { data, error } = await supabase
+  let data: Record<string, unknown> | null = null
+  const full = await supabase
     .from('project_alert_settings')
-    .select('near_critical_days, fast_consumption_threshold')
+    .select(
+      'near_critical_days, fast_consumption_threshold, pace_good_threshold, pace_warning_threshold'
+    )
     .eq('project_id', projectId)
     .maybeSingle()
 
-  if (error) {
-    throw new Error(`خواندن project_alert_settings ناموفق: ${error.message}`)
+  if (full.error && /pace_good|pace_warning|does not exist|42703/i.test(full.error.message)) {
+    const basic = await supabase
+      .from('project_alert_settings')
+      .select('near_critical_days, fast_consumption_threshold')
+      .eq('project_id', projectId)
+      .maybeSingle()
+    if (basic.error) {
+      throw new Error(`خواندن project_alert_settings ناموفق: ${basic.error.message}`)
+    }
+    data = (basic.data as Record<string, unknown> | null) ?? null
+  } else if (full.error) {
+    throw new Error(`خواندن project_alert_settings ناموفق: ${full.error.message}`)
+  } else {
+    data = (full.data as Record<string, unknown> | null) ?? null
   }
 
   if (!data) {
@@ -42,12 +57,115 @@ export async function loadProjectAlertSettings(
     return { ...DEFAULT_PROJECT_ALERT_SETTINGS }
   }
 
-  return {
-    nearCriticalDays: Number(data.near_critical_days) || DEFAULT_PROJECT_ALERT_SETTINGS.nearCriticalDays,
-    fastConsumptionThreshold:
-      Number(data.fast_consumption_threshold) ||
-      DEFAULT_PROJECT_ALERT_SETTINGS.fastConsumptionThreshold,
+  return normalizeProjectAlertSettings({
+    near_critical_days: data.near_critical_days,
+    fast_consumption_threshold: data.fast_consumption_threshold,
+    pace_good_threshold: data.pace_good_threshold,
+    pace_warning_threshold: data.pace_warning_threshold,
+  })
+}
+
+function normalizeProjectAlertSettings(row: {
+  near_critical_days?: unknown
+  fast_consumption_threshold?: unknown
+  pace_good_threshold?: unknown
+  pace_warning_threshold?: unknown
+}): ProjectAlertSettings {
+  const nearCriticalDays =
+    Number(row.near_critical_days) || DEFAULT_PROJECT_ALERT_SETTINGS.nearCriticalDays
+  const fastConsumptionThreshold =
+    Number(row.fast_consumption_threshold) ||
+    DEFAULT_PROJECT_ALERT_SETTINGS.fastConsumptionThreshold
+  let paceGoodThreshold =
+    Number(row.pace_good_threshold) || DEFAULT_PROJECT_ALERT_SETTINGS.paceGoodThreshold
+  let paceWarningThreshold =
+    Number(row.pace_warning_threshold) || DEFAULT_PROJECT_ALERT_SETTINGS.paceWarningThreshold
+  if (
+    !Number.isFinite(paceGoodThreshold) ||
+    paceGoodThreshold <= 0 ||
+    paceGoodThreshold > 1
+  ) {
+    paceGoodThreshold = DEFAULT_PROJECT_ALERT_SETTINGS.paceGoodThreshold
   }
+  if (
+    !Number.isFinite(paceWarningThreshold) ||
+    paceWarningThreshold <= 0 ||
+    paceWarningThreshold > 1 ||
+    paceWarningThreshold >= paceGoodThreshold
+  ) {
+    paceWarningThreshold = DEFAULT_PROJECT_ALERT_SETTINGS.paceWarningThreshold
+  }
+  return {
+    nearCriticalDays,
+    fastConsumptionThreshold,
+    paceGoodThreshold,
+    paceWarningThreshold,
+  }
+}
+
+export type ProjectAlertSettingsPatch = Partial<
+  Pick<
+    ProjectAlertSettings,
+    | 'nearCriticalDays'
+    | 'fastConsumptionThreshold'
+    | 'paceGoodThreshold'
+    | 'paceWarningThreshold'
+  >
+>
+
+export function validateProjectAlertSettingsPatch(
+  patch: ProjectAlertSettingsPatch
+): string | null {
+  const g = patch.paceGoodThreshold
+  const w = patch.paceWarningThreshold
+  const n = patch.nearCriticalDays
+  const f = patch.fastConsumptionThreshold
+  if (g != null && (g <= 0 || g > 1)) return 'آستانه «خوب» باید بین ۰ و ۱ باشد'
+  if (w != null && (w <= 0 || w > 1)) return 'آستانه «هشدار» باید بین ۰ و ۱ باشد'
+  if (g != null && w != null && w >= g) {
+    return 'آستانه هشدار باید کمتر از آستانه خوب باشد'
+  }
+  if (n != null && (n < 0 || !Number.isFinite(n))) {
+    return 'روزهای نزدیک‌بحرانی نامعتبر است'
+  }
+  if (f != null && (f <= 0 || !Number.isFinite(f))) {
+    return 'آستانه مصرف سریع نامعتبر است'
+  }
+  return null
+}
+
+export async function saveProjectAlertSettings(
+  supabase: SupabaseClient,
+  projectId: string,
+  patch: ProjectAlertSettingsPatch
+): Promise<ProjectAlertSettings> {
+  const err = validateProjectAlertSettingsPatch(patch)
+  if (err) throw new Error(err)
+
+  const current = await loadProjectAlertSettings(supabase, projectId)
+  const merged: ProjectAlertSettings = {
+    nearCriticalDays: patch.nearCriticalDays ?? current.nearCriticalDays,
+    fastConsumptionThreshold:
+      patch.fastConsumptionThreshold ?? current.fastConsumptionThreshold,
+    paceGoodThreshold: patch.paceGoodThreshold ?? current.paceGoodThreshold,
+    paceWarningThreshold: patch.paceWarningThreshold ?? current.paceWarningThreshold,
+  }
+  const mergedErr = validateProjectAlertSettingsPatch(merged)
+  if (mergedErr) throw new Error(mergedErr)
+
+  const { error } = await supabase
+    .from('project_alert_settings')
+    .update({
+      near_critical_days: merged.nearCriticalDays,
+      fast_consumption_threshold: merged.fastConsumptionThreshold,
+      pace_good_threshold: merged.paceGoodThreshold,
+      pace_warning_threshold: merged.paceWarningThreshold,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('project_id', projectId)
+
+  if (error) throw new Error(`ذخیره project_alert_settings ناموفق: ${error.message}`)
+  return merged
 }
 
 /**

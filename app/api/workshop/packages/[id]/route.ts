@@ -16,6 +16,8 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
     const pkg = await updatePackage(supabase, params.id, {
       name: body.name,
       quantity: body.quantity !== undefined ? Number(body.quantity) : undefined,
+      quantityCertainty: body.quantityCertainty ?? body.quantity_certainty,
+      unitPrice: body.unitPrice !== undefined ? Number(body.unitPrice) : undefined,
       uom: body.uom,
       location: body.location,
       crew: body.crew,
@@ -28,6 +30,25 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
           : body.weight_percent !== undefined
             ? body.weight_percent
             : undefined,
+      startDate:
+        body.startDate !== undefined
+          ? body.startDate
+          : body.start_date !== undefined
+            ? body.start_date
+            : undefined,
+      finishDate:
+        body.finishDate !== undefined
+          ? body.finishDate
+          : body.finish_date !== undefined
+            ? body.finish_date
+            : undefined,
+      subcontractorId:
+        body.subcontractorId !== undefined
+          ? body.subcontractorId
+          : body.subcontractor_id !== undefined
+            ? body.subcontractor_id
+            : undefined,
+      scheduleFields: body.scheduleFields ?? body.schedule_fields,
     })
     return NextResponse.json({ package: pkg })
   } catch (error) {

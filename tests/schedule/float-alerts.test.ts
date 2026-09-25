@@ -49,7 +49,12 @@ describe('buildScheduleAlertDrafts', () => {
         ['f', { totalFloat: 6, calculationDate: '2026-09-01' }],
       ]),
       currentDate: '2026-09-08',
-      settings: { nearCriticalDays: 5, fastConsumptionThreshold: 3 },
+      settings: {
+        nearCriticalDays: 5,
+        fastConsumptionThreshold: 3,
+        paceGoodThreshold: 0.9,
+        paceWarningThreshold: 0.6,
+      },
       existingUnackedKeys: new Set(),
     })
 

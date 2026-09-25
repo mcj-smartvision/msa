@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ScheduleWorkspace } from '@/components/workshop/schedule-workspace'
+import { WeightDeductionWorkspace } from '@/components/workshop/weight-deduction-workspace'
 import { ScheduleGanttWorkspace } from '@/components/schedule/schedule-gantt-workspace'
 import { ScheduleActiveAlertsPanel } from '@/components/schedule/schedule-active-alerts-panel'
 import { MilestoneTrendPanel } from '@/components/schedule/milestone-trend-panel'
@@ -12,6 +13,7 @@ import { cn } from '@/lib/utils'
 
 const TABS = [
   { id: 'schedule', label: 'برنامه' },
+  { id: 'weight-deduction', label: 'وزن کسر شده' },
   { id: 'gantt', label: 'گانت' },
   { id: 'approvals', label: 'تأییدات' },
   { id: 'prepared', label: 'لیست‌ها' },
@@ -30,7 +32,13 @@ export function WorkshopOpsPanel() {
   const projectId = searchParams.get('projectId') ?? ''
 
   const visibleTabs = asSupervisor
-    ? TABS.filter((t) => t.id === 'schedule' || t.id === 'gantt' || t.id === 'prepared')
+    ? TABS.filter(
+        (t) =>
+          t.id === 'schedule' ||
+          t.id === 'weight-deduction' ||
+          t.id === 'gantt' ||
+          t.id === 'prepared'
+      )
     : TABS
 
   const activeTab = visibleTabs.some((t) => t.id === workshopTab)
@@ -94,12 +102,18 @@ export function WorkshopOpsPanel() {
         })}
       </nav>
 
-      {/* Keep schedule + gantt mounted so sync events update the hidden view immediately */}
+      {/* Keep schedule, weight deduction, and gantt mounted so sync updates the hidden view */}
       <div
         className={activeTab === 'schedule' ? 'block' : 'hidden'}
         aria-hidden={activeTab !== 'schedule'}
       >
         <ScheduleWorkspace showBanner={!embeddedInTechnicalOffice} />
+      </div>
+      <div
+        className={activeTab === 'weight-deduction' ? 'block' : 'hidden'}
+        aria-hidden={activeTab !== 'weight-deduction'}
+      >
+        <WeightDeductionWorkspace showBanner={!embeddedInTechnicalOffice} />
       </div>
       <div
         className={activeTab === 'gantt' ? 'block' : 'hidden'}

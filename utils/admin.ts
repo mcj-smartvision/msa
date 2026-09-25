@@ -500,59 +500,6 @@ export async function upsertWidgetVisibility(
   if (error) throw new Error(error.message)
 }
 
-export async function fetchDashboardUiBlocks(
-  supabase: SupabaseClient
-): Promise<import('@/types/admin').DashboardUiBlock[]> {
-  const { data, error } = await supabase
-    .from('dashboard_ui_blocks')
-    .select('*')
-    .eq('is_active', true)
-    .order('sort_order')
-
-  if (error) throw new Error(error.message)
-  return (data ?? []) as import('@/types/admin').DashboardUiBlock[]
-}
-
-export async function fetchPositionUiBlockVisibility(
-  supabase: SupabaseClient,
-  projectId: string
-): Promise<import('@/types/admin').PositionUiBlockVisibility[]> {
-  const { data: positions, error: positionsError } = await supabase
-    .from('positions')
-    .select('id')
-    .eq('project_id', projectId)
-
-  if (positionsError) throw new Error(positionsError.message)
-
-  const positionIds = (positions ?? []).map((position) => position.id)
-  if (positionIds.length === 0) return []
-
-  const { data, error } = await supabase
-    .from('position_ui_block_visibility')
-    .select('*, block:dashboard_ui_blocks(*)')
-    .in('position_id', positionIds)
-
-  if (error) throw new Error(error.message)
-  return (data ?? []) as import('@/types/admin').PositionUiBlockVisibility[]
-}
-
-export async function upsertUiBlockVisibility(
-  supabase: SupabaseClient,
-  input: import('@/types/admin').UiBlockVisibilityInput
-): Promise<void> {
-  const { error } = await supabase.from('position_ui_block_visibility').upsert(
-    {
-      position_id: input.position_id,
-      block_id: input.block_id,
-      is_visible: input.is_visible,
-      sort_order: input.sort_order ?? 100,
-    },
-    { onConflict: 'position_id,block_id' }
-  )
-
-  if (error) throw new Error(error.message)
-}
-
 export async function findProfileByEmail(
   supabase: SupabaseClient,
   email: string

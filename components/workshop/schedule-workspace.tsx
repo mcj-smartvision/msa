@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
@@ -16,11 +16,11 @@ import {
   RefreshCw,
   HelpCircle,
   AlertCircle,
+  Pencil,
+  Loader2,
 } from 'lucide-react'
 import {
-  approvalStatusFa,
   canDeletePackage,
-  canEditPackageContent,
   canEditWorkshopPackageRow,
   WORKSHOP_SKIP_PM_APPROVAL,
 } from '@/lib/workshop/approvals'
@@ -39,11 +39,16 @@ import { PageHeader } from '@/components/admin/shared'
 import { ScheduleDownloadButton } from '@/components/schedule/schedule-download-button'
 import { WORKSHOP_UOMS } from '@/lib/workshop/types'
 import { formatScheduleWeightDisplay } from '@/lib/workshop/package-weight'
-import { wbsDepth } from '@/lib/schedule/wbs-utils'
+import { displayActivityName, wbsDepth } from '@/lib/schedule/wbs-utils'
 import {
   applyParentWeightSum,
   isDescendantWbs,
 } from '@/lib/schedule/parent-weight-rollup'
+import {
+  applyParentUnitPriceSum,
+  quantityTimesUnitPrice,
+} from '@/lib/schedule/parent-unit-price-rollup'
+import { applyWeightedParentRollup, formatProgressRollupFormula } from '@/lib/schedule/parent-progress-rollup'
 import {
   formatScheduleDate,
   isoToCalendarInput,
@@ -51,6 +56,7 @@ import {
   toIsoDateOnly,
 } from '@/lib/schedule/dates'
 import { useScheduleCalendar } from '@/hooks/useScheduleCalendar'
+import { cn } from '@/lib/utils'
 import {
   clearScheduleFieldDrafts,
   publishScheduleFieldDrafts,
@@ -58,6 +64,14 @@ import {
   readScheduleFieldDrafts,
   useScheduleViewSync,
 } from '@/lib/schedule/schedule-view-sync'
+import type { ProjectTask } from '@/types/schedule'
+import { readProjectDailyProgress } from '@/lib/supervisor/daily-progress-storage'
+import { type DailyProgressEntry } from '@/lib/supervisor/daily-report-activities'
+import {
+  mergeSupervisorProgressEntries,
+  resolvePhysicalProgressPercent,
+  schedulePhysicalPercent,
+} from '@/lib/schedule/physical-progress'
 
 type Selection =
   | { kind: 'schedule'; id: string; name: string; wbs: string | null }
@@ -72,50 +86,185 @@ type InlineDraft = {
   previewWbs: string
   name: string
   quantity: string
+  quantityCertainty: 'حدودی' | 'قطعی'
+  unitPrice: string
   uom: string
   location: string
   crew: string
   weightPercent: string
+  subcontractorId: string
+  inheritedSubcontractorId: string | null
+  scheduleFields: Record<string, unknown>
+  startDate: string
+  finishDate: string
+  totalFloat: string
+  predecessorLabel: string
 }
 
 type EditDraft = {
   name: string
   quantity: string
+  quantityCertainty: 'حدودی' | 'قطعی'
+  unitPrice: string
   uom: string
   location: string
   crew: string
   weightPercent: string
+  startDate: string
+  finishDate: string
+  predecessorLabel: string
+  totalFloat: string
 }
 
 const SCHEDULE_COL_WIDTHS = [
-  '5%',
-  '20%',
-  '12%',
-  '16%',
-  '6%',
-  '7%',
-  '5%',
-  '5%',
-  '6%',
-  '7%',
-  '11%',
+  '52px',
+  '220px',
+  '105px',
+  '170px',
+  '64px',
+  '85px',
+  '168px',
+  '92px',
+  '88px',
+  '72px',
+  '72px',
 ] as const
-// WBS, نام, پیش‌نیاز, تاریخ, شناوری, محل, مقدار, واحد, وزن, تأیید, وضعیت
+// WBS, نام, پیش‌نیاز, تاریخ, شناوری, محل, مقدار(+واحد), قیمت واحد, قیمت کل, وزن, وضعیت
 
 const SCHEDULE_COL_COUNT = SCHEDULE_COL_WIDTHS.length
-const SCHEDULE_CELL = 'px-1 py-1.5 align-middle box-border'
-const SCHEDULE_HEAD = `${SCHEDULE_CELL} font-medium text-slate-600`
+const SCHEDULE_BASE_WIDTH = 1188
+const EXTRA_SCHEDULE_COL_WIDTH = 112
+/** Sticky identity cols (RTL): pin WBS + نام to the right while scrolling left. */
+const STICKY_WBS_RIGHT = 0
+const STICKY_NAME_RIGHT = Number.parseInt(SCHEDULE_COL_WIDTHS[0], 10) || 52
+/** Solid left edge + soft shadow so نام stays separated while scrolling under it. */
+const STICKY_NAME_EDGE_SHADOW =
+  '-1px 0 0 0 rgb(148, 163, 184), -8px 0 12px -6px rgba(15, 23, 42, 0.22)'
+const SCHEDULE_CELL =
+  'px-1 py-1.5 align-middle box-border border-l-2 border-slate-300 text-center'
+const SCHEDULE_HEAD =
+  `${SCHEDULE_CELL} sticky top-0 z-20 font-semibold text-slate-800 bg-slate-200`
+const SCHEDULE_STICKY_WBS_HEAD =
+  `${SCHEDULE_CELL} sticky top-0 z-30 font-semibold text-slate-800 bg-slate-200`
+const SCHEDULE_STICKY_NAME_HEAD =
+  `${SCHEDULE_CELL} sticky top-0 z-30 font-semibold text-slate-800 bg-slate-200 border-l-2 border-slate-500`
+const SCHEDULE_STICKY_WBS_CELL = `${SCHEDULE_CELL} sticky z-10`
+const SCHEDULE_STICKY_NAME_CELL =
+  `${SCHEDULE_CELL} sticky z-10 border-l-2 border-slate-500`
+const TOTAL_PRICE_HELP =
+  'از ضرب مقدار در قیمت واحد به‌دست می‌آید. برای سرشاخه = جمع قیمت کل زیرشاخه‌ها.'
+
+type ExtraTaskField = {
+  key: string
+  label: string
+  property?: keyof ProjectTask
+  type?: 'text' | 'number' | 'date' | 'boolean' | 'contractor'
+}
+
+const EXTRA_TASK_FIELDS: ExtraTaskField[] = [
+  { key: 'contractor', label: 'پیمانکار', type: 'contractor' },
+  { key: 'duration_days', label: 'مدت', property: 'duration_days' },
+  /** Read-only — filled daily from site-supervisor reports (physical %). */
+  { key: 'percent_complete', label: '٪ پیشرفت فیزیکی', property: 'percent_complete' },
+  { key: 'free_float_days', label: 'شناوری آزاد', property: 'free_float_days' },
+  { key: 'is_critical', label: 'بحرانی', property: 'is_critical' },
+  { key: 'is_milestone', label: 'مایلستون', property: 'is_milestone' },
+  { key: 'remaining_duration_days', label: 'مدت باقی', property: 'remaining_duration_days' },
+  { key: 'external_id', label: 'شناسه خارجی', property: 'external_id' },
+  { key: 'msp_uid', label: 'UID', property: 'msp_uid' },
+  { key: 'outline_number', label: 'Outline', property: 'outline_number' },
+  { key: 'outline_level', label: 'سطح', property: 'outline_level' },
+  { key: 'obs_code', label: 'OBS', property: 'obs_code', type: 'text' },
+  { key: 'cbs_code', label: 'CBS', property: 'cbs_code', type: 'text' },
+  { key: 'constraint_type', label: 'نوع قید', property: 'constraint_type', type: 'text' },
+  { key: 'constraint_date', label: 'تاریخ قید', property: 'constraint_date', type: 'date' },
+  { key: 'deadline', label: 'مهلت', property: 'deadline', type: 'date' },
+  { key: 'baseline_start', label: 'شروع خط مبنا', property: 'baseline_start', type: 'date' },
+  { key: 'baseline_finish', label: 'پایان خط مبنا', property: 'baseline_finish', type: 'date' },
+  { key: 'baseline_duration_days', label: 'مدت خط مبنا', property: 'baseline_duration_days' },
+  { key: 'baseline_cost', label: 'هزینه خط مبنا', property: 'baseline_cost', type: 'number' },
+  { key: 'baseline_work_hours', label: 'کار خط مبنا', property: 'baseline_work_hours', type: 'number' },
+  { key: 'actual_start', label: 'شروع واقعی', property: 'actual_start', type: 'date' },
+  { key: 'actual_finish', label: 'پایان واقعی', property: 'actual_finish', type: 'date' },
+  { key: 'work_hours', label: 'ساعت کار', property: 'work_hours', type: 'number' },
+  { key: 'cost', label: 'هزینه', property: 'cost', type: 'number' },
+  { key: 'notes', label: 'یادداشت', property: 'notes', type: 'text' },
+  { key: 'flag', label: 'پرچم', property: 'flag', type: 'boolean' },
+  { key: 'priority', label: 'اولویت', property: 'priority', type: 'number' },
+  { key: 'is_manual_scheduled', label: 'دستی', property: 'is_manual_scheduled', type: 'boolean' },
+  { key: 'has_split', label: 'شکاف', property: 'has_split' },
+  { key: 'is_recurring_master', label: 'تکرارشونده', property: 'is_recurring_master' },
+]
+
+function extraTaskValue(field: ExtraTaskField, task: ProjectTask): unknown {
+  if (field.key === 'contractor') return task.subcontractor_id
+  if (field.key === 'percent_complete') return schedulePhysicalPercent(task)
+  return field.property ? task[field.property] : null
+}
+
+function taskUomValue(task: ProjectTask): string {
+  const trimmed = String(task.uom ?? task.schedule_uom ?? '').trim()
+  return trimmed || 'm2'
+}
+
+function scheduleGroupKey(wbs: string | null | undefined): string {
+  return wbs?.trim().split('.')[0] ?? ''
+}
+
+function seedCommercialInputs(nodes: ScheduleTreeNode[]): Record<
+  string,
+  { quantity: string; unitPrice: string }
+> {
+  const out: Record<string, { quantity: string; unitPrice: string }> = {}
+  const walkPackages = (pkgs: WorkshopPackageNode[]) => {
+    for (const pkg of pkgs) {
+      out[pkg.id] = {
+        quantity: Number(pkg.quantity) > 0 ? String(pkg.quantity) : '',
+        unitPrice: String(Number(pkg.unitPrice) || 0),
+      }
+      if (pkg.children.length) walkPackages(pkg.children)
+    }
+  }
+  const walk = (list: ScheduleTreeNode[]) => {
+    for (const n of list) {
+      if (n.taskId && n.task) {
+        const qty = n.task.quantity ?? n.task.schedule_quantity
+        out[n.taskId] = {
+          quantity: qty != null && Number(qty) > 0 ? String(qty) : '',
+          unitPrice: String(Number(n.task.unit_price ?? 0) || 0),
+        }
+      }
+      walkPackages(n.packages)
+      if (n.children.length) walk(n.children)
+    }
+  }
+  walk(nodes)
+  return out
+}
+
+function parseCommercialNumber(raw: string | undefined): number | null {
+  if (raw == null) return null
+  const trimmed = raw.trim()
+  if (trimmed === '') return null
+  const value = Number(trimmed)
+  return Number.isFinite(value) ? value : null
+}
 
 export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean }) {
   const searchParams = useSearchParams()
   const projectId = searchParams.get('projectId') ?? ''
   const forceSupervisorView = searchParams.get('as') === 'supervisor'
-  const { calendar } = useScheduleCalendar()
+  const { calendar, setCalendar } = useScheduleCalendar()
+  useEffect(() => {
+    setCalendar('jalali')
+  }, [setCalendar])
   const [nodes, setNodes] = useState<ScheduleTreeNode[]>([])
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [selected, setSelected] = useState<Selection>(null)
   const [inlineDraft, setInlineDraft] = useState<InlineDraft | null>(null)
   const [edits, setEdits] = useState<Record<string, EditDraft>>({})
+  /** Package id currently in row-edit mode (inputs visible after «ویرایش»). */
+  const [editingPackageId, setEditingPackageId] = useState<string | null>(null)
   const [changePanel, setChangePanel] = useState(false)
   const [changeComment, setChangeComment] = useState('')
   const [changeForm, setChangeForm] = useState<EditDraft | null>(null)
@@ -135,12 +284,53 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         finishDate?: string
         totalFloat?: number | null
         scheduleWeight?: number | null
+        predecessorLabel?: string
       }
     >
   >({})
   const [dependencyLinkCount, setDependencyLinkCount] = useState(0)
   const [tasksWithPredecessors, setTasksWithPredecessors] = useState(0)
   const [helpWeightParentId, setHelpWeightParentId] = useState<string | null>(null)
+  const [helpProgressParentId, setHelpProgressParentId] = useState<string | null>(null)
+  const [helpTotalPriceOpen, setHelpTotalPriceOpen] = useState(false)
+  /** Controlled مقدار / قیمت واحد — single source of truth for قیمت کل. */
+  const [commercialInputs, setCommercialInputs] = useState<
+    Record<string, { quantity: string; unitPrice: string }>
+  >({})
+  const [contractors, setContractors] = useState<Array<{ id: string; name: string }>>([])
+  const [savingExtraCell, setSavingExtraCell] = useState<string | null>(null)
+  const [dailyProgressEntries, setDailyProgressEntries] = useState<DailyProgressEntry[]>([])
+  const [savedProgressEntries, setSavedProgressEntries] = useState<DailyProgressEntry[]>([])
+  const supervisorProgressEntries = useMemo(
+    () => mergeSupervisorProgressEntries(savedProgressEntries, dailyProgressEntries),
+    [savedProgressEntries, dailyProgressEntries]
+  )
+  const scheduleTableScrollRef = useRef<HTMLDivElement>(null)
+  const topHScrollRef = useRef<HTMLDivElement>(null)
+  const bottomHScrollRef = useRef<HTMLDivElement>(null)
+  const hScrollSyncLock = useRef(false)
+  const [tableScrollWidth, setTableScrollWidth] = useState(0)
+
+  const syncHorizontalScroll = useCallback((source: 'top' | 'main' | 'bottom') => {
+    if (hScrollSyncLock.current) return
+    const top = topHScrollRef.current
+    const main = scheduleTableScrollRef.current
+    const bottom = bottomHScrollRef.current
+    if (!main) return
+    const left =
+      source === 'top'
+        ? (top?.scrollLeft ?? main.scrollLeft)
+        : source === 'bottom'
+          ? (bottom?.scrollLeft ?? main.scrollLeft)
+          : main.scrollLeft
+    hScrollSyncLock.current = true
+    if (top && source !== 'top') top.scrollLeft = left
+    if (bottom && source !== 'bottom') bottom.scrollLeft = left
+    if (source !== 'main') main.scrollLeft = left
+    requestAnimationFrame(() => {
+      hScrollSyncLock.current = false
+    })
+  }, [])
 
   const scheduleTaskFlat = useMemo(() => {
     // Include summary/header rows (is_summary) — parent weight = sum of children
@@ -171,6 +361,195 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     })
     return applyParentWeightSum(rollNodes)
   }, [scheduleTaskFlat, taskDrafts])
+
+  /** Parent physical % = Σ(childWeight × child%) / Σ(childWeight). */
+  const progressRollup = useMemo(() => {
+    const rollNodes = scheduleTaskFlat.map((n) => {
+      const id = n.taskId!
+      const drafted = taskDrafts[id]?.scheduleWeight
+      const isWeightParent = weightRollup.parentIds.has(id)
+      const rolledW = weightRollup.weights[id]
+      let weight: number | null = null
+      if (isWeightParent) {
+        weight =
+          rolledW != null && Number.isFinite(Number(rolledW)) ? Number(rolledW) : null
+      } else if (drafted !== undefined) {
+        weight = drafted
+      } else if (n.scheduleWeight != null && Number.isFinite(Number(n.scheduleWeight))) {
+        weight = Number(n.scheduleWeight)
+      }
+      const percent =
+        resolvePhysicalProgressPercent(
+          id,
+          n.task ? schedulePhysicalPercent(n.task) : null,
+          supervisorProgressEntries
+        ) ?? 0
+      return {
+        id,
+        wbs: n.wbs,
+        name: n.name,
+        weight,
+        percent,
+      }
+    })
+    return applyWeightedParentRollup(rollNodes)
+  }, [scheduleTaskFlat, taskDrafts, weightRollup, supervisorProgressEntries])
+
+  /** Parent/header unit price = Σ(مقدار × قیمت واحد) of direct children (tasks + packages). */
+  const unitPriceRollup = useMemo(() => {
+    const rollNodes: Array<{
+      id: string
+      wbs: string | null
+      name: string
+      amount: number
+    }> = []
+    const qtyOf = (id: string, stored: number | null | undefined) => {
+      const live = commercialInputs[id]
+      if (live) return parseCommercialNumber(live.quantity)
+      if (stored == null || !Number.isFinite(Number(stored))) return null
+      return Number(stored)
+    }
+    const priceOf = (id: string, stored: number | null | undefined) => {
+      const live = commercialInputs[id]
+      if (live) return parseCommercialNumber(live.unitPrice)
+      if (stored == null || !Number.isFinite(Number(stored))) return null
+      return Number(stored)
+    }
+    const walkPackages = (pkgs: WorkshopPackageNode[]) => {
+      for (const pkg of pkgs) {
+        const edit = edits[pkg.id]
+        const quantity = qtyOf(pkg.id, edit ? Number(edit.quantity) : pkg.quantity)
+        const unitPrice = priceOf(pkg.id, edit ? Number(edit.unitPrice) : pkg.unitPrice)
+        rollNodes.push({
+          id: pkg.id,
+          wbs: pkg.wbs,
+          name: pkg.name,
+          amount: quantityTimesUnitPrice(quantity, unitPrice),
+        })
+        if (pkg.children.length) walkPackages(pkg.children)
+      }
+    }
+    for (const n of scheduleTaskFlat) {
+      walkPackages(n.packages)
+      rollNodes.push({
+        id: n.taskId!,
+        wbs: n.wbs,
+        name: n.name,
+        amount: quantityTimesUnitPrice(
+          qtyOf(n.taskId!, n.task?.quantity ?? n.task?.schedule_quantity ?? null),
+          priceOf(n.taskId!, n.task?.unit_price)
+        ),
+      })
+    }
+    return applyParentUnitPriceSum(rollNodes)
+  }, [scheduleTaskFlat, edits, commercialInputs])
+
+  function setCommercialField(
+    id: string,
+    field: 'quantity' | 'unitPrice',
+    value: string,
+    fallback?: { quantity?: string; unitPrice?: string }
+  ) {
+    setCommercialInputs((prev) => {
+      const current = prev[id] ?? {
+        quantity: fallback?.quantity ?? '',
+        unitPrice: fallback?.unitPrice ?? '0',
+      }
+      return {
+        ...prev,
+        [id]: { ...current, [field]: value },
+      }
+    })
+  }
+
+  function displayUnitPrice(
+    entityId: string,
+    stored: number | null | undefined
+  ): { value: number; isParent: boolean; help: string | null } {
+    const isParent = unitPriceRollup.parentIds.has(entityId)
+    const rolled = unitPriceRollup.amounts[entityId]
+    if (isParent) {
+      return {
+        value: Number(rolled ?? 0) || 0,
+        isParent: true,
+        help: unitPriceRollup.explanations.get(entityId)?.text ?? null,
+      }
+    }
+    const live = commercialInputs[entityId]
+    if (live) {
+      return {
+        value: parseCommercialNumber(live.unitPrice) ?? 0,
+        isParent: false,
+        help: null,
+      }
+    }
+    return {
+      value: Number(stored ?? 0) || 0,
+      isParent: false,
+      help: null,
+    }
+  }
+
+  function displayTotalPrice(
+    entityId: string,
+    quantity: number | null | undefined,
+    unitPrice: number | null | undefined
+  ): { value: number; isParent: boolean; help: string } {
+    const isParent = unitPriceRollup.parentIds.has(entityId)
+    if (isParent) {
+      return {
+        value: Number(unitPriceRollup.amounts[entityId] ?? 0) || 0,
+        isParent: true,
+        help:
+          unitPriceRollup.explanations.get(entityId)?.text ??
+          'جمع قیمت کل زیرشاخه‌ها (مقدار × قیمت واحد هر زیرشاخه)',
+      }
+    }
+    const live = commercialInputs[entityId]
+    const qty = live ? parseCommercialNumber(live.quantity) : quantity
+    const price = live ? parseCommercialNumber(live.unitPrice) : unitPrice
+    return {
+      value: quantityTimesUnitPrice(qty, price),
+      isParent: false,
+      help: 'مقدار × قیمت واحد',
+    }
+  }
+
+  const visibleExtraTaskFields = useMemo(
+    () =>
+      EXTRA_TASK_FIELDS.filter(
+        (field) =>
+          field.key === 'contractor' ||
+          field.key === 'percent_complete' ||
+          scheduleTaskFlat.some((node) => {
+            if (!node.task) return false
+            const value = extraTaskValue(field, node.task)
+            return value !== null && value !== undefined && value !== '' && value !== false
+          })
+      ),
+    [scheduleTaskFlat]
+  )
+
+  useEffect(() => {
+    const main = scheduleTableScrollRef.current
+    if (!main) return
+    const measure = () => {
+      setTableScrollWidth(main.scrollWidth)
+      syncHorizontalScroll('main')
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(main)
+    const table = main.querySelector('table')
+    if (table) ro.observe(table)
+    window.addEventListener('resize', measure)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [syncHorizontalScroll, nodes, visibleExtraTaskFields.length])
+
+  const scheduleColCount = SCHEDULE_COL_COUNT + visibleExtraTaskFields.length
 
   function displayScheduleWeight(taskId: string, stored: number | null | undefined): number | null {
     const isParent = weightRollup.parentIds.has(taskId)
@@ -286,15 +665,41 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     if (!projectId) return []
     setLoading(true)
     try {
-      const [treeRes, capRes] = await Promise.all([
+      const [treeRes, capRes, contractorRes] = await Promise.all([
         fetch(`/api/workshop/schedule-tree?projectId=${projectId}`, { cache: 'no-store' }),
         fetch(`/api/workshop/capabilities?projectId=${projectId}`, { cache: 'no-store' }),
+        fetch(`/api/schedule/contractors?projectId=${projectId}`, { cache: 'no-store' }),
       ])
       const data = await treeRes.json()
       const caps = capRes.ok ? await capRes.json() : data.capabilities
+      const contractorAssignmentByTask = new Map<
+        string,
+        { subcontractor_id: string | null; resolved_subcontractor_id: string | null }
+      >()
+      if (contractorRes.ok) {
+        const contractorData = await contractorRes.json()
+        setContractors(contractorData.contractors ?? [])
+        for (const assignment of contractorData.assignments ?? []) {
+          contractorAssignmentByTask.set(String(assignment.id), {
+            subcontractor_id: assignment.subcontractor_id ?? null,
+            resolved_subcontractor_id: assignment.resolved_subcontractor_id ?? null,
+          })
+        }
+      }
       if (!treeRes.ok) throw new Error(data.error || 'خطا در بارگذاری')
       const loadedNodes = enrichScheduleTreeWithWbs(data.nodes ?? [])
+      const applyContractorAssignments = (items: ScheduleTreeNode[]) => {
+        for (const node of items) {
+          if (node.task) {
+            const assignment = contractorAssignmentByTask.get(node.task.id)
+            if (assignment) node.task = { ...node.task, ...assignment }
+          }
+          if (node.children.length) applyContractorAssignments(node.children)
+        }
+      }
+      applyContractorAssignments(loadedNodes)
       setNodes(loadedNodes)
+      setCommercialInputs(seedCommercialInputs(loadedNodes))
       setDependencyLinkCount(Number(data.dependencyLinkCount) || 0)
       setTasksWithPredecessors(Number(data.tasksWithPredecessors) || 0)
       const serverReadOnly = Boolean(caps?.readOnly ?? data.capabilities?.readOnly)
@@ -318,8 +723,10 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       })
       setEdits({})
       setInlineDraft(null)
-      setTaskDrafts({})
+      setEditingPackageId(null)
       setHelpWeightParentId(null)
+      setHelpProgressParentId(null)
+      setHelpTotalPriceOpen(false)
       return loadedNodes
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'خطا')
@@ -336,6 +743,60 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     void load()
   }, [load])
 
+  useEffect(() => {
+    if (!projectId) {
+      setDailyProgressEntries([])
+      return
+    }
+    const refreshDaily = () => {
+      setDailyProgressEntries(readProjectDailyProgress(projectId).entries)
+    }
+    refreshDaily()
+    const onUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ projectId?: string }>).detail
+      if (detail?.projectId && detail.projectId !== projectId) return
+      refreshDaily()
+      void load()
+    }
+    window.addEventListener('sitepilot-daily-progress-updated', onUpdated)
+    window.addEventListener('storage', refreshDaily)
+    return () => {
+      window.removeEventListener('sitepilot-daily-progress-updated', onUpdated)
+      window.removeEventListener('storage', refreshDaily)
+    }
+  }, [projectId, load])
+
+  useEffect(() => {
+    if (!projectId) {
+      setSavedProgressEntries([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/supervisor/daily-progress?projectId=${encodeURIComponent(projectId)}`,
+          { cache: 'no-store' }
+        )
+        const data = await res.json()
+        if (!res.ok || cancelled) return
+        const updates = Array.isArray(data.updates) ? data.updates : []
+        setSavedProgressEntries(
+          updates.map((row: Record<string, unknown>) => ({
+            activityId: String(row.task_id ?? ''),
+            reportDate: String(row.progress_date ?? '').slice(0, 10),
+            percentComplete: Number(row.percent_complete) || 0,
+          }))
+        )
+      } catch {
+        /* stored schedule percent still applies */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [projectId])
+
   useScheduleViewSync(
     projectId,
     () => {
@@ -347,8 +808,6 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
   // Push live drafts to ارسال برنامه so switching tabs needs no hard refresh
   useEffect(() => {
     if (!projectId || readOnly) return
-    const entries = Object.entries(taskDrafts)
-    if (entries.length === 0) return
     const byTaskId: Record<
       string,
       {
@@ -356,11 +815,17 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         finishDate?: string
         totalFloat?: number | null
         scheduleWeight?: number | null
+        quantity?: number | null
+        unitPrice?: number | null
+        uom?: string | null
+        quantityCertainty?: 'حدودی' | 'قطعی'
       }
     > = {}
-    for (const [id, patch] of entries) {
+
+    for (const [id, patch] of Object.entries(taskDrafts)) {
       byTaskId[id] = { ...patch }
     }
+
     // Include rolled parent weights so send-preview matches edit UI
     for (const n of scheduleTaskFlat) {
       const id = n.taskId!
@@ -371,8 +836,107 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         scheduleWeight: shown,
       }
     }
+
+    // Live مقدار / قیمت واحد only when they differ from saved (avoid zeroing SEND)
+    for (const n of scheduleTaskFlat) {
+      if (!n.taskId || !n.task) continue
+      const live = commercialInputs[n.taskId]
+      if (!live) continue
+      const quantity = parseCommercialNumber(live.quantity)
+      const unitPrice = parseCommercialNumber(live.unitPrice)
+      const storedQty =
+        n.task.quantity != null && Number.isFinite(Number(n.task.quantity))
+          ? Number(n.task.quantity)
+          : n.task.schedule_quantity != null && Number.isFinite(Number(n.task.schedule_quantity))
+            ? Number(n.task.schedule_quantity)
+            : null
+      const storedPrice =
+        n.task.unit_price != null && Number.isFinite(Number(n.task.unit_price))
+          ? Number(n.task.unit_price)
+          : null
+      const qtyChanged = (quantity ?? null) !== storedQty
+      const priceChanged = (unitPrice ?? null) !== storedPrice
+      if (!qtyChanged && !priceChanged) continue
+      byTaskId[n.taskId] = {
+        ...byTaskId[n.taskId],
+        ...(qtyChanged ? { quantity } : {}),
+        ...(priceChanged ? { unitPrice } : {}),
+        uom: n.task.uom ?? n.task.schedule_uom ?? undefined,
+        quantityCertainty: n.task.quantity_certainty,
+      }
+    }
+
+    // Package row live values (ارسال shows packages as rows with package ids)
+    const walkPackages = (pkgs: WorkshopPackageNode[]) => {
+      for (const pkg of pkgs) {
+        const edit = edits[pkg.id]
+        const live = commercialInputs[pkg.id]
+        const quantity = live
+          ? parseCommercialNumber(live.quantity)
+          : edit
+            ? Number(edit.quantity)
+            : null
+        const unitPrice = live
+          ? parseCommercialNumber(live.unitPrice)
+          : edit
+            ? Number(edit.unitPrice)
+            : null
+        const storedQty = Number(pkg.quantity)
+        const storedPrice = Number(pkg.unitPrice) || 0
+        const qtyChanged =
+          quantity != null && Number.isFinite(quantity) && quantity !== storedQty
+        const priceChanged =
+          unitPrice != null && Number.isFinite(unitPrice) && unitPrice !== storedPrice
+        const uomChanged = Boolean(edit && edit.uom !== pkg.uom)
+        const certaintyChanged = Boolean(
+          edit && edit.quantityCertainty !== pkg.quantityCertainty
+        )
+        const datesChanged = Boolean(
+          edit &&
+            ((edit.startDate.trim() || null) !== (pkg.startDate ?? null) ||
+              (edit.finishDate.trim() || null) !== (pkg.finishDate ?? null))
+        )
+        if (
+          !qtyChanged &&
+          !priceChanged &&
+          !uomChanged &&
+          !certaintyChanged &&
+          !datesChanged &&
+          !edit
+        ) {
+          if (pkg.children.length) walkPackages(pkg.children)
+          continue
+        }
+        byTaskId[pkg.id] = {
+          ...byTaskId[pkg.id],
+          ...(qtyChanged || live ? { quantity: quantity ?? storedQty } : {}),
+          ...(priceChanged || live ? { unitPrice: unitPrice ?? storedPrice } : {}),
+          uom: edit?.uom ?? pkg.uom,
+          quantityCertainty: edit?.quantityCertainty ?? pkg.quantityCertainty,
+          ...(edit?.startDate?.trim() ? { startDate: edit.startDate.trim() } : {}),
+          ...(edit?.finishDate?.trim() ? { finishDate: edit.finishDate.trim() } : {}),
+          ...(edit?.weightPercent?.trim()
+            ? { scheduleWeight: Number(edit.weightPercent) }
+            : {}),
+        }
+        if (pkg.children.length) walkPackages(pkg.children)
+      }
+    }
+    for (const n of scheduleTaskFlat) {
+      walkPackages(n.packages)
+    }
+
+    if (Object.keys(byTaskId).length === 0) return
     publishScheduleFieldDrafts(projectId, byTaskId)
-  }, [projectId, readOnly, taskDrafts, scheduleTaskFlat, weightRollup])
+  }, [
+    projectId,
+    readOnly,
+    taskDrafts,
+    scheduleTaskFlat,
+    weightRollup,
+    commercialInputs,
+    edits,
+  ])
 
   // Restore in-progress edits when returning to ویرایش برنامه
   useEffect(() => {
@@ -391,8 +955,44 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
           selectedPackage.origin ?? 'user_added'
         )
       : false
+  const selectedInEditMode =
+    Boolean(selectedPackageId) && editingPackageId === selectedPackageId
+  const canStartSelectedEdit = editable && !selectedInEditMode
   const deletable =
-    !readOnly && selectedPackage ? canDeletePackage(selectedPackage.approvalStatus) : false
+    !readOnly && selectedPackage
+      ? canDeletePackage(selectedPackage.approvalStatus, selectedPackage.origin ?? 'user_added')
+      : false
+
+  function beginPackageEdit(
+    pkg: WorkshopPackageNode,
+    fallback?: { start?: string | null; finish?: string | null }
+  ) {
+    if (readOnly) return
+    if (!canEditWorkshopPackageRow(pkg.approvalStatus, pkg.origin ?? 'user_added')) {
+      setMessage('این مورد قابل ویرایش نیست')
+      return
+    }
+    setSelected({ kind: 'package', id: pkg.id, name: pkg.name, pkg })
+    setEditingPackageId(pkg.id)
+    setEdits((prev) => ({
+      ...prev,
+      [pkg.id]:
+        prev[pkg.id] ?? {
+          name: pkg.name,
+          quantity: String(pkg.quantity),
+          quantityCertainty: pkg.quantityCertainty,
+          unitPrice: String(pkg.unitPrice),
+          uom: pkg.uom,
+          location: pkg.location ?? '',
+          crew: pkg.crew ?? '',
+          weightPercent: pkg.weightPercent != null ? String(pkg.weightPercent) : '',
+          startDate:
+            toIsoDateOnly(pkg.startDate) ?? toIsoDateOnly(fallback?.start) ?? '',
+          finishDate:
+            toIsoDateOnly(pkg.finishDate) ?? toIsoDateOnly(fallback?.finish) ?? '',
+        },
+    }))
+  }
   const approved =
     !readOnly &&
     selectedPackage &&
@@ -440,10 +1040,20 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         previewWbs: nextChildWbs(node.wbs, node.packages.length),
         name: '',
         quantity: '',
+        quantityCertainty: 'حدودی',
+        unitPrice: '0',
         uom: 'm2',
         location: '',
         crew: '',
         weightPercent: '',
+        subcontractorId: '',
+        inheritedSubcontractorId:
+          node.task?.resolved_subcontractor_id ?? node.task?.subcontractor_id ?? null,
+        scheduleFields: {},
+        startDate: toIsoDateOnly(node.startDate) ?? '',
+        finishDate: toIsoDateOnly(node.finishDate) ?? '',
+        totalFloat: '',
+        predecessorLabel: '',
       })
       setMessage(null)
       return
@@ -460,23 +1070,57 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       previewWbs: nextChildWbs(pkg.wbs, pkg.children.length),
       name: '',
       quantity: '',
+      quantityCertainty: 'حدودی',
+      unitPrice: '0',
       uom: 'm2',
       location: '',
       crew: '',
-        weightPercent: '',
+      weightPercent: '',
+      subcontractorId: '',
+      inheritedSubcontractorId: pkg.resolvedSubcontractorId ?? null,
+      scheduleFields: {},
+      startDate: toIsoDateOnly(pkg.startDate) ?? '',
+      finishDate: toIsoDateOnly(pkg.finishDate) ?? '',
+      totalFloat: '',
+      predecessorLabel: '',
     })
     setMessage(null)
   }
 
-  function getEdit(pkg: WorkshopPackageNode): EditDraft {
+  function packagePredecessorLabel(pkg: WorkshopPackageNode): string {
+    const fields = pkg.scheduleFields ?? {}
+    const raw = fields.predecessors ?? fields.predecessor_label
+    return raw != null && String(raw).trim() ? String(raw).trim() : ''
+  }
+
+  function packageTotalFloat(pkg: WorkshopPackageNode): string {
+    const fields = pkg.scheduleFields ?? {}
+    const raw = fields.total_float_days
+    if (raw == null || raw === '') return ''
+    const n = Number(raw)
+    return Number.isFinite(n) ? String(n) : ''
+  }
+
+  function getEdit(
+    pkg: WorkshopPackageNode,
+    fallback?: { start?: string | null; finish?: string | null }
+  ): EditDraft {
     return (
       edits[pkg.id] ?? {
         name: pkg.name,
         quantity: String(pkg.quantity),
+        quantityCertainty: pkg.quantityCertainty,
+        unitPrice: String(pkg.unitPrice),
         uom: pkg.uom,
         location: pkg.location ?? '',
         crew: pkg.crew ?? '',
         weightPercent: pkg.weightPercent != null ? String(pkg.weightPercent) : '',
+        startDate:
+          toIsoDateOnly(pkg.startDate) ?? toIsoDateOnly(fallback?.start) ?? '',
+        finishDate:
+          toIsoDateOnly(pkg.finishDate) ?? toIsoDateOnly(fallback?.finish) ?? '',
+        predecessorLabel: packagePredecessorLabel(pkg),
+        totalFloat: packageTotalFloat(pkg),
       }
     )
   }
@@ -488,16 +1132,29 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     }))
   }
 
-  function isDirty(pkg: WorkshopPackageNode) {
+  function isDirty(
+    pkg: WorkshopPackageNode,
+    fallback?: { start?: string | null; finish?: string | null }
+  ) {
     const e = edits[pkg.id]
     if (!e) return false
+    const baseStart =
+      toIsoDateOnly(pkg.startDate) ?? toIsoDateOnly(fallback?.start) ?? ''
+    const baseFinish =
+      toIsoDateOnly(pkg.finishDate) ?? toIsoDateOnly(fallback?.finish) ?? ''
     return (
       e.name !== pkg.name ||
       e.quantity !== String(pkg.quantity) ||
+      e.quantityCertainty !== pkg.quantityCertainty ||
+      e.unitPrice !== String(pkg.unitPrice) ||
       e.uom !== pkg.uom ||
       e.location !== (pkg.location ?? '') ||
       e.crew !== (pkg.crew ?? '') ||
-      e.weightPercent !== (pkg.weightPercent != null ? String(pkg.weightPercent) : '')
+      e.weightPercent !== (pkg.weightPercent != null ? String(pkg.weightPercent) : '') ||
+      e.startDate !== baseStart ||
+      e.finishDate !== baseFinish ||
+      e.predecessorLabel !== packagePredecessorLabel(pkg) ||
+      e.totalFloat !== packageTotalFloat(pkg)
     )
   }
 
@@ -512,15 +1169,25 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         body: JSON.stringify({
           name: e.name,
           quantity: Number(e.quantity),
+          quantityCertainty: e.quantityCertainty,
+          unitPrice: Number(e.unitPrice) || 0,
           uom: e.uom,
           location: e.location,
           crew: e.crew,
           weightPercent: e.weightPercent.trim() ? Number(e.weightPercent) : null,
+          startDate: e.startDate.trim() || null,
+          finishDate: e.finishDate.trim() || null,
+          scheduleFields: {
+            ...(pkg.scheduleFields ?? {}),
+            predecessors: e.predecessorLabel.trim(),
+            total_float_days: e.totalFloat.trim() === '' ? null : Number(e.totalFloat),
+          },
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'ذخیره نشد')
-      setMessage('ذخیره شد')
+      setMessage('ذخیره شد — در ارسال برنامه و صورت‌وضعیت نیز اعمال شد')
+      publishScheduleViewSync(projectId)
       await load()
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'خطا')
@@ -537,6 +1204,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       finishDate?: string
       totalFloat?: number | null
       scheduleWeight?: number | null
+      predecessorLabel?: string
     }
   ) {
     if (!projectId || readOnly) return
@@ -549,6 +1217,354 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     if (!res.ok) throw new Error(data.error || 'ذخیره فعالیت ناموفق بود')
   }
 
+  async function savePackagePredFloat(
+    pkg: WorkshopPackageNode,
+    patch: { predecessorLabel?: string; totalFloat?: string }
+  ) {
+    const fields = { ...(pkg.scheduleFields ?? {}) }
+    if (patch.predecessorLabel !== undefined) {
+      fields.predecessors = patch.predecessorLabel.trim()
+    }
+    if (patch.totalFloat !== undefined) {
+      const raw = patch.totalFloat.trim()
+      fields.total_float_days = raw === '' ? null : Number(raw)
+      if (raw !== '' && !Number.isFinite(Number(raw))) {
+        setMessage('شناوری نامعتبر است')
+        return
+      }
+    }
+    setSavingExtraCell(`pkg:${pkg.id}:pred-float`)
+    try {
+      const res = await fetch(`/api/workshop/packages/${pkg.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduleFields: fields }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'ذخیره ناموفق بود')
+      publishScheduleViewSync(projectId)
+      await load()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'ذخیره پیش‌نیاز/شناوری ناموفق بود')
+    } finally {
+      setSavingExtraCell(null)
+    }
+  }
+
+  function replaceTaskInNodes(task: ProjectTask) {
+    const replace = (items: ScheduleTreeNode[]): ScheduleTreeNode[] =>
+      items.map((node) => {
+        if (node.taskId === task.id) {
+          return {
+            ...node,
+            task,
+            name: task.name,
+            wbs: task.wbs_code,
+          }
+        }
+        return node.children.length ? { ...node, children: replace(node.children) } : node
+      })
+    setNodes((current) => replace(current))
+    const qty = task.quantity ?? task.schedule_quantity
+    setCommercialInputs((prev) => ({
+      ...prev,
+      [task.id]: {
+        quantity: qty != null && Number(qty) > 0 ? String(qty) : prev[task.id]?.quantity ?? '',
+        unitPrice:
+          task.unit_price != null
+            ? String(Number(task.unit_price) || 0)
+            : prev[task.id]?.unitPrice ?? '0',
+      },
+    }))
+  }
+
+  async function saveExtraTaskField(
+    task: ProjectTask,
+    field: ExtraTaskField,
+    value: unknown
+  ) {
+    if (readOnly || !field.type) return
+    const cellKey = `${task.id}:${field.key}`
+    setSavingExtraCell(cellKey)
+    setMessage(null)
+    try {
+      if (field.type === 'contractor') {
+        const response = await fetch('/api/schedule/contractors', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectId,
+            taskIds: [task.id],
+            contractorId: value || null,
+          }),
+        })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error || 'ذخیره پیمانکار ناموفق بود')
+        const assignment = (data.assignments ?? []).find(
+          (item: { id: string }) => item.id === task.id
+        )
+        replaceTaskInNodes({
+          ...task,
+          subcontractor_id: assignment?.subcontractor_id ?? null,
+          resolved_subcontractor_id: assignment?.resolved_subcontractor_id ?? null,
+        })
+      } else {
+        const response = await fetch('/api/schedule/task-details', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectId,
+            taskId: task.id,
+            field: field.key,
+            value,
+          }),
+        })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error || 'ذخیره مقدار ناموفق بود')
+        replaceTaskInNodes(data.task as ProjectTask)
+      }
+      publishScheduleViewSync(projectId)
+      setMessage('تغییر ذخیره شد و در ارسال برنامه نیز اعمال شد')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'ذخیره مقدار ناموفق بود')
+    } finally {
+      setSavingExtraCell(null)
+    }
+  }
+
+  async function savePackageExtraField(
+    pkg: WorkshopPackageNode,
+    field: ExtraTaskField,
+    value: unknown
+  ) {
+    if (readOnly || !field.type) return
+    const cellKey = `pkg:${pkg.id}:${field.key}`
+    setSavingExtraCell(cellKey)
+    setMessage(null)
+    try {
+      const response = await fetch(`/api/workshop/packages/${pkg.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          field.type === 'contractor'
+            ? { subcontractorId: value || null }
+            : { scheduleFields: { ...(pkg.scheduleFields ?? {}), [field.key]: value } }
+        ),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'ذخیره زیرشاخه ناموفق بود')
+      await load()
+      publishScheduleViewSync(projectId)
+      setMessage('اطلاعات زیرشاخه ذخیره شد — در ارسال برنامه و صورت‌وضعیت نیز اعمال شد')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'ذخیره زیرشاخه ناموفق بود')
+    } finally {
+      setSavingExtraCell(null)
+    }
+  }
+
+  async function saveTaskQuantityCertainty(
+    task: ProjectTask,
+    value: 'حدودی' | 'قطعی'
+  ) {
+    const cellKey = `${task.id}:quantity_certainty`
+    setSavingExtraCell(cellKey)
+    setMessage(null)
+    try {
+      const response = await fetch('/api/schedule/task-details', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          taskId: task.id,
+          field: 'quantity_certainty',
+          value,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'ذخیره وضعیت مقدار ناموفق بود')
+      replaceTaskInNodes(data.task as ProjectTask)
+      publishScheduleViewSync(projectId)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'ذخیره وضعیت مقدار ناموفق بود')
+    } finally {
+      setSavingExtraCell(null)
+    }
+  }
+
+  async function saveTaskUom(task: ProjectTask, value: string) {
+    const cellKey = `${task.id}:uom`
+    setSavingExtraCell(cellKey)
+    setMessage(null)
+    try {
+      const response = await fetch('/api/schedule/task-details', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          taskId: task.id,
+          field: 'uom',
+          value,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'ذخیره واحد ناموفق بود')
+      replaceTaskInNodes(data.task as ProjectTask)
+      publishScheduleViewSync(projectId)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'ذخیره واحد ناموفق بود')
+    } finally {
+      setSavingExtraCell(null)
+    }
+  }
+
+  async function savePackageUom(pkg: WorkshopPackageNode, value: string) {
+    const cellKey = `pkg:${pkg.id}:uom`
+    setSavingExtraCell(cellKey)
+    setMessage(null)
+    try {
+      const response = await fetch(`/api/workshop/packages/${pkg.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uom: value }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'ذخیره واحد ناموفق بود')
+      await load()
+      publishScheduleViewSync(projectId)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'ذخیره واحد ناموفق بود')
+    } finally {
+      setSavingExtraCell(null)
+    }
+  }
+
+  async function saveTaskUnitPrice(task: ProjectTask, value: number) {
+    const cellKey = `${task.id}:unit_price`
+    setSavingExtraCell(cellKey)
+    setMessage(null)
+    try {
+      const response = await fetch('/api/schedule/task-details', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          taskId: task.id,
+          field: 'unit_price',
+          value,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'ذخیره قیمت واحد ناموفق بود')
+      replaceTaskInNodes({
+        ...(data.task as ProjectTask),
+        unit_price: value,
+      })
+      setCommercialInputs((prev) => ({
+        ...prev,
+        [task.id]: {
+          quantity: prev[task.id]?.quantity ?? '',
+          unitPrice: String(value),
+        },
+      }))
+      publishScheduleViewSync(projectId)
+      setMessage('قیمت واحد در برنامه، ارسال برنامه و صورت‌وضعیت ذخیره شد')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'ذخیره قیمت واحد ناموفق بود')
+    } finally {
+      setSavingExtraCell(null)
+    }
+  }
+
+  async function saveTaskQuantity(task: ProjectTask, value: number | null) {
+    const cellKey = `${task.id}:quantity`
+    setSavingExtraCell(cellKey)
+    setMessage(null)
+    try {
+      const response = await fetch('/api/schedule/task-details', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          taskId: task.id,
+          field: 'quantity',
+          value,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'ذخیره مقدار ناموفق بود')
+      replaceTaskInNodes({
+        ...(data.task as ProjectTask),
+        quantity: value,
+      })
+      setCommercialInputs((prev) => ({
+        ...prev,
+        [task.id]: {
+          quantity: value != null && value > 0 ? String(value) : '',
+          unitPrice: prev[task.id]?.unitPrice ?? String(Number(task.unit_price ?? 0) || 0),
+        },
+      }))
+      publishScheduleViewSync(projectId)
+      setMessage('مقدار ذخیره شد')
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'ذخیره مقدار ناموفق بود'
+      setMessage(
+        /column.*quantity|quantity.*column|schema cache/i.test(msg)
+          ? 'ستون quantity در Supabase نیست — فایل database/91-schedule-qty-unit-price.sql را اجرا کنید'
+          : msg
+      )
+    } finally {
+      setSavingExtraCell(null)
+    }
+  }
+
+  async function savePackageQuantity(pkg: WorkshopPackageNode, value: number) {
+    const cellKey = `pkg:${pkg.id}:quantity`
+    setSavingExtraCell(cellKey)
+    setMessage(null)
+    try {
+      const response = await fetch(`/api/workshop/packages/${pkg.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity: value }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'ذخیره مقدار ناموفق بود')
+      await load()
+      publishScheduleViewSync(projectId)
+      setMessage('مقدار ذخیره شد — در ارسال برنامه و صورت‌وضعیت نیز اعمال شد')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'ذخیره مقدار ناموفق بود')
+    } finally {
+      setSavingExtraCell(null)
+    }
+  }
+
+  async function savePackageQuantityCertainty(
+    pkg: WorkshopPackageNode,
+    value: 'حدودی' | 'قطعی'
+  ) {
+    const cellKey = `pkg:${pkg.id}:quantity_certainty`
+    setSavingExtraCell(cellKey)
+    setMessage(null)
+    try {
+      const response = await fetch(`/api/workshop/packages/${pkg.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantityCertainty: value }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'ذخیره وضعیت مقدار ناموفق بود')
+      await load()
+      publishScheduleViewSync(projectId)
+      setMessage('وضعیت مقدار ذخیره شد')
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'ذخیره وضعیت مقدار ناموفق بود')
+    } finally {
+      setSavingExtraCell(null)
+    }
+  }
+
   function patchTaskDraft(
     taskId: string,
     patch: {
@@ -556,6 +1572,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       finishDate?: string
       totalFloat?: number | null
       scheduleWeight?: number | null
+      predecessorLabel?: string
     }
   ) {
     setTaskDrafts((prev) => ({
@@ -615,6 +1632,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
             parentPackageId: inlineDraft.parentKind === 'package' ? inlineDraft.parentId : null,
             name,
             quantity,
+            quantityCertainty: inlineDraft.quantityCertainty,
+            unitPrice: Number(inlineDraft.unitPrice) || 0,
             uom: inlineDraft.uom,
             location: inlineDraft.location || null,
             crew: inlineDraft.crew || null,
@@ -622,6 +1641,16 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
             weightPercent: inlineDraft.weightPercent.trim()
               ? Number(inlineDraft.weightPercent)
               : null,
+            subcontractorId: inlineDraft.subcontractorId || null,
+            startDate: inlineDraft.startDate || null,
+            finishDate: inlineDraft.finishDate || null,
+            scheduleFields: {
+              ...inlineDraft.scheduleFields,
+              predecessors: inlineDraft.predecessorLabel?.trim() || '',
+              total_float_days: inlineDraft.totalFloat
+                ? Number(inlineDraft.totalFloat)
+                : null,
+            },
           }),
         })
         const data = await res.json()
@@ -637,10 +1666,19 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
           body: JSON.stringify({
             name: e.name,
             quantity: Number(e.quantity),
+            quantityCertainty: e.quantityCertainty,
+            unitPrice: Number(e.unitPrice) || 0,
             uom: e.uom,
             location: e.location,
             crew: e.crew,
             weightPercent: e.weightPercent.trim() ? Number(e.weightPercent) : null,
+            startDate: e.startDate.trim() || null,
+            finishDate: e.finishDate.trim() || null,
+            scheduleFields: {
+              ...(pkg.scheduleFields ?? {}),
+              predecessors: e.predecessorLabel.trim(),
+              total_float_days: e.totalFloat.trim() === '' ? null : Number(e.totalFloat),
+            },
           }),
         })
         const data = await res.json()
@@ -652,7 +1690,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
           patch.startDate === undefined &&
           patch.finishDate === undefined &&
           patch.totalFloat === undefined &&
-          patch.scheduleWeight === undefined
+          patch.scheduleWeight === undefined &&
+          patch.predecessorLabel === undefined
         ) {
           continue
         }
@@ -670,7 +1709,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         /* dates already saved; float refresh is best-effort */
       }
       publishScheduleViewSync(projectId)
-      setMessage('ثبت و بروزرسانی شد — تغییرات در گانت و ارسال برنامه هم اعمال شد')
+      setMessage('ثبت و بروزرسانی شد — تغییرات در گانت، ارسال برنامه و صورت‌وضعیت هم اعمال شد')
       await load()
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'خطا در ثبت نهایی')
@@ -709,6 +1748,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
           parentPackageId: inlineDraft.parentKind === 'package' ? inlineDraft.parentId : null,
           name,
           quantity,
+          quantityCertainty: inlineDraft.quantityCertainty,
+          unitPrice: Number(inlineDraft.unitPrice) || 0,
           uom: inlineDraft.uom,
           location: inlineDraft.location,
           crew: inlineDraft.crew,
@@ -716,6 +1757,16 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
           weightPercent: inlineDraft.weightPercent.trim()
             ? Number(inlineDraft.weightPercent)
             : null,
+          subcontractorId: inlineDraft.subcontractorId || null,
+          startDate: inlineDraft.startDate || null,
+          finishDate: inlineDraft.finishDate || null,
+          scheduleFields: {
+            ...inlineDraft.scheduleFields,
+            predecessors: (inlineDraft.predecessorLabel ?? '').trim(),
+            total_float_days: inlineDraft.totalFloat
+              ? Number(inlineDraft.totalFloat)
+              : null,
+          },
         }),
       })
       const data = await res.json()
@@ -723,12 +1774,30 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
 
       const createdId = data.package?.id ? String(data.package.id) : null
       setInlineDraft(null)
-      setMessage(`زیرمجموعه ${inlineDraft.previewWbs} ذخیره شد`)
+      setMessage(`زیرمجموعه ${inlineDraft.previewWbs} ذخیره شد — در ارسال برنامه و صورت‌وضعیت نیز اعمال شد`)
+      publishScheduleViewSync(projectId)
       const loadedNodes = await load(expandAfter)
       if (createdId) {
         const pkg = findPackageInTree(loadedNodes, createdId)
         if (pkg) {
           setSelected({ kind: 'package', id: pkg.id, name: pkg.name, pkg })
+          // Enter edit mode so the new activity stays editable after save
+          setEditingPackageId(pkg.id)
+          setEdits((prev) => ({
+            ...prev,
+            [pkg.id]: {
+              name: pkg.name,
+              quantity: String(pkg.quantity),
+              quantityCertainty: pkg.quantityCertainty,
+              unitPrice: String(pkg.unitPrice),
+              uom: pkg.uom,
+              location: pkg.location ?? '',
+              crew: pkg.crew ?? '',
+              weightPercent: pkg.weightPercent != null ? String(pkg.weightPercent) : '',
+              startDate: toIsoDateOnly(pkg.startDate) ?? '',
+              finishDate: toIsoDateOnly(pkg.finishDate) ?? '',
+            },
+          }))
         }
       }
     } catch (err) {
@@ -934,7 +2003,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
 
       <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden w-full max-w-full min-w-0">
           {!readOnly && (
-          <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b bg-slate-50 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2 border-b bg-slate-50 px-3 py-2">
             <button
               type="button"
               disabled={!canAddSubBranch}
@@ -943,6 +2012,30 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
             >
               <Plus className="h-4 w-4" />
               زیرمجموعه
+            </button>
+            <button
+              type="button"
+              disabled={!canStartSelectedEdit || saving}
+              onClick={() => {
+                if (!selectedPackage) return
+                const flat = flattenWorkshopSchedule(nodes, expanded).find(
+                  (r) => r.type === 'package' && r.pkg.id === selectedPackage.id
+                )
+                beginPackageEdit(
+                  selectedPackage,
+                  flat && flat.type === 'package'
+                    ? { start: flat.startDate, finish: flat.finishDate }
+                    : {
+                        start: selectedPackage.startDate,
+                        finish: selectedPackage.finishDate,
+                      }
+                )
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm text-sky-900 disabled:opacity-40"
+              title="ویرایش فعالیت انتخاب‌شده بعد از ذخیره"
+            >
+              <Pencil className="h-4 w-4" />
+              ویرایش
             </button>
             <button
               type="button"
@@ -1031,6 +2124,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                 setChangeForm({
                   name: pending?.name ?? selectedPackage.name,
                   quantity: String(pending?.quantity ?? selectedPackage.quantity),
+                  quantityCertainty: selectedPackage.quantityCertainty,
+                  unitPrice: String(selectedPackage.unitPrice),
                   uom: pending?.uom ?? selectedPackage.uom,
                   location:
                     pending?.location !== undefined
@@ -1042,6 +2137,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                     selectedPackage.weightPercent != null
                       ? String(selectedPackage.weightPercent)
                       : '',
+                  startDate: toIsoDateOnly(selectedPackage.startDate) ?? '',
+                  finishDate: toIsoDateOnly(selectedPackage.finishDate) ?? '',
                 })
                 setChangePanel(true)
               }}
@@ -1150,23 +2247,93 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
             </div>
           )}
 
+          <div className="sticky top-0 z-40 border-b border-slate-200 bg-slate-50/95 shadow-sm backdrop-blur-sm">
+            <div className="flex items-center justify-between gap-2 px-3 py-1.5 text-[11px] text-slate-600">
+              <span>
+                اسکرول افقی بالا همیشه در دسترس است — برای ستون‌های بیشتر چپ/راست بکشید.
+              </span>
+              <div className="flex shrink-0 gap-1">
+                <button
+                  type="button"
+                  className="rounded border bg-white px-2 py-1 hover:bg-slate-100"
+                  onClick={() =>
+                    scheduleTableScrollRef.current?.scrollBy({ left: 700, behavior: 'smooth' })
+                  }
+                >
+                  ستون‌های قبلی →
+                </button>
+                <button
+                  type="button"
+                  className="rounded border bg-white px-2 py-1 hover:bg-slate-100"
+                  onClick={() =>
+                    scheduleTableScrollRef.current?.scrollBy({ left: -700, behavior: 'smooth' })
+                  }
+                >
+                  ← ستون‌های بیشتر
+                </button>
+              </div>
+            </div>
+            <div
+              ref={topHScrollRef}
+              className="overflow-x-auto overflow-y-hidden border-t border-slate-200 bg-slate-200/80 [scrollbar-width:thin]"
+              style={{ height: 14 }}
+              onScroll={() => syncHorizontalScroll('top')}
+              aria-label="اسکرول افقی جدول"
+            >
+              <div
+                style={{ width: Math.max(tableScrollWidth, 1), height: 1 }}
+                aria-hidden
+              />
+            </div>
+          </div>
+
           <div
-            className="overflow-y-scroll overflow-x-hidden max-h-[calc(100vh-200px)] w-full [scrollbar-gutter:stable]"
+            ref={scheduleTableScrollRef}
+            className="overflow-auto max-h-[calc(100vh-220px)] w-full [scrollbar-gutter:stable]"
+            onScroll={() => syncHorizontalScroll('main')}
           >
-            <table className="w-full border-collapse text-xs sm:text-sm" style={{ tableLayout: 'fixed' }}>
+            <table
+              className="w-full border-separate border-spacing-0 text-xs sm:text-sm text-center [&_input]:!text-center [&_select]:!text-center [&_select]:![text-align-last:center] [&_textarea]:!text-center"
+              style={{
+                tableLayout: 'fixed',
+                width: `${SCHEDULE_BASE_WIDTH + visibleExtraTaskFields.length * EXTRA_SCHEDULE_COL_WIDTH}px`,
+              }}
+            >
               <colgroup>
                 {SCHEDULE_COL_WIDTHS.map((width, i) => (
                   <col key={i} style={{ width }} />
                 ))}
+                {visibleExtraTaskFields.map((field) => (
+                  <col key={field.key} style={{ width: EXTRA_SCHEDULE_COL_WIDTH }} />
+                ))}
               </colgroup>
-              <thead className="sticky top-0 z-[2] bg-white border-b text-slate-500 shadow-[0_1px_0_0_rgb(226_232_240)]">
+              <thead className="border-b text-slate-500 shadow-[0_1px_0_0_rgb(226_232_240)]">
                 <tr>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[0] }}>WBS</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[1] }}>نام</th>
+                  <th
+                    className={SCHEDULE_STICKY_WBS_HEAD}
+                    style={{
+                      width: SCHEDULE_COL_WIDTHS[0],
+                      right: STICKY_WBS_RIGHT,
+                      top: 0,
+                    }}
+                  >
+                    WBS
+                  </th>
+                  <th
+                    className={SCHEDULE_STICKY_NAME_HEAD}
+                    style={{
+                      width: SCHEDULE_COL_WIDTHS[1],
+                      right: STICKY_NAME_RIGHT,
+                      top: 0,
+                      boxShadow: STICKY_NAME_EDGE_SHADOW,
+                    }}
+                  >
+                    نام
+                  </th>
                   <th
                     className={SCHEDULE_HEAD}
                     style={{ width: SCHEDULE_COL_WIDTHS[2] }}
-                    title="پیش‌نیاز از MSP — مثلاً 1.2FS یعنی Finish-to-Start"
+                    title="پیش‌نیاز قابل ویرایش — مثلاً 3FS+4d یا 4.1FS, 5SS"
                   >
                     پیش‌نیاز
                   </th>
@@ -1174,28 +2341,101 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                   <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[4] }}>شناوری</th>
                   <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[5] }}>محل</th>
                   <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[6] }}>مقدار</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[7] }}>واحد</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[8] }}>وزن</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[9] }}>تأیید</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[7] }}>قیمت واحد</th>
+                  <th
+                    className={`${SCHEDULE_HEAD} relative`}
+                    style={{ width: SCHEDULE_COL_WIDTHS[8] }}
+                  >
+                    <span className="inline-flex items-center justify-center gap-0.5">
+                      قیمت کل
+                      <button
+                        type="button"
+                        className="inline-flex text-sky-700 hover:text-sky-900"
+                        title={TOTAL_PRICE_HELP}
+                        aria-label={TOTAL_PRICE_HELP}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          setHelpTotalPriceOpen((open) => !open)
+                        }}
+                      >
+                        <HelpCircle className="h-3 w-3" />
+                      </button>
+                    </span>
+                    {helpTotalPriceOpen ? (
+                      <div
+                        className="absolute z-30 mt-1 max-w-[220px] rounded-md border border-sky-200 bg-white px-2.5 py-1.5 text-[10px] font-normal leading-relaxed text-slate-700 shadow-lg"
+                        style={{ insetInlineEnd: 4, top: '100%' }}
+                        dir="rtl"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <div className="flex items-start gap-2">
+                          <span>{TOTAL_PRICE_HELP}</span>
+                          <button
+                            type="button"
+                            className="shrink-0 text-[10px] text-sky-700 hover:underline"
+                            onClick={() => setHelpTotalPriceOpen(false)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[9] }}>وزن</th>
                   <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[10] }}>وضعیت</th>
+                  {visibleExtraTaskFields.map((field) => (
+                    <th key={field.key} className={`${SCHEDULE_HEAD} min-w-[112px]`}>
+                      {field.label}
+                      {!field.type ? (
+                        <span className="block text-[8px] font-normal text-slate-400">
+                          فقط‌خواندنی
+                        </span>
+                      ) : null}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {loading && (
                   <tr>
-                    <td colSpan={SCHEDULE_COL_COUNT} className="px-3 py-8 text-center text-slate-500">
+                    <td colSpan={scheduleColCount} className="px-3 py-8 text-center text-slate-500">
                       در حال بارگذاری…
                     </td>
                   </tr>
                 )}
                 {!loading && visibleRows.length === 0 && !inlineDraft && (
                   <tr>
-                    <td colSpan={SCHEDULE_COL_COUNT} className="px-3 py-8 text-center text-slate-500">
+                    <td colSpan={scheduleColCount} className="px-3 py-8 text-center text-slate-500">
                       برنامه‌ای برای این پروژه import نشده.
                     </td>
                   </tr>
                 )}
-                {visibleRows.map((row) => {
+                {visibleRows.map((row, rowIndex) => {
+                  const groupKey = scheduleGroupKey(row.wbs)
+                  const isGroupFirst =
+                    rowIndex === 0 ||
+                    scheduleGroupKey(visibleRows[rowIndex - 1]?.wbs) !== groupKey
+                  const isGroupLast =
+                    rowIndex === visibleRows.length - 1 ||
+                    scheduleGroupKey(visibleRows[rowIndex + 1]?.wbs) !== groupKey
+                  const hasInlineAfter =
+                    !readOnly &&
+                    Boolean(inlineDraft) &&
+                    (row.type === 'schedule'
+                      ? inlineDraft?.parentKind === 'schedule' &&
+                        inlineDraft.parentId === row.node.taskId
+                      : inlineDraft?.parentKind === 'package' &&
+                        inlineDraft.parentId === row.pkg.id)
+                  const groupFrameClass = [
+                    '[&>td:first-child]:border-r-2 [&>td:first-child]:border-r-slate-500',
+                    '[&>td:last-child]:border-l-2 [&>td:last-child]:border-l-slate-500',
+                    isGroupFirst
+                      ? '[&>td]:border-t-2 [&>td]:border-t-slate-500'
+                      : '',
+                    isGroupLast && !hasInlineAfter
+                      ? '[&>td]:border-b-2 [&>td]:border-b-slate-500'
+                      : '',
+                  ].join(' ')
                   if (row.type === 'schedule') {
                     const n = row.node
                     const isSel = selected?.kind === 'schedule' && selected.id === n.id
@@ -1208,14 +2448,27 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                           onClick={() =>
                             setSelected({ kind: 'schedule', id: n.id, name: n.name, wbs: n.wbs })
                           }
-                          className={`cursor-pointer border-b border-slate-100 hover:bg-slate-50 ${
-                            isSel ? 'bg-amber-50' : ''
+                          className={`group cursor-pointer border-b border-slate-300 hover:bg-slate-50 ${groupFrameClass} ${
+                            isSel ? 'bg-amber-50' : 'bg-white'
                           }`}
                         >
-                          <td className={`${SCHEDULE_CELL} font-mono text-[11px] tabular-nums text-slate-600 text-center`}>
+                          <td
+                            className={`${SCHEDULE_STICKY_WBS_CELL} font-mono text-[11px] tabular-nums text-slate-600 text-center group-hover:bg-slate-50 ${
+                              isSel ? 'bg-amber-50 group-hover:bg-amber-50' : 'bg-white'
+                            }`}
+                            style={{ right: STICKY_WBS_RIGHT }}
+                          >
                             {row.wbs}
                           </td>
-                          <td className={`${SCHEDULE_CELL} overflow-hidden`}>
+                          <td
+                            className={`${SCHEDULE_STICKY_NAME_CELL} group-hover:bg-slate-50 ${
+                              isSel ? 'bg-amber-50 group-hover:bg-amber-50' : 'bg-white'
+                            }`}
+                            style={{
+                              right: STICKY_NAME_RIGHT,
+                              boxShadow: STICKY_NAME_EDGE_SHADOW,
+                            }}
+                          >
                             <div
                               className="flex items-center gap-0.5 min-w-0"
                               style={{
@@ -1243,7 +2496,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 <span className="w-4 shrink-0" />
                               )}
                               <span className="font-medium text-slate-900 truncate text-xs leading-snug">
-                                {n.name}
+                                {displayActivityName(n.name, n.wbs)}
                               </span>
                               {n.packages.length > 0 && (
                                 <span className="text-[11px] text-slate-400 shrink-0">
@@ -1271,17 +2524,40 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             </div>
                           </td>
                           <td
-                            className={`${SCHEDULE_CELL} font-mono text-[10px] text-slate-700 leading-tight cursor-help`}
-                            dir="ltr"
+                            className={`${SCHEDULE_CELL} font-mono text-[10px] text-slate-700 leading-tight`}
                             title={
                               n.predecessorTooltip?.trim() ||
                               n.predecessorLabel ||
-                              undefined
+                              'مثال: 3FS+4d یا 4.1FS, 5SS'
                             }
                           >
-                            {n.predecessorLabel?.trim() ? n.predecessorLabel : '—'}
+                            {!readOnly && n.taskId && !n.isSyntheticGroup ? (
+                              <input
+                                dir="ltr"
+                                className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] text-center font-mono"
+                                value={
+                                  taskDrafts[n.taskId]?.predecessorLabel !== undefined
+                                    ? taskDrafts[n.taskId]?.predecessorLabel ?? ''
+                                    : n.predecessorLabel?.trim() ?? ''
+                                }
+                                placeholder="مثلاً 3FS+4d"
+                                disabled={saving}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(ev) => {
+                                  patchTaskDraft(n.taskId!, {
+                                    predecessorLabel: ev.target.value,
+                                  })
+                                }}
+                              />
+                            ) : (
+                              <span dir="ltr" className="block text-center">
+                                {n.predecessorLabel?.trim() ? n.predecessorLabel : '—'}
+                              </span>
+                            )}
                           </td>
-                          <td className={`${SCHEDULE_CELL} text-[11px] text-slate-600 tabular-nums leading-tight`}>
+                          <td
+                            className={`${SCHEDULE_CELL} text-[11px] text-slate-600 tabular-nums leading-tight overflow-hidden`}
+                          >
                             {!readOnly && n.taskId && !n.isSyntheticGroup ? (
                               <CompactJalaliDateRange
                                 startIso={
@@ -1299,13 +2575,15 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 }}
                               />
                             ) : (
-                              formatActivityDateShort(
-                                toIsoDateOnly(taskDrafts[n.taskId ?? '']?.startDate) ??
-                                  row.startDate,
-                                toIsoDateOnly(taskDrafts[n.taskId ?? '']?.finishDate) ??
-                                  row.finishDate,
-                                calendar
-                              )
+                              <span dir="ltr" className="block w-full text-center tabular-nums">
+                                {formatActivityDateShort(
+                                  toIsoDateOnly(taskDrafts[n.taskId ?? '']?.startDate) ??
+                                    row.startDate,
+                                  toIsoDateOnly(taskDrafts[n.taskId ?? '']?.finishDate) ??
+                                    row.finishDate,
+                                  calendar
+                                )}
+                              </span>
                             )}
                           </td>
                           <td className={`${SCHEDULE_CELL} text-center`}>
@@ -1340,11 +2618,177 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             )}
                           </td>
                           <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
-                          <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
-                          <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
+                          <td className={`${SCHEDULE_CELL} text-center`}>
+                            {n.task && !readOnly && !n.isSyntheticGroup ? (
+                              <div
+                                className="flex items-center gap-1"
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step="any"
+                                  className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] tabular-nums text-center"
+                                  value={
+                                    commercialInputs[n.task.id]?.quantity ??
+                                    (n.task.quantity != null && Number(n.task.quantity) > 0
+                                      ? String(n.task.quantity)
+                                      : '')
+                                  }
+                                  placeholder="مقدار"
+                                  disabled={savingExtraCell === `${n.task.id}:quantity`}
+                                  onChange={(event) => {
+                                    setCommercialField(n.task!.id, 'quantity', event.target.value, {
+                                      unitPrice: String(Number(n.task?.unit_price ?? 0) || 0),
+                                    })
+                                  }}
+                                  onBlur={(event) => {
+                                    const raw = event.target.value.trim()
+                                    const value = raw === '' ? null : Number(raw)
+                                    if (raw !== '' && (!Number.isFinite(value) || (value as number) < 0)) {
+                                      const restored =
+                                        n.task?.quantity != null && Number(n.task.quantity) > 0
+                                          ? String(n.task.quantity)
+                                          : ''
+                                      setCommercialField(n.task!.id, 'quantity', restored, {
+                                        unitPrice: String(Number(n.task?.unit_price ?? 0) || 0),
+                                      })
+                                      return
+                                    }
+                                    const prev =
+                                      n.task?.quantity == null ? null : Number(n.task.quantity)
+                                    if (value !== prev) {
+                                      void saveTaskQuantity(n.task!, value)
+                                    }
+                                  }}
+                                />
+                                <select
+                                  className="w-[46px] shrink-0 rounded border border-slate-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
+                                  value={taskUomValue(n.task)}
+                                  disabled={
+                                    readOnly || savingExtraCell === `${n.task.id}:uom`
+                                  }
+                                  title="واحد"
+                                  onChange={(event) =>
+                                    void saveTaskUom(n.task!, event.target.value)
+                                  }
+                                >
+                                  {WORKSHOP_UOMS.map((u) => (
+                                    <option key={u} value={u}>
+                                      {u}
+                                    </option>
+                                  ))}
+                                </select>
+                                <select
+                                  className="w-[52px] shrink-0 rounded border border-slate-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
+                                  value={n.task.quantity_certainty ?? 'حدودی'}
+                                  disabled={savingExtraCell === `${n.task.id}:quantity_certainty`}
+                                  onChange={(event) =>
+                                    void saveTaskQuantityCertainty(
+                                      n.task!,
+                                      event.target.value as 'حدودی' | 'قطعی'
+                                    )
+                                  }
+                                >
+                                  <option value="حدودی">حدودی</option>
+                                  <option value="قطعی">قطعی</option>
+                                </select>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+                          <td className={SCHEDULE_CELL}>
+                            {(() => {
+                              if (!n.taskId) {
+                                return <span className="tabular-nums text-slate-400">—</span>
+                              }
+                              const shown = displayUnitPrice(n.taskId, n.task?.unit_price)
+                              if (shown.isParent) {
+                                return (
+                                  <span
+                                    className="inline-flex w-full items-center justify-center gap-0.5 rounded border border-sky-200 bg-sky-50 px-1 py-0.5 text-[10px] font-semibold tabular-nums text-sky-950"
+                                    title={
+                                      shown.help ??
+                                      'جمع خودکار مقدار×قیمت واحد زیرشاخه‌ها / فرزندان'
+                                    }
+                                  >
+                                    {shown.value}
+                                  </span>
+                                )
+                              }
+                              if (n.task && !readOnly && !n.isSyntheticGroup) {
+                                return (
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step="1"
+                                    className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-center text-[10px] tabular-nums"
+                                    value={
+                                      commercialInputs[n.task.id]?.unitPrice ??
+                                      String(shown.value)
+                                    }
+                                    disabled={savingExtraCell === `${n.task.id}:unit_price`}
+                                    onClick={(event) => event.stopPropagation()}
+                                    onChange={(event) => {
+                                      setCommercialField(
+                                        n.task!.id,
+                                        'unitPrice',
+                                        event.target.value,
+                                        {
+                                          quantity:
+                                            n.task?.quantity != null &&
+                                            Number(n.task.quantity) > 0
+                                              ? String(n.task.quantity)
+                                              : '',
+                                        }
+                                      )
+                                    }}
+                                    onBlur={(event) => {
+                                      const value = Number(event.target.value)
+                                      if (
+                                        Number.isFinite(value) &&
+                                        value >= 0 &&
+                                        value !== Number(n.task?.unit_price ?? 0)
+                                      ) {
+                                        void saveTaskUnitPrice(n.task!, value)
+                                      }
+                                    }}
+                                  />
+                                )
+                              }
+                              return (
+                                <span className="tabular-nums">{shown.value}</span>
+                              )
+                            })()}
+                          </td>
+                          <td className={SCHEDULE_CELL}>
+                            {(() => {
+                              if (!n.taskId) {
+                                return <span className="tabular-nums text-slate-400">—</span>
+                              }
+                              const shown = displayTotalPrice(
+                                n.taskId,
+                                n.task?.quantity ?? n.task?.schedule_quantity ?? null,
+                                n.task?.unit_price
+                              )
+                              return (
+                                <span
+                                  className={`inline-flex w-full items-center justify-center rounded border px-1 py-0.5 text-[10px] tabular-nums ${
+                                    shown.isParent
+                                      ? 'border-sky-200 bg-sky-50 font-semibold text-sky-950'
+                                      : 'border-slate-200 bg-slate-50 text-slate-800'
+                                  }`}
+                                  title={shown.help}
+                                >
+                                  {shown.value}
+                                </span>
+                              )
+                            })()}
+                          </td>
                           <td className={`${SCHEDULE_CELL} text-center relative`}>
                             {!readOnly && n.taskId ? (
-                              <div className="inline-flex items-center justify-center gap-0.5 max-w-full">
+                              <div className="relative w-full">
                                 <input
                                   type="number"
                                   min={0}
@@ -1354,13 +2798,14 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                     const weightInvalid =
                                       !projectWeightCheck.ok &&
                                       projectWeightCheck.contributorIds.has(n.taskId)
+                                    const iconPad = isParent ? ' pe-4' : ''
                                     if (weightInvalid) {
-                                      return 'w-14 rounded border-2 border-red-500 bg-red-50 px-1 py-0.5 text-[11px] tabular-nums text-center font-semibold text-red-900 shadow-[0_0_0_1px_rgba(239,68,68,0.35)]'
+                                      return `w-full rounded border-2 border-red-500 bg-red-50 px-1 py-0.5 text-[11px] tabular-nums text-center font-semibold text-red-900 shadow-[0_0_0_1px_rgba(239,68,68,0.35)]${iconPad}`
                                     }
                                     if (isParent) {
-                                      return 'w-14 rounded border border-sky-200 bg-sky-50 px-1 py-0.5 text-[11px] tabular-nums text-center font-semibold text-sky-950'
+                                      return `w-full rounded border border-sky-200 bg-sky-50 px-1 py-0.5 text-[11px] tabular-nums text-center font-semibold text-sky-950${iconPad}`
                                     }
-                                    return 'w-14 rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] tabular-nums text-center'
+                                    return 'w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] tabular-nums text-center'
                                   })()}
                                   value={(() => {
                                     const shown = displayScheduleWeight(
@@ -1391,7 +2836,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 {weightRollup.parentIds.has(n.taskId) ? (
                                   <button
                                     type="button"
-                                    className="shrink-0 rounded-full p-0.5 text-sky-700 hover:bg-sky-100"
+                                    className="absolute inset-y-0 end-0 flex items-center px-0.5 text-sky-700 hover:text-sky-900"
                                     title="وزن سرشاخه از کجا آمده؟"
                                     aria-label="وزن سرشاخه از کجا آمده؟"
                                     onClick={(e) => {
@@ -1401,12 +2846,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                       )
                                     }}
                                   >
-                                    <HelpCircle className="h-3.5 w-3.5" />
+                                    <HelpCircle className="h-3 w-3" />
                                   </button>
                                 ) : null}
                               </div>
                             ) : (
-                              <span className="inline-flex items-center justify-center gap-0.5 tabular-nums text-[11px] text-slate-700">
+                              <span className="relative inline-flex w-full items-center justify-center tabular-nums text-[11px] text-slate-700">
                                 {formatScheduleWeightDisplay(
                                   n.taskId
                                     ? displayScheduleWeight(n.taskId, n.scheduleWeight)
@@ -1415,7 +2860,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 {n.taskId && weightRollup.parentIds.has(n.taskId) ? (
                                   <button
                                     type="button"
-                                    className="rounded-full p-0.5 text-sky-700 hover:bg-sky-100"
+                                    className="absolute inset-y-0 end-0 flex items-center px-0.5 text-sky-700 hover:text-sky-900"
                                     title="وزن سرشاخه از کجا آمده؟"
                                     onClick={(e) => {
                                       e.stopPropagation()
@@ -1424,7 +2869,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                       )
                                     }}
                                   >
-                                    <HelpCircle className="h-3.5 w-3.5" />
+                                    <HelpCircle className="h-3 w-3" />
                                   </button>
                                 ) : null}
                               </span>
@@ -1449,8 +2894,200 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               </div>
                             ) : null}
                           </td>
-                          <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
                           <td className={`${SCHEDULE_CELL} text-slate-500 text-[11px]`}>پایه</td>
+                          {visibleExtraTaskFields.map((field) => {
+                            const task = n.task
+                            const isProgressParent =
+                              field.key === 'percent_complete' &&
+                              Boolean(task?.id) &&
+                              progressRollup.parentIds.has(task.id)
+                            const leafProgress =
+                              field.key === 'percent_complete'
+                                ? resolvePhysicalProgressPercent(
+                                    task?.id,
+                                    task ? schedulePhysicalPercent(task) : null,
+                                    supervisorProgressEntries
+                                  )
+                                : null
+                            const value =
+                              field.key === 'percent_complete'
+                                ? isProgressParent && task?.id
+                                  ? progressRollup.percents[task.id] ?? leafProgress
+                                  : leafProgress
+                                : task
+                                  ? extraTaskValue(field, task)
+                                  : null
+                            const cellKey = task ? `${task.id}:${field.key}` : ''
+                            const progressHelp =
+                              isProgressParent && task?.id
+                                ? progressRollup.explanations.get(task.id) ?? null
+                                : null
+                            const inheritedContractor =
+                              field.key === 'contractor' &&
+                              task?.resolved_subcontractor_id &&
+                              !task.subcontractor_id
+                                ? contractors.find(
+                                    (item) => item.id === task.resolved_subcontractor_id
+                                  )?.name
+                                : null
+                            return (
+                              <td
+                                key={field.key}
+                                className={`${SCHEDULE_CELL} relative min-w-[112px] text-center`}
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                {field.key === 'percent_complete' ? (
+                                  <div className="relative w-full">
+                                    <span
+                                      className={cn(
+                                        'inline-flex w-full items-center justify-center rounded border px-1 py-0.5 text-[10px] tabular-nums',
+                                        isProgressParent
+                                          ? 'border-sky-200 bg-sky-50 pe-4 font-semibold text-sky-950'
+                                          : 'border-transparent text-slate-600'
+                                      )}
+                                      title={
+                                        isProgressParent
+                                          ? '٪ پیشرفت سرشاخه = میانگین وزنی فرزندان'
+                                          : 'از گزارش روزانه سرپرست کارگاه'
+                                      }
+                                    >
+                                      {value == null ? '—' : `${value}`}
+                                    </span>
+                                    {isProgressParent && progressHelp ? (
+                                      <button
+                                        type="button"
+                                        className="absolute inset-y-0 end-0 flex items-center px-0.5 text-sky-700 hover:text-sky-900"
+                                        title="فرمول پیشرفت سرشاخه"
+                                        aria-label="فرمول پیشرفت سرشاخه"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setHelpProgressParentId((id) =>
+                                            id === task!.id ? null : task!.id
+                                          )
+                                        }}
+                                      >
+                                        <HelpCircle className="h-3 w-3" />
+                                      </button>
+                                    ) : null}
+                                    {helpProgressParentId === task?.id && progressHelp ? (
+                                      <div
+                                        className="absolute end-0 top-full z-50 mt-0.5 inline-flex h-8 max-w-[min(42rem,90vw)] flex-row items-center gap-2 overflow-x-auto rounded border border-sky-200 bg-white px-2.5 shadow-md"
+                                        dir="ltr"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <span className="whitespace-nowrap font-mono text-[10px] tabular-nums text-slate-700">
+                                          {formatProgressRollupFormula(progressHelp)}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          className="shrink-0 text-[11px] leading-none text-sky-700 hover:text-sky-900"
+                                          aria-label="بستن"
+                                          onClick={() => setHelpProgressParentId(null)}
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ) : !task || !field.type || readOnly ? (
+                                  <span
+                                    className="block max-w-[150px] truncate text-[10px] text-slate-600 tabular-nums"
+                                    title={
+                                      field.type === 'date'
+                                        ? formatScheduleDate(
+                                            value == null ? null : String(value),
+                                            calendar
+                                          )
+                                        : String(value ?? '')
+                                    }
+                                  >
+                                    {typeof value === 'boolean'
+                                      ? value
+                                        ? 'بله'
+                                        : '—'
+                                      : field.type === 'date'
+                                        ? formatScheduleDate(
+                                            value == null ? null : String(value),
+                                            calendar
+                                          )
+                                        : String(value ?? '—')}
+                                  </span>
+                                ) : field.type === 'boolean' ? (
+                                  <select
+                                    value={value ? 'true' : 'false'}
+                                    disabled={savingExtraCell === cellKey}
+                                    className="h-7 w-full rounded border bg-white px-1 text-[10px]"
+                                    onChange={(event) =>
+                                      void saveExtraTaskField(
+                                        task,
+                                        field,
+                                        event.target.value === 'true'
+                                      )
+                                    }
+                                  >
+                                    <option value="false">خیر</option>
+                                    <option value="true">بله</option>
+                                  </select>
+                                ) : field.type === 'contractor' ? (
+                                  <select
+                                    value={String(value ?? '')}
+                                    disabled={savingExtraCell === cellKey}
+                                    className="h-7 w-full rounded border bg-white px-1 text-[10px]"
+                                    onChange={(event) =>
+                                      void saveExtraTaskField(task, field, event.target.value)
+                                    }
+                                  >
+                                    <option value="">
+                                      {inheritedContractor
+                                        ? inheritedContractor
+                                        : 'بدون پیمانکار'}
+                                    </option>
+                                    {contractors.map((contractor) => (
+                                      <option key={contractor.id} value={contractor.id}>
+                                        {contractor.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : field.type === 'date' ? (
+                                  <CompactScheduleDateField
+                                    valueIso={value == null ? null : String(value)}
+                                    calendar={calendar}
+                                    disabled={savingExtraCell === cellKey}
+                                    onCommit={(iso) =>
+                                      void saveExtraTaskField(task, field, iso)
+                                    }
+                                  />
+                                ) : (
+                                  <input
+                                    key={`${cellKey}:${String(value ?? '')}`}
+                                    type={field.type === 'number' ? 'number' : 'text'}
+                                    defaultValue={
+                                      value == null
+                                        ? ''
+                                        : typeof value === 'number'
+                                          ? value
+                                          : String(value)
+                                    }
+                                    disabled={savingExtraCell === cellKey}
+                                    className="h-7 w-full rounded border bg-white px-1 text-[10px]"
+                                    onBlur={(event) => {
+                                      const next =
+                                        field.type === 'number'
+                                          ? event.target.value === ''
+                                            ? null
+                                            : Number(event.target.value)
+                                          : event.target.value
+                                      const previous =
+                                        value == null ? '' : String(value)
+                                      if (String(next ?? '') !== previous) {
+                                        void saveExtraTaskField(task, field, next)
+                                      }
+                                    }}
+                                  />
+                                )}
+                              </td>
+                            )
+                          })}
                         </tr>
                         {!readOnly &&
                           inlineDraft &&
@@ -1462,6 +3099,10 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               onSave={() => void createInline()}
                               onCancel={() => setInlineDraft(null)}
                               saving={saving}
+                              extraFields={visibleExtraTaskFields}
+                              contractors={contractors}
+                              groupLast={isGroupLast}
+                              calendar={calendar}
                             />
                           )}
                       </FragmentRows>
@@ -1471,10 +3112,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                   const p = row.pkg
                   const isSel = selected?.kind === 'package' && selected.id === p.id
                   const open = Boolean(expanded[`pkg:${p.id}`])
-                  const canEdit =
+                  const canEditPermission =
                     !readOnly &&
                     canEditWorkshopPackageRow(p.approvalStatus, p.origin ?? 'user_added')
-                  const e = getEdit(p)
+                  const isRowEditing = canEditPermission && editingPackageId === p.id
+                  const dateFallback = { start: row.startDate, finish: row.finishDate }
+                  const e = getEdit(p, dateFallback)
                   const indentPx = 8 + row.depth * 22
 
                   return (
@@ -1483,14 +3126,27 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                         onClick={() =>
                           setSelected({ kind: 'package', id: p.id, name: p.name, pkg: p })
                         }
-                        className={`cursor-pointer border-b border-slate-100 hover:bg-emerald-50/50 ${
-                          isSel ? 'bg-emerald-50' : ''
+                        className={`group cursor-pointer border-b border-slate-300 hover:bg-emerald-50/50 ${groupFrameClass} ${
+                          isSel ? 'bg-emerald-50' : 'bg-white'
                         }`}
                       >
-                        <td className={`${SCHEDULE_CELL} font-mono text-[11px] tabular-nums text-emerald-800 text-center`}>
+                        <td
+                          className={`${SCHEDULE_STICKY_WBS_CELL} font-mono text-[11px] tabular-nums text-emerald-800 text-center group-hover:bg-emerald-50/50 ${
+                            isSel ? 'bg-emerald-50 group-hover:bg-emerald-50' : 'bg-white'
+                          }`}
+                          style={{ right: STICKY_WBS_RIGHT }}
+                        >
                           {row.wbs}
                         </td>
-                        <td className={`${SCHEDULE_CELL} overflow-hidden`}>
+                        <td
+                          className={`${SCHEDULE_STICKY_NAME_CELL} group-hover:bg-emerald-50/50 ${
+                            isSel ? 'bg-emerald-50 group-hover:bg-emerald-50' : 'bg-white'
+                          }`}
+                          style={{
+                            right: STICKY_NAME_RIGHT,
+                            boxShadow: STICKY_NAME_EDGE_SHADOW,
+                          }}
+                        >
                           <div
                             className="flex items-center gap-0.5 min-w-0"
                             style={{
@@ -1535,28 +3191,182 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 <Plus className="h-3.5 w-3.5" />
                               </button>
                             )}
-                            {canEdit ? (
+                            {canEditPermission && !isRowEditing && (
+                              <button
+                                type="button"
+                                title="ویرایش"
+                                className="rounded p-1 text-sky-700 hover:bg-sky-100"
+                                onClick={(ev) => {
+                                  ev.stopPropagation()
+                                  beginPackageEdit(p, dateFallback)
+                                }}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            {isRowEditing && (
+                              <button
+                                type="button"
+                                title="ذخیره مجدد فعالیت"
+                                className="rounded p-1 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                                disabled={saving || !isDirty(p, dateFallback)}
+                                onClick={(ev) => {
+                                  ev.stopPropagation()
+                                  void savePackage(p)
+                                }}
+                              >
+                                {saving ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Save className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                            )}
+                            {isRowEditing ? (
                               <input
                                 className="min-w-0 w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-xs"
                                 value={e.name}
                                 onClick={(ev) => ev.stopPropagation()}
                                 onChange={(ev) => setEditField(p.id, p, { name: ev.target.value })}
-                                onBlur={() => {
-                                  if (isDirty(p)) void savePackage(p)
-                                }}
                               />
                             ) : (
-                              <span className="truncate text-xs">{p.name}</span>
+                              <span className="truncate text-xs">
+                                {displayActivityName(p.name, p.wbs)}
+                              </span>
                             )}
                           </div>
                         </td>
-                        <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
-                        <td className={`${SCHEDULE_CELL} text-[11px] text-slate-500 tabular-nums leading-tight`}>
-                          {formatActivityDateShort(row.startDate, row.finishDate, calendar)}
-                        </td>
-                        <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
                         <td className={SCHEDULE_CELL}>
-                          {canEdit ? (
+                          {canEditPermission ? (
+                            <input
+                              dir="ltr"
+                              className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] text-center font-mono"
+                              value={
+                                isRowEditing
+                                  ? e.predecessorLabel
+                                  : packagePredecessorLabel(p)
+                              }
+                              placeholder="مثلاً 3FS"
+                              disabled={
+                                readOnly ||
+                                saving ||
+                                savingExtraCell === `pkg:${p.id}:pred-float`
+                              }
+                              title="پیش‌نیاز — مثال: 3FS+4d یا 4.1FS, 5SS"
+                              onClick={(ev) => ev.stopPropagation()}
+                              onChange={(ev) => {
+                                if (isRowEditing) {
+                                  setEditField(p.id, p, {
+                                    predecessorLabel: ev.target.value,
+                                  })
+                                } else {
+                                  setEditField(p.id, p, {
+                                    predecessorLabel: ev.target.value,
+                                  })
+                                }
+                              }}
+                              onBlur={(ev) => {
+                                const next = ev.target.value.trim()
+                                if (next === packagePredecessorLabel(p)) return
+                                if (isRowEditing) return
+                                void savePackagePredFloat(p, { predecessorLabel: next })
+                              }}
+                            />
+                          ) : (
+                            <span className="text-slate-400 text-center text-[10px]">
+                              {packagePredecessorLabel(p) || '—'}
+                            </span>
+                          )}
+                        </td>
+                        <td className={`${SCHEDULE_CELL} text-[11px] text-slate-500 tabular-nums leading-tight`}>
+                          {isRowEditing ? (
+                            <CompactJalaliDateRange
+                              startIso={e.startDate || null}
+                              finishIso={e.finishDate || null}
+                              calendar={calendar}
+                              disabled={saving}
+                              onCommit={(startDate, finishDate) => {
+                                setEditField(p.id, p, { startDate, finishDate })
+                                void (async () => {
+                                  const next = {
+                                    ...getEdit(p, dateFallback),
+                                    startDate,
+                                    finishDate,
+                                  }
+                                  setEdits((prev) => ({ ...prev, [p.id]: next }))
+                                  setSaving(true)
+                                  try {
+                                    const res = await fetch(`/api/workshop/packages/${p.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        name: next.name,
+                                        quantity: Number(next.quantity),
+                                        quantityCertainty: next.quantityCertainty,
+                                        unitPrice: Number(next.unitPrice) || 0,
+                                        uom: next.uom,
+                                        location: next.location,
+                                        crew: next.crew,
+                                        weightPercent: next.weightPercent.trim()
+                                          ? Number(next.weightPercent)
+                                          : null,
+                                        startDate,
+                                        finishDate,
+                                      }),
+                                    })
+                                    const data = await res.json()
+                                    if (!res.ok) throw new Error(data.error || 'ذخیره تاریخ ناموفق بود')
+                                    const keepId = p.id
+                                    await load()
+                                    setEditingPackageId(keepId)
+                                    setMessage('تاریخ ذخیره شد')
+                                  } catch (err) {
+                                    setMessage(
+                                      err instanceof Error ? err.message : 'خطا در ذخیره تاریخ'
+                                    )
+                                  } finally {
+                                    setSaving(false)
+                                  }
+                                })()
+                              }}
+                            />
+                          ) : (
+                            formatActivityDateShort(row.startDate, row.finishDate, calendar)
+                          )}
+                        </td>
+                        <td className={`${SCHEDULE_CELL} text-center`}>
+                          {canEditPermission ? (
+                            <input
+                              type="number"
+                              step="0.5"
+                              className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[11px] tabular-nums text-center"
+                              value={isRowEditing ? e.totalFloat : packageTotalFloat(p)}
+                              placeholder="—"
+                              disabled={
+                                readOnly ||
+                                saving ||
+                                savingExtraCell === `pkg:${p.id}:pred-float`
+                              }
+                              title="شناوری (روز)"
+                              onClick={(ev) => ev.stopPropagation()}
+                              onChange={(ev) => {
+                                setEditField(p.id, p, { totalFloat: ev.target.value })
+                              }}
+                              onBlur={(ev) => {
+                                const next = ev.target.value.trim()
+                                if (next === packageTotalFloat(p)) return
+                                if (isRowEditing) return
+                                void savePackagePredFloat(p, { totalFloat: next })
+                              }}
+                            />
+                          ) : (
+                            <span className="tabular-nums text-[11px] text-slate-600">
+                              {packageTotalFloat(p) || '—'}
+                            </span>
+                          )}
+                        </td>
+                        <td className={SCHEDULE_CELL}>
+                          {isRowEditing ? (
                             <input
                               className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-xs"
                               value={e.location}
@@ -1564,9 +3374,6 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               onChange={(ev) =>
                                 setEditField(p.id, p, { location: ev.target.value })
                               }
-                              onBlur={() => {
-                                if (isDirty(p)) void savePackage(p)
-                              }}
                               placeholder="محل"
                             />
                           ) : (
@@ -1574,51 +3381,66 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                           )}
                         </td>
                         <td className={SCHEDULE_CELL}>
-                          {canEdit ? (
-                            <input
-                              type="number"
-                              className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-xs tabular-nums"
-                              value={e.quantity}
-                              onClick={(ev) => ev.stopPropagation()}
-                              onChange={(ev) =>
-                                setEditField(p.id, p, { quantity: ev.target.value })
-                              }
-                              onBlur={() => {
-                                if (isDirty(p)) void savePackage(p)
-                              }}
-                            />
-                          ) : (
-                            <span className="tabular-nums">{p.quantity}</span>
-                          )}
-                        </td>
-                        <td className={SCHEDULE_CELL}>
-                          {canEdit ? (
-                            <select
-                              className="w-full rounded border border-slate-200 bg-white px-0.5 py-0.5 text-xs"
-                              value={e.uom}
-                              onClick={(ev) => ev.stopPropagation()}
-                              onChange={(ev) => {
-                                setEditField(p.id, p, { uom: ev.target.value })
-                                // save after uom change
-                                const next = { ...getEdit(p), uom: ev.target.value }
-                                setEdits((prev) => ({ ...prev, [p.id]: next }))
-                                void (async () => {
-                                  const res = await fetch(`/api/workshop/packages/${p.id}`, {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                      name: next.name,
-                                      quantity: Number(next.quantity),
-                                      uom: next.uom,
-                                      location: next.location,
-                                      crew: next.crew,
-                                      weightPercent: next.weightPercent.trim()
-                                        ? Number(next.weightPercent)
-                                        : null,
-                                    }),
+                          <div
+                            className="flex items-center gap-1"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            {canEditPermission ? (
+                              <input
+                                type="number"
+                                min={0}
+                                step="any"
+                                className="min-w-0 flex-1 rounded border border-slate-200 bg-white px-1 py-0.5 text-xs tabular-nums text-center"
+                                value={
+                                  commercialInputs[p.id]?.quantity ?? String(p.quantity)
+                                }
+                                placeholder="مقدار"
+                                disabled={
+                                  readOnly || savingExtraCell === `pkg:${p.id}:quantity`
+                                }
+                                onChange={(event) => {
+                                  setCommercialField(p.id, 'quantity', event.target.value, {
+                                    unitPrice: String(Number(p.unitPrice) || 0),
                                   })
-                                  if (res.ok) await load()
-                                })()
+                                  if (isRowEditing) {
+                                    setEditField(p.id, p, {
+                                      quantity: event.target.value,
+                                    })
+                                  }
+                                }}
+                                onBlur={(event) => {
+                                  const value = Number(event.target.value)
+                                  if (!Number.isFinite(value) || value <= 0) {
+                                    setCommercialField(p.id, 'quantity', String(p.quantity), {
+                                      unitPrice: String(Number(p.unitPrice) || 0),
+                                    })
+                                    setMessage('مقدار باید بزرگ‌تر از صفر باشد')
+                                    return
+                                  }
+                                  if (value !== Number(p.quantity)) {
+                                    void savePackageQuantity(p, value)
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <span className="min-w-0 flex-1 text-center tabular-nums">
+                                {p.quantity}
+                              </span>
+                            )}
+                            <select
+                              className="w-[46px] shrink-0 rounded border border-slate-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
+                              value={isRowEditing ? e.uom : p.uom}
+                              disabled={
+                                readOnly || savingExtraCell === `pkg:${p.id}:uom`
+                              }
+                              title="واحد"
+                              onChange={(event) => {
+                                const value = event.target.value
+                                if (isRowEditing) {
+                                  setEditField(p.id, p, { uom: value })
+                                } else {
+                                  void savePackageUom(p, value)
+                                }
                               }}
                             >
                               {WORKSHOP_UOMS.map((u) => (
@@ -1627,12 +3449,145 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 </option>
                               ))}
                             </select>
-                          ) : (
-                            p.uom
-                          )}
+                            <select
+                              className="w-[52px] shrink-0 rounded border border-slate-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
+                              value={
+                                isRowEditing ? e.quantityCertainty : p.quantityCertainty
+                              }
+                              disabled={
+                                readOnly ||
+                                savingExtraCell === `pkg:${p.id}:quantity_certainty`
+                              }
+                              onChange={(event) => {
+                                const value = event.target.value as 'حدودی' | 'قطعی'
+                                if (isRowEditing) {
+                                  setEditField(p.id, p, { quantityCertainty: value })
+                                } else {
+                                  void savePackageQuantityCertainty(p, value)
+                                }
+                              }}
+                            >
+                              <option value="حدودی">حدودی</option>
+                              <option value="قطعی">قطعی</option>
+                            </select>
+                          </div>
                         </td>
                         <td className={SCHEDULE_CELL}>
-                          {canEdit ? (
+                          {(() => {
+                            const shown = displayUnitPrice(p.id, p.unitPrice)
+                            if (shown.isParent) {
+                              return (
+                                <span
+                                  className="inline-flex w-full items-center justify-center gap-0.5 rounded border border-sky-200 bg-sky-50 px-1 py-0.5 text-xs font-semibold tabular-nums text-sky-950"
+                                  title={
+                                    shown.help ??
+                                    'جمع خودکار مقدار×قیمت واحد زیرشاخه‌ها'
+                                  }
+                                >
+                                  {shown.value}
+                                </span>
+                              )
+                            }
+                            if (canEditPermission) {
+                              return (
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step="1"
+                                  className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-center text-xs tabular-nums"
+                                  value={
+                                    commercialInputs[p.id]?.unitPrice ??
+                                    (isRowEditing ? e.unitPrice : String(p.unitPrice))
+                                  }
+                                  disabled={
+                                    readOnly ||
+                                    savingExtraCell === `pkg:${p.id}:unit_price`
+                                  }
+                                  onClick={(event) => event.stopPropagation()}
+                                  onChange={(event) => {
+                                    setCommercialField(p.id, 'unitPrice', event.target.value, {
+                                      quantity: String(p.quantity),
+                                    })
+                                    if (isRowEditing) {
+                                      setEditField(p.id, p, {
+                                        unitPrice: event.target.value,
+                                      })
+                                    }
+                                  }}
+                                  onBlur={(event) => {
+                                    if (isRowEditing) return
+                                    const value = Number(event.target.value)
+                                    if (
+                                      !Number.isFinite(value) ||
+                                      value < 0 ||
+                                      value === Number(p.unitPrice)
+                                    ) {
+                                      return
+                                    }
+                                    void (async () => {
+                                      setSavingExtraCell(`pkg:${p.id}:unit_price`)
+                                      try {
+                                        const res = await fetch(
+                                          `/api/workshop/packages/${p.id}`,
+                                          {
+                                            method: 'PATCH',
+                                            headers: {
+                                              'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({ unitPrice: value }),
+                                          }
+                                        )
+                                        const data = await res.json()
+                                        if (!res.ok) {
+                                          throw new Error(
+                                            data.error || 'ذخیره قیمت واحد ناموفق بود'
+                                          )
+                                        }
+                                        await load()
+                                        publishScheduleViewSync(projectId)
+                                        setMessage(
+                                          'قیمت واحد ذخیره شد — جمع سرشاخه بروزرسانی شد'
+                                        )
+                                      } catch (err) {
+                                        setMessage(
+                                          err instanceof Error
+                                            ? err.message
+                                            : 'ذخیره قیمت واحد ناموفق بود'
+                                        )
+                                      } finally {
+                                        setSavingExtraCell(null)
+                                      }
+                                    })()
+                                  }}
+                                />
+                              )
+                            }
+                            return <span className="tabular-nums">{shown.value}</span>
+                          })()}
+                        </td>
+                        <td className={SCHEDULE_CELL}>
+                          {(() => {
+                            const qty = isRowEditing ? Number(e.quantity) : p.quantity
+                            const unitPrice = isRowEditing
+                              ? Number(e.unitPrice)
+                              : p.unitPrice
+                            const shown = displayTotalPrice(p.id, qty, unitPrice)
+                            return (
+                              <span
+                                className={`inline-flex w-full items-center justify-center rounded border px-1 py-0.5 text-xs tabular-nums ${
+                                  shown.isParent
+                                    ? 'border-sky-200 bg-sky-50 font-semibold text-sky-950'
+                                    : 'border-slate-200 bg-slate-50 text-slate-800'
+                                }`}
+                                title={shown.help}
+                              >
+                                {shown.value}
+                              </span>
+                            )
+                          })()}
+                        </td>
+                        <td className={SCHEDULE_CELL}>
+                          {isRowEditing ? (
                             <input
                               type="number"
                               min={0}
@@ -1643,9 +3598,6 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               onChange={(ev) =>
                                 setEditField(p.id, p, { weightPercent: ev.target.value })
                               }
-                              onBlur={() => {
-                                if (isDirty(p)) void savePackage(p)
-                              }}
                               placeholder="وزن"
                             />
                           ) : (
@@ -1654,14 +3606,129 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             </span>
                           )}
                         </td>
-                        <td className={SCHEDULE_CELL}>
-                          <span
-                            className={`text-[10px] rounded-full px-1.5 py-0.5 ${approvalBadgeClass(p.approvalStatus)}`}
-                          >
-                            {approvalStatusFa(p.approvalStatus)}
-                          </span>
-                        </td>
                         <td className={`${SCHEDULE_CELL} text-[11px]`}>{statusFa(p.status)}</td>
+                        {visibleExtraTaskFields.map((field) => {
+                          const packageFallback =
+                            field.key === 'percent_complete'
+                              ? (() => {
+                                  const fields = p.scheduleFields ?? {}
+                                  const physical = fields.physical_percent_complete
+                                  const pct = fields.percent_complete
+                                  if (physical != null && Number.isFinite(Number(physical))) {
+                                    return Number(physical)
+                                  }
+                                  if (pct != null && Number.isFinite(Number(pct))) {
+                                    return Number(pct)
+                                  }
+                                  return null
+                                })()
+                              : null
+                          const value =
+                            field.key === 'contractor'
+                              ? p.subcontractorId
+                              : field.key === 'percent_complete'
+                                ? resolvePhysicalProgressPercent(
+                                    p.id,
+                                    packageFallback,
+                                    supervisorProgressEntries
+                                  )
+                                : (p.scheduleFields ?? {})[field.key]
+                          const cellKey = `pkg:${p.id}:${field.key}`
+                          const inheritedName =
+                            field.key === 'contractor' &&
+                            !p.subcontractorId &&
+                            p.resolvedSubcontractorId
+                              ? contractors.find(
+                                  (item) => item.id === p.resolvedSubcontractorId
+                                )?.name
+                              : null
+                          return (
+                            <td
+                              key={field.key}
+                              className={`${SCHEDULE_CELL} min-w-[112px] text-center`}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              {!field.type || field.key === 'percent_complete' ? (
+                                <span
+                                  className="text-[10px] text-slate-600 tabular-nums"
+                                  title={
+                                    field.key === 'percent_complete'
+                                      ? 'از گزارش روزانه سرپرست کارگاه'
+                                      : undefined
+                                  }
+                                >
+                                  {field.key === 'percent_complete'
+                                    ? value == null
+                                      ? '—'
+                                      : String(value)
+                                    : 'خودکار'}
+                                </span>
+                              ) : field.type === 'contractor' ? (
+                                <select
+                                  value={String(value ?? '')}
+                                  disabled={!canEditPermission || savingExtraCell === cellKey}
+                                  className="h-7 w-full rounded border bg-white px-1 text-[10px]"
+                                  onChange={(event) =>
+                                    void savePackageExtraField(p, field, event.target.value)
+                                  }
+                                >
+                                  <option value="">
+                                    {inheritedName ?? 'بدون پیمانکار'}
+                                  </option>
+                                  {contractors.map((contractor) => (
+                                    <option key={contractor.id} value={contractor.id}>
+                                      {contractor.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : field.type === 'boolean' ? (
+                                <select
+                                  value={value ? 'true' : 'false'}
+                                  disabled={!canEditPermission || savingExtraCell === cellKey}
+                                  className="h-7 w-full rounded border bg-white px-1 text-[10px]"
+                                  onChange={(event) =>
+                                    void savePackageExtraField(
+                                      p,
+                                      field,
+                                      event.target.value === 'true'
+                                    )
+                                  }
+                                >
+                                  <option value="false">خیر</option>
+                                  <option value="true">بله</option>
+                                </select>
+                              ) : field.type === 'date' ? (
+                                <CompactScheduleDateField
+                                  valueIso={value == null ? null : String(value)}
+                                  calendar={calendar}
+                                  disabled={!canEditPermission || savingExtraCell === cellKey}
+                                  onCommit={(iso) =>
+                                    void savePackageExtraField(p, field, iso)
+                                  }
+                                />
+                              ) : (
+                                <input
+                                  key={`${cellKey}:${String(value ?? '')}`}
+                                  type={field.type === 'number' ? 'number' : 'text'}
+                                  defaultValue={String(value ?? '')}
+                                  disabled={!canEditPermission || savingExtraCell === cellKey}
+                                  className="h-7 w-full rounded border bg-white px-1 text-[10px]"
+                                  onBlur={(event) => {
+                                    const next =
+                                      field.type === 'number'
+                                        ? event.target.value === ''
+                                          ? null
+                                          : Number(event.target.value)
+                                        : event.target.value
+                                    if (String(next ?? '') !== String(value ?? '')) {
+                                      void savePackageExtraField(p, field, next)
+                                    }
+                                  }}
+                                />
+                              )}
+                            </td>
+                          )
+                        })}
                       </tr>
                       {!readOnly &&
                         inlineDraft &&
@@ -1673,6 +3740,10 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             onSave={() => void createInline()}
                             onCancel={() => setInlineDraft(null)}
                             saving={saving}
+                            extraFields={visibleExtraTaskFields}
+                            contractors={contractors}
+                            groupLast={isGroupLast}
+                            calendar={calendar}
                           />
                         )}
                     </FragmentRows>
@@ -1680,6 +3751,18 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                 })}
               </tbody>
             </table>
+          </div>
+          <div
+            ref={bottomHScrollRef}
+            className="sticky bottom-0 z-40 overflow-x-auto overflow-y-hidden border-t border-slate-300 bg-slate-200/95 shadow-[0_-4px_12px_-4px_rgba(15,23,42,0.18)] [scrollbar-width:thin]"
+            style={{ height: 16 }}
+            onScroll={() => syncHorizontalScroll('bottom')}
+            aria-label="اسکرول افقی پایین جدول"
+          >
+            <div
+              style={{ width: Math.max(tableScrollWidth, 1), height: 1 }}
+              aria-hidden
+            />
           </div>
         </section>
     </div>
@@ -1696,21 +3779,42 @@ function InlineCreateRow({
   onSave,
   onCancel,
   saving,
+  extraFields,
+  contractors,
+  groupLast,
+  calendar,
 }: {
   draft: InlineDraft
   setDraft: (d: InlineDraft | null) => void
   onSave: () => void
   onCancel: () => void
   saving: boolean
+  extraFields: ExtraTaskField[]
+  contractors: Array<{ id: string; name: string }>
+  groupLast: boolean
+  calendar: 'jalali' | 'gregorian'
 }) {
   const canSave = draft.name.trim().length > 0 && Number(draft.quantity) > 0
 
   return (
-    <tr className="bg-sky-50/80 border-b border-sky-100">
-      <td className={`${SCHEDULE_CELL} font-mono text-[11px] tabular-nums text-sky-800 font-semibold text-center`}>
+    <tr
+      className={`bg-sky-50/80 border-b border-sky-100 [&>td:first-child]:border-r-2 [&>td:first-child]:border-r-slate-500 [&>td:last-child]:border-l-2 [&>td:last-child]:border-l-slate-500 ${
+        groupLast ? '[&>td]:border-b-2 [&>td]:border-b-slate-500' : ''
+      }`}
+    >
+      <td
+        className={`${SCHEDULE_STICKY_WBS_CELL} bg-sky-50 font-mono text-[11px] tabular-nums text-sky-800 font-semibold text-center`}
+        style={{ right: STICKY_WBS_RIGHT }}
+      >
         {draft.previewWbs}
       </td>
-      <td className={`${SCHEDULE_CELL} overflow-hidden`}>
+      <td
+        className={`${SCHEDULE_STICKY_NAME_CELL} bg-sky-50`}
+        style={{
+          right: STICKY_NAME_RIGHT,
+          boxShadow: STICKY_NAME_EDGE_SHADOW,
+        }}
+      >
         <div className="flex items-center gap-0.5 min-w-0" style={{ paddingInlineStart: 8 + draft.depth * 22 }}>
           <Plus className="h-3 w-3 text-sky-700 shrink-0" />
           <input
@@ -1722,9 +3826,44 @@ function InlineCreateRow({
           />
         </div>
       </td>
-      <td className={`${SCHEDULE_CELL} text-[11px] text-slate-400`}>—</td>
-      <td className={`${SCHEDULE_CELL} text-[11px] text-slate-400`}>—</td>
-      <td className={`${SCHEDULE_CELL} text-[11px] text-slate-400`}>—</td>
+      <td className={SCHEDULE_CELL}>
+        <input
+          dir="ltr"
+          className="h-7 w-full rounded border border-sky-200 bg-white px-1 text-center text-[10px] font-mono"
+          placeholder="مثلاً 3FS"
+          value={draft.predecessorLabel}
+          onChange={(e) => setDraft({ ...draft, predecessorLabel: e.target.value })}
+          title="پیش‌نیاز"
+        />
+      </td>
+      <td className={SCHEDULE_CELL}>
+        <div className="flex gap-1" onClick={(event) => event.stopPropagation()}>
+          <CompactScheduleDateField
+            valueIso={draft.startDate || null}
+            calendar={calendar}
+            disabled={saving}
+            className="h-7 min-w-0 w-1/2 rounded border border-sky-200 bg-white px-1 text-[9px]"
+            onCommit={(iso) => setDraft({ ...draft, startDate: iso ?? '' })}
+          />
+          <CompactScheduleDateField
+            valueIso={draft.finishDate || null}
+            calendar={calendar}
+            disabled={saving}
+            className="h-7 min-w-0 w-1/2 rounded border border-sky-200 bg-white px-1 text-[9px]"
+            onCommit={(iso) => setDraft({ ...draft, finishDate: iso ?? '' })}
+          />
+        </div>
+      </td>
+      <td className={SCHEDULE_CELL}>
+        <input
+          type="number"
+          step="0.5"
+          className="h-7 w-full rounded border border-sky-200 bg-white px-1 text-center text-[10px]"
+          value={draft.totalFloat}
+          onChange={(event) => setDraft({ ...draft, totalFloat: event.target.value })}
+          placeholder="شناوری"
+        />
+      </td>
       <td className={SCHEDULE_CELL}>
         <input
           className="w-full rounded border border-sky-200 bg-white px-1 py-0.5 text-xs"
@@ -1734,26 +3873,62 @@ function InlineCreateRow({
         />
       </td>
       <td className={SCHEDULE_CELL}>
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            className="min-w-0 flex-1 rounded border border-sky-200 bg-white px-1 py-0.5 text-xs text-center"
+            placeholder="مقدار *"
+            value={draft.quantity}
+            onChange={(e) => setDraft({ ...draft, quantity: e.target.value })}
+          />
+          <select
+            className="w-[46px] shrink-0 rounded border border-sky-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
+            value={draft.uom}
+            title="واحد"
+            onChange={(e) => setDraft({ ...draft, uom: e.target.value })}
+          >
+            {WORKSHOP_UOMS.map((u) => (
+              <option key={u} value={u}>
+                {u}
+              </option>
+            ))}
+          </select>
+          <select
+            className="w-[50px] shrink-0 rounded border border-sky-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
+            value={draft.quantityCertainty}
+            onChange={(event) =>
+              setDraft({
+                ...draft,
+                quantityCertainty: event.target.value as 'حدودی' | 'قطعی',
+              })
+            }
+          >
+            <option value="حدودی">حدودی</option>
+            <option value="قطعی">قطعی</option>
+          </select>
+        </div>
+      </td>
+      <td className={SCHEDULE_CELL}>
         <input
           type="number"
-          className="w-full rounded border border-sky-200 bg-white px-1 py-0.5 text-xs"
-          placeholder="مقدار *"
-          value={draft.quantity}
-          onChange={(e) => setDraft({ ...draft, quantity: e.target.value })}
+          min={0}
+          step="1"
+          className="w-full rounded border border-sky-200 bg-white px-1 py-0.5 text-center text-xs"
+          placeholder="قیمت واحد"
+          value={draft.unitPrice}
+          onChange={(event) => setDraft({ ...draft, unitPrice: event.target.value })}
         />
       </td>
       <td className={SCHEDULE_CELL}>
-        <select
-          className="w-full rounded border border-sky-200 bg-white px-0.5 py-0.5 text-xs"
-          value={draft.uom}
-          onChange={(e) => setDraft({ ...draft, uom: e.target.value })}
+        <span
+          className="inline-flex w-full items-center justify-center rounded border border-slate-200 bg-slate-50 px-1 py-0.5 text-xs tabular-nums text-slate-700"
+          title={TOTAL_PRICE_HELP}
         >
-          {WORKSHOP_UOMS.map((u) => (
-            <option key={u} value={u}>
-              {u}
-            </option>
-          ))}
-        </select>
+          {quantityTimesUnitPrice(
+            draft.quantity === '' ? null : Number(draft.quantity),
+            draft.unitPrice === '' ? null : Number(draft.unitPrice)
+          )}
+        </span>
       </td>
       <td className={SCHEDULE_CELL}>
         <input
@@ -1767,7 +3942,7 @@ function InlineCreateRow({
         />
       </td>
       <td className={SCHEDULE_CELL}>
-        <div className="flex flex-wrap gap-1 items-center">
+        <div className="flex flex-wrap gap-1 items-center justify-center">
           <button
             type="button"
             disabled={saving || !canSave}
@@ -1783,12 +3958,162 @@ function InlineCreateRow({
           >
             انصراف
           </button>
+          {!canSave ? (
+            <span className="text-[10px] text-rose-700">نام و مقدار الزامی</span>
+          ) : null}
         </div>
       </td>
-      <td className={SCHEDULE_CELL}>
-        {!canSave && <span className="text-[10px] text-rose-700">نام و مقدار الزامی</span>}
-      </td>
+      {extraFields.map((field) => (
+        <td key={field.key} className={`${SCHEDULE_CELL} min-w-[112px]`}>
+          {!field.type ? (
+            <span className="text-slate-400">خودکار</span>
+          ) : field.type === 'contractor' ? (
+            <select
+              className="h-7 w-full rounded border border-sky-200 bg-white px-1 text-[10px]"
+              value={draft.subcontractorId}
+              onChange={(event) =>
+                setDraft({ ...draft, subcontractorId: event.target.value })
+              }
+            >
+              <option value="">
+                {contractors.find(
+                  (contractor) => contractor.id === draft.inheritedSubcontractorId
+                )?.name ?? 'بدون پیمانکار'}
+              </option>
+              {contractors.map((contractor) => (
+                <option key={contractor.id} value={contractor.id}>
+                  {contractor.name}
+                </option>
+              ))}
+            </select>
+          ) : field.type === 'boolean' ? (
+            <select
+              className="h-7 w-full rounded border border-sky-200 bg-white px-1 text-[10px]"
+              value={draft.scheduleFields[field.key] ? 'true' : 'false'}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  scheduleFields: {
+                    ...draft.scheduleFields,
+                    [field.key]: event.target.value === 'true',
+                  },
+                })
+              }
+            >
+              <option value="false">خیر</option>
+              <option value="true">بله</option>
+            </select>
+          ) : field.type === 'date' ? (
+            <CompactScheduleDateField
+              valueIso={
+                draft.scheduleFields[field.key] == null
+                  ? null
+                  : String(draft.scheduleFields[field.key])
+              }
+              calendar={calendar}
+              disabled={saving}
+              onCommit={(iso) =>
+                setDraft({
+                  ...draft,
+                  scheduleFields: {
+                    ...draft.scheduleFields,
+                    [field.key]: iso ?? '',
+                  },
+                })
+              }
+            />
+          ) : (
+            <input
+              type={field.type === 'number' ? 'number' : 'text'}
+              className="h-7 w-full rounded border border-sky-200 bg-white px-1 text-[10px]"
+              value={String(draft.scheduleFields[field.key] ?? '')}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  scheduleFields: {
+                    ...draft.scheduleFields,
+                    [field.key]:
+                      field.type === 'number'
+                        ? event.target.value === ''
+                          ? ''
+                          : Number(event.target.value)
+                        : event.target.value,
+                  },
+                })
+              }
+            />
+          )}
+        </td>
+      ))}
     </tr>
+  )
+}
+
+function CompactScheduleDateField({
+  valueIso,
+  calendar,
+  disabled,
+  onCommit,
+  className,
+}: {
+  valueIso: string | null | undefined
+  calendar: 'jalali' | 'gregorian'
+  disabled?: boolean
+  onCommit: (iso: string | null) => void
+  className?: string
+}) {
+  const iso = toIsoDateOnly(valueIso) ?? ''
+  const [text, setText] = useState(() => isoToCalendarInput(iso || null, calendar))
+  const [invalid, setInvalid] = useState(false)
+
+  useEffect(() => {
+    setText(isoToCalendarInput(iso || null, calendar))
+    setInvalid(false)
+  }, [iso, calendar])
+
+  function commit() {
+    const trimmed = text.trim()
+    if (!trimmed) {
+      setInvalid(false)
+      if (iso) onCommit(null)
+      else setText('')
+      return
+    }
+    const parsed = parseScheduleDateInput(trimmed, calendar)
+    if (!parsed) {
+      setInvalid(true)
+      setText(isoToCalendarInput(iso || null, calendar))
+      return
+    }
+    setInvalid(false)
+    setText(isoToCalendarInput(parsed, calendar))
+    if (parsed !== iso) onCommit(parsed)
+  }
+
+  const placeholder = calendar === 'jalali' ? '1403/01/15' : '2026-04-21'
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      dir="ltr"
+      disabled={disabled}
+      placeholder={placeholder}
+      title={calendar === 'jalali' ? 'تاریخ شمسی — مثال 1403/01/15' : 'تاریخ میلادی'}
+      className={
+        className ??
+        `h-7 w-full rounded border bg-white px-1 text-[10px] text-center tabular-nums ${
+          invalid ? 'border-rose-400' : 'border-slate-200'
+        }`
+      }
+      value={text}
+      onChange={(event) => setText(event.target.value)}
+      onBlur={() => commit()}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') commit()
+      }}
+      onClick={(event) => event.stopPropagation()}
+    />
   )
 }
 
@@ -1839,7 +4164,7 @@ function CompactJalaliDateRange({
 
   return (
     <div
-      className="flex items-center gap-0.5 min-w-0"
+      className="flex items-center justify-center gap-0.5 min-w-0 w-full"
       onClick={(e) => e.stopPropagation()}
       title={calendar === 'jalali' ? 'تاریخ شمسی — مثال 1403/01/15' : 'تاریخ میلادی'}
     >
@@ -1849,7 +4174,7 @@ function CompactJalaliDateRange({
         dir="ltr"
         disabled={disabled}
         placeholder={placeholder}
-        className={`min-w-0 flex-1 rounded border bg-white px-0.5 py-0 text-[9px] h-6 leading-none tabular-nums ${
+        className={`min-w-0 flex-1 rounded border bg-white px-0.5 py-0 text-[9px] h-6 leading-none tabular-nums text-center ${
           invalid ? 'border-rose-400' : 'border-slate-200'
         }`}
         value={startText}
@@ -1866,7 +4191,7 @@ function CompactJalaliDateRange({
         dir="ltr"
         disabled={disabled}
         placeholder={placeholder}
-        className={`min-w-0 flex-1 rounded border bg-white px-0.5 py-0 text-[9px] h-6 leading-none tabular-nums ${
+        className={`min-w-0 flex-1 rounded border bg-white px-0.5 py-0 text-[9px] h-6 leading-none tabular-nums text-center ${
           invalid ? 'border-rose-400' : 'border-slate-200'
         }`}
         value={finishText}
@@ -1896,20 +4221,6 @@ function formatActivityDate(start: string | null, finish: string | null): string
   return formatActivityDateShort(start, finish, 'jalali')
 }
 
-function approvalBadgeClass(s: string) {
-  switch (s) {
-    case 'approved':
-      return 'bg-emerald-100 text-emerald-800'
-    case 'pending_approval':
-      return 'bg-sky-100 text-sky-800'
-    case 'rejected':
-      return 'bg-rose-100 text-rose-800'
-    case 'change_requested':
-      return 'bg-amber-100 text-amber-900'
-    default:
-      return 'bg-slate-100 text-slate-700'
-  }
-}
 
 function statusFa(s: string) {
   const map: Record<string, string> = {

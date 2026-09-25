@@ -15,6 +15,7 @@ import {
   persistMilestoneForecasts,
   resolveCpmCalendarEpoch,
 } from '@/lib/schedule/milestone-forecast'
+import { persistProjectProgressPace } from '@/lib/schedule/persist-progress-pace'
 
 export interface ProjectCpmRunResult {
   projectId: string
@@ -30,6 +31,7 @@ export interface ProjectCpmRunResult {
     alertsCreated: number
     milestoneBaselinesSet: number
     milestoneForecastsInserted: number
+    progressPaceUpdated?: number
   }
 }
 
@@ -75,7 +77,9 @@ export async function runProjectCpmCalculation(
       .eq('project_id', projectId),
     supabase
       .from('task_dependencies')
-      .select('predecessor_task_id, successor_task_id, relation_type, lag_duration')
+      .select(
+        'predecessor_task_id, successor_task_id, relation_type, lag_duration, lag_days, lag_is_percentage'
+      )
       .eq('project_id', projectId),
   ])
 
@@ -88,12 +92,21 @@ export async function runProjectCpmCalculation(
     isSummary: Boolean(t.is_summary),
   }))
 
-  const cpmInputDeps = (deps ?? []).map((d) => ({
-    predecessorId: d.predecessor_task_id as string,
-    successorId: d.successor_task_id as string,
-    type: d.relation_type as TaskRelationType,
-    lagDays: lagMinutesToDays(Number(d.lag_duration) || 0),
-  }))
+  // Percent-lag links are stored for reporting but excluded from system CPM
+  const cpmInputDeps = (deps ?? [])
+    .filter((d) => !d.lag_is_percentage)
+    .map((d) => {
+      const lagDays =
+        d.lag_days != null && Number.isFinite(Number(d.lag_days))
+          ? Number(d.lag_days)
+          : lagMinutesToDays(Number(d.lag_duration) || 0)
+      return {
+        predecessorId: d.predecessor_task_id as string,
+        successorId: d.successor_task_id as string,
+        type: d.relation_type as TaskRelationType,
+        lagDays,
+      }
+    })
 
   const cpm = calculateCpm(cpmInputActivities, cpmInputDeps)
   if (cpm.success === false) {
@@ -152,6 +165,20 @@ export async function runProjectCpmCalculation(
     throw new Error(`ذخیره float_history ناموفق: ${historyError.message}`)
   }
 
+  // Cache float/critical on activities for UI tables (preview / send schedule)
+  await Promise.all(
+    cpm.activities.map((a) =>
+      supabase
+        .from('project_tasks')
+        .update({
+          total_float_days: a.totalFloat,
+          is_critical: a.isCritical,
+        })
+        .eq('id', a.id)
+        .eq('project_id', projectId)
+    )
+  )
+
   const taskNameById = new Map<string, string>()
   for (const t of tasks ?? []) {
     taskNameById.set(t.id as string, String(t.name ?? ''))
@@ -188,6 +215,18 @@ export async function runProjectCpmCalculation(
     milestoneTaskIds,
   })
 
+  // Progress Pace (هشدار هوشمند پیشرفت — بخش ۱)
+  let paceUpdated = 0
+  try {
+    const pace = await persistProjectProgressPace(supabase, projectId, {
+      statusDate: calculationDate,
+    })
+    paceUpdated = pace.updated
+  } catch {
+    // Optional columns may be missing until migration 77 is applied
+    paceUpdated = 0
+  }
+
   return {
     projectId,
     projectDurationDays: cpm.projectDurationDays,
@@ -202,6 +241,7 @@ export async function runProjectCpmCalculation(
       alertsCreated,
       milestoneBaselinesSet: milestoneSaved.baselinesSet,
       milestoneForecastsInserted: milestoneSaved.forecastsInserted,
+      progressPaceUpdated: paceUpdated,
     },
   }
 }

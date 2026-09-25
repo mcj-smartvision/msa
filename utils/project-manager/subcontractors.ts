@@ -72,6 +72,50 @@ export async function createSubcontractor(
   return { ...(data as ProjectSubcontractor), contracts: [] }
 }
 
+export async function updateSubcontractorIdentity(
+  supabase: SupabaseClient,
+  input: {
+    projectId: string
+    subcontractorId: string
+    name: string
+    contactName: string
+  }
+): Promise<void> {
+  const { error } = await supabase
+    .from('project_subcontractors')
+    .update({
+      name: input.name.trim(),
+      contact_name: input.contactName.trim(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', input.subcontractorId)
+    .eq('project_id', input.projectId)
+  if (error) throw new Error(error.message)
+}
+
+export async function updateSubcontractorContractIdentity(
+  supabase: SupabaseClient,
+  input: {
+    projectId: string
+    contractId: string
+    contractNo: string
+    startDate: string
+    title: string
+  }
+): Promise<void> {
+  const { error } = await supabase
+    .from('subcontractor_contracts')
+    .update({
+      contract_no: input.contractNo.trim(),
+      start_date: input.startDate,
+      title: input.title.trim(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', input.contractId)
+    .eq('project_id', input.projectId)
+  if (error) throw new Error(error.message)
+}
+
 export async function createSubcontractorContract(
   supabase: SupabaseClient,
   input: CreateContractInput

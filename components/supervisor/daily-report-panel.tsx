@@ -30,6 +30,7 @@ import {
 import type { ScheduleTreeNode, WorkshopPackageNode } from '@/lib/workshop/types'
 import type { ParsedDailyReportVoice } from '@/lib/supervisor/parse-daily-report-voice'
 import { VoiceToTextButton } from '@/components/shared/voice-to-text-button'
+import { publishScheduleViewSync } from '@/lib/schedule/schedule-view-sync'
 import { cn } from '@/lib/utils'
 
 function faNum(n: number): string {
@@ -523,15 +524,86 @@ export function DailyReportPanel({
     setNotesByDate(nextNotes)
   }
 
-  function saveEntries(newEntries: DailyProgressEntry[], nextNotes?: Record<string, string>) {
+  async function syncProgressToSchedule(nextEntries: DailyProgressEntry[]) {
+    if (!projectId) return
+    const byActivity = new Map<string, number>()
+    for (const entry of nextEntries) {
+      if (entry.reportDate !== reportDate) continue
+      byActivity.set(entry.activityId, entry.percentComplete)
+    }
+    const updates = [...byActivity.entries()].map(([activityId, percentComplete]) => ({
+      activityId,
+      percentComplete,
+    }))
+    if (updates.length === 0) return
+
+    const res = await fetch('/api/supervisor/daily-progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        projectId,
+        reportDate,
+        updates,
+      }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new Error(
+        typeof data.error === 'string' ? data.error : 'ذخیره پیشرفت در برنامه ناموفق بود'
+      )
+    }
+    publishScheduleViewSync(projectId)
+  }
+
+  async function saveEntries(
+    newEntries: DailyProgressEntry[],
+    nextNotes?: Record<string, string>
+  ) {
     const nextNotesFinal = nextNotes ?? notesByDate
     persist(newEntries, nextNotesFinal)
     window.dispatchEvent(
       new CustomEvent('sitepilot-daily-progress-updated', { detail: { projectId } })
     )
+    try {
+      await syncProgressToSchedule(newEntries)
+      setActivitiesError(null)
+    } catch (error) {
+      console.error(error)
+      setActivitiesError(
+        error instanceof Error
+          ? error.message
+          : 'ذخیره پیشرفت در برنامه زمانبندی ناموفق بود'
+      )
+    }
   }
 
-  function handleSaveSingle(activityId: string) {
+  // Re-push local daily progress into Supabase after the schedule:uuid fix
+  // so previously saved supervisor % lands in ویرایش/ارسال without retyping.
+  useEffect(() => {
+    if (!hydrated || !projectId || entries.length === 0) return
+    let cancelled = false
+    void (async () => {
+      try {
+        await syncProgressToSchedule(entries)
+        if (!cancelled) setActivitiesError(null)
+      } catch (error) {
+        if (!cancelled) {
+          console.error(error)
+          setActivitiesError(
+            error instanceof Error
+              ? error.message
+              : 'همگام‌سازی پیشرفت با برنامه زمانبندی ناموفق بود'
+          )
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on open / day change
+  }, [hydrated, projectId, reportDate])
+
+  async function handleSaveSingle(activityId: string) {
     if (!projectId) return
     setSavingActivityId(activityId)
     setSavedActivityId(null)
@@ -540,14 +612,14 @@ export function DailyReportPanel({
     const nextEntries = upsertDailyEntries(entries, [
       { activityId, reportDate, percentComplete: pct },
     ])
-    saveEntries(nextEntries)
+    await saveEntries(nextEntries)
 
     setSavingActivityId(null)
     setSavedActivityId(activityId)
     window.setTimeout(() => setSavedActivityId(null), 2500)
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!projectId) return
     setSubmitting(true)
     setSubmitOk(false)
@@ -560,7 +632,7 @@ export function DailyReportPanel({
 
     const nextEntries = upsertDailyEntries(entries, newEntries)
     const nextNotes = { ...notesByDate, [reportDate]: note.trim() }
-    saveEntries(nextEntries, nextNotes)
+    await saveEntries(nextEntries, nextNotes)
 
     setSubmitting(false)
     setSubmitOk(true)

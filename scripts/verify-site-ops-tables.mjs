@@ -1,5 +1,5 @@
 /**
- * Verify migrations 43 + 44 tables exist (service role, head-only).
+ * Verify site-ops tables exist (service role, head-only).
  * Run: node scripts/verify-site-ops-tables.mjs
  */
 import { readFileSync } from 'fs'
@@ -23,13 +23,6 @@ const env = loadEnvLocal()
 const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
 
 const tables = [
-  // 43 messaging
-  'project_conversations',
-  'conversation_members',
-  'project_messages',
-  'message_attachments',
-  'app_notifications',
-  // 44 site-ops
   'site_ops_cre_runs',
   'site_ops_operational_tasks',
   'site_ops_crews',
@@ -57,4 +50,4 @@ if (failed > 0) {
   console.error(`\n${failed} table(s) missing or inaccessible.`)
   process.exit(1)
 }
-console.log('\nMigrations 43 + 44 look applied.')
+console.log('\nSite-ops tables look applied.')

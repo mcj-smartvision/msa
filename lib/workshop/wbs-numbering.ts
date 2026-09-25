@@ -58,6 +58,7 @@ export function buildScheduleHierarchy(
       kind: 'schedule' as const,
       mspUid: t.msp_uid,
       taskId: t.id,
+      task: t,
       wbs: t.wbs_code?.trim() || null,
       name: t.name,
       depth: wbsDepth(t.wbs_code),
@@ -113,17 +114,19 @@ export function flattenWorkshopSchedule(
     finishDate: string | null
   ) {
     for (const pkg of pkgs) {
+      const pkgStart = pkg.startDate ?? startDate
+      const pkgFinish = pkg.finishDate ?? finishDate
       rows.push({
         type: 'package',
         pkg,
         depth,
         parentScheduleId,
         wbs: pkg.wbs ?? '—',
-        startDate,
-        finishDate,
+        startDate: pkgStart,
+        finishDate: pkgFinish,
       })
       if (expanded[`pkg:${pkg.id}`]) {
-        walkPackages(pkg.children, depth + 1, parentScheduleId, startDate, finishDate)
+        walkPackages(pkg.children, depth + 1, parentScheduleId, pkgStart, pkgFinish)
       }
     }
   }

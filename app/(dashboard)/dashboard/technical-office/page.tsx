@@ -6,6 +6,8 @@ import { hasRoleDashboardAccess } from '@/lib/schedule/access'
 import { TechnicalOfficeDashboard } from '@/components/technical-office/technical-office-dashboard'
 import { ScheduleSendSection } from '@/components/technical-office/schedule-send-section'
 
+export const dynamic = 'force-dynamic'
+
 function TechnicalOfficeDashboardFallback() {
   return (
     <div className="py-16 text-center text-sm text-slate-600" dir="rtl" lang="fa">

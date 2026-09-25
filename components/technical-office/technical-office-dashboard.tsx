@@ -7,16 +7,29 @@ import { getTechnicalOfficeMessages } from '@/lib/i18n/technical-office'
 import type { DashboardUserContext } from '@/types/dashboard'
 import { PageHeader } from '@/components/admin/shared'
 import { TechnicalOfficeLegacyPanel } from '@/components/technical-office/technical-office-legacy-panel'
+import { ContractorsSection } from '@/components/technical-office/contractors-section'
 import { WorkshopOpsPanel } from '@/components/workshop/workshop-ops-panel'
+import { SmartProgressAlertsPanel } from '@/components/schedule/smart-progress-alerts-panel'
 import { useSyncedProjectId } from '@/hooks/use-synced-project-id'
 import { cn } from '@/lib/utils'
 
-type OfficeSection = 'office' | 'send-schedule' | 'schedule'
+type OfficeSection =
+  | 'contractors'
+  | 'office'
+  | 'send-schedule'
+  | 'schedule'
+  | 'smart-progress'
 
 const SECTIONS: { id: OfficeSection; labelFa: string; labelEn: string }[] = [
+  { id: 'contractors', labelFa: 'پیمانکار', labelEn: 'Contractor' },
   { id: 'office', labelFa: 'نقشه‌ها', labelEn: 'Drawings' },
   { id: 'send-schedule', labelFa: 'ارسال برنامه زمانبندی', labelEn: 'Send schedule' },
   { id: 'schedule', labelFa: 'ویرایش برنامه زمانبندی', labelEn: 'Edit schedule' },
+  {
+    id: 'smart-progress',
+    labelFa: 'هشدار هوشمند پیشرفت',
+    labelEn: 'Smart progress alerts',
+  },
 ]
 
 export function TechnicalOfficeDashboard({
@@ -42,11 +55,15 @@ export function TechnicalOfficeDashboard({
       ? 'schedule'
       : rawSection === 'send-schedule'
         ? 'send-schedule'
-        : rawSection === 'office' || rawSection === 'drawings'
-          ? 'office'
-          : asSupervisor
-            ? 'schedule'
-            : 'office'
+        : rawSection === 'smart-progress'
+          ? 'smart-progress'
+          : rawSection === 'contractors'
+              ? 'contractors'
+            : rawSection === 'office' || rawSection === 'drawings'
+              ? 'office'
+              : asSupervisor
+                ? 'schedule'
+                : 'office'
 
   const visibleSections = asSupervisor
     ? SECTIONS.filter((s) => s.id === 'schedule')
@@ -55,9 +72,10 @@ export function TechnicalOfficeDashboard({
   useEffect(() => {
     if (!projectId) return
     const params = new URLSearchParams(searchParams.toString())
-    if (params.get('projectId') === projectId && params.get('section')) return
+    const staleInvoice = params.get('section') === 'progress-invoice'
+    if (params.get('projectId') === projectId && params.get('section') && !staleInvoice) return
     params.set('projectId', projectId)
-    if (!params.get('section')) {
+    if (!params.get('section') || staleInvoice) {
       params.set('section', asSupervisor ? 'schedule' : 'office')
     }
     router.replace(`/dashboard/technical-office?${params.toString()}`)
@@ -80,7 +98,12 @@ export function TechnicalOfficeDashboard({
     <div
       className={cn(
         'space-y-6',
-        section === 'schedule' ? 'w-full max-w-none' : 'mx-auto max-w-6xl'
+        section === 'schedule' ||
+          section === 'send-schedule' ||
+          section === 'smart-progress' ||
+          section === 'contractors'
+          ? 'w-full max-w-none'
+          : 'mx-auto max-w-6xl'
       )}
       dir={dir}
     >
@@ -122,11 +145,23 @@ export function TechnicalOfficeDashboard({
         </p>
       ) : section === 'schedule' ? (
         <WorkshopOpsPanel />
-      ) : section === 'send-schedule' ? (
-        scheduleSendPanel
-      ) : (
+      ) : section === 'smart-progress' ? (
+        <SmartProgressAlertsPanel projectId={projectId} />
+      ) : section === 'contractors' ? (
+        <ContractorsSection projectId={projectId} />
+      ) : section === 'office' ? (
         <TechnicalOfficeLegacyPanel projectId={projectId} />
-      )}
+      ) : null}
+
+      {/* Keep SEND mounted so ویرایش → ارسال sync applies without remount/stale SSR */}
+      {projectId && scheduleSendPanel ? (
+        <div
+          className={section === 'send-schedule' ? 'block' : 'hidden'}
+          aria-hidden={section !== 'send-schedule'}
+        >
+          {scheduleSendPanel}
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -201,38 +201,6 @@ export interface WidgetVisibilityInput {
   sort_order?: number
 }
 
-export interface DashboardUiBlock {
-  id: string
-  code: string
-  key: string
-  kind: string
-  dashboard: string
-  layer: string
-  title_fa: string
-  title_en: string
-  description_fa: string
-  legacy_widget_key?: string | null
-  sort_order: number
-  default_visible: boolean
-  is_active: boolean
-}
-
-export interface PositionUiBlockVisibility {
-  id: string
-  position_id: string
-  block_id: string
-  is_visible: boolean
-  sort_order: number
-  block?: DashboardUiBlock
-}
-
-export interface UiBlockVisibilityInput {
-  position_id: string
-  block_id: string
-  is_visible: boolean
-  sort_order?: number
-}
-
 export interface AdminStats {
   projectCount: number
   memberCount: number

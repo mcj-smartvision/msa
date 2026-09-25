@@ -24,17 +24,11 @@ import type { ProcurementKpis, ProcurementRequest, ProcurementStatus } from '@/l
 import type { DashboardUserContext } from '@/types/dashboard'
 import { loadProcurementDashboard, updateProcurementStatus } from '@/utils/procurement/dashboard'
 import { cn } from '@/lib/utils'
-import {
-  UiBlockCustomizePanel,
-  UiBlockGuard,
-  UiBlockVisibilityProvider,
-} from '@/components/dashboard/ui-block-visibility'
 
 interface ProcurementDashboardProps {
   initialContext: DashboardUserContext
   projectOptions: { id: string; name: string }[]
   initialProjectId: string | null
-  visibleBlockCodes?: string[]
 }
 
 function nextStatus(current: ProcurementStatus): ProcurementStatus | null {
@@ -47,7 +41,6 @@ export function ProcurementDashboard({
   initialContext,
   projectOptions,
   initialProjectId,
-  visibleBlockCodes = [],
 }: ProcurementDashboardProps) {
   const supabase = useSupabase()
   const { locale, dir } = useLocale()
@@ -133,14 +126,7 @@ export function ProcurementDashboard({
   }
 
   return (
-    <UiBlockVisibilityProvider
-      visibleCodes={visibleBlockCodes}
-      showAdminBlockCodes={initialContext.isSystemAdmin}
-      dashboard="procurement"
-      projectId={projectId}
-    >
     <div className={cn('space-y-8', isRtl && 'text-right')}>
-      <UiBlockCustomizePanel />
 
       <PageHeader
         title={t.title}
@@ -150,7 +136,6 @@ export function ProcurementDashboard({
       {loading && !kpis ? <LoadingBlock label={t.saving} /> : null}
       {error ? <ErrorBlock message={error} onRetry={() => void loadData()} /> : null}
 
-      <UiBlockGuard code="PR-KPI-01">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <StatCard label={t.pendingRequests} value={k.pendingRequests} icon={ShoppingCart} />
         <StatCard label={t.activeRfqs} value={k.activeRfqs} icon={Package} />
@@ -158,9 +143,7 @@ export function ProcurementDashboard({
         <StatCard label={t.delayed} value={k.delayedDeliveries} icon={Clock} trendType={k.delayedDeliveries > 0 ? 'warning' : 'neutral'} />
         <StatCard label={t.receivedWeek} value={k.receivedThisWeek} icon={CheckCircle2} trendType="up" />
       </div>
-      </UiBlockGuard>
 
-      <UiBlockGuard code="PR-TBL-01">
       <SectionCard title={t.incomingRequests}>
         {requests.length === 0 ? (
           <p className="text-sm text-muted-foreground py-8 text-center">{t.noRequests}</p>
@@ -205,7 +188,6 @@ export function ProcurementDashboard({
           </div>
         )}
       </SectionCard>
-      </UiBlockGuard>
 
       <ModalOverlay open={!!selected} onClose={() => setSelected(null)} title={selected?.materialName ?? t.formalRequest}>
         {selected ? (
@@ -219,6 +201,5 @@ export function ProcurementDashboard({
         <Button type="button" className="w-full mt-4" variant="outline" onClick={() => setSelected(null)}>{t.close}</Button>
       </ModalOverlay>
     </div>
-    </UiBlockVisibilityProvider>
   )
 }

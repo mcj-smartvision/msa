@@ -309,13 +309,47 @@ export function buildSCurveActivitiesFromTree(nodes: ScheduleTreeNode[]): DailyR
   return out.sort((a, b) => compareWbs(a.wbs, b.wbs))
 }
 
+/**
+ * Daily-report rows use prefixed ids (`schedule:uuid` / `package:uuid`).
+ * Schedule EDIT/SEND look up by raw uuid — accept either form.
+ */
+export function dailyReportActivityLookupIds(activityId: string): string[] {
+  const id = String(activityId ?? '').trim()
+  if (!id) return []
+  const ids = new Set<string>([id])
+  if (id.startsWith('schedule:')) {
+    ids.add(id.slice('schedule:'.length))
+  } else if (id.startsWith('package:')) {
+    ids.add(id.slice('package:'.length))
+  } else {
+    ids.add(`schedule:${id}`)
+    ids.add(`package:${id}`)
+  }
+  return [...ids]
+}
+
+export function parseDailyReportActivityRef(activityId: string): {
+  kind: 'schedule' | 'package' | 'unknown'
+  entityId: string
+} {
+  const id = String(activityId ?? '').trim()
+  if (id.startsWith('schedule:')) {
+    return { kind: 'schedule', entityId: id.slice('schedule:'.length) }
+  }
+  if (id.startsWith('package:')) {
+    return { kind: 'package', entityId: id.slice('package:'.length) }
+  }
+  return { kind: 'unknown', entityId: id }
+}
+
 export function getLatestProgressForActivity(
   activityId: string,
   entries: DailyProgressEntry[],
   beforeDate?: string
 ): DailyProgressEntry | null {
+  const keys = new Set(dailyReportActivityLookupIds(activityId))
   const pool = entries.filter((e) => {
-    if (e.activityId !== activityId) return false
+    if (!keys.has(e.activityId)) return false
     if (beforeDate && e.reportDate >= beforeDate) return false
     return true
   })
@@ -329,7 +363,8 @@ export function latestPercentOnOrBefore(
   asOfDate: string,
   baselinePercent = 0
 ): number {
-  const pool = entries.filter((e) => e.activityId === activityId && e.reportDate <= asOfDate)
+  const keys = new Set(dailyReportActivityLookupIds(activityId))
+  const pool = entries.filter((e) => keys.has(e.activityId) && e.reportDate <= asOfDate)
   if (pool.length === 0) return baselinePercent
   return pool.sort((a, b) => a.reportDate.localeCompare(b.reportDate)).at(-1)!.percentComplete
 }
@@ -361,7 +396,8 @@ export function hasEntryOnDate(
   reportDate: string,
   entries: DailyProgressEntry[]
 ): boolean {
-  return entries.some((e) => e.activityId === activityId && e.reportDate === reportDate)
+  const keys = new Set(dailyReportActivityLookupIds(activityId))
+  return entries.some((e) => keys.has(e.activityId) && e.reportDate === reportDate)
 }
 
 /** Activity window from MSP includes reportDate (start ≤ day ≤ finish) */

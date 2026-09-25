@@ -205,32 +205,6 @@ function buildInvoices(progressRows) {
   })
 }
 
-const UI_BLOCKS = {
-  kpis: {
-    total_ac: 'ACC-KPI-01',
-    total_invoiced: 'ACC-KPI-02',
-    total_approved: 'ACC-KPI-03',
-    total_paid: 'ACC-KPI-04',
-    outstanding_receivables: 'ACC-KPI-05',
-    cash_gap: 'ACC-KPI-06',
-  },
-  tables: {
-    costs: 'ACC-TBL-01',
-    invoices: 'ACC-TBL-02',
-  },
-  charts: {
-    invoice_trend: 'ACC-CHT-01',
-    financial_vs_physical: 'ACC-CHT-02',
-  },
-  panels: {
-    alerts: 'ACC-PNL-01',
-    engineering_progress: 'ACC-PNL-02',
-  },
-  actions: {
-    add_cost: 'ACC-ACT-01',
-  },
-}
-
 const project_progress_cost = buildProgressCost()
 const financial_invoices = buildInvoices(project_progress_cost)
 
@@ -238,7 +212,6 @@ const payload = {
   _meta: {
     project_id: PROJECT_ID,
     generated_at: new Date().toISOString(),
-    ui_blocks: UI_BLOCKS,
     notes: 'Engineering layer (project_progress_cost) separate from financial layer (financial_invoices)',
   },
   project_progress_cost,

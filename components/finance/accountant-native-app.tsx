@@ -34,11 +34,6 @@ import { ModalOverlay } from '@/components/shared/modal-overlay'
 import { MoneyInput, parseMoneyInput, formatMoneyFromNumber } from '@/components/finance/money-input'
 import { ExpenseManagement } from '@/components/finance/expense-management'
 import { ContractorPayables } from '@/components/finance/contractor-payables'
-import {
-  UiBlockCustomizePanel,
-  UiBlockGuard,
-  UiBlockVisibilityProvider,
-} from '@/components/dashboard/ui-block-visibility'
 import { formatRial } from '@/lib/finance/format-currency'
 import {
   FINANCIAL_INVOICE_STATUSES,
@@ -82,7 +77,6 @@ interface AccountantNativeAppProps {
   projectOptions: { id: string; name: string }[]
   initialProjectId: string | null
   canEdit?: boolean
-  visibleBlockCodes?: string[]
 }
 
 function StatusPill({
@@ -116,7 +110,6 @@ export function AccountantNativeApp({
   projectOptions,
   initialProjectId,
   canEdit = false,
-  visibleBlockCodes = [],
 }: AccountantNativeAppProps) {
   const supabase = useSupabase()
   const { locale, dir } = useLocale()
@@ -320,13 +313,7 @@ export function AccountantNativeApp({
   const showHero = tab === 'home'
 
   return (
-    <UiBlockVisibilityProvider
-      visibleCodes={visibleBlockCodes}
-      showAdminBlockCodes={initialContext.isSystemAdmin}
-      dashboard="accountant"
-      projectId={projectId}
-    >
-      <div className="accountant-native min-h-dvh bg-[#0b0e14] text-stone-100" dir={dir}>
+    <div className="accountant-native min-h-dvh bg-[#0b0e14] text-stone-100" dir={dir}>
         <NativeAppBootstrap />
 
         <header
@@ -351,9 +338,7 @@ export function AccountantNativeApp({
                 ) : null}
               </div>
               <div className="flex shrink-0 flex-col items-end gap-2">
-                <UiBlockCustomizePanel />
                 {canEdit && (tab === 'home' || tab === 'invoices') ? (
-                  <UiBlockGuard code="ACC-ACT-02">
                     <Button
                       type="button"
                       size="sm"
@@ -363,7 +348,6 @@ export function AccountantNativeApp({
                       <Plus className="me-1 h-4 w-4" />
                       {t.addInvoice}
                     </Button>
-                  </UiBlockGuard>
                 ) : null}
               </div>
             </div>
@@ -449,18 +433,15 @@ export function AccountantNativeApp({
                     icon: Warehouse,
                   },
                 ].map((kpi) => (
-                  <UiBlockGuard key={`${kpi.code}-${kpi.label}`} code={kpi.code}>
                     <div className="min-w-[9.5rem] shrink-0 rounded-2xl border border-white/8 bg-gradient-to-b from-white/[0.07] to-transparent p-3">
                       <kpi.icon className="h-4 w-4 text-[hsl(24_85%_55%)]" />
                       <p className="mt-2 text-[10px] leading-snug text-white/50">{kpi.label}</p>
                       <p className="mt-1 text-sm font-bold tabular-nums">{loading ? '…' : money(kpi.value)}</p>
                     </div>
-                  </UiBlockGuard>
                 ))}
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <UiBlockGuard code="ACC-ACT-01">
                   <Button
                     type="button"
                     variant="outline"
@@ -470,7 +451,6 @@ export function AccountantNativeApp({
                     <Receipt className="me-2 h-4 w-4" />
                     {t.manageExpenses}
                   </Button>
-                </UiBlockGuard>
                 <Button
                   type="button"
                   variant="outline"
@@ -482,7 +462,6 @@ export function AccountantNativeApp({
                 </Button>
               </div>
 
-              <UiBlockGuard code="ACC-PNL-01">
                 <section className="rounded-3xl border border-white/8 bg-white/[0.03] p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-amber-400" />
@@ -511,9 +490,7 @@ export function AccountantNativeApp({
                     </ul>
                   )}
                 </section>
-              </UiBlockGuard>
 
-              <UiBlockGuard code="ACC-TBL-01">
                 <section className="rounded-3xl border border-white/8 bg-white/[0.03] p-4">
                   <h2 className="text-sm font-semibold">{t.costsTable}</h2>
                   <p className="mt-1 text-xs text-white/45">{t.costsSummaryHint}</p>
@@ -545,9 +522,7 @@ export function AccountantNativeApp({
                     {t.openExpenseManagement}
                   </Button>
                 </section>
-              </UiBlockGuard>
 
-              <UiBlockGuard code="ACC-TBL-03">
                 <section className="rounded-3xl border border-white/8 bg-white/[0.03] p-4">
                   <div className="flex items-center gap-2">
                     <Warehouse className="h-4 w-4 text-[hsl(24_85%_55%)]" />
@@ -613,12 +588,10 @@ export function AccountantNativeApp({
                     {t.managePayables}
                   </Button>
                 </section>
-              </UiBlockGuard>
             </div>
           ) : null}
 
           {tab === 'invoices' ? (
-            <UiBlockGuard code="ACC-TBL-02">
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-semibold">{t.invoicesTable}</h2>
@@ -706,11 +679,9 @@ export function AccountantNativeApp({
                   ))
                 )}
               </section>
-            </UiBlockGuard>
           ) : null}
 
           {tab === 'expenses' ? (
-            <UiBlockGuard code="ACC-ACT-01">
               <div className="accountant-native-embed rounded-3xl border border-white/10 bg-white p-3 text-foreground sm:p-4">
                 <ExpenseManagement
                   key={projectId ?? 'no-project'}
@@ -721,12 +692,10 @@ export function AccountantNativeApp({
                   embedded
                 />
               </div>
-            </UiBlockGuard>
           ) : null}
 
           {tab === 'payables' ? (
             <div className="space-y-4">
-              <UiBlockGuard code="ACC-TBL-03">
                 <div className="rounded-3xl border border-white/8 bg-gradient-to-br from-white/[0.06] to-transparent p-4">
                   <div className="flex items-center gap-2">
                     <Warehouse className="h-4 w-4 text-[hsl(24_85%_55%)]" />
@@ -737,7 +706,6 @@ export function AccountantNativeApp({
                   </p>
                   <p className="mt-1 text-[11px] text-white/45">{t.stockValuationHint}</p>
                 </div>
-              </UiBlockGuard>
               <div className="accountant-native-embed rounded-3xl border border-white/10 bg-white p-3 text-foreground sm:p-4">
                 <ContractorPayables
                   key={projectId ?? 'no-project'}
@@ -906,7 +874,6 @@ export function AccountantNativeApp({
             </form>
           ) : null}
         </ModalOverlay>
-      </div>
-    </UiBlockVisibilityProvider>
+    </div>
   )
 }

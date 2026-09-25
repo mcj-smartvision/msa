@@ -78,6 +78,7 @@ export function ScheduleGanttWorkspace() {
 
   const workshopTab = searchParams.get('workshopTab') ?? 'schedule'
   const ganttTabActive = workshopTab === 'gantt'
+  const focusTaskId = searchParams.get('ganttTaskId')?.trim() || null
 
   const load = useCallback(async () => {
     if (!projectId) return
@@ -130,6 +131,17 @@ export function ScheduleGanttWorkspace() {
       }
     })
   }, [rows, draft])
+
+  useEffect(() => {
+    if (!focusTaskId || displayRows.length === 0) return
+    const t = window.setTimeout(() => {
+      document.getElementById(`gantt-row-${focusTaskId}`)?.scrollIntoView({
+        block: 'center',
+        behavior: 'smooth',
+      })
+    }, 150)
+    return () => window.clearTimeout(t)
+  }, [focusTaskId, displayRows])
 
   const timeline = useMemo(() => {
     let min: string | null = null
@@ -520,7 +532,11 @@ export function ScheduleGanttWorkspace() {
               displayRows.map((row) => (
                 <div
                   key={`l-${row.id}`}
-                  className="flex items-center border-b border-slate-100 px-2"
+                  id={`gantt-row-${row.id}`}
+                  className={cn(
+                    'flex items-center border-b border-slate-100 px-2',
+                    focusTaskId === row.id && 'bg-sky-100 ring-2 ring-inset ring-sky-500'
+                  )}
                   style={{ height: ROW_H, paddingInlineStart: 8 + row.depth * 10 }}
                   title={row.wbs ?? undefined}
                 >
@@ -638,7 +654,10 @@ export function ScheduleGanttWorkspace() {
                   return (
                     <div
                       key={`c-${row.id}`}
-                      className="relative border-b border-slate-100"
+                      className={cn(
+                        'relative border-b border-slate-100',
+                        focusTaskId === row.id && 'bg-sky-50/80'
+                      )}
                       style={{ height: ROW_H, width: timeline.widthPx }}
                     >
                       {headerTicks.map((t) => (
@@ -749,10 +768,13 @@ export function ScheduleGanttWorkspace() {
           <span className="h-2.5 w-4 rounded bg-amber-400" /> نزدیک‌بحرانی
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-4 rounded bg-orange-500" /> مصرف سریع
+          <span className="h-2.5 w-4 rounded bg-orange-500" /> مصرف سریع / پیشرفت ملایم
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-4 rounded bg-slate-400" /> عادی
+          <span className="h-2.5 w-4 rounded bg-sky-400" /> پایش پیشرفت (بحرانی + نرخ خوب)
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-4 rounded bg-slate-400" /> عادی / بدون نمایش
         </span>
         <span className="inline-flex items-center gap-1">
           <svg width="18" height="8" aria-hidden>

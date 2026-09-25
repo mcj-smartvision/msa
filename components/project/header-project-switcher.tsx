@@ -193,10 +193,20 @@ export function HeaderProjectSwitcher({
       adminCtx!.setScope(projectId)
       return
     }
-    if (projectId !== ALL_PROJECTS_SCOPE) {
-      writeProjectCookie(projectId)
-      router.refresh()
+    if (projectId === ALL_PROJECTS_SCOPE) return
+
+    writeProjectCookie(projectId)
+    const name = projects.find((p) => p.id === projectId)?.name
+    const params = new URLSearchParams(window.location.search)
+    if (params.has('projectId') || params.has('projectName')) {
+      params.set('projectId', projectId)
+      if (name) params.set('projectName', name)
+      else params.delete('projectName')
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname)
+      return
     }
+    router.refresh()
   }
 
   if (loading) {

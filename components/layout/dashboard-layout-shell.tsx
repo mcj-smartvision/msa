@@ -3,7 +3,6 @@
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { DashboardHeader } from '@/components/layout/dashboard-header'
-import { GlobalMessengerFab } from '@/components/layout/global-messenger-fab'
 import type { RoleNavLink } from '@/lib/dashboard/role-nav'
 
 export function DashboardLayoutShell({
@@ -44,7 +43,6 @@ export function DashboardLayoutShell({
       >
         {children}
       </main>
-      <GlobalMessengerFab />
     </div>
   )
 }

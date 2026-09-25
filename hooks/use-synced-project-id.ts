@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import {
   ALL_PROJECTS_SCOPE,
+  PROJECT_CHANGE_EVENT,
   readProjectCookie,
 } from '@/lib/project/project-cookie'
 
 /**
- * Project id for dashboard pages — synced from server `initialProjectId` (cookie on SSR)
- * and from cookie on navigation (header project switcher).
+ * Project id for dashboard pages — synced from server `initialProjectId` (cookie on SSR),
+ * cookie on navigation, and header project switcher.
  */
 export function useSyncedProjectId(initialProjectId: string | null) {
   const [projectId, setProjectId] = useState<string | null>(initialProjectId)
@@ -28,6 +29,15 @@ export function useSyncedProjectId(initialProjectId: string | null) {
     }
     if (initialProjectId) setProjectId(initialProjectId)
   }, [pathname, initialProjectId])
+
+  useEffect(() => {
+    function onProjectChange(event: Event) {
+      const id = (event as CustomEvent<string>).detail
+      if (id && id !== ALL_PROJECTS_SCOPE) setProjectId(id)
+    }
+    window.addEventListener(PROJECT_CHANGE_EVENT, onProjectChange)
+    return () => window.removeEventListener(PROJECT_CHANGE_EVENT, onProjectChange)
+  }, [])
 
   return projectId
 }

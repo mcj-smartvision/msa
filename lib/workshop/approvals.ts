@@ -10,6 +10,11 @@ export type ApprovalStatus =
   | 'rejected'
   | 'change_requested'
 
+/** Workshop packages created in UI (default DB origin). */
+export function isUserAddedOrigin(origin?: string | null): boolean {
+  return origin == null || origin === '' || origin === 'user_added'
+}
+
 export function canEditPackageContent(approvalStatus: ApprovalStatus | null | undefined): boolean {
   const s = approvalStatus ?? 'draft'
   if (WORKSHOP_SKIP_PM_APPROVAL) {
@@ -18,23 +23,30 @@ export function canEditPackageContent(approvalStatus: ApprovalStatus | null | un
   return s === 'draft' || s === 'rejected' || s === 'pending_approval'
 }
 
-/** Row-level edit in schedule workspace (includes user-added sub-branches). */
+/**
+ * Row-level edit in schedule workspace.
+ * User-added sub-branches stay editable after save (even when auto-approved).
+ * Only `change_requested` locks the row (revise via dedicated flow).
+ */
 export function canEditWorkshopPackageRow(
   approvalStatus: ApprovalStatus | null | undefined,
   origin?: string | null
 ): boolean {
-  if (WORKSHOP_SKIP_PM_APPROVAL) {
-    return (approvalStatus ?? 'draft') !== 'change_requested'
-  }
-  if (origin === 'user_added') return true
-  return canEditPackageContent(approvalStatus)
+  const s = approvalStatus ?? 'draft'
+  if (s === 'change_requested') return false
+
+  // Sub-branches the user added must remain editable after ذخیره
+  if (isUserAddedOrigin(origin)) return true
+
+  if (WORKSHOP_SKIP_PM_APPROVAL) return true
+  return canEditPackageContent(s)
 }
 
-export function canDeletePackage(approvalStatus: ApprovalStatus | null | undefined): boolean {
-  if (WORKSHOP_SKIP_PM_APPROVAL) {
-    return canEditPackageContent(approvalStatus)
-  }
-  return canEditPackageContent(approvalStatus)
+export function canDeletePackage(
+  approvalStatus: ApprovalStatus | null | undefined,
+  origin?: string | null
+): boolean {
+  return canEditWorkshopPackageRow(approvalStatus, origin)
 }
 
 export function canReviseChangeRequest(approvalStatus: ApprovalStatus | null | undefined): boolean {
@@ -45,7 +57,7 @@ export function assertCanEditPackage(
   approvalStatus: ApprovalStatus | null | undefined,
   origin?: string | null
 ) {
-  if (!canEditWorkshopPackageRow(approvalStatus, origin ?? 'user_added')) {
+  if (!canEditWorkshopPackageRow(approvalStatus, origin)) {
     throw new WorkshopError(
       'VALIDATION',
       'این مورد تأیید شده است. برای تغییر باید «درخواست تغییر» بدهید تا مدیر پروژه تأیید کند.'
@@ -53,8 +65,11 @@ export function assertCanEditPackage(
   }
 }
 
-export function assertCanDeletePackage(approvalStatus: ApprovalStatus | null | undefined) {
-  if (!canDeletePackage(approvalStatus)) {
+export function assertCanDeletePackage(
+  approvalStatus: ApprovalStatus | null | undefined,
+  origin?: string | null
+) {
+  if (!canDeletePackage(approvalStatus, origin)) {
     throw new WorkshopError(
       'VALIDATION',
       'بعد از تأیید مدیر پروژه نمی‌توان حذف کرد. در صورت نیاز درخواست تغییر بدهید.'

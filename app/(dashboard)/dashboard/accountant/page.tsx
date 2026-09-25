@@ -1,11 +1,10 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loadRolePageData } from '@/lib/dashboard/load-role-page'
-import { loadUiBlockVisibility } from '@/lib/dashboard/load-ui-block-visibility'
 import { hasRoleDashboardAccess } from '@/lib/schedule/access'
 import { AccountantDashboard } from '@/components/finance/accountant-dashboard'
 
-/** Project Accountant home — financial operations dashboard */
+/** Project Accountant home — progress invoices overview */
 export default async function AccountantDashboardPage() {
   const supabase = createClient()
   const {
@@ -25,26 +24,12 @@ export default async function AccountantDashboardPage() {
     redirect('/dashboard')
   }
 
-  const canEdit =
-    context.isSystemAdmin ||
-    context.positionKeys.includes('project_accountant') ||
-    context.positionKeys.includes('finance_admin')
-
-  const visibleBlockCodes = await loadUiBlockVisibility(
-    supabase,
-    context,
-    activeProjectId,
-    'accountant'
-  )
-
   return (
     <AccountantDashboard
       key={activeProjectId ?? 'no-project'}
       initialContext={context}
       projectOptions={projectOptions}
       initialProjectId={activeProjectId}
-      canEdit={canEdit}
-      visibleBlockCodes={visibleBlockCodes}
     />
   )
 }

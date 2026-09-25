@@ -34,6 +34,13 @@ import {
   stripPackageWeightFromNote,
 } from './package-weight'
 import {
+  encodePackageCommercialInNote,
+  mergePackageScheduleFields,
+  readPackageQuantityCertainty,
+  readPackageUnitPrice,
+  stripPackageCommercialFromNote,
+} from './package-commercial'
+import {
   buildScheduleHierarchy,
   enrichScheduleTreeWithWbs,
   nextChildWbs,
@@ -49,6 +56,7 @@ import type {
 
 function mapPackage(row: Record<string, unknown>, children: WorkshopPackageNode[] = []): WorkshopPackageNode {
   const storedWbs = (row.wbs_code as string) ?? null
+  const noteClean = stripPackageCommercialFromNote(stripPackageWeightFromNote(row.note as string))
   return {
     id: String(row.id),
     kind: 'package',
@@ -56,9 +64,11 @@ function mapPackage(row: Record<string, unknown>, children: WorkshopPackageNode[
     name: String(row.name),
     location: (row.location as string) ?? null,
     quantity: Number(row.quantity),
+    quantityCertainty: readPackageQuantityCertainty(row),
+    unitPrice: readPackageUnitPrice(row),
     uom: String(row.uom),
     crew: (row.crew as string) ?? null,
-    note: stripPackageWeightFromNote(row.note as string) || null,
+    note: noteClean || null,
     status: row.status as WorkshopPackageNode['status'],
     approvalStatus: ((row.approval_status as ApprovalStatus) ?? 'draft') as WorkshopPackageNode['approvalStatus'],
     lastPmComment: (row.last_pm_comment as string) ?? null,
@@ -67,6 +77,14 @@ function mapPackage(row: Record<string, unknown>, children: WorkshopPackageNode[
     reviewReason: (row.review_reason as string) ?? null,
     weightPercent: resolvePackageWeight(row),
     origin: (row.origin as string) ?? null,
+    startDate: (row.start_date as string) ?? null,
+    finishDate: (row.finish_date as string) ?? null,
+    subcontractorId: (row.subcontractor_id as string) ?? null,
+    resolvedSubcontractorId: null,
+    scheduleFields:
+      row.schedule_fields && typeof row.schedule_fields === 'object'
+        ? (row.schedule_fields as Record<string, unknown>)
+        : {},
     children,
   }
 }
@@ -228,7 +246,16 @@ function clampPackageWeight(value: number): number {
   return Math.max(0, Math.round(value * 10000) / 10000)
 }
 
-const OPTIONAL_PACKAGE_COLUMNS = ['weight_percent', 'wbs_code'] as const
+const OPTIONAL_PACKAGE_COLUMNS = [
+  'weight_percent',
+  'wbs_code',
+  'start_date',
+  'finish_date',
+  'subcontractor_id',
+  'schedule_fields',
+  'quantity_certainty',
+  'unit_price',
+] as const
 
 function isMissingColumnError(message: string, column: string): boolean {
   return new RegExp(column, 'i').test(message) && /column|schema|could not find/i.test(message)
@@ -375,6 +402,30 @@ export async function getScheduleTree(supabase: SupabaseClient, projectId: strin
     )
   )
 
+  const taskById = new Map(tasks.map((task) => [task.id, task]))
+  const taskContractorMemo = new Map<string, string | null>()
+  const resolveTaskContractor = (taskId: string, visiting = new Set<string>()): string | null => {
+    if (taskContractorMemo.has(taskId)) return taskContractorMemo.get(taskId) ?? null
+    const task = taskById.get(taskId)
+    if (!task || visiting.has(taskId)) return task?.subcontractor_id ?? null
+    if (task.subcontractor_id) return task.subcontractor_id
+    visiting.add(taskId)
+    const resolved = task.parent_id ? resolveTaskContractor(task.parent_id, visiting) : null
+    visiting.delete(taskId)
+    taskContractorMemo.set(taskId, resolved)
+    return resolved
+  }
+  const resolvePackages = (packages: WorkshopPackageNode[], inherited: string | null) => {
+    for (const pkg of packages) {
+      pkg.resolvedSubcontractorId = pkg.subcontractorId ?? inherited
+      resolvePackages(pkg.children, pkg.resolvedSubcontractorId)
+    }
+  }
+  for (const node of nodes) {
+    if (!node.taskId) continue
+    resolvePackages(node.packages, resolveTaskContractor(node.taskId))
+  }
+
   const dependencyLinkCount = Object.keys(predecessorLabels).reduce((n, id) => {
     const label = predecessorLabels[id]
     if (!label?.trim()) return n
@@ -506,32 +557,94 @@ export async function createPackage(supabase: SupabaseClient, input: CreatePacka
   assertHasRole(roles, WORKSHOP_WRITE_ROLES)
   const fields = validateCreatePackage(input)
 
+  let startDate = input.startDate ?? null
+  let finishDate = input.finishDate ?? null
+
   if (input.parentScheduleNodeId) {
     const { data: task } = await supabase
       .from('project_tasks')
-      .select('id, name, wbs_code, msp_uid')
+      .select('id, name, wbs_code, msp_uid, start_current, start_planned, finish_current, finish_planned')
       .eq('id', input.parentScheduleNodeId)
       .eq('project_id', input.projectId)
       .maybeSingle()
     if (!task) throw new WorkshopError('NOT_FOUND', 'ردیف برنامه پیدا نشد')
+    if (!startDate) {
+      startDate =
+        (task.start_current as string) ?? (task.start_planned as string) ?? null
+    }
+    if (!finishDate) {
+      finishDate =
+        (task.finish_current as string) ?? (task.finish_planned as string) ?? null
+    }
   }
 
   if (input.parentPackageId) {
     const { data: parentPkg } = await supabase
       .from('workshop_packages')
-      .select('id')
+      .select('id, start_date, finish_date, project_task_id')
       .eq('id', input.parentPackageId)
       .eq('project_id', input.projectId)
       .maybeSingle()
     if (!parentPkg) throw new WorkshopError('NOT_FOUND', 'زیرمجموعه والد پیدا نشد')
+    if (!startDate || !finishDate) {
+      let start = (parentPkg.start_date as string) ?? null
+      let finish = (parentPkg.finish_date as string) ?? null
+      if ((!start || !finish) && parentPkg.project_task_id) {
+        const { data: task } = await supabase
+          .from('project_tasks')
+          .select('start_current, start_planned, finish_current, finish_planned')
+          .eq('id', parentPkg.project_task_id)
+          .maybeSingle()
+        start =
+          start ??
+          (task?.start_current as string) ??
+          (task?.start_planned as string) ??
+          null
+        finish =
+          finish ??
+          (task?.finish_current as string) ??
+          (task?.finish_planned as string) ??
+          null
+      }
+      startDate = startDate ?? start
+      finishDate = finishDate ?? finish
+    }
   }
 
   const wbsCode = await computePackageWbsCode(supabase, input.projectId, input)
+
+  if (input.subcontractorId) {
+    const { data: contractor } = await supabase
+      .from('project_subcontractors')
+      .select('id')
+      .eq('id', input.subcontractorId)
+      .eq('project_id', input.projectId)
+      .maybeSingle()
+    if (!contractor) {
+      throw new WorkshopError('VALIDATION', 'پیمانکار متعلق به این پروژه نیست')
+    }
+  }
 
   const inferred = inferReviewReason({
     flagForReview: fields.flag_for_review,
     parentMissingBasis: false,
   })
+
+  const unitPrice = Math.max(0, Number(input.unitPrice) || 0)
+  const quantityCertainty = input.quantityCertainty === 'قطعی' ? 'قطعی' : 'حدودی'
+  const scheduleFields = mergePackageScheduleFields(input.scheduleFields ?? {}, {
+    unitPrice,
+    quantityCertainty,
+  })
+  const noteWithCommercial = encodePackageCommercialInNote(
+    encodePackageWeightInNote(
+      fields.note,
+      input.weightPercent != null && Number.isFinite(input.weightPercent)
+        ? clampPackageWeight(input.weightPercent)
+        : null
+    ),
+    { unitPrice, quantityCertainty }
+  )
 
   const insertBase: Record<string, unknown> = {
     project_id: input.projectId,
@@ -540,14 +653,11 @@ export async function createPackage(supabase: SupabaseClient, input: CreatePacka
     name: fields.name,
     location: fields.location,
     quantity: fields.quantity,
+    quantity_certainty: quantityCertainty,
+    unit_price: unitPrice,
     uom: fields.uom,
     crew: fields.crew,
-    note: encodePackageWeightInNote(
-      fields.note,
-      input.weightPercent != null && Number.isFinite(input.weightPercent)
-        ? clampPackageWeight(input.weightPercent)
-        : null
-    ),
+    note: noteWithCommercial,
     status: inferred.flag ? 'needs_review' : 'ready',
     approval_status: WORKSHOP_SKIP_PM_APPROVAL ? 'approved' : 'draft',
     approved_at: WORKSHOP_SKIP_PM_APPROVAL ? new Date().toISOString() : null,
@@ -564,6 +674,11 @@ export async function createPackage(supabase: SupabaseClient, input: CreatePacka
   }
 
   insertBase.wbs_code = wbsCode
+  insertBase.subcontractor_id = input.subcontractorId ?? null
+  insertBase.schedule_fields = scheduleFields
+
+  if (startDate) insertBase.start_date = String(startDate).slice(0, 10)
+  if (finishDate) insertBase.finish_date = String(finishDate).slice(0, 10)
 
   const created = await insertPackageRow(supabase, insertBase)
 
@@ -589,6 +704,29 @@ export async function createPackage(supabase: SupabaseClient, input: CreatePacka
     payload: { name: created.name, parent_task: input.parentScheduleNodeId, wbs_code: wbsCode },
   })
 
+  try {
+    const { syncScheduleLineToProgressInvoice } = await import(
+      '@/lib/progress-invoice/sync-from-schedule'
+    )
+    await syncScheduleLineToProgressInvoice(
+      supabase,
+      input.projectId,
+      {
+        source: { entityType: 'package', entityId: String(created.id) },
+        title: String(created.name),
+        uom: String(created.uom ?? fields.uom),
+        estimatedQty: Number(created.quantity ?? fields.quantity) || 0,
+        unitPrice: readPackageUnitPrice(created as Record<string, unknown>) || unitPrice,
+        itemDate:
+          (created.start_date as string | null)?.slice(0, 10) ??
+          (startDate ? String(startDate).slice(0, 10) : null),
+      },
+      user.id
+    )
+  } catch {
+    /* progress invoice sync is best-effort */
+  }
+
   return { ...created, wbs_code: created.wbs_code ?? wbsCode }
 }
 
@@ -603,7 +741,10 @@ export async function updatePackage(
   const roles = await resolveRoles(supabase, user.id, pkg.project_id)
   assertHasRole(roles, WORKSHOP_WRITE_ROLES)
 
-  assertCanEditPackage(pkg.approval_status as ApprovalStatus, (pkg.origin as string) ?? 'user_added')
+  assertCanEditPackage(
+    pkg.approval_status as ApprovalStatus,
+    (pkg.origin as string) ?? 'user_added'
+  )
 
   const fields = normalizeChangePayload(input)
   const dbPatch: Record<string, unknown> = {
@@ -632,6 +773,90 @@ export async function updatePackage(
     )
   }
 
+  if (input.startDate !== undefined || input.finishDate !== undefined) {
+    const startRaw =
+      input.startDate !== undefined ? input.startDate : (pkg.start_date as string | null)
+    const finishRaw =
+      input.finishDate !== undefined ? input.finishDate : (pkg.finish_date as string | null)
+    const start = startRaw ? String(startRaw).slice(0, 10) : null
+    const finish = finishRaw ? String(finishRaw).slice(0, 10) : null
+    if (start && finish && finish < start) {
+      throw new WorkshopError('VALIDATION', 'پایان نمی‌تواند قبل از شروع باشد')
+    }
+    if (input.startDate !== undefined) dbPatch.start_date = start
+    if (input.finishDate !== undefined) dbPatch.finish_date = finish
+  }
+
+  if (input.subcontractorId !== undefined) {
+    if (input.subcontractorId) {
+      const { data: contractor } = await supabase
+        .from('project_subcontractors')
+        .select('id')
+        .eq('id', input.subcontractorId)
+        .eq('project_id', pkg.project_id)
+        .maybeSingle()
+      if (!contractor) {
+        throw new WorkshopError('VALIDATION', 'پیمانکار متعلق به این پروژه نیست')
+      }
+    }
+    dbPatch.subcontractor_id = input.subcontractorId || null
+  }
+  if (input.scheduleFields !== undefined) {
+    dbPatch.schedule_fields = input.scheduleFields
+  }
+  if (input.quantityCertainty !== undefined) {
+    if (input.quantityCertainty !== 'حدودی' && input.quantityCertainty !== 'قطعی') {
+      throw new WorkshopError('VALIDATION', 'وضعیت مقدار باید حدودی یا قطعی باشد')
+    }
+    dbPatch.quantity_certainty = input.quantityCertainty
+  }
+  if (input.unitPrice !== undefined) {
+    if (!Number.isFinite(input.unitPrice) || input.unitPrice < 0) {
+      throw new WorkshopError('VALIDATION', 'قیمت واحد نامعتبر است')
+    }
+    dbPatch.unit_price = input.unitPrice
+  }
+
+  // Always mirror commercial fields into schedule_fields + note so saves survive
+  // when unit_price / quantity_certainty columns are missing in Supabase.
+  if (input.unitPrice !== undefined || input.quantityCertainty !== undefined) {
+    const existingFields =
+      (dbPatch.schedule_fields as Record<string, unknown> | undefined) ??
+      (pkg.schedule_fields && typeof pkg.schedule_fields === 'object'
+        ? (pkg.schedule_fields as Record<string, unknown>)
+        : {})
+    const nextPrice =
+      input.unitPrice !== undefined
+        ? input.unitPrice
+        : readPackageUnitPrice(pkg)
+    const nextCertainty =
+      input.quantityCertainty !== undefined
+        ? input.quantityCertainty
+        : readPackageQuantityCertainty(pkg)
+    dbPatch.schedule_fields = mergePackageScheduleFields(existingFields, {
+      unitPrice: nextPrice,
+      quantityCertainty: nextCertainty,
+    })
+    const noteBase =
+      dbPatch.note !== undefined
+        ? stripPackageCommercialFromNote(String(dbPatch.note ?? ''))
+        : stripPackageCommercialFromNote(
+            stripPackageWeightFromNote(String(pkg.note ?? ''))
+          )
+    const withWeight = encodePackageWeightInNote(
+      noteBase,
+      input.weightPercent !== undefined
+        ? input.weightPercent == null
+          ? null
+          : clampPackageWeight(Number(input.weightPercent))
+        : resolvePackageWeight(pkg)
+    )
+    dbPatch.note = encodePackageCommercialInNote(withWeight, {
+      unitPrice: nextPrice,
+      quantityCertainty: nextCertainty,
+    })
+  }
+
   if (WORKSHOP_SKIP_PM_APPROVAL) {
     const s = pkg.approval_status as ApprovalStatus
     if (s !== 'change_requested') {
@@ -643,6 +868,32 @@ export async function updatePackage(
 
   const data = await updatePackageRow(supabase, packageId, dbPatch)
 
+  const nextQty = Number(data.quantity ?? pkg.quantity ?? 0) || 0
+  const nextUom = String(data.uom ?? pkg.uom ?? 'm')
+  const nextPrice =
+    input.unitPrice !== undefined
+      ? input.unitPrice
+      : readPackageUnitPrice(data as Record<string, unknown>) ||
+        readPackageUnitPrice(pkg)
+  const nextName = String(data.name ?? pkg.name)
+  const statementPatch: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  }
+  if (input.unitPrice !== undefined) statementPatch.unit_price = nextPrice
+  if (input.quantity !== undefined) statementPatch.estimated_qty = nextQty
+  if (input.uom !== undefined) statementPatch.uom = nextUom
+  if (input.quantityCertainty !== undefined) {
+    statementPatch.qty_kind = input.quantityCertainty === 'قطعی' ? 'final' : 'estimated'
+  }
+  if (Object.keys(statementPatch).length > 1) {
+    await supabase
+      .from('contractor_activity_statements')
+      .update(statementPatch)
+      .eq('project_id', pkg.project_id)
+      .eq('entity_type', 'package')
+      .eq('entity_id', packageId)
+  }
+
   await writeSiteOpsAudit(supabase, {
     projectId: pkg.project_id,
     actorId: user.id,
@@ -651,6 +902,39 @@ export async function updatePackage(
     entityId: packageId,
     payload: { ...fields } as Record<string, unknown>,
   })
+
+  if (
+    input.name !== undefined ||
+    input.quantity !== undefined ||
+    input.uom !== undefined ||
+    input.unitPrice !== undefined ||
+    input.startDate !== undefined ||
+    input.finishDate !== undefined
+  ) {
+    try {
+      const { syncScheduleLineToProgressInvoice } = await import(
+        '@/lib/progress-invoice/sync-from-schedule'
+      )
+      await syncScheduleLineToProgressInvoice(
+        supabase,
+        pkg.project_id,
+        {
+          source: { entityType: 'package', entityId: packageId },
+          title: nextName,
+          uom: nextUom,
+          estimatedQty: nextQty,
+          unitPrice: nextPrice,
+          itemDate:
+            (data.start_date as string | null)?.slice(0, 10) ??
+            (pkg.start_date as string | null)?.slice(0, 10) ??
+            null,
+        },
+        user.id
+      )
+    } catch {
+      /* progress invoice sync is best-effort */
+    }
+  }
 
   return data
 }
@@ -661,7 +945,10 @@ export async function deletePackage(supabase: SupabaseClient, packageId: string)
   await assertProjectAccess(supabase, user.id, pkg.project_id)
   const roles = await resolveRoles(supabase, user.id, pkg.project_id)
   assertHasRole(roles, WORKSHOP_WRITE_ROLES)
-  assertCanDeletePackage(pkg.approval_status as ApprovalStatus)
+  assertCanDeletePackage(
+    pkg.approval_status as ApprovalStatus,
+    (pkg.origin as string) ?? 'user_added'
+  )
 
   const { count, error: childErr } = await supabase
     .from('workshop_packages')
@@ -674,6 +961,18 @@ export async function deletePackage(supabase: SupabaseClient, packageId: string)
 
   const { error } = await supabase.from('workshop_packages').delete().eq('id', packageId)
   if (error) throw new WorkshopError('VALIDATION', error.message)
+
+  try {
+    const { removeScheduleLineFromProgressInvoice } = await import(
+      '@/lib/progress-invoice/sync-from-schedule'
+    )
+    await removeScheduleLineFromProgressInvoice(supabase, pkg.project_id, {
+      entityType: 'package',
+      entityId: packageId,
+    })
+  } catch {
+    /* best-effort */
+  }
 
   await writeSiteOpsAudit(supabase, {
     projectId: pkg.project_id,

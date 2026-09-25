@@ -54,7 +54,7 @@ export default function ProjectPositionsPage({ params }: { params: { projectId: 
     <div className="space-y-6">
       <PageHeader
         title="سمت‌ها"
-        description="سمت‌های مخصوص پروژه را برای کنترل دسترسی، اعلان‌ها و شخصی‌سازی داشبورد تعریف کنید."
+        description="سمت‌های مخصوص پروژه را برای کنترل دسترسی و اعلان‌ها تعریف کنید."
       />
 
       <PositionForm submitLabel="ایجاد سمت" onSubmit={handleCreate} />

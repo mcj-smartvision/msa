@@ -12,6 +12,8 @@ export async function POST(request: NextRequest) {
       parentPackageId: body.parentPackageId ?? body.parent_package_id ?? null,
       name: String(body.name ?? ''),
       quantity: Number(body.quantity),
+      quantityCertainty: body.quantityCertainty ?? body.quantity_certainty,
+      unitPrice: body.unitPrice !== undefined ? Number(body.unitPrice) : undefined,
       uom: String(body.uom ?? ''),
       location: body.location,
       crew: body.crew,
@@ -24,6 +26,25 @@ export async function POST(request: NextRequest) {
           ? body.weightPercent
           : body.weight_percent !== undefined
             ? body.weight_percent
+            : undefined,
+      subcontractorId:
+        body.subcontractorId !== undefined
+          ? body.subcontractorId
+          : body.subcontractor_id !== undefined
+            ? body.subcontractor_id
+            : undefined,
+      scheduleFields: body.scheduleFields ?? body.schedule_fields,
+      startDate:
+        body.startDate !== undefined
+          ? body.startDate
+          : body.start_date !== undefined
+            ? body.start_date
+            : undefined,
+      finishDate:
+        body.finishDate !== undefined
+          ? body.finishDate
+          : body.finish_date !== undefined
+            ? body.finish_date
             : undefined,
     })
     return NextResponse.json({ package: pkg })

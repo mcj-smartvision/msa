@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
-import { loadUiBlockVisibility } from '@/lib/dashboard/load-ui-block-visibility'
 import { PROJECT_COOKIE } from '@/lib/project/project-cookie'
 import { StorekeeperDashboard } from '@/components/storekeeper/storekeeper-dashboard'
 
@@ -44,20 +43,12 @@ export default async function StorekeeperDashboardPage() {
     projectOptions[0]?.id ??
     null
 
-  const visibleBlockCodes = await loadUiBlockVisibility(
-    supabase,
-    context,
-    activeProjectId,
-    'storekeeper'
-  )
-
   return (
     <StorekeeperDashboard
       key={activeProjectId ?? 'no-project'}
       initialContext={context}
       projectOptions={projectOptions}
       initialProjectId={activeProjectId}
-      visibleBlockCodes={visibleBlockCodes}
     />
   )
 }

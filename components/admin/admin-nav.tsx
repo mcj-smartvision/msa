@@ -18,7 +18,6 @@ import { BrandLogo } from '@/components/brand/brand-logo'
 import { cn } from '@/lib/utils'
 import { LogoutButton } from '@/components/auth/logout-button'
 import { useLocale } from '@/components/i18n/locale-provider'
-import { GlobalMessengerFab } from '@/components/layout/global-messenger-fab'
 import { HeaderUserControls } from '@/components/layout/header-user-controls'
 import {
   useControlCenterDetailsOptional,
@@ -68,7 +67,6 @@ function AdminShellFrame({ children, email }: { children: ReactNode; email?: str
         <main className="flex-1 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-6 overflow-auto">
           {children}
         </main>
-        <GlobalMessengerFab />
       </div>
     </div>
   )

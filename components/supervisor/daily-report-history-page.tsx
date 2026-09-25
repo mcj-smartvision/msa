@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { useSyncedProjectId } from '@/hooks/use-synced-project-id'
+import { useSupabase } from '@/hooks/useSupabase'
 import {
   ArrowRight,
   CalendarCheck,
@@ -86,9 +88,12 @@ function ReportProgressRow({
 
 export function DailyReportHistoryPage() {
   const searchParams = useSearchParams()
-  const projectId = searchParams.get('projectId') ?? ''
-  const projectName = searchParams.get('projectName') ?? ''
+  const urlProjectId = searchParams.get('projectId')
+  const projectId = useSyncedProjectId(urlProjectId) ?? urlProjectId ?? ''
+  const urlName = searchParams.get('projectName') ?? ''
+  const [projectName, setProjectName] = useState(urlName)
   const { calendar } = useScheduleCalendar()
+  const supabase = useSupabase()
 
   const [activities, setActivities] = useState<DailyReportActivity[]>([])
   const [loading, setLoading] = useState(true)
@@ -96,6 +101,28 @@ export function DailyReportHistoryPage() {
   const [notesByDate, setNotesByDate] = useState<Record<string, string>>({})
   const [search, setSearch] = useState('')
   const [monthFilter, setMonthFilter] = useState('')
+
+  useEffect(() => {
+    if (!projectId) {
+      setProjectName('')
+      return
+    }
+    if (urlProjectId === projectId && urlName) {
+      setProjectName(urlName)
+    }
+    let cancelled = false
+    void supabase
+      .from('projects')
+      .select('name')
+      .eq('id', projectId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data?.name) setProjectName(String(data.name))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [projectId, urlName, urlProjectId, supabase])
 
   const load = useCallback(async () => {
     if (!projectId) {
@@ -111,12 +138,23 @@ export function DailyReportHistoryPage() {
 
     setLoading(true)
     try {
-      const res = await fetch(`/api/workshop/schedule-tree?projectId=${projectId}`)
-      const data = await res.json()
-      if (res.ok) {
+      const [treeRes, progressRes] = await Promise.all([
+        fetch(`/api/workshop/schedule-tree?projectId=${projectId}`),
+        fetch(`/api/supervisor/daily-progress?projectId=${encodeURIComponent(projectId)}`, {
+          cache: 'no-store',
+        }),
+      ])
+      const data = await treeRes.json()
+      if (treeRes.ok) {
         const nodes = (data.nodes ?? []) as ScheduleTreeNode[]
         const orphanPackages = (data.orphanPackages ?? []) as WorkshopPackageNode[]
         setActivities(buildDailyReportActivitiesFromTree(nodes, orphanPackages))
+      }
+      const progressJson = await progressRes.json().catch(() => ({}))
+      if (progressRes.ok) {
+        const remoteNotes =
+          progressJson.notes && typeof progressJson.notes === 'object' ? progressJson.notes : {}
+        setNotesByDate({ ...stored.notesByDate, ...remoteNotes })
       }
     } finally {
       setLoading(false)

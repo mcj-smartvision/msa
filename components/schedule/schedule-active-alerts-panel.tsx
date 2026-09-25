@@ -17,6 +17,10 @@ const SEVERITY_STYLE: Record<
     label: 'مصرف سریع',
     className: 'bg-orange-100 text-orange-900 border-orange-200',
   },
+  urgent: {
+    label: 'فوری (پیشرفت)',
+    className: 'bg-rose-200 text-rose-950 border-rose-400',
+  },
 }
 
 export function ScheduleActiveAlertsPanel({

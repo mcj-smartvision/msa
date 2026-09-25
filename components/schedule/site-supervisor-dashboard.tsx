@@ -65,11 +65,6 @@ import {
   updateAiActionText,
 } from '@/utils/supervisor/dashboard'
 import { cn } from '@/lib/utils'
-import {
-  UiBlockCustomizePanel,
-  UiBlockGuard,
-  UiBlockVisibilityProvider,
-} from '@/components/dashboard/ui-block-visibility'
 
 interface SiteSupervisorDashboardProps {
   initialContext: DashboardUserContext
@@ -77,7 +72,6 @@ interface SiteSupervisorDashboardProps {
   initialProjectId: string | null
   initialTasks: ProjectTask[]
   initialAlerts: ProjectAlert[]
-  visibleBlockCodes?: string[]
   initialSection?: SupervisorNavId
 }
 
@@ -89,7 +83,6 @@ export function SiteSupervisorDashboard({
   initialProjectId,
   initialTasks,
   initialAlerts,
-  visibleBlockCodes = [],
   initialSection = 'daily-report',
 }: SiteSupervisorDashboardProps) {
   const supabase = useSupabase()
@@ -154,8 +147,8 @@ export function SiteSupervisorDashboard({
   function selectSection(id: SupervisorNavId) {
     setActiveSection(id)
     const url = new URL(window.location.href)
-    if (id === 'inspection') url.searchParams.set('section', 'inspection')
-    else url.searchParams.delete('section')
+    if (id === 'daily-report') url.searchParams.delete('section')
+    else url.searchParams.set('section', id)
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
   }
 
@@ -275,14 +268,7 @@ export function SiteSupervisorDashboard({
   }
 
   return (
-    <UiBlockVisibilityProvider
-      visibleCodes={visibleBlockCodes}
-      showAdminBlockCodes={initialContext.isSystemAdmin}
-      dashboard="site-supervisor"
-      projectId={projectId}
-    >
-      <div className={cn('space-y-8', isRtl && 'text-right')}>
-        <UiBlockCustomizePanel />
+    <div className={cn('space-y-8', isRtl && 'text-right')}>
 
       <PageHeader
         title={t.title}
@@ -428,7 +414,6 @@ export function SiteSupervisorDashboard({
         ) : null}
 
         {activeSection === 'today' ? (
-          <UiBlockGuard code="SS-TBL-01">
             <TodayActivitiesTable
               activities={todayActivities}
               labels={t}
@@ -448,17 +433,13 @@ export function SiteSupervisorDashboard({
                 setActionDialog('instruction')
               }}
             />
-          </UiBlockGuard>
         ) : null}
 
         {activeSection === 'lookahead' ? (
-          <UiBlockGuard code="SS-PNL-01">
             <LookaheadPanel activities={lookahead} labels={t} isRtl={isRtl} />
-          </UiBlockGuard>
         ) : null}
 
         {activeSection === 'issues' ? (
-          <UiBlockGuard code="SS-PNL-03">
             <IssuesAlertsPanel
               issues={issues}
               labels={t}
@@ -469,11 +450,9 @@ export function SiteSupervisorDashboard({
                 setActionDialog('pm_comment')
               }}
             />
-          </UiBlockGuard>
         ) : null}
 
         {activeSection === 'resources' ? (
-          <UiBlockGuard code="SS-PNL-02">
             <ResourcesPanel
               resources={resources}
               labels={t}
@@ -482,11 +461,9 @@ export function SiteSupervisorDashboard({
                 setActionDialog('purchase')
               }}
             />
-          </UiBlockGuard>
         ) : null}
 
         {activeSection === 'ai' ? (
-          <UiBlockGuard code="SS-PNL-04">
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -543,11 +520,9 @@ export function SiteSupervisorDashboard({
                 </div>
               )}
             </div>
-          </UiBlockGuard>
         ) : null}
       </SupervisorWorkspaceShell>
 
-      <UiBlockGuard code="SS-ACT-01">
       <QuickReportDialog
         open={!!quickReportActivity}
         onClose={() => setQuickReportActivity(null)}
@@ -569,7 +544,6 @@ export function SiteSupervisorDashboard({
           await rejectDailyReportDraft(supabase, reportId, initialContext.userId)
         }}
       />
-      </UiBlockGuard>
 
       <PackageProgressDialog
         open={!!packageProgressActivity}
@@ -720,7 +694,6 @@ export function SiteSupervisorDashboard({
           />
         )}
       </ModalOverlay>
-      </div>
-    </UiBlockVisibilityProvider>
+    </div>
   )
 }

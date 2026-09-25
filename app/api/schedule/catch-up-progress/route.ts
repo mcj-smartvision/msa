@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { isSystemAdmin } from '@/lib/admin/access'
+import { persistProjectProgressPace } from '@/lib/schedule/persist-progress-pace'
 
 /**
  * POST /api/schedule/catch-up-progress
@@ -52,14 +53,37 @@ export async function POST(request: NextRequest) {
       const pct = Math.min(100, Math.max(0, Math.round(Number(row.percent_complete) || 0)))
       if (!taskId) continue
 
+      const { data: existing } = await supabase
+        .from('project_tasks')
+        .select('actual_start, start_current, start_planned')
+        .eq('id', taskId)
+        .eq('project_id', projectId)
+        .maybeSingle()
+
+      const patch: Record<string, unknown> = {
+        percent_complete: pct,
+        physical_percent_complete: pct,
+        updated_at: now,
+      }
+      if (pct > 0 && pct < 100 && !existing?.actual_start) {
+        patch.actual_start =
+          existing?.start_current ?? existing?.start_planned ?? now.slice(0, 10)
+      }
+
       const { error } = await supabase
         .from('project_tasks')
-        .update({ percent_complete: pct, updated_at: now })
+        .update(patch)
         .eq('id', taskId)
         .eq('project_id', projectId)
 
       if (error) throw new Error(error.message)
       updated++
+    }
+
+    try {
+      await persistProjectProgressPace(supabase, projectId)
+    } catch {
+      // Migration 77 may not be applied yet
     }
 
     const { data: tasks, error: fetchError } = await supabase

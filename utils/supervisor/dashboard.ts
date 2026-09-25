@@ -269,15 +269,44 @@ export async function submitQuickReport(
         created_by: input.supervisorId,
       })
 
-      // Keep schedule task % in sync with quick report
-      await supabase
+      // Keep schedule task % in sync with quick report; seed actual_start on first progress
+      const { data: existingTask } = await supabase
         .from('project_tasks')
-        .update({
-          percent_complete: a.actualProgressPercent,
-          updated_at: new Date().toISOString(),
-        })
+        .select('actual_start, start_current, start_planned')
         .eq('id', a.scheduleActivityId)
         .eq('project_id', input.siteId)
+        .maybeSingle()
+
+      const taskPatch: Record<string, unknown> = {
+        percent_complete: a.actualProgressPercent,
+        physical_percent_complete: a.actualProgressPercent,
+        updated_at: new Date().toISOString(),
+      }
+      if (
+        a.actualProgressPercent > 0 &&
+        a.actualProgressPercent < 100 &&
+        !existingTask?.actual_start
+      ) {
+        taskPatch.actual_start =
+          existingTask?.start_current ??
+          existingTask?.start_planned ??
+          input.date
+      }
+
+      await supabase
+        .from('project_tasks')
+        .update(taskPatch)
+        .eq('id', a.scheduleActivityId)
+        .eq('project_id', input.siteId)
+    }
+
+    try {
+      const { persistProjectProgressPace } = await import('@/lib/schedule/persist-progress-pace')
+      await persistProjectProgressPace(supabase, input.siteId, {
+        statusDate: input.date,
+      })
+    } catch {
+      // ignore if pace columns missing
     }
   }
 

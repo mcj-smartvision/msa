@@ -22,7 +22,7 @@ export type ParentWeightExplanation = {
   text: string
 }
 
-function isDirectChildWbs(parentWbs: string, childWbs: string): boolean {
+export function isDirectChildWbs(parentWbs: string, childWbs: string): boolean {
   const p = parentWbs.trim()
   const c = childWbs.trim()
   if (!p || !c || !c.startsWith(`${p}.`)) return false

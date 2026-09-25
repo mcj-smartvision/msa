@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
-import { loadUiBlockVisibility } from '@/lib/dashboard/load-ui-block-visibility'
 import { resolvePostLoginPath } from '@/lib/dashboard/redirect'
 import { DashboardClient } from '@/components/dashboard/dashboard-client'
 
@@ -21,14 +20,5 @@ export default async function DashboardPage() {
   // Role users land on their own dashboard, not the generic hub
   if (postLogin !== '/dashboard') redirect(postLogin)
 
-  const visibleBlockCodes = await loadUiBlockVisibility(
-    supabase,
-    context,
-    context.activeProjectId,
-    'general'
-  )
-
-  return (
-    <DashboardClient initialContext={context} visibleBlockCodes={visibleBlockCodes} />
-  )
+  return <DashboardClient initialContext={context} />
 }

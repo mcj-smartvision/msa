@@ -231,6 +231,13 @@ export async function applyActualStartToSchedule(
     throw new Error(projectError.message)
   }
 
+  try {
+    const { persistPlannedWeights } = await import('@/lib/schedule/persist-planned-weights')
+    await persistPlannedWeights(supabase, projectId)
+  } catch {
+    /* planned weights follow the shifted schedule dates */
+  }
+
   const { data: updatedTasks, error: refetchError } = await supabase
     .from('project_tasks')
     .select('*')

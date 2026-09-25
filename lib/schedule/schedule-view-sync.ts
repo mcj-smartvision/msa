@@ -17,6 +17,11 @@ export type ScheduleTaskFieldDraft = {
   finishDate?: string
   totalFloat?: number | null
   scheduleWeight?: number | null
+  /** Live commercial fields from ویرایش برنامه → ارسال برنامه */
+  quantity?: number | null
+  unitPrice?: number | null
+  uom?: string | null
+  quantityCertainty?: 'حدودی' | 'قطعی'
 }
 
 export type ScheduleFieldDraftsPayload = {
@@ -30,7 +35,8 @@ export function publishScheduleViewSync(projectId: string) {
   if (typeof window === 'undefined' || !projectId) return
   const payload: ScheduleViewSyncPayload = { projectId, at: Date.now() }
   try {
-    sessionStorage.setItem(SYNC_KEY, JSON.stringify(payload))
+    // localStorage so other tabs (سرپرست ↔ دفتر فنی) receive the storage event
+    localStorage.setItem(SYNC_KEY, JSON.stringify(payload))
   } catch {
     /* ignore quota */
   }
@@ -129,7 +135,7 @@ export function useScheduleViewSync(
 
     const consumeStored = (force = false) => {
       try {
-        const raw = sessionStorage.getItem(SYNC_KEY)
+        const raw = localStorage.getItem(SYNC_KEY)
         if (!raw) return
         handlePayload(JSON.parse(raw) as ScheduleViewSyncPayload, force)
       } catch {
@@ -139,10 +145,11 @@ export function useScheduleViewSync(
 
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
-      consumeStored()
+      if (!active) return
+      consumeStored(true)
     }
 
-    consumeStored()
+    if (active) consumeStored()
 
     window.addEventListener(SYNC_EVENT, onCustom)
     window.addEventListener('storage', onStorage)
@@ -155,9 +162,9 @@ export function useScheduleViewSync(
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', onVisible)
     }
-  }, [projectId, handlePayload])
+  }, [projectId, handlePayload, active])
 
-  // When this tab becomes visible again, always reload from server
+  // When this view becomes active again, always reload from server
   useEffect(() => {
     if (!projectId || !active) return
     onSyncRef.current()

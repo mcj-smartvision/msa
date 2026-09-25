@@ -26,6 +26,22 @@ export async function wipeProjectScheduleBeforeImport(
     throw new Error(packagesError.message)
   }
 
+  // New schedule-engine tables (migration 75) — ignore if missing
+  for (const table of [
+    'schedule_assignments',
+    'schedule_task_segments',
+    'schedule_resources',
+    'schedule_calendars',
+    'schedule_calculations',
+    'float_history',
+    'schedule_alerts',
+  ] as const) {
+    const { error } = await supabase.from(table).delete().eq('project_id', projectId)
+    if (error && error.code !== '42P01') {
+      /* non-fatal for optional tables */
+    }
+  }
+
   const { error: progressError } = await supabase
     .from('task_progress_updates')
     .delete()

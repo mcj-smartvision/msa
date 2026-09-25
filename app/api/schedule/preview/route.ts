@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { assertProjectAccess, requireUser } from '@/lib/site-ops/auth'
-import { fetchProjectTasksSummary } from '@/lib/schedule/msp-import'
+import { fetchSchedulePreviewWithPackages } from '@/lib/schedule/preview-with-packages'
 import { fetchProjectScheduleMeta } from '@/lib/schedule/apply-actual-start'
 import { fetchTaskPredecessorLabels } from '@/lib/schedule/predecessor-labels'
 import { compareWbs } from '@/lib/schedule/wbs-utils'
@@ -10,7 +10,7 @@ import { workshopErrorResponse } from '@/lib/workshop/service'
 
 /**
  * GET /api/schedule/preview?projectId=...
- * Fresh project_tasks snapshot for ارسال برنامه (client sync without full page reload).
+ * Fresh schedule snapshot for ارسال برنامه (tasks + workshop زیرشاخه‌ها).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     await assertProjectAccess(supabase, user.id, projectId)
 
     const [taskSummary, scheduleMeta, predecessorLabels] = await Promise.all([
-      fetchProjectTasksSummary(supabase, projectId),
+      fetchSchedulePreviewWithPackages(supabase, projectId),
       fetchProjectScheduleMeta(supabase, projectId),
       fetchTaskPredecessorLabels(supabase, projectId),
     ])
@@ -36,7 +36,10 @@ export async function GET(request: NextRequest) {
       {
         count: taskSummary.count,
         tasks,
-        predecessorLabels,
+        predecessorLabels: {
+          ...predecessorLabels,
+          ...(taskSummary.packagePredecessorLabels ?? {}),
+        },
         scheduleBaselineStart: scheduleMeta.schedule_baseline_start,
         scheduleActualStart: scheduleMeta.schedule_actual_start,
       },

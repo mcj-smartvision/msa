@@ -54,18 +54,12 @@ import {
   saveInspectionResult,
 } from '@/utils/qc/dashboard'
 import { cn } from '@/lib/utils'
-import {
-  UiBlockCustomizePanel,
-  UiBlockGuard,
-  UiBlockVisibilityProvider,
-} from '@/components/dashboard/ui-block-visibility'
 import { QcEnginePanels } from '@/components/qc/qc-engine-panels'
 
 interface QcDashboardProps {
   initialContext: DashboardUserContext
   projectOptions: { id: string; name: string }[]
   initialProjectId: string | null
-  visibleBlockCodes?: string[]
 }
 
 function priorityVariant(p: string): 'default' | 'secondary' | 'destructive' | 'outline' {
@@ -78,7 +72,6 @@ export function QcDashboard({
   initialContext,
   projectOptions,
   initialProjectId,
-  visibleBlockCodes = [],
 }: QcDashboardProps) {
   const supabase = useSupabase()
   const { locale, dir } = useLocale()
@@ -215,14 +208,7 @@ export function QcDashboard({
   }
 
   return (
-    <UiBlockVisibilityProvider
-      visibleCodes={visibleBlockCodes}
-      showAdminBlockCodes={initialContext.isSystemAdmin}
-      dashboard="qc"
-      projectId={projectId}
-    >
     <div className="space-y-6" dir={dir}>
-      <UiBlockCustomizePanel />
 
       <PageHeader
         title={t.title}
@@ -248,7 +234,6 @@ export function QcDashboard({
 
       {!isInspector && !loading && kpis ? (
         <>
-          <UiBlockGuard code="QC-KPI-01">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label={t.passRate} value={`${kpis.passRate}%`} icon={CheckCircle2} />
             <StatCard label={t.openNcrs} value={String(kpis.openNcrCount)} icon={FileWarning} />
@@ -263,9 +248,7 @@ export function QcDashboard({
               trendType={kpis.highSeverityFindings > 0 ? 'warning' : 'neutral'}
             />
           </div>
-          </UiBlockGuard>
 
-          <UiBlockGuard code="QC-TBL-01">
           <SectionCard title={t.inspectionWorklist}>
             {inspections.length === 0 ? (
               <EmptyState title={t.inspectionWorklist} description={t.noInspections} />
@@ -304,9 +287,7 @@ export function QcDashboard({
               </div>
             )}
           </SectionCard>
-          </UiBlockGuard>
 
-          <UiBlockGuard code="QC-TBL-02">
           <SectionCard title={t.ncrManagement}>
             {ncrs.length === 0 ? (
               <EmptyState title={t.ncrManagement} description={t.noNcrs} />
@@ -352,9 +333,7 @@ export function QcDashboard({
               </div>
             )}
           </SectionCard>
-          </UiBlockGuard>
 
-          <UiBlockGuard code="QC-TBL-03">
           <SectionCard title={t.labTests}>
             {labTests.length === 0 ? (
               <EmptyState title={t.labTests} description={t.noLabTests} />
@@ -398,9 +377,7 @@ export function QcDashboard({
               </div>
             )}
           </SectionCard>
-          </UiBlockGuard>
 
-          <UiBlockGuard code="QC-PNL-01">
           <SectionCard title={t.qualityAlerts}>
             <p className="text-sm text-muted-foreground mb-4">{t.alertHint}</p>
             <div className="grid gap-3 max-w-xl">
@@ -421,7 +398,6 @@ export function QcDashboard({
               </Button>
             </div>
           </SectionCard>
-          </UiBlockGuard>
         </>
       ) : null}
 
@@ -521,6 +497,5 @@ export function QcDashboard({
         </ModalOverlay>
       ) : null}
     </div>
-    </UiBlockVisibilityProvider>
   )
 }

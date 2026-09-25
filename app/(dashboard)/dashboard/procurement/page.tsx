@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loadRolePageData } from '@/lib/dashboard/load-role-page'
-import { loadUiBlockVisibility } from '@/lib/dashboard/load-ui-block-visibility'
 import { hasRoleDashboardAccess } from '@/lib/schedule/access'
 import { ProcurementDashboard } from '@/components/procurement/procurement-dashboard'
 
@@ -22,20 +21,12 @@ export default async function ProcurementDashboardPage() {
   if (context.isFirstLogin) redirect('/first-login')
   if (!hasRoleDashboardAccess(context, 'procurement')) redirect('/dashboard')
 
-  const visibleBlockCodes = await loadUiBlockVisibility(
-    supabase,
-    context,
-    activeProjectId,
-    'procurement'
-  )
-
   return (
     <ProcurementDashboard
       key={activeProjectId ?? 'no-project'}
       initialContext={context}
       projectOptions={projectOptions}
       initialProjectId={activeProjectId}
-      visibleBlockCodes={visibleBlockCodes}
     />
   )
 }

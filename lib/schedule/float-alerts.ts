@@ -5,16 +5,22 @@ export type ScheduleAlertSeverity =
   | 'critical'
   | 'near_critical'
   | 'fast_consumption'
+  /** بحرانی/نزدیک‌بحرانی + نرخ پیشروی ضعیف (هشدار هوشمند پیشرفت) */
+  | 'urgent'
 
 export interface ProjectAlertSettings {
   nearCriticalDays: number
   /** Float-days consumed per calendar week (default 3). */
   fastConsumptionThreshold: number
+  paceGoodThreshold: number
+  paceWarningThreshold: number
 }
 
 export const DEFAULT_PROJECT_ALERT_SETTINGS: ProjectAlertSettings = {
   nearCriticalDays: 5,
   fastConsumptionThreshold: 3,
+  paceGoodThreshold: 0.9,
+  paceWarningThreshold: 0.6,
 }
 
 export interface FloatAlertActivity {

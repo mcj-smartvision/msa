@@ -26,8 +26,25 @@ export type ParentRollupExplanation = {
   percent: number
   usedEqualWeights: boolean
   children: ParentRollupChildLine[]
-  /** Human-readable Persian explanation */
+  /** One-line math formula, e.g. `(50×9 + 0×11) / (9 + 11) = 23%` */
   text: string
+}
+
+/** Compact one-line formula for tooltip / help popovers. */
+export function formatProgressRollupFormula(help: {
+  percent: number
+  usedEqualWeights: boolean
+  children: Array<{ weight: number | null; percent: number }>
+}): string {
+  if (help.usedEqualWeights) {
+    const num = help.children.map((l) => String(l.percent)).join(' + ')
+    const den = String(help.children.length || 1)
+    return `(${num}) / ${den} = ${help.percent}%`
+  }
+  const withWeight = help.children.filter((l) => l.weight != null && l.weight > 0)
+  const num = withWeight.map((l) => `${l.percent}×${l.weight}`).join(' + ')
+  const den = withWeight.map((l) => String(l.weight)).join(' + ')
+  return `(${num}) / (${den}) = ${help.percent}%`
 }
 
 function isDirectChildWbs(parentWbs: string, childWbs: string): boolean {
@@ -71,36 +88,11 @@ function buildExplanation(
     }
   })
 
-  const withWeight = lines.filter((l) => l.weight != null && l.product != null)
-  let text: string
-  if (usedEqualWeights) {
-    const parts = lines.map(
-      (l) => `${l.wbs ?? '—'} ${l.name}: ${l.percent}%`
-    )
-    text = [
-      `درصد «${parent.name}» از میانگین ساده زیرشاخه‌ها (چون وزن معتبری ندارند):`,
-      ...parts.map((p) => `• ${p}`),
-      `نتیجه: ${rolled}%`,
-    ].join('\n')
-  } else {
-    const num = withWeight.map((l) => `${l.weight}×${l.percent}`).join(' + ')
-    const den = withWeight.map((l) => String(l.weight)).join(' + ')
-    const parts = withWeight.map(
-      (l) =>
-        `${l.wbs ?? '—'} ${l.name}: وزن ${l.weight}% × پیشرفت ${l.percent}% = ${l.product}`
-    )
-    const skipped = lines.filter((l) => l.weight == null)
-    text = [
-      `درصد «${parent.wbs ? parent.wbs + ' — ' : ''}${parent.name}» از میانگین وزنی زیرشاخه‌ها:`,
-      ...parts.map((p) => `• ${p}`),
-      skipped.length
-        ? `• بدون وزن (حذف از محاسبه): ${skipped.map((s) => s.wbs ?? s.name).join('، ')}`
-        : null,
-      `فرمول: (${num}) / (${den}) = ${rolled}%`,
-    ]
-      .filter(Boolean)
-      .join('\n')
-  }
+  const text = formatProgressRollupFormula({
+    percent: rolled,
+    usedEqualWeights,
+    children: lines,
+  })
 
   return {
     parentId: parent.id,

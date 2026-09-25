@@ -25,11 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  UiBlockCustomizePanel,
-  UiBlockGuard,
-  UiBlockVisibilityProvider,
-} from '@/components/dashboard/ui-block-visibility'
 import { formatDurationFa } from '@/lib/attendance/domain'
 import type {
   AttendanceDashboardSnapshot,
@@ -45,7 +40,6 @@ interface SecurityDashboardProps {
   initialContext: DashboardUserContext
   projectOptions?: { id: string; name: string }[]
   initialProjectId?: string | null
-  visibleBlockCodes?: string[]
 }
 
 type MemberOption = { userId: string; fullName: string; email: string | null }
@@ -104,7 +98,6 @@ export function SecurityDashboard({
   initialContext,
   projectOptions = [],
   initialProjectId = null,
-  visibleBlockCodes = [],
 }: SecurityDashboardProps) {
   const projectId = useSyncedProjectId(initialProjectId)
   const [snapshot, setSnapshot] = useState<AttendanceDashboardSnapshot | null>(null)
@@ -243,12 +236,7 @@ export function SecurityDashboard({
   }
 
   return (
-    <UiBlockVisibilityProvider
-      dashboard="security"
-      visibleCodes={visibleBlockCodes}
-      showAdminBlockCodes={initialContext.isSystemAdmin}
-    >
-      <div className="space-y-6" dir="rtl">
+    <div className="space-y-6" dir="rtl">
         <PageHeader
           title="حراست و حضور"
           description={`${projectName} — ثبت تردد، افراد داخل، و تأیید لحظه‌ای`}
@@ -264,7 +252,6 @@ export function SecurityDashboard({
                 <RefreshCw className="h-4 w-4 ml-1" />
                 به‌روزرسانی
               </Button>
-              <UiBlockCustomizePanel />
             </div>
           }
         />
@@ -320,7 +307,6 @@ export function SecurityDashboard({
               </div>
             ) : null}
 
-            <UiBlockGuard code="SEC-KPI-01">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 <StatCard label="داخل کارگاه" value={String(snapshot.kpis.insideCount)} icon={Users} />
                 <StatCard label="بیرون‌رفته امروز" value={String(snapshot.kpis.outsideCount)} icon={LogOut} />
@@ -328,11 +314,9 @@ export function SecurityDashboard({
                 <StatCard label="تردد امروز" value={String(snapshot.kpis.transitCountToday)} icon={LogIn} />
                 <StatCard label="ناموفق" value={String(snapshot.kpis.failedCountToday)} icon={Shield} />
               </div>
-            </UiBlockGuard>
 
             <div className="grid gap-6 lg:grid-cols-5">
               <div className="lg:col-span-2 space-y-6">
-                <UiBlockGuard code="SEC-ACT-01">
                   <GateCameraPanel
                     projectId={projectId}
                     gates={snapshot.gates}
@@ -346,9 +330,7 @@ export function SecurityDashboard({
                       void load(projectId)
                     }}
                   />
-                </UiBlockGuard>
 
-                <UiBlockGuard code="SEC-ACT-01">
                   <SectionCard title="ثبت دستی تردد">
                     <div className="space-y-4">
                       <div className="space-y-2">
@@ -462,11 +444,9 @@ export function SecurityDashboard({
                       </div>
                     </div>
                   </SectionCard>
-                </UiBlockGuard>
               </div>
 
               <div className="lg:col-span-3 space-y-6">
-                <UiBlockGuard code="SEC-PNL-02">
                   <div className="grid gap-4 md:grid-cols-3">
                     <PresenceList
                       title="الان داخل"
@@ -487,9 +467,7 @@ export function SecurityDashboard({
                       accent="border-slate-300 text-slate-700"
                     />
                   </div>
-                </UiBlockGuard>
 
-                <UiBlockGuard code="SEC-TBL-01">
                   <SectionCard title="آخرین ترددها">
                     {snapshot.recentTransits.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-4">هنوز ترددی ثبت نشده.</p>
@@ -553,12 +531,10 @@ export function SecurityDashboard({
                       </div>
                     )}
                   </SectionCard>
-                </UiBlockGuard>
               </div>
             </div>
           </>
         ) : null}
-      </div>
-    </UiBlockVisibilityProvider>
+    </div>
   )
 }
