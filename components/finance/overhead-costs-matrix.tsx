@@ -414,12 +414,14 @@ type OverheadCostsMatrixProps = {
   fa?: boolean
   className?: string
   projectId?: string | null
+  onMonthTotalsChange?: (next: { labels: string[]; totals: number[] }) => void
 }
 
 export function OverheadCostsMatrix({
   fa = true,
   className,
   projectId = null,
+  onMonthTotalsChange,
 }: OverheadCostsMatrixProps) {
   const [monthLabels, setMonthLabels] = useState(() => defaultMonthLabels(fa))
   const [categories, setCategories] = useState(() =>
@@ -501,6 +503,10 @@ export function OverheadCostsMatrix({
     )
   }, [rows, monthLabels])
   const overallAverage = monthLabels.length > 0 ? grandTotal / monthLabels.length : 0
+
+  useEffect(() => {
+    onMonthTotalsChange?.({ labels: monthLabels, totals: monthTotals })
+  }, [monthLabels, monthTotals, onMonthTotalsChange])
 
   const monthColCh = useMemo(() => {
     return monthLabels.map((_, i) => {

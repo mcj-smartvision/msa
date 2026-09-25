@@ -198,39 +198,6 @@ export async function PATCH(request: NextRequest) {
           /* earned weights optional until migration 95 */
         }
       }
-      if (field === 'quantity') {
-        const qty = value == null ? 0 : Number(value)
-        try {
-          const { data: taskRow } = await supabase
-            .from('project_tasks')
-            .select('name, unit_price, uom, start_planned, start_current')
-            .eq('id', taskId)
-            .eq('project_id', projectId)
-            .maybeSingle()
-          if (taskRow && qty > 0) {
-            const { syncScheduleLineToProgressInvoice } = await import(
-              '@/lib/progress-invoice/sync-from-schedule'
-            )
-            await syncScheduleLineToProgressInvoice(
-              supabase,
-              projectId,
-              {
-                source: { entityType: 'task', entityId: taskId },
-                title: String(taskRow.name ?? 'فعالیت'),
-                uom: String((taskRow as { uom?: string }).uom ?? 'm'),
-                estimatedQty: qty,
-                unitPrice: Number(taskRow.unit_price ?? 0) || 0,
-                itemDate:
-                  String(taskRow.start_current ?? taskRow.start_planned ?? '').slice(0, 10) ||
-                  null,
-              },
-              user.id
-            )
-          }
-        } catch {
-          /* progress invoice sync is best-effort */
-        }
-      }
       if (field === 'unit_price') {
         await supabase
           .from('contractor_activity_statements')
@@ -238,42 +205,6 @@ export async function PATCH(request: NextRequest) {
           .eq('project_id', projectId)
           .eq('entity_type', 'task')
           .eq('entity_id', taskId)
-
-        try {
-          const { data: linkedItems } = await supabase
-            .from('progress_invoice_items')
-            .select('id, description, invoice_id, estimated_qty, uom, title')
-            .eq('project_id', projectId)
-          const tag = `[[source:task:${taskId}]]`.toLowerCase()
-          const matches = (linkedItems ?? []).filter((row) =>
-            String(row.description ?? '')
-              .toLowerCase()
-              .includes(tag)
-          )
-          if (matches.length) {
-            const { encodeUnitPriceDescription } = await import('@/lib/progress-invoice/unit-price')
-            const { encodeSourceDescription } = await import('@/lib/progress-invoice/source-link')
-            const price = Number(value ?? 0) || 0
-            for (const row of matches) {
-              await supabase
-                .from('progress_invoice_items')
-                .update({
-                  unit_price: price,
-                  description: encodeUnitPriceDescription(
-                    encodeSourceDescription(row.description as string | null, {
-                      entityType: 'task',
-                      entityId: taskId,
-                    }),
-                    price
-                  ),
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('id', row.id)
-            }
-          }
-        } catch {
-          /* progress invoice sync is best-effort */
-        }
       }
     }
 

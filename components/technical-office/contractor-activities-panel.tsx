@@ -5,8 +5,11 @@ import { Loader2, Pencil, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { PROGRESS_UOM_OPTIONS } from '@/lib/progress-invoice/types'
-import { formatProgressMoney } from '@/lib/progress-invoice/rules'
+import { WORKSHOP_UOMS, WORKSHOP_UOM_LABELS } from '@/lib/workshop/types'
+
+function formatMoney(value: number): string {
+  return Math.round(value).toLocaleString('en-US', { maximumFractionDigits: 0 })
+}
 
 type ContractorActivity = {
   entityType: 'task' | 'package'
@@ -210,9 +213,9 @@ export function ContractorActivitiesPanel({
                         onChange={(event) => setDraft({ uom: event.target.value })}
                         className="w-[5rem] border-0 border-l border-input bg-muted/40 px-1 text-[11px]"
                       >
-                        {PROGRESS_UOM_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.labelFa}
+                        {WORKSHOP_UOMS.map((option) => (
+                          <option key={option} value={option}>
+                            {WORKSHOP_UOM_LABELS[option]}
                           </option>
                         ))}
                       </select>
@@ -251,7 +254,7 @@ export function ContractorActivitiesPanel({
                       className="h-9 tabular-nums"
                       readOnly
                       dir="ltr"
-                      value={formatProgressMoney(executed, true)}
+                      value={formatMoney(executed)}
                     />
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5 pb-0.5">
@@ -286,8 +289,8 @@ export function ContractorActivitiesPanel({
             )
           })}
           <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-lg border bg-muted/20 px-3 py-2 text-sm font-medium">
-            <span>جمع مبلغ: {formatProgressMoney(totals.amount, true)}</span>
-            <span>جمع کارکرد: {formatProgressMoney(totals.executed, true)}</span>
+            <span>جمع مبلغ: {formatMoney(totals.amount)}</span>
+            <span>جمع کارکرد: {formatMoney(totals.executed)}</span>
           </div>
         </div>
       )}

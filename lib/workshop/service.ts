@@ -704,29 +704,6 @@ export async function createPackage(supabase: SupabaseClient, input: CreatePacka
     payload: { name: created.name, parent_task: input.parentScheduleNodeId, wbs_code: wbsCode },
   })
 
-  try {
-    const { syncScheduleLineToProgressInvoice } = await import(
-      '@/lib/progress-invoice/sync-from-schedule'
-    )
-    await syncScheduleLineToProgressInvoice(
-      supabase,
-      input.projectId,
-      {
-        source: { entityType: 'package', entityId: String(created.id) },
-        title: String(created.name),
-        uom: String(created.uom ?? fields.uom),
-        estimatedQty: Number(created.quantity ?? fields.quantity) || 0,
-        unitPrice: readPackageUnitPrice(created as Record<string, unknown>) || unitPrice,
-        itemDate:
-          (created.start_date as string | null)?.slice(0, 10) ??
-          (startDate ? String(startDate).slice(0, 10) : null),
-      },
-      user.id
-    )
-  } catch {
-    /* progress invoice sync is best-effort */
-  }
-
   return { ...created, wbs_code: created.wbs_code ?? wbsCode }
 }
 
@@ -903,39 +880,6 @@ export async function updatePackage(
     payload: { ...fields } as Record<string, unknown>,
   })
 
-  if (
-    input.name !== undefined ||
-    input.quantity !== undefined ||
-    input.uom !== undefined ||
-    input.unitPrice !== undefined ||
-    input.startDate !== undefined ||
-    input.finishDate !== undefined
-  ) {
-    try {
-      const { syncScheduleLineToProgressInvoice } = await import(
-        '@/lib/progress-invoice/sync-from-schedule'
-      )
-      await syncScheduleLineToProgressInvoice(
-        supabase,
-        pkg.project_id,
-        {
-          source: { entityType: 'package', entityId: packageId },
-          title: nextName,
-          uom: nextUom,
-          estimatedQty: nextQty,
-          unitPrice: nextPrice,
-          itemDate:
-            (data.start_date as string | null)?.slice(0, 10) ??
-            (pkg.start_date as string | null)?.slice(0, 10) ??
-            null,
-        },
-        user.id
-      )
-    } catch {
-      /* progress invoice sync is best-effort */
-    }
-  }
-
   return data
 }
 
@@ -961,18 +905,6 @@ export async function deletePackage(supabase: SupabaseClient, packageId: string)
 
   const { error } = await supabase.from('workshop_packages').delete().eq('id', packageId)
   if (error) throw new WorkshopError('VALIDATION', error.message)
-
-  try {
-    const { removeScheduleLineFromProgressInvoice } = await import(
-      '@/lib/progress-invoice/sync-from-schedule'
-    )
-    await removeScheduleLineFromProgressInvoice(supabase, pkg.project_id, {
-      entityType: 'package',
-      entityId: packageId,
-    })
-  } catch {
-    /* best-effort */
-  }
 
   await writeSiteOpsAudit(supabase, {
     projectId: pkg.project_id,

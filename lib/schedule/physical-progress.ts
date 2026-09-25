@@ -45,3 +45,17 @@ export function resolvePhysicalProgressPercent(
   if (fallback == null || !Number.isFinite(Number(fallback))) return null
   return Number(fallback)
 }
+
+export function packageSchedulePhysicalPercent(
+  fields: Record<string, unknown> | null | undefined
+): number | null {
+  if (!fields) return null
+  return schedulePhysicalPercent({
+    physical_percent_complete:
+      fields.physical_percent_complete == null
+        ? null
+        : Number(fields.physical_percent_complete),
+    percent_complete:
+      fields.percent_complete == null ? null : Number(fields.percent_complete),
+  })
+}

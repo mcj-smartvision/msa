@@ -13,6 +13,12 @@ const EN = {
   overheadPerCapitaTab: 'Overhead cost per earned weight',
   overheadPerCapitaDescription:
     'Each month’s overhead split across activities by earned weight, with the recorded cost beside the performed total.',
+  liveCostsTab: 'Cost to date',
+  liveCostsDescription:
+    'Live workshop cost now: closed overhead months, a prorated current month, and contractor progress.',
+  contractorCostsTab: 'Contractor workshop costs',
+  contractorCostsDescription:
+    'Executed workshop costs by contractor and Jalali month, from quantity × unit price × physical progress.',
   progressInvoiceList: 'Progress invoices',
   progressCurrent: 'Current',
   progressFinal: 'Final',
@@ -101,6 +107,12 @@ const FA = {
   overheadPerCapitaTab: 'هزینه سرانه بالاسری',
   overheadPerCapitaDescription:
     'هزینه بالاسری هر ماه به نسبت وزن کسب‌شدهٔ فعالیت‌ها، با دو جمع: هزینهٔ واقعی ثبت‌شده و جمع کار انجام‌شده.',
+  liveCostsTab: 'هزینه تا این لحظه',
+  liveCostsDescription:
+    'کل هزینه کارگاه تا امروز: بالاسری ماه‌های بسته، برآورد این ماه، و کارکرد پیمانکاران.',
+  contractorCostsTab: 'هزینه پیمانکاران کارگاه',
+  contractorCostsDescription:
+    'هزینه‌های انجام‌شده کارگاه به تفکیک پیمانکار و ماه جلالی، از مقدار × قیمت واحد × پیشرفت فیزیکی.',
   progressInvoiceList: 'فهرست صورت‌وضعیت‌ها',
   progressCurrent: 'جاری',
   progressFinal: 'قطعی',

@@ -5,6 +5,8 @@ import { useLocale } from '@/components/i18n/locale-provider'
 import { EmptyState, PageHeader } from '@/components/admin/shared'
 import { OverheadCostsMatrix } from '@/components/finance/overhead-costs-matrix'
 import { OverheadPerCapitaTable } from '@/components/finance/overhead-per-capita-table'
+import { ContractorWorkshopCosts } from '@/components/finance/contractor-workshop-costs'
+import { LiveWorkshopCosts } from '@/components/finance/live-workshop-costs'
 import { getAccountantMessages } from '@/lib/i18n/accountant'
 import { cn } from '@/lib/utils'
 import type { DashboardUserContext } from '@/types/dashboard'
@@ -17,7 +19,7 @@ interface AccountantDashboardProps {
   canEdit?: boolean
 }
 
-type AccountantTab = 'overhead' | 'overhead-per-capita'
+type AccountantTab = 'live-costs' | 'overhead' | 'contractor-costs' | 'overhead-per-capita'
 
 export function AccountantDashboard({
   projectOptions,
@@ -28,7 +30,7 @@ export function AccountantDashboard({
   const fa = locale === 'fa' || locale === 'ar'
   const projectId = useSyncedProjectId(initialProjectId)
 
-  const [tab, setTab] = useState<AccountantTab>('overhead')
+  const [tab, setTab] = useState<AccountantTab>('live-costs')
   const [overheadMonths, setOverheadMonths] = useState<{ labels: string[]; totals: number[] }>({
     labels: [],
     totals: [],
@@ -43,13 +45,25 @@ export function AccountantDashboard({
       <PageHeader
         title={t.title}
         description={
-          tab === 'overhead-per-capita' ? t.overheadPerCapitaDescription : t.overheadDescription
+          tab === 'live-costs'
+            ? t.liveCostsDescription
+            : tab === 'contractor-costs'
+              ? t.contractorCostsDescription
+              : tab === 'overhead-per-capita'
+                ? t.overheadPerCapitaDescription
+                : t.overheadDescription
         }
       />
 
       <nav className="flex flex-wrap gap-2 pb-1" role="tablist" aria-label={t.title}>
+        <TabButton active={tab === 'live-costs'} onClick={() => setTab('live-costs')}>
+          {t.liveCostsTab}
+        </TabButton>
         <TabButton active={tab === 'overhead'} onClick={() => setTab('overhead')}>
           {t.overheadTab}
+        </TabButton>
+        <TabButton active={tab === 'contractor-costs'} onClick={() => setTab('contractor-costs')}>
+          {t.contractorCostsTab}
         </TabButton>
         <TabButton
           active={tab === 'overhead-per-capita'}
@@ -59,6 +73,9 @@ export function AccountantDashboard({
         </TabButton>
       </nav>
 
+      <div className={tab === 'live-costs' ? undefined : 'hidden'}>
+        <LiveWorkshopCosts fa={fa} projectId={projectId} />
+      </div>
       <div className={tab === 'overhead' ? undefined : 'hidden'}>
         <OverheadCostsMatrix
           fa={fa}
@@ -75,6 +92,9 @@ export function AccountantDashboard({
             monthTotals={overheadMonths.totals}
           />
         </PerCapitaTabErrorBoundary>
+      </div>
+      <div className={tab === 'contractor-costs' ? undefined : 'hidden'}>
+        <ContractorWorkshopCosts fa={fa} projectId={projectId} />
       </div>
     </div>
   )
