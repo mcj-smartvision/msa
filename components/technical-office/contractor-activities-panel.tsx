@@ -1,14 +1,21 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Pencil, Save, X } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { WORKSHOP_UOMS, WORKSHOP_UOM_LABELS } from '@/lib/workshop/types'
+import { WORKSHOP_UOM_LABELS, type WorkshopUom } from '@/lib/workshop/types'
+import { cn } from '@/lib/utils'
 
 function formatMoney(value: number): string {
   return Math.round(value).toLocaleString('en-US', { maximumFractionDigits: 0 })
+}
+
+function formatQty(value: number): string {
+  return Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 })
+}
+
+function uomLabel(uom: string): string {
+  return WORKSHOP_UOM_LABELS[uom as WorkshopUom] ?? uom
 }
 
 type ContractorActivity = {
@@ -23,14 +30,6 @@ type ContractorActivity = {
   progressPercent: number
 }
 
-type Draft = {
-  estimatedQty: string
-  qtyKind: 'حدودی' | 'قطعی'
-  uom: string
-  unitPrice: string
-  progressPercent: string
-}
-
 export function ContractorActivitiesPanel({
   projectId,
   contractorId,
@@ -43,9 +42,7 @@ export function ContractorActivitiesPanel({
   onClose: () => void
 }) {
   const [activities, setActivities] = useState<ContractorActivity[]>([])
-  const [drafts, setDrafts] = useState<Record<string, Draft>>({})
   const [loading, setLoading] = useState(true)
-  const [savingId, setSavingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -58,22 +55,7 @@ export function ContractorActivitiesPanel({
       )
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'بارگذاری فعالیت‌ها ناموفق بود')
-      const next = (data.activities ?? []) as ContractorActivity[]
-      setActivities(next)
-      setDrafts(
-        Object.fromEntries(
-          next.map((activity) => [
-            `${activity.entityType}:${activity.entityId}`,
-            {
-              estimatedQty: String(activity.estimatedQty),
-              qtyKind: activity.qtyKind,
-              uom: activity.uom,
-              unitPrice: String(activity.unitPrice),
-              progressPercent: String(activity.progressPercent),
-            },
-          ])
-        )
-      )
+      setActivities((data.activities ?? []) as ContractorActivity[])
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'بارگذاری فعالیت‌ها ناموفق بود')
     } finally {
@@ -85,64 +67,43 @@ export function ContractorActivitiesPanel({
     void load()
   }, [load])
 
-  const totals = useMemo(
+  const rows = useMemo(
     () =>
-      activities.reduce(
-        (sum, activity) => {
-          const draft = drafts[`${activity.entityType}:${activity.entityId}`]
-          const qty = Number(draft?.estimatedQty ?? activity.estimatedQty) || 0
-          const price = Number(draft?.unitPrice ?? activity.unitPrice) || 0
-          const progress = Number(draft?.progressPercent ?? activity.progressPercent) || 0
-          return {
-            amount: sum.amount + qty * price,
-            executed: sum.executed + qty * price * (progress / 100),
-          }
-        },
-        { amount: 0, executed: 0 }
-      ),
-    [activities, drafts]
+      activities.map((activity) => {
+        const amount = (Number(activity.estimatedQty) || 0) * (Number(activity.unitPrice) || 0)
+        const progress = Math.min(100, Math.max(0, Number(activity.progressPercent) || 0))
+        return {
+          ...activity,
+          amount,
+          progress,
+          executed: amount * (progress / 100),
+        }
+      }),
+    [activities]
   )
 
-  async function save(activity: ContractorActivity) {
-    const key = `${activity.entityType}:${activity.entityId}`
-    const draft = drafts[key]
-    if (!draft) return
-    setSavingId(key)
-    setError(null)
-    try {
-      const response = await fetch('/api/schedule/contractor-activities', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId,
-          contractorId,
-          entityType: activity.entityType,
-          entityId: activity.entityId,
-          estimatedQty: Number(draft.estimatedQty),
-          qtyKind: draft.qtyKind,
-          uom: draft.uom,
-          unitPrice: Number(draft.unitPrice),
-          progressPercent: Number(draft.progressPercent),
+  const totals = useMemo(
+    () =>
+      rows.reduce(
+        (sum, row) => ({
+          amount: sum.amount + row.amount,
+          executed: sum.executed + row.executed,
         }),
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'ذخیره فعالیت ناموفق بود')
-      const next = (data.activities ?? []) as ContractorActivity[]
-      setActivities(next)
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'ذخیره فعالیت ناموفق بود')
-    } finally {
-      setSavingId(null)
-    }
-  }
+        { amount: 0, executed: 0 }
+      ),
+    [rows]
+  )
 
   return (
-    <div className="mt-4 rounded-xl border border-orange-200 bg-white p-4" dir="rtl">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <div
+      className="mt-4 overflow-hidden rounded-2xl border border-orange-200/80 bg-white shadow-sm"
+      dir="rtl"
+    >
+      <div className="flex items-center justify-between gap-3 border-b border-orange-100 bg-gradient-to-l from-orange-50 to-white px-4 py-3">
         <div>
-          <h3 className="font-semibold">فعالیت‌ها — {contractorName}</h3>
-          <p className="text-xs text-muted-foreground">
-            فعالیت‌های نهایی برنامه زمان‌بندی که پیمانکار مستقیم یا ارثی آن‌هاست
+          <h3 className="text-sm font-bold text-slate-900">فعالیت‌ها — {contractorName}</h3>
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            فقط مشاهده — از برنامه زمان‌بندی؛ قابل ویرایش نیست
           </p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={onClose}>
@@ -151,147 +112,96 @@ export function ContractorActivitiesPanel({
         </Button>
       </div>
 
-      {error ? <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="mx-4 mt-3 rounded-lg bg-red-50 p-2 text-sm text-red-700">{error}</p> : null}
       {loading ? (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <p className="flex items-center gap-2 px-4 py-8 text-sm text-slate-500">
           <Loader2 className="h-4 w-4 animate-spin" />
           در حال بارگذاری فعالیت‌ها...
         </p>
-      ) : activities.length === 0 ? (
-        <p className="rounded-lg border bg-muted/20 p-5 text-center text-sm text-muted-foreground">
+      ) : rows.length === 0 ? (
+        <p className="px-4 py-10 text-center text-sm text-slate-500">
           فعالیت تخصیص‌یافته‌ای برای این پیمانکار وجود ندارد.
         </p>
       ) : (
-        <div className="space-y-2">
-          {activities.map((activity) => {
-            const key = `${activity.entityType}:${activity.entityId}`
-            const draft = drafts[key]
-            if (!draft) return null
-            const executed =
-              (Number(draft.estimatedQty) || 0) *
-              (Number(draft.unitPrice) || 0) *
-              ((Number(draft.progressPercent) || 0) / 100)
-            const setDraft = (patch: Partial<Draft>) =>
-              setDrafts((current) => ({
-                ...current,
-                [key]: { ...draft, ...patch },
-              }))
-            return (
-              <div key={key} className="rounded-lg border bg-background p-2.5">
-                <div className="flex flex-nowrap items-end gap-2 overflow-x-auto pb-1">
-                  <div className="min-w-[14rem] flex-1 space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">شرح آیتم</Label>
-                    <Input
-                      className="h-9 min-w-[14rem]"
-                      value={`${activity.wbs ? `${activity.wbs} — ` : ''}${activity.title}`}
-                      readOnly
-                    />
-                  </div>
-                  <div className="w-[13rem] shrink-0 space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">مقدار</Label>
-                    <div dir="ltr" className="flex h-9 overflow-hidden rounded-md border border-input">
-                      <select
-                        value={draft.qtyKind}
-                        onChange={(event) =>
-                          setDraft({ qtyKind: event.target.value as Draft['qtyKind'] })
-                        }
-                        className="w-[4.75rem] border-0 border-r border-input bg-muted/40 px-1 text-[11px]"
-                      >
-                        <option value="حدودی">حدودی</option>
-                        <option value="قطعی">قطعی</option>
-                      </select>
-                      <input
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={draft.estimatedQty}
-                        onChange={(event) => setDraft({ estimatedQty: event.target.value })}
-                        className="min-w-0 flex-1 border-0 px-2 text-sm outline-none"
-                      />
-                      <select
-                        value={draft.uom}
-                        onChange={(event) => setDraft({ uom: event.target.value })}
-                        className="w-[5rem] border-0 border-l border-input bg-muted/40 px-1 text-[11px]"
-                      >
-                        {WORKSHOP_UOMS.map((option) => (
-                          <option key={option} value={option}>
-                            {WORKSHOP_UOM_LABELS[option]}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="w-[8rem] shrink-0 space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">قیمت واحد</Label>
-                    <Input
-                      className="h-9"
-                      type="number"
-                      min="0"
-                      step="1"
-                      dir="ltr"
-                      value={draft.unitPrice}
-                      onChange={(event) => setDraft({ unitPrice: event.target.value })}
-                    />
-                  </div>
-                  <div className="w-[5rem] shrink-0 space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">درصد پیشرفت</Label>
-                    <Input
-                      className="h-9"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.5"
-                      dir="ltr"
-                      value={draft.progressPercent}
-                      onChange={(event) => setDraft({ progressPercent: event.target.value })}
-                    />
-                  </div>
-                  <div className="w-[9rem] shrink-0 space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">
-                      {draft.qtyKind === 'قطعی' ? 'مبلغ قطعی' : 'مبلغ حدودی'}
-                    </Label>
-                    <Input
-                      className="h-9 tabular-nums"
-                      readOnly
-                      dir="ltr"
-                      value={formatMoney(executed)}
-                    />
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1.5 pb-0.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-9"
-                      disabled={savingId === key}
-                      onClick={() => void save(activity)}
-                    >
-                      <Pencil className="me-1 h-3.5 w-3.5" />
-                      ویرایش
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-9"
-                      disabled={savingId === key}
-                      onClick={() => void save(activity)}
-                    >
-                      {savingId === key ? (
-                        <Loader2 className="me-1 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="me-1 h-4 w-4" />
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] border-collapse text-sm">
+            <thead>
+              <tr className="bg-slate-800 text-[11px] font-semibold text-white">
+                <th className="px-3 py-2.5 text-center">WBS</th>
+                <th className="px-3 py-2.5 text-right">شرح آیتم</th>
+                <th className="px-3 py-2.5 text-center">مقدار</th>
+                <th className="px-3 py-2.5 text-center">وضعیت مقدار</th>
+                <th className="px-3 py-2.5 text-center">واحد</th>
+                <th className="px-3 py-2.5 text-center">قیمت واحد</th>
+                <th className="px-3 py-2.5 text-center">پیشرفت</th>
+                <th className="px-3 py-2.5 text-center">کارکرد</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr
+                  key={`${row.entityType}:${row.entityId}`}
+                  className={cn(
+                    'border-b border-slate-100',
+                    index % 2 === 0 ? 'bg-white' : 'bg-slate-50/80'
+                  )}
+                >
+                  <td className="px-3 py-2.5 text-center font-mono text-xs tabular-nums text-slate-600">
+                    {row.wbs || '—'}
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-medium text-slate-800">{row.title}</td>
+                  <td className="px-3 py-2.5 text-center tabular-nums text-slate-700" dir="ltr">
+                    {formatQty(row.estimatedQty)}
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    <span
+                      className={cn(
+                        'inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                        row.qtyKind === 'قطعی'
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-amber-50 text-amber-700'
                       )}
-                      ذخیره
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-          <div className="flex flex-wrap gap-x-6 gap-y-1 rounded-lg border bg-muted/20 px-3 py-2 text-sm font-medium">
-            <span>جمع مبلغ: {formatMoney(totals.amount)}</span>
-            <span>جمع کارکرد: {formatMoney(totals.executed)}</span>
-          </div>
+                    >
+                      {row.qtyKind}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-center text-slate-600">{uomLabel(row.uom)}</td>
+                  <td className="px-3 py-2.5 text-center tabular-nums text-slate-700" dir="ltr">
+                    {formatMoney(row.unitPrice)}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="mx-auto flex w-28 items-center gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200">
+                        <div
+                          className="h-full rounded-full bg-orange-500"
+                          style={{ width: `${row.progress}%` }}
+                        />
+                      </div>
+                      <span className="w-9 text-left text-[11px] tabular-nums text-slate-600" dir="ltr">
+                        {row.progress}%
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-slate-800" dir="ltr">
+                    {formatMoney(row.executed)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-orange-50 text-sm font-bold text-slate-900">
+                <td className="px-3 py-3" colSpan={6}>
+                  جمع
+                </td>
+                <td className="px-3 py-3 text-center text-[11px] font-medium text-slate-600">
+                  مبلغ قرارداد {formatMoney(totals.amount)}
+                </td>
+                <td className="px-3 py-3 text-center tabular-nums" dir="ltr">
+                  {formatMoney(totals.executed)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       )}
     </div>
