@@ -108,7 +108,7 @@ export async function getProjectGanttRows(
       )
       .eq('project_id', projectId)
       .order('wbs_code', { ascending: true })
-    tasks = fallback.data
+    tasks = (fallback.data ?? []).map((task) => ({ ...task, alert_quadrant: null }))
     tasksError = fallback.error
   }
 

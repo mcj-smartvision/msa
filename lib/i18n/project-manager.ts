@@ -10,9 +10,12 @@ const FA = {
   description: 'فضای کاری مدیر پروژه.',
 } as const
 
-export type ProjectManagerMessages = typeof EN
+export type ProjectManagerMessages = {
+  title: string
+  description: string
+}
 
-export function getProjectManagerMessages(locale: FormLocale): typeof EN {
+export function getProjectManagerMessages(locale: FormLocale): ProjectManagerMessages {
   if (locale === 'fa' || locale === 'ar') return FA
   return EN
 }

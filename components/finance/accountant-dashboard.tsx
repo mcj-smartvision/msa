@@ -31,10 +31,6 @@ export function AccountantDashboard({
   const projectId = useSyncedProjectId(initialProjectId)
 
   const [tab, setTab] = useState<AccountantTab>('live-costs')
-  const [overheadMonths, setOverheadMonths] = useState<{ labels: string[]; totals: number[] }>({
-    labels: [],
-    totals: [],
-  })
 
   if (projectOptions.length === 0) {
     return <EmptyState title={t.title} description={t.noProject} />
@@ -77,20 +73,11 @@ export function AccountantDashboard({
         <LiveWorkshopCosts fa={fa} projectId={projectId} />
       </div>
       <div className={tab === 'overhead' ? undefined : 'hidden'}>
-        <OverheadCostsMatrix
-          fa={fa}
-          projectId={projectId}
-          onMonthTotalsChange={setOverheadMonths}
-        />
+        <OverheadCostsMatrix fa={fa} projectId={projectId} />
       </div>
       <div className={tab === 'overhead-per-capita' ? undefined : 'hidden'}>
         <PerCapitaTabErrorBoundary fa={fa}>
-          <OverheadPerCapitaTable
-            fa={fa}
-            projectId={projectId}
-            monthLabels={overheadMonths.labels}
-            monthTotals={overheadMonths.totals}
-          />
+          <OverheadPerCapitaTable fa={fa} projectId={projectId} />
         </PerCapitaTabErrorBoundary>
       </div>
       <div className={tab === 'contractor-costs' ? undefined : 'hidden'}>

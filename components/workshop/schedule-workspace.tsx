@@ -1026,21 +1026,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     setEditingPackageId(pkg.id)
     setEdits((prev) => ({
       ...prev,
-      [pkg.id]:
-        prev[pkg.id] ?? {
-          name: pkg.name,
-          quantity: String(pkg.quantity),
-          quantityCertainty: pkg.quantityCertainty,
-          unitPrice: String(pkg.unitPrice),
-          uom: pkg.uom,
-          location: pkg.location ?? '',
-          crew: pkg.crew ?? '',
-          weightPercent: pkg.weightPercent != null ? String(pkg.weightPercent) : '',
-          startDate:
-            toIsoDateOnly(pkg.startDate) ?? toIsoDateOnly(fallback?.start) ?? '',
-          finishDate:
-            toIsoDateOnly(pkg.finishDate) ?? toIsoDateOnly(fallback?.finish) ?? '',
-        },
+      [pkg.id]: prev[pkg.id] ?? getEdit(pkg, fallback),
     }))
   }
   const approved =
@@ -1891,18 +1877,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
           setEditingPackageId(pkg.id)
           setEdits((prev) => ({
             ...prev,
-            [pkg.id]: {
-              name: pkg.name,
-              quantity: String(pkg.quantity),
-              quantityCertainty: pkg.quantityCertainty,
-              unitPrice: String(pkg.unitPrice),
-              uom: pkg.uom,
-              location: pkg.location ?? '',
-              crew: pkg.crew ?? '',
-              weightPercent: pkg.weightPercent != null ? String(pkg.weightPercent) : '',
-              startDate: toIsoDateOnly(pkg.startDate) ?? '',
-              finishDate: toIsoDateOnly(pkg.finishDate) ?? '',
-            },
+            [pkg.id]: getEdit(pkg),
           }))
         }
       }
@@ -2238,6 +2213,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                 if (!selectedPackage) return
                 const pending = selectedPackage.pendingChange
                 setChangeForm({
+                  ...getEdit(selectedPackage),
                   name: pending?.name ?? selectedPackage.name,
                   quantity: String(pending?.quantity ?? selectedPackage.quantity),
                   quantityCertainty: selectedPackage.quantityCertainty,
