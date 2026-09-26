@@ -35,6 +35,18 @@ export type ReviewReasonCode =
   | 'other'
 
 export const WORKSHOP_UOMS = ['m2', 'm3', 'm', 'ton', 'ea', 'ls', 'kg', 'hr'] as const
+export type WorkshopUom = (typeof WORKSHOP_UOMS)[number]
+
+export const WORKSHOP_UOM_LABELS: Record<WorkshopUom, string> = {
+  m2: 'م²',
+  m3: 'م³',
+  m: 'م',
+  ton: 'تن',
+  ea: 'عدد',
+  ls: 'مقطوع',
+  kg: 'کیلوگرم',
+  hr: 'ساعت',
+}
 
 export interface ScheduleTreeNode {
   id: string

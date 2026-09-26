@@ -84,15 +84,12 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
       setError('همه فیلدهای مشخصات و تاریخ قرارداد الزامی هستند.')
       return
     }
-    if (!contractFile) {
-      setError('فایل قرارداد را انتخاب کنید.')
-      return
-    }
     if (
+      contractFile &&
       contractFile.type !== 'application/pdf' &&
       !contractFile.name.toLowerCase().endsWith('.pdf')
     ) {
-      setError('فایل قرارداد باید با فرمت PDF باشد.')
+      setError('اگر فایل می‌گذارید باید PDF باشد.')
       return
     }
 
@@ -120,11 +117,13 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
         status: 'active',
         createdBy: user?.id,
       })
-      await uploadContractFile(supabase, {
-        projectId,
-        contractId: contract.id,
-        file: contractFile,
-      })
+      if (contractFile) {
+        await uploadContractFile(supabase, {
+          projectId,
+          contractId: contract.id,
+          file: contractFile,
+        })
+      }
 
       setFirstName('')
       setLastName('')
@@ -132,7 +131,9 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
       setContractNo('')
       setContractDate('')
       setContractFile(null)
-      setSuccess('پیمانکار و فایل قرارداد با موفقیت ثبت شد.')
+      setSuccess(
+        contractFile ? 'پیمانکار و فایل قرارداد با موفقیت ثبت شد.' : 'پیمانکار ثبت شد.'
+      )
       await load()
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'ثبت پیمانکار ناموفق بود')
@@ -306,7 +307,7 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="contractor-contract-file">آپلود قرارداد</Label>
+                <Label htmlFor="contractor-contract-file">آپلود قرارداد (اختیاری)</Label>
                 <Input
                   id="contractor-contract-file"
                   type="file"

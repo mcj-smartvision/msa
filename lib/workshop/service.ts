@@ -45,7 +45,8 @@ import {
   enrichScheduleTreeWithWbs,
   nextChildWbs,
 } from './wbs-numbering'
-import { fetchTaskPredecessorDisplay } from '@/lib/schedule/predecessor-labels'
+import { fetchTaskPredecessorDisplay, fetchTaskPredecessorLabels } from '@/lib/schedule/predecessor-labels'
+import { seedNewPackageProgressFields } from '@/lib/workshop/header-rules'
 import type {
   CreatePackageInput,
   PackageChangePayload,
@@ -466,6 +467,64 @@ async function countPackageSiblings(
   return count ?? 0
 }
 
+async function clearHeaderCommercialOnFirstChild(
+  supabase: SupabaseClient,
+  input: CreatePackageInput,
+  _createdId: string
+) {
+  if (input.parentPackageId) {
+    const siblings = await countPackageSiblings(
+      supabase,
+      input.projectId,
+      input.parentPackageId,
+      null
+    )
+    if (siblings !== 1) return
+    await supabase
+      .from('workshop_packages')
+      .update({
+        quantity: 0,
+        unit_price: 0,
+        subcontractor_id: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', input.parentPackageId)
+      .eq('project_id', input.projectId)
+    return
+  }
+
+  if (!input.parentScheduleNodeId) return
+  const siblings = await countPackageSiblings(
+    supabase,
+    input.projectId,
+    null,
+    input.parentScheduleNodeId
+  )
+  if (siblings !== 1) return
+  await supabase
+    .from('project_tasks')
+    .update({
+      quantity: null,
+      unit_price: null,
+      subcontractor_id: null,
+    })
+    .eq('id', input.parentScheduleNodeId)
+    .eq('project_id', input.projectId)
+}
+
+async function deletePackageTree(supabase: SupabaseClient, packageId: string) {
+  const { data: children, error: childErr } = await supabase
+    .from('workshop_packages')
+    .select('id')
+    .eq('parent_package_id', packageId)
+  if (childErr) throw new WorkshopError('VALIDATION', childErr.message)
+  for (const child of children ?? []) {
+    await deletePackageTree(supabase, String(child.id))
+  }
+  const { error } = await supabase.from('workshop_packages').delete().eq('id', packageId)
+  if (error) throw new WorkshopError('VALIDATION', error.message)
+}
+
 async function resolvePackageWbsCode(
   supabase: SupabaseClient,
   packageId: string
@@ -632,10 +691,30 @@ export async function createPackage(supabase: SupabaseClient, input: CreatePacka
 
   const unitPrice = Math.max(0, Number(input.unitPrice) || 0)
   const quantityCertainty = input.quantityCertainty === 'قطعی' ? 'قطعی' : 'حدودی'
-  const scheduleFields = mergePackageScheduleFields(input.scheduleFields ?? {}, {
-    unitPrice,
-    quantityCertainty,
-  })
+  const incomingPreds = String(
+    (input.scheduleFields as { predecessors?: string } | undefined)?.predecessors ?? ''
+  ).trim()
+  let inheritedPreds = incomingPreds
+  if (!inheritedPreds && input.parentScheduleNodeId) {
+    try {
+      const labels = await fetchTaskPredecessorLabels(supabase, input.projectId)
+      inheritedPreds = labels[input.parentScheduleNodeId] ?? ''
+    } catch {
+      inheritedPreds = ''
+    }
+  }
+  const scheduleFields = seedNewPackageProgressFields(
+    mergePackageScheduleFields(
+      {
+        ...(input.scheduleFields ?? {}),
+        ...(inheritedPreds ? { predecessors: inheritedPreds } : {}),
+      },
+      {
+        unitPrice,
+        quantityCertainty,
+      }
+    )
+  )
   const noteWithCommercial = encodePackageCommercialInNote(
     encodePackageWeightInNote(
       fields.note,
@@ -681,6 +760,7 @@ export async function createPackage(supabase: SupabaseClient, input: CreatePacka
   if (finishDate) insertBase.finish_date = String(finishDate).slice(0, 10)
 
   const created = await insertPackageRow(supabase, insertBase)
+  await clearHeaderCommercialOnFirstChild(supabase, input, String(created.id))
 
   if (created.flag_for_review) {
     await supabase.from('workshop_review_flags').insert({
@@ -894,17 +974,7 @@ export async function deletePackage(supabase: SupabaseClient, packageId: string)
     (pkg.origin as string) ?? 'user_added'
   )
 
-  const { count, error: childErr } = await supabase
-    .from('workshop_packages')
-    .select('id', { count: 'exact', head: true })
-    .eq('parent_package_id', packageId)
-  if (childErr) throw new WorkshopError('VALIDATION', childErr.message)
-  if ((count ?? 0) > 0) {
-    throw new WorkshopError('VALIDATION', 'ابتدا زیرمجموعه‌های این ردیف را حذف کنید')
-  }
-
-  const { error } = await supabase.from('workshop_packages').delete().eq('id', packageId)
-  if (error) throw new WorkshopError('VALIDATION', error.message)
+  await deletePackageTree(supabase, packageId)
 
   await writeSiteOpsAudit(supabase, {
     projectId: pkg.project_id,

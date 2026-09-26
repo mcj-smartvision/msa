@@ -140,7 +140,7 @@ export function ContractorActivitiesPanel({
     <div className="mt-4 rounded-xl border border-orange-200 bg-white p-4" dir="rtl">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h3 className="font-semibold">فعالیت‌ها و صورت‌وضعیت — {contractorName}</h3>
+          <h3 className="font-semibold">فعالیت‌ها — {contractorName}</h3>
           <p className="text-xs text-muted-foreground">
             فعالیت‌های نهایی برنامه زمان‌بندی که پیمانکار مستقیم یا ارثی آن‌هاست
           </p>

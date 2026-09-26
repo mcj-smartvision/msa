@@ -40,6 +40,7 @@ import { ScheduleDownloadButton } from '@/components/schedule/schedule-download-
 import { WORKSHOP_UOMS } from '@/lib/workshop/types'
 import { formatScheduleWeightDisplay } from '@/lib/workshop/package-weight'
 import { displayActivityName, wbsDepth } from '@/lib/schedule/wbs-utils'
+import { collectDateEnvelope } from '@/lib/workshop/header-rules'
 import {
   applyParentWeightSum,
   isDescendantWbs,
@@ -123,16 +124,17 @@ const SCHEDULE_COL_WIDTHS = [
   '170px',
   '64px',
   '85px',
-  '168px',
+  '148px',
+  '56px',
+  '100px',
   '92px',
-  '88px',
   '72px',
   '72px',
 ] as const
-// WBS, نام, پیش‌نیاز, تاریخ, شناوری, محل, مقدار(+واحد), قیمت واحد, قیمت کل, وزن, وضعیت
+// WBS, نام, پیش‌نیاز, تاریخ, شناوری, محل, مقدار, واحد, کارکرد, قیمت واحد, وزن, وضعیت
 
 const SCHEDULE_COL_COUNT = SCHEDULE_COL_WIDTHS.length
-const SCHEDULE_BASE_WIDTH = 1188
+const SCHEDULE_BASE_WIDTH = 1236
 const EXTRA_SCHEDULE_COL_WIDTH = 112
 /** Sticky identity cols (RTL): pin WBS + نام to the right while scrolling left. */
 const STICKY_WBS_RIGHT = 0
@@ -152,7 +154,52 @@ const SCHEDULE_STICKY_WBS_CELL = `${SCHEDULE_CELL} sticky z-10`
 const SCHEDULE_STICKY_NAME_CELL =
   `${SCHEDULE_CELL} sticky z-10 border-l-2 border-slate-500`
 const TOTAL_PRICE_HELP =
-  'از ضرب مقدار در قیمت واحد به‌دست می‌آید. برای سرشاخه = جمع قیمت کل زیرشاخه‌ها.'
+  'از ضرب مقدار در قیمت واحد همان ردیف به‌دست می‌آید. سرشاخه‌ای که زیرشاخه دارد کارکرد ندارد.'
+
+function isScheduleHeader(node: ScheduleTreeNode): boolean {
+  return Boolean(node.isSyntheticGroup) || node.packages.length > 0 || node.children.length > 0
+}
+
+function envelopeForPackage(pkg: WorkshopPackageNode): {
+  start: string | null
+  finish: string | null
+} {
+  const starts: Array<string | null | undefined> = []
+  const finishes: Array<string | null | undefined> = []
+  const walk = (node: WorkshopPackageNode) => {
+    starts.push(node.startDate)
+    finishes.push(node.finishDate)
+    node.children.forEach(walk)
+  }
+  pkg.children.forEach(walk)
+  if (starts.some(Boolean) || finishes.some(Boolean)) {
+    return collectDateEnvelope(starts, finishes)
+  }
+  return { start: pkg.startDate, finish: pkg.finishDate }
+}
+
+function envelopeForScheduleNode(node: ScheduleTreeNode): {
+  start: string | null
+  finish: string | null
+} {
+  const starts: Array<string | null | undefined> = []
+  const finishes: Array<string | null | undefined> = []
+  const walkPkg = (pkg: WorkshopPackageNode) => {
+    starts.push(pkg.startDate)
+    finishes.push(pkg.finishDate)
+    pkg.children.forEach(walkPkg)
+  }
+  node.packages.forEach(walkPkg)
+  for (const child of node.children) {
+    const inner = envelopeForScheduleNode(child)
+    starts.push(inner.start)
+    finishes.push(inner.finish)
+  }
+  if (starts.some(Boolean) || finishes.some(Boolean)) {
+    return collectDateEnvelope(starts, finishes)
+  }
+  return { start: node.startDate, finish: node.finishDate }
+}
 
 type ExtraTaskField = {
   key: string
@@ -293,6 +340,9 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
   const [helpWeightParentId, setHelpWeightParentId] = useState<string | null>(null)
   const [helpProgressParentId, setHelpProgressParentId] = useState<string | null>(null)
   const [helpTotalPriceOpen, setHelpTotalPriceOpen] = useState(false)
+  const [predLinkFor, setPredLinkFor] = useState<
+    { kind: 'task' | 'package'; id: string } | null
+  >(null)
   /** Controlled مقدار / قیمت واحد — single source of truth for قیمت کل. */
   const [commercialInputs, setCommercialInputs] = useState<
     Record<string, { quantity: string; unitPrice: string }>
@@ -1032,6 +1082,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       }
       setExpanded((x) => ({ ...x, [node.id]: true }))
       setSelected({ kind: 'schedule', id: node.id, name: node.name, wbs: node.wbs })
+      const firstChild = node.packages.length === 0
+      const parentQty = node.task?.quantity ?? node.task?.schedule_quantity
       setInlineDraft({
         parentKind: 'schedule',
         parentId: node.taskId,
@@ -1039,27 +1091,36 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         depth: visualScheduleDepth(node.id) + 1,
         previewWbs: nextChildWbs(node.wbs, node.packages.length),
         name: '',
-        quantity: '',
-        quantityCertainty: 'حدودی',
-        unitPrice: '0',
-        uom: 'm2',
+        quantity:
+          firstChild && parentQty != null && Number(parentQty) > 0 ? String(parentQty) : '',
+        quantityCertainty:
+          firstChild && node.task?.quantity_certainty === 'قطعی' ? 'قطعی' : 'حدودی',
+        unitPrice:
+          firstChild && node.task?.unit_price != null
+            ? String(Number(node.task.unit_price) || 0)
+            : '0',
+        uom: firstChild && node.task ? taskUomValue(node.task) || 'm2' : 'm2',
         location: '',
         crew: '',
         weightPercent: '',
-        subcontractorId: '',
+        subcontractorId:
+          firstChild
+            ? node.task?.subcontractor_id ?? ''
+            : '',
         inheritedSubcontractorId:
           node.task?.resolved_subcontractor_id ?? node.task?.subcontractor_id ?? null,
         scheduleFields: {},
         startDate: toIsoDateOnly(node.startDate) ?? '',
         finishDate: toIsoDateOnly(node.finishDate) ?? '',
         totalFloat: '',
-        predecessorLabel: '',
+        predecessorLabel: firstChild ? node.predecessorLabel?.trim() ?? '' : '',
       })
       setMessage(null)
       return
     }
 
     const pkg = row.pkg
+    const firstChild = pkg.children.length === 0
     setExpanded((x) => ({ ...x, [`pkg:${pkg.id}`]: true }))
     setSelected(row)
     setInlineDraft({
@@ -1069,20 +1130,20 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       depth: packageDepth(pkg.id),
       previewWbs: nextChildWbs(pkg.wbs, pkg.children.length),
       name: '',
-      quantity: '',
-      quantityCertainty: 'حدودی',
-      unitPrice: '0',
-      uom: 'm2',
+      quantity: firstChild && Number(pkg.quantity) > 0 ? String(pkg.quantity) : '',
+      quantityCertainty: firstChild ? pkg.quantityCertainty : 'حدودی',
+      unitPrice: firstChild ? String(Number(pkg.unitPrice) || 0) : '0',
+      uom: firstChild ? pkg.uom || 'm2' : 'm2',
       location: '',
       crew: '',
       weightPercent: '',
-      subcontractorId: '',
-      inheritedSubcontractorId: pkg.resolvedSubcontractorId ?? null,
+      subcontractorId: firstChild ? pkg.subcontractorId ?? '' : '',
+      inheritedSubcontractorId: pkg.resolvedSubcontractorId ?? pkg.subcontractorId ?? null,
       scheduleFields: {},
       startDate: toIsoDateOnly(pkg.startDate) ?? '',
       finishDate: toIsoDateOnly(pkg.finishDate) ?? '',
       totalFloat: '',
-      predecessorLabel: '',
+      predecessorLabel: firstChild ? packagePredecessorLabel(pkg) : '',
     })
     setMessage(null)
   }
@@ -1091,6 +1152,51 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     const fields = pkg.scheduleFields ?? {}
     const raw = fields.predecessors ?? fields.predecessor_label
     return raw != null && String(raw).trim() ? String(raw).trim() : ''
+  }
+
+  function appendPredecessorFs(current: string, wbs: string): string {
+    const token = `${wbs}FS`
+    const next = current
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean)
+    if (next.some((part) => part.startsWith(wbs))) return current
+    return [...next, token].join(', ')
+  }
+
+  function applyPredLinkFromWbs(wbs: string, clicked: { kind: 'task' | 'package'; id: string }) {
+    if (!predLinkFor || !wbs) return false
+    if (predLinkFor.kind === clicked.kind && predLinkFor.id === clicked.id) return false
+
+    if (predLinkFor.kind === 'task') {
+      const target = collectScheduleTaskNodes(nodes).find((item) => item.taskId === predLinkFor.id)
+      const current =
+        taskDrafts[predLinkFor.id]?.predecessorLabel !== undefined
+          ? taskDrafts[predLinkFor.id]?.predecessorLabel ?? ''
+          : target?.predecessorLabel?.trim() ?? ''
+      patchTaskDraft(predLinkFor.id, {
+        predecessorLabel: appendPredecessorFs(current, wbs),
+      })
+      setPredLinkFor(null)
+      return true
+    }
+
+    const pkg = findPackageInTree(nodes, predLinkFor.id)
+    if (!pkg) {
+      setPredLinkFor(null)
+      return true
+    }
+    const current =
+      edits[pkg.id]?.predecessorLabel !== undefined
+        ? edits[pkg.id]?.predecessorLabel ?? ''
+        : packagePredecessorLabel(pkg)
+    const next = appendPredecessorFs(current, wbs)
+    setEditField(pkg.id, pkg, { predecessorLabel: next })
+    if (editingPackageId !== pkg.id && next !== current) {
+      void savePackagePredFloat(pkg, { predecessorLabel: next })
+    }
+    setPredLinkFor(null)
+    return true
   }
 
   function packageTotalFloat(pkg: WorkshopPackageNode): string {
@@ -1186,7 +1292,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'ذخیره نشد')
-      setMessage('ذخیره شد — در ارسال برنامه و صورت‌وضعیت نیز اعمال شد')
+      setMessage('ذخیره شد — در ارسال برنامه نیز اعمال شد')
       publishScheduleViewSync(projectId)
       await load()
     } catch (err) {
@@ -1355,7 +1461,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       if (!response.ok) throw new Error(data.error || 'ذخیره زیرشاخه ناموفق بود')
       await load()
       publishScheduleViewSync(projectId)
-      setMessage('اطلاعات زیرشاخه ذخیره شد — در ارسال برنامه و صورت‌وضعیت نیز اعمال شد')
+      setMessage('اطلاعات زیرشاخه ذخیره شد — در ارسال برنامه نیز اعمال شد')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'ذخیره زیرشاخه ناموفق بود')
     } finally {
@@ -1468,7 +1574,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         },
       }))
       publishScheduleViewSync(projectId)
-      setMessage('قیمت واحد در برنامه، ارسال برنامه و صورت‌وضعیت ذخیره شد')
+      setMessage('قیمت واحد در برنامه و ارسال برنامه ذخیره شد')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'ذخیره قیمت واحد ناموفق بود')
     } finally {
@@ -1532,7 +1638,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       if (!response.ok) throw new Error(data.error || 'ذخیره مقدار ناموفق بود')
       await load()
       publishScheduleViewSync(projectId)
-      setMessage('مقدار ذخیره شد — در ارسال برنامه و صورت‌وضعیت نیز اعمال شد')
+      setMessage('مقدار ذخیره شد — در ارسال برنامه نیز اعمال شد')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'ذخیره مقدار ناموفق بود')
     } finally {
@@ -1709,7 +1815,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         /* dates already saved; float refresh is best-effort */
       }
       publishScheduleViewSync(projectId)
-      setMessage('ثبت و بروزرسانی شد — تغییرات در گانت، ارسال برنامه و صورت‌وضعیت هم اعمال شد')
+      setMessage('ثبت و بروزرسانی شد — تغییرات در گانت و ارسال برنامه هم اعمال شد')
       await load()
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'خطا در ثبت نهایی')
@@ -1774,7 +1880,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
 
       const createdId = data.package?.id ? String(data.package.id) : null
       setInlineDraft(null)
-      setMessage(`زیرمجموعه ${inlineDraft.previewWbs} ذخیره شد — در ارسال برنامه و صورت‌وضعیت نیز اعمال شد`)
+      setMessage(`زیرمجموعه ${inlineDraft.previewWbs} ذخیره شد — در ارسال برنامه نیز اعمال شد`)
       publishScheduleViewSync(projectId)
       const loadedNodes = await load(expandAfter)
       if (createdId) {
@@ -2050,7 +2156,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
               type="button"
               disabled={!finalCommitEnabled}
               onClick={() => void commitFinalSchedule()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-40"
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-white',
+                hasTaskDrafts
+                  ? 'bg-emerald-700 font-bold hover:bg-emerald-800'
+                  : 'bg-emerald-600/40 font-normal'
+              )}
               title="ذخیره تغییرات و بروزرسانی برنامه"
             >
               {saving || loading ? (
@@ -2101,7 +2212,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                   })()
                 } else if (selectedPackage) void savePackage(selectedPackage)
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm',
+                toolbarSaveEnabled
+                  ? 'border-slate-900 bg-slate-900 font-bold text-white'
+                  : 'border-slate-200 font-normal text-slate-400 opacity-40'
+              )}
             >
               <Save className="h-4 w-4" />
               ذخیره
@@ -2157,6 +2273,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
             </button>
           </div>
           )}
+
+          {predLinkFor ? (
+            <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+              روی فعالیت یا زیرشاخه پیش‌نیاز کلیک کنید تا مثل MSP پیوند FS ساخته شود. برای انصراف دوباره همان سلول پیش‌نیاز را بزنید.
+            </p>
+          ) : null}
 
           {showTodayQty && approved && selectedPackage && (
             <div className="flex flex-wrap items-end gap-3 border-b bg-sky-50 px-3 py-3">
@@ -2337,52 +2459,29 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                   >
                     پیش‌نیاز
                   </th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[3] }}>تاریخ</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[3] }}>
+                    <div className="leading-tight">
+                      <span className="block">تاریخ</span>
+                      <span className="mt-0.5 flex font-normal text-[9px] text-slate-500">
+                        <span className="flex-1">شروع</span>
+                        <span className="flex-1">پایان</span>
+                      </span>
+                    </div>
+                  </th>
                   <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[4] }}>شناوری</th>
                   <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[5] }}>محل</th>
                   <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[6] }}>مقدار</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[7] }}>قیمت واحد</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[7] }}>واحد</th>
                   <th
                     className={`${SCHEDULE_HEAD} relative`}
                     style={{ width: SCHEDULE_COL_WIDTHS[8] }}
+                    title={TOTAL_PRICE_HELP}
                   >
-                    <span className="inline-flex items-center justify-center gap-0.5">
-                      قیمت کل
-                      <button
-                        type="button"
-                        className="inline-flex text-sky-700 hover:text-sky-900"
-                        title={TOTAL_PRICE_HELP}
-                        aria-label={TOTAL_PRICE_HELP}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          setHelpTotalPriceOpen((open) => !open)
-                        }}
-                      >
-                        <HelpCircle className="h-3 w-3" />
-                      </button>
-                    </span>
-                    {helpTotalPriceOpen ? (
-                      <div
-                        className="absolute z-30 mt-1 max-w-[220px] rounded-md border border-sky-200 bg-white px-2.5 py-1.5 text-[10px] font-normal leading-relaxed text-slate-700 shadow-lg"
-                        style={{ insetInlineEnd: 4, top: '100%' }}
-                        dir="rtl"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <div className="flex items-start gap-2">
-                          <span>{TOTAL_PRICE_HELP}</span>
-                          <button
-                            type="button"
-                            className="shrink-0 text-[10px] text-sky-700 hover:underline"
-                            onClick={() => setHelpTotalPriceOpen(false)}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
+                    کارکرد
                   </th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[9] }}>وزن</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[10] }}>وضعیت</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[9] }}>قیمت واحد</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[10] }}>وزن</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[11] }}>وضعیت</th>
                   {visibleExtraTaskFields.map((field) => (
                     <th key={field.key} className={`${SCHEDULE_HEAD} min-w-[112px]`}>
                       {field.label}
@@ -2445,12 +2544,21 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                     return (
                       <FragmentRows key={`s-${n.id}`}>
                         <tr
-                          onClick={() =>
+                          onClick={() => {
+                            if (
+                              n.wbs &&
+                              applyPredLinkFromWbs(n.wbs, {
+                                kind: 'task',
+                                id: n.taskId ?? n.id,
+                              })
+                            ) {
+                              return
+                            }
                             setSelected({ kind: 'schedule', id: n.id, name: n.name, wbs: n.wbs })
-                          }
+                          }}
                           className={`group cursor-pointer border-b border-slate-300 hover:bg-slate-50 ${groupFrameClass} ${
                             isSel ? 'bg-amber-50' : 'bg-white'
-                          }`}
+                          } ${predLinkFor && !(predLinkFor.kind === 'task' && predLinkFor.id === n.taskId) ? 'ring-1 ring-sky-300' : ''}`}
                         >
                           <td
                             className={`${SCHEDULE_STICKY_WBS_CELL} font-mono text-[11px] tabular-nums text-slate-600 text-center group-hover:bg-slate-50 ${
@@ -2534,7 +2642,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             {!readOnly && n.taskId && !n.isSyntheticGroup ? (
                               <input
                                 dir="ltr"
-                                className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] text-center font-mono"
+                                className={cn(
+                                  'w-full rounded border bg-white px-1 py-0.5 text-[10px] text-center font-mono',
+                                  predLinkFor?.kind === 'task' && predLinkFor.id === n.taskId
+                                    ? 'border-sky-500 ring-1 ring-sky-300'
+                                    : 'border-slate-200'
+                                )}
                                 value={
                                   taskDrafts[n.taskId]?.predecessorLabel !== undefined
                                     ? taskDrafts[n.taskId]?.predecessorLabel ?? ''
@@ -2542,7 +2655,16 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 }
                                 placeholder="مثلاً 3FS+4d"
                                 disabled={saving}
-                                onClick={(e) => e.stopPropagation()}
+                                title="کلیک کنید، بعد روی پیش‌نیاز بزنید"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setPredLinkFor((current) =>
+                                    current?.kind === 'task' && current.id === n.taskId
+                                      ? null
+                                      : { kind: 'task', id: n.taskId }
+                                  )
+                                }}
+                                onFocus={() => setPredLinkFor({ kind: 'task', id: n.taskId })}
                                 onChange={(ev) => {
                                   patchTaskDraft(n.taskId!, {
                                     predecessorLabel: ev.target.value,
@@ -2558,33 +2680,39 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                           <td
                             className={`${SCHEDULE_CELL} text-[11px] text-slate-600 tabular-nums leading-tight overflow-hidden`}
                           >
-                            {!readOnly && n.taskId && !n.isSyntheticGroup ? (
-                              <CompactJalaliDateRange
-                                startIso={
-                                  toIsoDateOnly(taskDrafts[n.taskId]?.startDate) ??
+                            {(() => {
+                              const header = isScheduleHeader(n)
+                              const env = header ? envelopeForScheduleNode(n) : null
+                              const startIso = header
+                                ? env?.start ?? row.startDate
+                                : toIsoDateOnly(taskDrafts[n.taskId ?? '']?.startDate) ??
                                   toIsoDateOnly(row.startDate)
-                                }
-                                finishIso={
-                                  toIsoDateOnly(taskDrafts[n.taskId]?.finishDate) ??
+                              const finishIso = header
+                                ? env?.finish ?? row.finishDate
+                                : toIsoDateOnly(taskDrafts[n.taskId ?? '']?.finishDate) ??
                                   toIsoDateOnly(row.finishDate)
-                                }
-                                calendar={calendar}
-                                disabled={saving}
-                                onCommit={(startDate, finishDate) => {
-                                  patchTaskDraft(n.taskId!, { startDate, finishDate })
-                                }}
-                              />
-                            ) : (
-                              <span dir="ltr" className="block w-full text-center tabular-nums">
-                                {formatActivityDateShort(
-                                  toIsoDateOnly(taskDrafts[n.taskId ?? '']?.startDate) ??
-                                    row.startDate,
-                                  toIsoDateOnly(taskDrafts[n.taskId ?? '']?.finishDate) ??
-                                    row.finishDate,
-                                  calendar
-                                )}
-                              </span>
-                            )}
+                              if (!readOnly && n.taskId && !n.isSyntheticGroup && !header) {
+                                return (
+                                  <CompactJalaliDateRange
+                                    startIso={startIso}
+                                    finishIso={finishIso}
+                                    calendar={calendar}
+                                    disabled={saving}
+                                    onCommit={(startDate, finishDate) => {
+                                      patchTaskDraft(n.taskId!, { startDate, finishDate })
+                                    }}
+                                  />
+                                )
+                              }
+                              return (
+                                <ScheduleDatePair
+                                  startIso={startIso}
+                                  finishIso={finishIso}
+                                  calendar={calendar}
+                                  bold={header}
+                                />
+                              )
+                            })()}
                           </td>
                           <td className={`${SCHEDULE_CELL} text-center`}>
                             {!readOnly && n.taskId && !n.isSyntheticGroup ? (
@@ -2619,7 +2747,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                           </td>
                           <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
                           <td className={`${SCHEDULE_CELL} text-center`}>
-                            {n.task && !readOnly && !n.isSyntheticGroup ? (
+                            {n.task && !readOnly && !n.isSyntheticGroup && !isScheduleHeader(n) ? (
                               <div
                                 className="flex items-center gap-1"
                                 onClick={(event) => event.stopPropagation()}
@@ -2663,23 +2791,6 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                   }}
                                 />
                                 <select
-                                  className="w-[46px] shrink-0 rounded border border-slate-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
-                                  value={taskUomValue(n.task)}
-                                  disabled={
-                                    readOnly || savingExtraCell === `${n.task.id}:uom`
-                                  }
-                                  title="واحد"
-                                  onChange={(event) =>
-                                    void saveTaskUom(n.task!, event.target.value)
-                                  }
-                                >
-                                  {WORKSHOP_UOMS.map((u) => (
-                                    <option key={u} value={u}>
-                                      {u}
-                                    </option>
-                                  ))}
-                                </select>
-                                <select
                                   className="w-[52px] shrink-0 rounded border border-slate-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
                                   value={n.task.quantity_certainty ?? 'حدودی'}
                                   disabled={savingExtraCell === `${n.task.id}:quantity_certainty`}
@@ -2698,25 +2809,54 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               <span className="text-slate-400">—</span>
                             )}
                           </td>
+                          <td className={`${SCHEDULE_CELL} text-center`}>
+                            {n.task && !readOnly && !n.isSyntheticGroup && !isScheduleHeader(n) ? (
+                              <select
+                                className="w-full rounded border border-slate-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
+                                value={taskUomValue(n.task)}
+                                disabled={readOnly || savingExtraCell === `${n.task.id}:uom`}
+                                title="واحد"
+                                onClick={(event) => event.stopPropagation()}
+                                onChange={(event) =>
+                                  void saveTaskUom(n.task!, event.target.value)
+                                }
+                              >
+                                {WORKSHOP_UOMS.map((u) => (
+                                  <option key={u} value={u}>
+                                    {u}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
                           <td className={SCHEDULE_CELL}>
                             {(() => {
-                              if (!n.taskId) {
+                              if (!n.taskId || isScheduleHeader(n)) {
+                                return <span className="tabular-nums text-slate-400">—</span>
+                              }
+                              const shown = displayTotalPrice(
+                                n.taskId,
+                                n.task?.quantity ?? n.task?.schedule_quantity ?? null,
+                                n.task?.unit_price
+                              )
+                              return (
+                                <span
+                                  className="inline-flex w-full items-center justify-center rounded border border-slate-200 bg-slate-50 px-1 py-0.5 text-[10px] tabular-nums text-slate-800"
+                                  title={shown.help}
+                                >
+                                  {shown.value}
+                                </span>
+                              )
+                            })()}
+                          </td>
+                          <td className={SCHEDULE_CELL}>
+                            {(() => {
+                              if (!n.taskId || isScheduleHeader(n)) {
                                 return <span className="tabular-nums text-slate-400">—</span>
                               }
                               const shown = displayUnitPrice(n.taskId, n.task?.unit_price)
-                              if (shown.isParent) {
-                                return (
-                                  <span
-                                    className="inline-flex w-full items-center justify-center gap-0.5 rounded border border-sky-200 bg-sky-50 px-1 py-0.5 text-[10px] font-semibold tabular-nums text-sky-950"
-                                    title={
-                                      shown.help ??
-                                      'جمع خودکار مقدار×قیمت واحد زیرشاخه‌ها / فرزندان'
-                                    }
-                                  >
-                                    {shown.value}
-                                  </span>
-                                )
-                              }
                               if (n.task && !readOnly && !n.isSyntheticGroup) {
                                 return (
                                   <input
@@ -2759,30 +2899,6 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               }
                               return (
                                 <span className="tabular-nums">{shown.value}</span>
-                              )
-                            })()}
-                          </td>
-                          <td className={SCHEDULE_CELL}>
-                            {(() => {
-                              if (!n.taskId) {
-                                return <span className="tabular-nums text-slate-400">—</span>
-                              }
-                              const shown = displayTotalPrice(
-                                n.taskId,
-                                n.task?.quantity ?? n.task?.schedule_quantity ?? null,
-                                n.task?.unit_price
-                              )
-                              return (
-                                <span
-                                  className={`inline-flex w-full items-center justify-center rounded border px-1 py-0.5 text-[10px] tabular-nums ${
-                                    shown.isParent
-                                      ? 'border-sky-200 bg-sky-50 font-semibold text-sky-950'
-                                      : 'border-slate-200 bg-slate-50 text-slate-800'
-                                  }`}
-                                  title={shown.help}
-                                >
-                                  {shown.value}
-                                </span>
                               )
                             })()}
                           </td>
@@ -3029,6 +3145,9 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                     <option value="true">بله</option>
                                   </select>
                                 ) : field.type === 'contractor' ? (
+                                  isScheduleHeader(n) ? (
+                                    <span className="text-slate-400">—</span>
+                                  ) : (
                                   <select
                                     value={String(value ?? '')}
                                     disabled={savingExtraCell === cellKey}
@@ -3048,6 +3167,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                       </option>
                                     ))}
                                   </select>
+                                  )
                                 ) : field.type === 'date' ? (
                                   <CompactScheduleDateField
                                     valueIso={value == null ? null : String(value)}
@@ -3123,12 +3243,15 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                   return (
                     <FragmentRows key={`p-${p.id}`}>
                       <tr
-                        onClick={() =>
+                        onClick={() => {
+                          if (p.wbs && applyPredLinkFromWbs(p.wbs, { kind: 'package', id: p.id })) {
+                            return
+                          }
                           setSelected({ kind: 'package', id: p.id, name: p.name, pkg: p })
-                        }
+                        }}
                         className={`group cursor-pointer border-b border-slate-300 hover:bg-emerald-50/50 ${groupFrameClass} ${
                           isSel ? 'bg-emerald-50' : 'bg-white'
-                        }`}
+                        } ${predLinkFor && !(predLinkFor.kind === 'package' && predLinkFor.id === p.id) ? 'ring-1 ring-sky-300' : ''}`}
                       >
                         <td
                           className={`${SCHEDULE_STICKY_WBS_CELL} font-mono text-[11px] tabular-nums text-emerald-800 text-center group-hover:bg-emerald-50/50 ${
@@ -3240,7 +3363,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                           {canEditPermission ? (
                             <input
                               dir="ltr"
-                              className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] text-center font-mono"
+                              className={cn(
+                                'w-full rounded border bg-white px-1 py-0.5 text-[10px] text-center font-mono',
+                                predLinkFor?.kind === 'package' && predLinkFor.id === p.id
+                                  ? 'border-sky-500 ring-1 ring-sky-300'
+                                  : 'border-slate-200'
+                              )}
                               value={
                                 isRowEditing
                                   ? e.predecessorLabel
@@ -3252,8 +3380,16 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 saving ||
                                 savingExtraCell === `pkg:${p.id}:pred-float`
                               }
-                              title="پیش‌نیاز — مثال: 3FS+4d یا 4.1FS, 5SS"
-                              onClick={(ev) => ev.stopPropagation()}
+                              title="کلیک کنید، بعد روی پیش‌نیاز بزنید"
+                              onClick={(ev) => {
+                                ev.stopPropagation()
+                                setPredLinkFor((current) =>
+                                  current?.kind === 'package' && current.id === p.id
+                                    ? null
+                                    : { kind: 'package', id: p.id }
+                                )
+                              }}
+                              onFocus={() => setPredLinkFor({ kind: 'package', id: p.id })}
                               onChange={(ev) => {
                                 if (isRowEditing) {
                                   setEditField(p.id, p, {
@@ -3279,7 +3415,14 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                           )}
                         </td>
                         <td className={`${SCHEDULE_CELL} text-[11px] text-slate-500 tabular-nums leading-tight`}>
-                          {isRowEditing ? (
+                          {p.children.length > 0 ? (
+                            <ScheduleDatePair
+                              startIso={envelopeForPackage(p).start}
+                              finishIso={envelopeForPackage(p).finish}
+                              calendar={calendar}
+                              bold
+                            />
+                          ) : isRowEditing ? (
                             <CompactJalaliDateRange
                               startIso={e.startDate || null}
                               finishIso={e.finishDate || null}
@@ -3331,7 +3474,11 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               }}
                             />
                           ) : (
-                            formatActivityDateShort(row.startDate, row.finishDate, calendar)
+                            <ScheduleDatePair
+                              startIso={row.startDate}
+                              finishIso={row.finishDate}
+                              calendar={calendar}
+                            />
                           )}
                         </td>
                         <td className={`${SCHEDULE_CELL} text-center`}>
@@ -3381,6 +3528,9 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                           )}
                         </td>
                         <td className={SCHEDULE_CELL}>
+                          {p.children.length > 0 ? (
+                            <span className="text-slate-400">—</span>
+                          ) : (
                           <div
                             className="flex items-center gap-1"
                             onClick={(event) => event.stopPropagation()}
@@ -3428,28 +3578,6 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               </span>
                             )}
                             <select
-                              className="w-[46px] shrink-0 rounded border border-slate-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
-                              value={isRowEditing ? e.uom : p.uom}
-                              disabled={
-                                readOnly || savingExtraCell === `pkg:${p.id}:uom`
-                              }
-                              title="واحد"
-                              onChange={(event) => {
-                                const value = event.target.value
-                                if (isRowEditing) {
-                                  setEditField(p.id, p, { uom: value })
-                                } else {
-                                  void savePackageUom(p, value)
-                                }
-                              }}
-                            >
-                              {WORKSHOP_UOMS.map((u) => (
-                                <option key={u} value={u}>
-                                  {u}
-                                </option>
-                              ))}
-                            </select>
-                            <select
                               className="w-[52px] shrink-0 rounded border border-slate-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
                               value={
                                 isRowEditing ? e.quantityCertainty : p.quantityCertainty
@@ -3471,23 +3599,64 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               <option value="قطعی">قطعی</option>
                             </select>
                           </div>
+                          )}
                         </td>
                         <td className={SCHEDULE_CELL}>
-                          {(() => {
-                            const shown = displayUnitPrice(p.id, p.unitPrice)
-                            if (shown.isParent) {
+                          {p.children.length > 0 ? (
+                            <span className="text-slate-400">—</span>
+                          ) : (
+                            <select
+                              className="w-full rounded border border-slate-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
+                              value={isRowEditing ? e.uom : p.uom}
+                              disabled={
+                                readOnly || savingExtraCell === `pkg:${p.id}:uom`
+                              }
+                              title="واحد"
+                              onClick={(event) => event.stopPropagation()}
+                              onChange={(event) => {
+                                const value = event.target.value
+                                if (isRowEditing) {
+                                  setEditField(p.id, p, { uom: value })
+                                } else {
+                                  void savePackageUom(p, value)
+                                }
+                              }}
+                            >
+                              {WORKSHOP_UOMS.map((u) => (
+                                <option key={u} value={u}>
+                                  {u}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </td>
+                        <td className={SCHEDULE_CELL}>
+                          {p.children.length > 0 ? (
+                            <span className="text-slate-400">—</span>
+                          ) : (
+                            (() => {
+                              const qty = isRowEditing ? Number(e.quantity) : p.quantity
+                              const unitPrice = isRowEditing
+                                ? Number(e.unitPrice)
+                                : p.unitPrice
+                              const shown = displayTotalPrice(p.id, qty, unitPrice)
                               return (
                                 <span
-                                  className="inline-flex w-full items-center justify-center gap-0.5 rounded border border-sky-200 bg-sky-50 px-1 py-0.5 text-xs font-semibold tabular-nums text-sky-950"
-                                  title={
-                                    shown.help ??
-                                    'جمع خودکار مقدار×قیمت واحد زیرشاخه‌ها'
-                                  }
+                                  className="inline-flex w-full items-center justify-center rounded border border-slate-200 bg-slate-50 px-1 py-0.5 text-xs tabular-nums text-slate-800"
+                                  title={shown.help}
                                 >
                                   {shown.value}
                                 </span>
                               )
+                            })()
+                          )}
+                        </td>
+                        <td className={SCHEDULE_CELL}>
+                          {(() => {
+                            if (p.children.length > 0) {
+                              return <span className="text-slate-400">—</span>
                             }
+                            const shown = displayUnitPrice(p.id, p.unitPrice)
                             if (canEditPermission) {
                               return (
                                 <input
@@ -3563,27 +3732,6 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               )
                             }
                             return <span className="tabular-nums">{shown.value}</span>
-                          })()}
-                        </td>
-                        <td className={SCHEDULE_CELL}>
-                          {(() => {
-                            const qty = isRowEditing ? Number(e.quantity) : p.quantity
-                            const unitPrice = isRowEditing
-                              ? Number(e.unitPrice)
-                              : p.unitPrice
-                            const shown = displayTotalPrice(p.id, qty, unitPrice)
-                            return (
-                              <span
-                                className={`inline-flex w-full items-center justify-center rounded border px-1 py-0.5 text-xs tabular-nums ${
-                                  shown.isParent
-                                    ? 'border-sky-200 bg-sky-50 font-semibold text-sky-950'
-                                    : 'border-slate-200 bg-slate-50 text-slate-800'
-                                }`}
-                                title={shown.help}
-                              >
-                                {shown.value}
-                              </span>
-                            )
                           })()}
                         </td>
                         <td className={SCHEDULE_CELL}>
@@ -3664,6 +3812,9 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                     : 'خودکار'}
                                 </span>
                               ) : field.type === 'contractor' ? (
+                                p.children.length > 0 ? (
+                                  <span className="text-slate-400">—</span>
+                                ) : (
                                 <select
                                   value={String(value ?? '')}
                                   disabled={!canEditPermission || savingExtraCell === cellKey}
@@ -3681,6 +3832,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                     </option>
                                   ))}
                                 </select>
+                                )
                               ) : field.type === 'boolean' ? (
                                 <select
                                   value={value ? 'true' : 'false'}
@@ -3837,19 +3989,20 @@ function InlineCreateRow({
         />
       </td>
       <td className={SCHEDULE_CELL}>
-        <div className="flex gap-1" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
           <CompactScheduleDateField
             valueIso={draft.startDate || null}
             calendar={calendar}
             disabled={saving}
-            className="h-7 min-w-0 w-1/2 rounded border border-sky-200 bg-white px-1 text-[9px]"
+            className="h-7 min-w-0 flex-1 rounded border border-sky-200 bg-white px-1 text-[9px]"
             onCommit={(iso) => setDraft({ ...draft, startDate: iso ?? '' })}
           />
+          <span className="shrink-0 text-[9px] text-slate-400">–</span>
           <CompactScheduleDateField
             valueIso={draft.finishDate || null}
             calendar={calendar}
             disabled={saving}
-            className="h-7 min-w-0 w-1/2 rounded border border-sky-200 bg-white px-1 text-[9px]"
+            className="h-7 min-w-0 flex-1 rounded border border-sky-200 bg-white px-1 text-[9px]"
             onCommit={(iso) => setDraft({ ...draft, finishDate: iso ?? '' })}
           />
         </div>
@@ -3882,18 +4035,6 @@ function InlineCreateRow({
             onChange={(e) => setDraft({ ...draft, quantity: e.target.value })}
           />
           <select
-            className="w-[46px] shrink-0 rounded border border-sky-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
-            value={draft.uom}
-            title="واحد"
-            onChange={(e) => setDraft({ ...draft, uom: e.target.value })}
-          >
-            {WORKSHOP_UOMS.map((u) => (
-              <option key={u} value={u}>
-                {u}
-              </option>
-            ))}
-          </select>
-          <select
             className="w-[50px] shrink-0 rounded border border-sky-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
             value={draft.quantityCertainty}
             onChange={(event) =>
@@ -3909,15 +4050,18 @@ function InlineCreateRow({
         </div>
       </td>
       <td className={SCHEDULE_CELL}>
-        <input
-          type="number"
-          min={0}
-          step="1"
-          className="w-full rounded border border-sky-200 bg-white px-1 py-0.5 text-center text-xs"
-          placeholder="قیمت واحد"
-          value={draft.unitPrice}
-          onChange={(event) => setDraft({ ...draft, unitPrice: event.target.value })}
-        />
+        <select
+          className="w-full rounded border border-sky-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
+          value={draft.uom}
+          title="واحد"
+          onChange={(e) => setDraft({ ...draft, uom: e.target.value })}
+        >
+          {WORKSHOP_UOMS.map((u) => (
+            <option key={u} value={u}>
+              {u}
+            </option>
+          ))}
+        </select>
       </td>
       <td className={SCHEDULE_CELL}>
         <span
@@ -3929,6 +4073,17 @@ function InlineCreateRow({
             draft.unitPrice === '' ? null : Number(draft.unitPrice)
           )}
         </span>
+      </td>
+      <td className={SCHEDULE_CELL}>
+        <input
+          type="number"
+          min={0}
+          step="1"
+          className="w-full rounded border border-sky-200 bg-white px-1 py-0.5 text-center text-xs"
+          placeholder="قیمت واحد"
+          value={draft.unitPrice}
+          onChange={(event) => setDraft({ ...draft, unitPrice: event.target.value })}
+        />
       </td>
       <td className={SCHEDULE_CELL}>
         <input
@@ -4114,6 +4269,35 @@ function CompactScheduleDateField({
       }}
       onClick={(event) => event.stopPropagation()}
     />
+  )
+}
+
+function ScheduleDatePair({
+  startIso,
+  finishIso,
+  calendar,
+  bold,
+}: {
+  startIso: string | null
+  finishIso: string | null
+  calendar: 'jalali' | 'gregorian'
+  bold?: boolean
+}) {
+  return (
+    <div
+      className={cn(
+        'flex w-full items-center justify-center gap-0.5 tabular-nums',
+        bold ? 'font-bold text-slate-900' : 'text-slate-600'
+      )}
+    >
+      <span className="min-w-0 flex-1 text-center">
+        {startIso ? formatScheduleDate(startIso, calendar) : '—'}
+      </span>
+      <span className="shrink-0 text-slate-400">–</span>
+      <span className="min-w-0 flex-1 text-center">
+        {finishIso ? formatScheduleDate(finishIso, calendar) : '—'}
+      </span>
+    </div>
   )
 }
 

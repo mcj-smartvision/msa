@@ -5,8 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { ScheduleWorkspace } from '@/components/workshop/schedule-workspace'
 import { WeightDeductionWorkspace } from '@/components/workshop/weight-deduction-workspace'
 import { ScheduleGanttWorkspace } from '@/components/schedule/schedule-gantt-workspace'
-import { ScheduleActiveAlertsPanel } from '@/components/schedule/schedule-active-alerts-panel'
-import { MilestoneTrendPanel } from '@/components/schedule/milestone-trend-panel'
+import { DependencyNetworkWorkspace } from '@/components/workshop/dependency-network-workspace'
 import { ApprovalsWorkspace } from '@/components/workshop/approvals-workspace'
 import { PreparedWorkspace } from '@/components/workshop/prepared-workspace'
 import { cn } from '@/lib/utils'
@@ -15,6 +14,7 @@ const TABS = [
   { id: 'schedule', label: 'برنامه' },
   { id: 'weight-deduction', label: 'وزن کسر شده' },
   { id: 'gantt', label: 'گانت' },
+  { id: 'dependencies', label: 'وابستگی‌ها' },
   { id: 'approvals', label: 'تأییدات' },
   { id: 'prepared', label: 'لیست‌ها' },
 ] as const
@@ -37,6 +37,7 @@ export function WorkshopOpsPanel() {
           t.id === 'schedule' ||
           t.id === 'weight-deduction' ||
           t.id === 'gantt' ||
+          t.id === 'dependencies' ||
           t.id === 'prepared'
       )
     : TABS
@@ -73,13 +74,6 @@ export function WorkshopOpsPanel() {
           ? 'نمای مشاهده — ویرایش زیرشاخه و برنامه فقط برای دفتر فنی است.'
           : 'برنامه MSP را ببینید، زیرشاخه تعریف کنید، مقدار وارد کنید و به امروز بفرستید.'}
       </p>
-
-      {projectId ? (
-        <div className="space-y-3">
-          <ScheduleActiveAlertsPanel projectId={projectId} />
-          <MilestoneTrendPanel projectId={projectId} />
-        </div>
-      ) : null}
 
       <nav className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
         {visibleTabs.map((tab) => {
@@ -120,6 +114,12 @@ export function WorkshopOpsPanel() {
         aria-hidden={activeTab !== 'gantt'}
       >
         <ScheduleGanttWorkspace />
+      </div>
+      <div
+        className={activeTab === 'dependencies' ? 'block' : 'hidden'}
+        aria-hidden={activeTab !== 'dependencies'}
+      >
+        <DependencyNetworkWorkspace />
       </div>
       {activeTab === 'approvals' && !asSupervisor ? (
         <ApprovalsWorkspace showBanner={!embeddedInTechnicalOffice} />

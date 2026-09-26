@@ -44,9 +44,9 @@ export function canEditWorkshopPackageRow(
 
 export function canDeletePackage(
   approvalStatus: ApprovalStatus | null | undefined,
-  origin?: string | null
+  _origin?: string | null
 ): boolean {
-  return canEditWorkshopPackageRow(approvalStatus, origin)
+  return (approvalStatus ?? 'draft') !== 'change_requested'
 }
 
 export function canReviseChangeRequest(approvalStatus: ApprovalStatus | null | undefined): boolean {

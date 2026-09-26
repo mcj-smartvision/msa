@@ -16,16 +16,8 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react'
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 import { MonthColumnHeader } from '@/components/finance/month-column-header'
+import { TOMAN_SCALE } from '@/lib/finance/live-workshop-cost'
 import {
   alignAmountsToScheduleMonths,
   parseOverheadMonthLabel,
@@ -157,23 +149,23 @@ function toMonthString(value: unknown): string {
 }
 
 function monthToNumber(value: string): number {
-  const t = value.trim()
+  const t = value.trim().replace(/,/g, '')
   if (t === '' || t === '.') return 0
   const n = Number(t)
   return Number.isFinite(n) ? n : 0
 }
 
 function normalizeMonthOnBlur(raw: string): string {
-  const trimmed = raw.trim()
+  const trimmed = raw.trim().replace(/,/g, '')
   if (trimmed === '' || trimmed === '.') return '0'
   if (!/^\d*\.?\d*$/.test(trimmed)) return '0'
-  // Keep meaningful decimals like 0.5; strip pointless leading zeros from integers
-  if (trimmed.includes('.')) {
-    const n = Number(trimmed)
-    return Number.isFinite(n) ? String(n) : '0'
+  const n = Number(trimmed)
+  if (!Number.isFinite(n)) return '0'
+  const million = n >= 1000 ? n / TOMAN_SCALE : n
+  if (!Number.isInteger(million)) {
+    return String(million)
   }
-  const stripped = trimmed.replace(/^0+(?=\d)/, '')
-  return stripped === '' ? '0' : stripped
+  return String(Math.round(million)).replace(/^0+(?=\d)/, '') || '0'
 }
 
 function padMonths(months: Array<string | number> | undefined, count: number): string[] {
@@ -187,11 +179,10 @@ function sumMonthStrings(values: string[]): number {
   return values.reduce((a, b) => a + monthToNumber(b), 0)
 }
 
-/** Input/column width in CSS ch units from digit string length. */
+/** Input/column width in CSS ch units from displayed toman string. */
 function widthFromDigits(text: string, padding = 2): number {
   const visible = text.trim() === '' ? '0' : text
-  const len = Math.max(1, visible.replace(/[^\d.]/g, '').length || visible.length)
-  return Math.max(4, len + padding)
+  return Math.max(8, visible.length + padding)
 }
 
 function cloneCategories(
@@ -386,14 +377,17 @@ export function loadOverheadMonthTotals(
   return { labels: stored.labels, totals, customized: stored.customized }
 }
 
-function formatNum(value: number, fa: boolean, digits = 1): string {
-  const rounded =
-    digits === 0
-      ? Math.round(value)
-      : Math.round(value * 10 ** digits) / 10 ** digits
-  return rounded.toLocaleString(fa ? 'fa-IR' : 'en-US', {
-    minimumFractionDigits: Number.isInteger(rounded) ? 0 : digits,
-    maximumFractionDigits: digits,
+function formatToman(million: number): string {
+  return Math.round(million * TOMAN_SCALE).toLocaleString('en-US', {
+    maximumFractionDigits: 0,
+  })
+}
+
+function formatPct(value: number): string {
+  const rounded = Math.round(value * 10) / 10
+  return rounded.toLocaleString('en-US', {
+    minimumFractionDigits: Number.isInteger(rounded) ? 0 : 1,
+    maximumFractionDigits: 1,
   })
 }
 
@@ -433,6 +427,7 @@ export function OverheadCostsMatrix({
   const [dirty, setDirty] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [scheduleReady, setScheduleReady] = useState(false)
+  const [editingCell, setEditingCell] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -510,19 +505,19 @@ export function OverheadCostsMatrix({
 
   const monthColCh = useMemo(() => {
     return monthLabels.map((_, i) => {
-      let maxCh = 4
+      let maxCh = 8
       for (const r of rows) {
-        maxCh = Math.max(maxCh, widthFromDigits(r.months[i] ?? '0', 3))
+        maxCh = Math.max(maxCh, widthFromDigits(formatToman(monthToNumber(r.months[i] ?? '0')), 2))
       }
-      maxCh = Math.max(maxCh, widthFromDigits(String(monthTotals[i] ?? 0), 3))
+      maxCh = Math.max(maxCh, widthFromDigits(formatToman(monthTotals[i] ?? 0), 2))
       return maxCh
     })
   }, [monthLabels, monthTotals, rows])
 
   const totalColCh = useMemo(() => {
-    let maxCh = 5
-    for (const r of rows) maxCh = Math.max(maxCh, widthFromDigits(String(r.total), 3))
-    maxCh = Math.max(maxCh, widthFromDigits(String(grandTotal), 3))
+    let maxCh = 10
+    for (const r of rows) maxCh = Math.max(maxCh, widthFromDigits(formatToman(r.total), 2))
+    maxCh = Math.max(maxCh, widthFromDigits(formatToman(grandTotal), 2))
     return maxCh
   }, [grandTotal, rows])
 
@@ -763,15 +758,6 @@ export function OverheadCostsMatrix({
 
   const periodLabel = fa ? 'جمع' : 'Total'
 
-  const chartData = useMemo(
-    () =>
-      monthLabels.map((label, i) => ({
-        month: label,
-        cost: monthTotals[i] ?? 0,
-      })),
-    [monthLabels, monthTotals]
-  )
-
   if (!scheduleReady) {
     return (
       <p className="flex items-center gap-2 text-sm text-slate-500">
@@ -783,94 +769,24 @@ export function OverheadCostsMatrix({
 
   return (
     <div className={cn('space-y-4', className)} dir={fa ? 'rtl' : 'ltr'}>
-      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-        <div className="mb-2 flex items-baseline justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-800">
-            {fa ? 'نمودار هزینه ماهانه' : 'Monthly cost chart'}
-          </h3>
-          <p className="text-[10px] text-slate-500">
-            {fa ? 'روی هر نقطه نگه دارید تا مبلغ نمایش داده شود' : 'Hover a point to see the amount'}
-          </p>
-        </div>
-        <div className="h-52 w-full sm:h-56" dir="ltr">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis
-                dataKey="month"
-                tick={{ fontSize: 11, fill: '#475569' }}
-                tickMargin={8}
-                interval={0}
-              />
-              <YAxis
-                tick={{ fontSize: 10, fill: '#64748b' }}
-                tickFormatter={(v: number) => formatNum(Number(v), fa, 0)}
-                width={48}
-              />
-              <Tooltip
-                cursor={{ stroke: '#fb923c', strokeWidth: 1, strokeDasharray: '4 4' }}
-                content={({ active, payload, label }) => {
-                  if (!active || !payload?.length) return null
-                  const value = Number(payload[0]?.value ?? 0)
-                  return (
-                    <div
-                      className="rounded-lg border border-orange-200 bg-white px-3 py-2 text-xs shadow-lg"
-                      dir={fa ? 'rtl' : 'ltr'}
-                    >
-                      <p className="font-semibold text-slate-800">{String(label)}</p>
-                      <p className="mt-1 tabular-nums text-orange-700">
-                        {fa ? 'هزینه:' : 'Cost:'}{' '}
-                        <span className="font-bold">
-                          {formatNum(value, fa, Number.isInteger(value) ? 0 : 1)}
-                        </span>{' '}
-                        {fa ? 'م.ت' : 'M Toman'}
-                      </p>
-                    </div>
-                  )
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="cost"
-                name={fa ? 'هزینه ماهانه' : 'Monthly cost'}
-                stroke="#ea580c"
-                strokeWidth={2.5}
-                dot={{
-                  r: 5,
-                  fill: '#ea580c',
-                  stroke: '#fff',
-                  strokeWidth: 2,
-                }}
-                activeDot={{
-                  r: 7,
-                  fill: '#c2410c',
-                  stroke: '#fff',
-                  strokeWidth: 2,
-                }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
       <div className="grid gap-3 sm:grid-cols-3">
         <MetricCard
           icon={<Wallet className="h-4 w-4" />}
           label={fa ? 'جمع کل هزینه‌ها' : 'Grand total'}
-          value={`${formatNum(grandTotal, fa)} ${fa ? 'م.ت' : 'M Toman'}`}
+          value={`${formatToman(grandTotal)} تومان`}
           accent="slate"
         />
         <MetricCard
           icon={<Calculator className="h-4 w-4" />}
           label={fa ? 'میانگین ماهانه' : 'Monthly average'}
-          value={`${formatNum(overallAverage, fa)} ${fa ? 'م.ت' : 'M Toman'}`}
+          value={`${formatToman(overallAverage)} تومان`}
           accent="sky"
         />
         <MetricCard
           icon={<TrendingUp className="h-4 w-4" />}
           label={fa ? 'بیشترین سرفصل' : 'Highest category'}
           value={`${fa ? maxCategory.titleFa : maxCategory.titleEn}`}
-          hint={`${formatNum(maxCategory.pct, fa)}٪`}
+          hint={`${formatPct(maxCategory.pct)}%`}
           accent="amber"
         />
       </div>
@@ -885,8 +801,8 @@ export function OverheadCostsMatrix({
             </h3>
             <p className="mt-0.5 text-[10px] text-slate-500">
               {fa
-                ? `مبالغ به میلیون تومان · کنار هر ماه با + ستون قبل یا بعد بگذارید و نام ماه را بنویسید`
-                : `Use + beside a month to insert a column and type its name`}
+                ? `نمایش به تومان با رقم انگلیسی و کاما · در سلول عدد کوتاه بنویسید؛ ۲۲ یعنی 22,000,000 تومان`
+                : `Shown in Toman with English digits. Type 22 in a cell for 22,000,000 Toman`}
             </p>
             {message ? (
               <p className="mt-1 text-[10px] font-medium text-emerald-700">{message}</p>
@@ -1078,8 +994,11 @@ export function OverheadCostsMatrix({
                         i > 0 ? monthToNumber(row.months[i - 1] ?? '0') : null
                       const roseOverPrev =
                         previous != null && current > previous
-                      const ownCh = widthFromDigits(text, 3)
-                      const colCh = Math.max(monthColCh[i] ?? 4, ownCh)
+                      const cellKey = `${row.code}-${i}`
+                      const editing = editingCell === cellKey
+                      const display = editing ? text : formatToman(current)
+                      const ownCh = widthFromDigits(display, 2)
+                      const colCh = Math.max(monthColCh[i] ?? 8, ownCh)
                       return (
                         <td
                           key={`${row.code}-${i}`}
@@ -1101,14 +1020,18 @@ export function OverheadCostsMatrix({
                             type="text"
                             inputMode="decimal"
                             dir="ltr"
-                            value={text}
+                            value={display}
                             onChange={(event) =>
                               updateMonth(row.code, i, event.target.value)
                             }
-                            onBlur={(event) =>
+                            onBlur={(event) => {
                               commitMonth(row.code, i, event.target.value)
-                            }
-                            onFocus={(event) => event.currentTarget.select()}
+                              setEditingCell(null)
+                            }}
+                            onFocus={(event) => {
+                              setEditingCell(cellKey)
+                              event.currentTarget.select()
+                            }}
                             style={{
                               width: `calc(${colCh}ch + 12px)`,
                               minWidth: `calc(${ownCh}ch + 12px)`,
@@ -1132,7 +1055,7 @@ export function OverheadCostsMatrix({
                       style={{ minWidth: `calc(${totalColCh}ch + 12px)` }}
                       title={String(row.total)}
                     >
-                      {formatNum(row.total, fa, Number.isInteger(row.total) ? 0 : 1)}
+                      {formatToman(row.total)}
                     </td>
                     <td className="px-0.5 py-0.5 text-center">
                       <button
@@ -1173,14 +1096,14 @@ export function OverheadCostsMatrix({
                     className="px-0.5 py-1.5 text-center text-[11px] font-semibold tabular-nums whitespace-nowrap"
                     style={{ minWidth: `calc(${monthColCh[i]}ch + 12px)` }}
                   >
-                    {formatNum(v, fa, Number.isInteger(v) ? 0 : 1)}
+                    {formatToman(v)}
                   </td>
                 ))}
                 <td
                   className="px-1 py-1.5 text-center text-[11px] font-bold tabular-nums text-orange-300 whitespace-nowrap"
                   style={{ minWidth: `calc(${totalColCh}ch + 12px)` }}
                 >
-                  {formatNum(grandTotal, fa, Number.isInteger(grandTotal) ? 0 : 1)}
+                  {formatToman(grandTotal)}
                 </td>
                 <td className="bg-slate-800" />
               </tr>
