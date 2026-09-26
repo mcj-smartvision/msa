@@ -8,6 +8,7 @@ import { ScheduleGanttWorkspace } from '@/components/schedule/schedule-gantt-wor
 import { DependencyNetworkWorkspace } from '@/components/workshop/dependency-network-workspace'
 import { ApprovalsWorkspace } from '@/components/workshop/approvals-workspace'
 import { PreparedWorkspace } from '@/components/workshop/prepared-workspace'
+import { RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const TABS = [
@@ -72,10 +73,10 @@ export function WorkshopOpsPanel() {
       <p className="text-sm text-slate-600 leading-relaxed">
         {readOnly
           ? 'نمای مشاهده — ویرایش زیرشاخه و برنامه فقط برای دفتر فنی است.'
-          : 'برنامه MSP را ببینید، زیرشاخه تعریف کنید، مقدار وارد کنید و به امروز بفرستید.'}
+          : 'برنامه MSP را ببینید، زیرشاخه تعریف کنید و با به‌روزرسانی ثبت کنید.'}
       </p>
 
-      <nav className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+      <nav className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-slate-200 pb-3">
         {visibleTabs.map((tab) => {
           const active = activeTab === tab.id
           return (
@@ -94,6 +95,14 @@ export function WorkshopOpsPanel() {
             </button>
           )
         })}
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event('workshop-refresh'))}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-900 hover:bg-emerald-100"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          به‌روزرسانی
+        </button>
       </nav>
 
       {/* Keep schedule, weight deduction, and gantt mounted so sync updates the hidden view */}

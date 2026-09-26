@@ -42,6 +42,43 @@ export type ParsedPredecessorLink = {
 /**
  * Parse editable پیش‌نیاز text: "3FS+4d, 4.1FS, 5SS-1d"
  */
+const PRED_RELATION_CYCLE: TaskRelationType[] = ['FS', 'SS', 'FF', 'SF']
+
+export function formatPredecessorLabel(links: ParsedPredecessorLink[]): string {
+  return links
+    .map((link) =>
+      formatPredLabel(link.wbs, link.relation, link.lagDays * DEFAULT_MSP_MINUTES_PER_DAY)
+    )
+    .join(', ')
+}
+
+/**
+ * MSP-style click-to-link: first click adds FS; later clicks on the same WBS
+ * cycle FS → SS → FF → SF and then remove.
+ */
+export function upsertPredecessorLink(
+  current: string,
+  wbs: string,
+  relation: TaskRelationType = 'FS'
+): string {
+  const code = wbs.trim()
+  if (!code) return current.trim()
+  const links = parsePredecessorLinks(current)
+  const index = links.findIndex((link) => link.wbs === code)
+  if (index < 0) {
+    return formatPredecessorLabel([...links, { wbs: code, relation, lagDays: 0 }])
+  }
+  const currentType = links[index]!.relation
+  const typeIndex = PRED_RELATION_CYCLE.indexOf(currentType)
+  if (typeIndex < 0 || typeIndex === PRED_RELATION_CYCLE.length - 1) {
+    return formatPredecessorLabel(links.filter((link) => link.wbs !== code))
+  }
+  const nextType = PRED_RELATION_CYCLE[typeIndex + 1]!
+  return formatPredecessorLabel(
+    links.map((link, i) => (i === index ? { ...link, relation: nextType } : link))
+  )
+}
+
 export function parsePredecessorLinks(
   label: string | null | undefined
 ): ParsedPredecessorLink[] {

@@ -17,6 +17,17 @@ export function compareWbs(a: string | null | undefined, b: string | null | unde
   return wbsSortKey(a).localeCompare(wbsSortKey(b))
 }
 
+/** True when `childWbs` is under `parentWbs` (4.1 / 4.1.2 under 4, not 40 under 4). */
+export function isWbsDescendant(
+  childWbs: string | null | undefined,
+  parentWbs: string | null | undefined
+): boolean {
+  const child = childWbs?.trim()
+  const parent = parentWbs?.trim()
+  if (!child || !parent) return false
+  return child.startsWith(`${parent}.`)
+}
+
 const EASTERN_DIGITS = /[۰-۹٠-٩]/g
 const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹'
 const ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩'

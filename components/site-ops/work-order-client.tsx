@@ -4,6 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useLocale } from '@/components/i18n/locale-provider'
 import { getSiteOpsMessages } from '@/lib/i18n/site-ops'
+import { QtyWithUom } from '@/components/workshop/uom-display'
 
 export function WorkOrderClient() {
   const { locale } = useLocale()
@@ -78,7 +79,12 @@ export function WorkOrderClient() {
           {String(plan?.status)}
         </p>
         <p className="text-sm text-slate-600">
-          {t.planned}: {String(wo.planned_quantity)} {String(task?.uom_json?.value ?? '')} /{' '}
+          {t.planned}:{' '}
+          <QtyWithUom
+            qty={String(wo.planned_quantity)}
+            uom={String(task?.uom_json?.value ?? '')}
+          />{' '}
+          /{' '}
           {String(wo.planned_person_days)} {t.personDays}
         </p>
       </div>

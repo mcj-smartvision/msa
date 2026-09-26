@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { approvalStatusFa } from '@/lib/workshop/approvals'
 import { PageHeader } from '@/components/admin/shared'
+import { QtyWithUom } from '@/components/workshop/uom-display'
 
 type PreparedItem = {
   id: string
@@ -76,6 +77,14 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
 
   useEffect(() => {
     void load()
+  }, [load])
+
+  useEffect(() => {
+    const onRefresh = () => {
+      void load()
+    }
+    window.addEventListener('workshop-refresh', onRefresh)
+    return () => window.removeEventListener('workshop-refresh', onRefresh)
   }, [load])
 
   useEffect(() => {
@@ -182,7 +191,7 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
                       </td>
                       <td className="px-3 py-2">{item.location ?? '—'}</td>
                       <td className="px-3 py-2 tabular-nums">
-                        {item.quantity} {item.uom}
+                        <QtyWithUom qty={item.quantity} uom={item.uom} />
                       </td>
                       <td className="px-3 py-2">{item.crew ?? '—'}</td>
                       <td className="px-3 py-2">
@@ -213,7 +222,7 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
                 <dl className="text-sm space-y-1 text-slate-700">
                   <div>محل: {selected.location ?? '—'}</div>
                   <div>
-                    مقدار: {selected.quantity} {selected.uom}
+                    مقدار: <QtyWithUom qty={selected.quantity} uom={selected.uom} />
                   </div>
                   <div>گروه: {selected.crew ?? '—'}</div>
                   {selected.note && <div>یادداشت دفتر فنی: {selected.note}</div>}

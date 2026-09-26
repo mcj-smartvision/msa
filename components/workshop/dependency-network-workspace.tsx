@@ -46,6 +46,15 @@ export function DependencyNetworkWorkspace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, active])
 
+  useEffect(() => {
+    const onRefresh = () => {
+      void load()
+    }
+    window.addEventListener('workshop-refresh', onRefresh)
+    return () => window.removeEventListener('workshop-refresh', onRefresh)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId])
+
   const layout = useMemo(
     () => (network ? layoutDependencyNetwork(network) : null),
     [network]

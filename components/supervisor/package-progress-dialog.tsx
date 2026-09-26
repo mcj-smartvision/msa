@@ -9,6 +9,7 @@ import { ModalOverlay } from '@/components/supervisor/modal-overlay'
 import type { TodayActivity } from '@/lib/supervisor/types'
 import type { SiteSupervisorMessages } from '@/lib/i18n/site-supervisor'
 import { VoiceToTextButton } from '@/components/shared/voice-to-text-button'
+import { QtyWithUom } from '@/components/workshop/uom-display'
 
 interface PackageProgressDialogProps {
   open: boolean
@@ -73,10 +74,7 @@ export function PackageProgressDialog({
     }
   }
 
-  const qtyLabel =
-    activity.quantity != null && activity.uom
-      ? `${activity.quantity} ${activity.uom}`
-      : null
+  const hasQty = activity.quantity != null && activity.uom
 
   return (
     <ModalOverlay
@@ -93,9 +91,10 @@ export function PackageProgressDialog({
               {labels.location}: {activity.location}
             </p>
           ) : null}
-          {qtyLabel ? (
-            <p className="text-xs text-muted-foreground">
-              {labels.totalQuantity}: {qtyLabel}
+          {hasQty ? (
+            <p className="flex items-center gap-1 text-xs text-muted-foreground">
+              {labels.totalQuantity}:{' '}
+              <QtyWithUom qty={activity.quantity} uom={activity.uom} />
             </p>
           ) : null}
           {activity.workshopNote ? (

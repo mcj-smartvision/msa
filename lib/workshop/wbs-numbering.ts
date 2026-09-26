@@ -1,5 +1,5 @@
 import type { ProjectTask } from '@/types/schedule'
-import { compareWbs, wbsDepth } from '@/lib/schedule/wbs-utils'
+import { compareWbs, isWbsDescendant, wbsDepth } from '@/lib/schedule/wbs-utils'
 import type { ScheduleTreeNode, WorkshopPackageNode } from './types'
 
 export function nextChildWbs(parentWbs: string | null, siblingCount: number): string {
@@ -105,6 +105,13 @@ export function flattenWorkshopSchedule(
   expanded: Record<string, boolean>
 ): FlatWorkshopRow[] {
   const rows: FlatWorkshopRowDraft[] = []
+  const collapsedWbs: string[] = []
+
+  function hiddenByCollapsedAncestor(wbs: string | null | undefined): boolean {
+    const code = wbs?.trim()
+    if (!code) return false
+    return collapsedWbs.some((parent) => code.startsWith(`${parent}.`))
+  }
 
   function walkPackages(
     pkgs: WorkshopPackageNode[],
@@ -131,27 +138,61 @@ export function flattenWorkshopSchedule(
     }
   }
 
-  for (const node of nodes) {
-    rows.push({
-      type: 'schedule',
-      node,
-      depth: node.depth,
-      wbs: node.wbs ?? '—',
-      startDate: node.startDate,
-      finishDate: node.finishDate,
-    })
-    if (expanded[node.id]) {
-      walkPackages(
-        node.packages,
-        node.depth + 1,
-        node.taskId ?? node.id,
-        node.startDate,
-        node.finishDate
-      )
+  function walkSchedule(list: ScheduleTreeNode[]) {
+    for (const node of list) {
+      if (hiddenByCollapsedAncestor(node.wbs)) continue
+      rows.push({
+        type: 'schedule',
+        node,
+        depth: node.depth,
+        wbs: node.wbs ?? '—',
+        startDate: node.startDate,
+        finishDate: node.finishDate,
+      })
+      const open = Boolean(expanded[node.id])
+      if (open) {
+        walkPackages(
+          node.packages,
+          node.depth + 1,
+          node.taskId ?? node.id,
+          node.startDate,
+          node.finishDate
+        )
+        if (node.children.length) walkSchedule(node.children)
+      } else if (node.wbs?.trim()) {
+        collapsedWbs.push(node.wbs.trim())
+      }
     }
   }
 
+  walkSchedule(nodes)
   return rows.map((r, i) => ({ ...r, rowNumber: i + 1 }))
+}
+
+function collectAllScheduleNodes(nodes: ScheduleTreeNode[]): ScheduleTreeNode[] {
+  const out: ScheduleTreeNode[] = []
+  const walk = (list: ScheduleTreeNode[]) => {
+    for (const n of list) {
+      out.push(n)
+      if (n.children.length) walk(n.children)
+    }
+  }
+  walk(nodes)
+  return out
+}
+
+/** Schedule rows that have WBS children or workshop packages — they get a collapse arrow. */
+export function scheduleExpandableIds(nodes: ScheduleTreeNode[]): Set<string> {
+  const all = collectAllScheduleNodes(nodes)
+  const ids = new Set<string>()
+  for (const n of all) {
+    if (n.packages.length > 0 || n.children.length > 0) ids.add(n.id)
+    if (!n.wbs) continue
+    if (all.some((other) => other.id !== n.id && isWbsDescendant(other.wbs, n.wbs))) {
+      ids.add(n.id)
+    }
+  }
+  return ids
 }
 
 export function collectScheduleTaskNodes(nodes: ScheduleTreeNode[]): ScheduleTreeNode[] {
@@ -233,15 +274,15 @@ export function findPackagePath(
 
 export function defaultScheduleExpanded(nodes: ScheduleTreeNode[]): Record<string, boolean> {
   const exp: Record<string, boolean> = {}
-  for (const n of nodes) {
-    if (n.depth <= 1 || n.packages.length > 0) {
-      exp[n.id] = true
-    }
-    if (n.children.length) {
-      for (const child of n.children) {
-        if (child.depth <= 1 || child.packages.length > 0) exp[child.id] = true
+  for (const id of scheduleExpandableIds(nodes)) exp[id] = true
+  const walkPkgs = (pkgs: WorkshopPackageNode[]) => {
+    for (const pkg of pkgs) {
+      if (pkg.children.length > 0) {
+        exp[`pkg:${pkg.id}`] = true
+        walkPkgs(pkg.children)
       }
     }
   }
+  for (const n of collectAllScheduleNodes(nodes)) walkPkgs(n.packages)
   return exp
 }

@@ -103,6 +103,14 @@ export function ScheduleGanttWorkspace() {
     void load()
   }, [load])
 
+  useEffect(() => {
+    const onRefresh = () => {
+      void load()
+    }
+    window.addEventListener('workshop-refresh', onRefresh)
+    return () => window.removeEventListener('workshop-refresh', onRefresh)
+  }, [load])
+
   useScheduleViewSync(
     projectId,
     () => {

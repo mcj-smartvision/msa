@@ -695,6 +695,21 @@ export async function createPackage(supabase: SupabaseClient, input: CreatePacka
     (input.scheduleFields as { predecessors?: string } | undefined)?.predecessors ?? ''
   ).trim()
   let inheritedPreds = incomingPreds
+  if (!inheritedPreds && input.parentPackageId) {
+    const { data: parentPkg } = await supabase
+      .from('workshop_packages')
+      .select('schedule_fields')
+      .eq('id', input.parentPackageId)
+      .eq('project_id', input.projectId)
+      .maybeSingle()
+    const parentFields =
+      parentPkg?.schedule_fields && typeof parentPkg.schedule_fields === 'object'
+        ? (parentPkg.schedule_fields as Record<string, unknown>)
+        : {}
+    inheritedPreds = String(
+      parentFields.predecessors ?? parentFields.predecessor_label ?? ''
+    ).trim()
+  }
   if (!inheritedPreds && input.parentScheduleNodeId) {
     try {
       const labels = await fetchTaskPredecessorLabels(supabase, input.projectId)

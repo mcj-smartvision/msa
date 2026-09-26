@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { PageHeader } from '@/components/admin/shared'
 import { VoiceToTextButton } from '@/components/shared/voice-to-text-button'
+import { QtyWithUom } from '@/components/workshop/uom-display'
 
 export function TodayWorkspace({ showBanner = true }: { showBanner?: boolean }) {
   const projectId = useSearchParams().get('projectId') ?? ''
@@ -89,7 +90,8 @@ export function TodayWorkspace({ showBanner = true }: { showBanner?: boolean }) 
                 <div>
                   <p className="font-semibold">{pkg?.name}</p>
                   <p className="text-xs text-slate-500 mt-1">
-                    محل: {pkg?.location ?? '—'} · برنامه امروز: {String(item.planned_qty)} {pkg?.uom}
+                    محل: {pkg?.location ?? '—'} · برنامه امروز:{' '}
+                    <QtyWithUom qty={String(item.planned_qty)} uom={typeof pkg?.uom === 'string' ? pkg.uom : null} />
                   </p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-3">

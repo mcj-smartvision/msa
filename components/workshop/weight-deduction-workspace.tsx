@@ -183,6 +183,14 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
   }, [load])
 
   useEffect(() => {
+    const onRefresh = () => {
+      void load()
+    }
+    window.addEventListener('workshop-refresh', onRefresh)
+    return () => window.removeEventListener('workshop-refresh', onRefresh)
+  }, [load])
+
+  useEffect(() => {
     if (!projectId) return
     let cancelled = false
     void (async () => {

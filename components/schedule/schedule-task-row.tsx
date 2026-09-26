@@ -8,6 +8,7 @@ import type { SchedulePreviewColKey, SchedulePreviewColumn } from '@/lib/schedul
 import { getTaskScheduleStatus } from '@/lib/schedule/task-view-date'
 import { displayActivityName, wbsDepth } from '@/lib/schedule/wbs-utils'
 import type { ProjectTask } from '@/types/schedule'
+import { UomStack } from '@/components/workshop/uom-display'
 import { cn } from '@/lib/utils'
 
 function dash(value: string | number | null | undefined): string {
@@ -232,7 +233,11 @@ function ScheduleTaskRowComponent({
           </td>
         )
       case 'uom':
-        return <td className={cellMuted}>{dash(task.schedule_uom)}</td>
+        return (
+          <td className={cellMuted}>
+            <UomStack uom={task.schedule_uom} />
+          </td>
+        )
       case 'unit_price':
         return (
           <td className={cell}>

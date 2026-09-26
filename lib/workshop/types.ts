@@ -37,15 +37,38 @@ export type ReviewReasonCode =
 export const WORKSHOP_UOMS = ['m2', 'm3', 'm', 'ton', 'ea', 'ls', 'kg', 'hr'] as const
 export type WorkshopUom = (typeof WORKSHOP_UOMS)[number]
 
-export const WORKSHOP_UOM_LABELS: Record<WorkshopUom, string> = {
-  m2: 'م²',
-  m3: 'م³',
-  m: 'م',
+export const WORKSHOP_UOM_FA: Record<WorkshopUom, string> = {
+  m2: 'متر مربع',
+  m3: 'متر مکعب',
+  m: 'متر',
   ton: 'تن',
   ea: 'عدد',
   ls: 'مقطوع',
   kg: 'کیلوگرم',
   hr: 'ساعت',
+}
+
+export const WORKSHOP_UOM_EN: Record<WorkshopUom, string> = {
+  m2: 'm²',
+  m3: 'm³',
+  m: 'm',
+  ton: 't',
+  ea: 'ea',
+  ls: 'ls',
+  kg: 'kg',
+  hr: 'h',
+}
+
+/** @deprecated use workshopUomParts / UomStack — Persian full name */
+export const WORKSHOP_UOM_LABELS = WORKSHOP_UOM_FA
+
+export function workshopUomParts(uom?: string | null): { fa: string; en: string; code: string } {
+  const code = String(uom ?? '').trim()
+  if (code && Object.prototype.hasOwnProperty.call(WORKSHOP_UOM_FA, code)) {
+    const key = code as WorkshopUom
+    return { fa: WORKSHOP_UOM_FA[key], en: WORKSHOP_UOM_EN[key], code }
+  }
+  return { fa: code || '—', en: code || '', code }
 }
 
 export interface ScheduleTreeNode {

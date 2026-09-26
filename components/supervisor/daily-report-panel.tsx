@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { FormattedDate } from '@/components/schedule/formatted-date'
+import { UomStack } from '@/components/workshop/uom-display'
 import {
   readProjectDailyProgress,
   upsertDailyEntries,
@@ -214,7 +215,10 @@ function ActivityProgressRow({
                 <MetaPill>
                   مقدار برنامه:{' '}
                   <span className="font-semibold tabular-nums text-slate-800">
-                    {faNum(activity.quantity)} {activity.uom}
+                    <span className="inline-flex items-center gap-1">
+                      {faNum(activity.quantity)}
+                      <UomStack uom={activity.uom} />
+                    </span>
                   </span>
                 </MetaPill>
               ) : null}

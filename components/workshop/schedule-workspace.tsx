@@ -7,23 +7,14 @@ import {
   ChevronDown,
   ChevronLeft,
   Plus,
-  Send,
   ClipboardList,
-  Lock,
-  Trash2,
   Save,
-  CheckCircle2,
-  RefreshCw,
   HelpCircle,
   AlertCircle,
   Pencil,
   Loader2,
 } from 'lucide-react'
-import {
-  canDeletePackage,
-  canEditWorkshopPackageRow,
-  WORKSHOP_SKIP_PM_APPROVAL,
-} from '@/lib/workshop/approvals'
+import { canEditWorkshopPackageRow } from '@/lib/workshop/approvals'
 import type { ScheduleTreeNode, WorkshopPackageNode } from '@/lib/workshop/types'
 import {
   collectScheduleTaskNodes,
@@ -34,12 +25,18 @@ import {
   findScheduleNode,
   flattenWorkshopSchedule,
   nextChildWbs,
+  scheduleExpandableIds,
 } from '@/lib/workshop/wbs-numbering'
 import { PageHeader } from '@/components/admin/shared'
 import { ScheduleDownloadButton } from '@/components/schedule/schedule-download-button'
-import { WORKSHOP_UOMS } from '@/lib/workshop/types'
+import { UomSelect } from '@/components/workshop/uom-display'
 import { formatScheduleWeightDisplay } from '@/lib/workshop/package-weight'
 import { displayActivityName, wbsDepth } from '@/lib/schedule/wbs-utils'
+import {
+  collectMspActivities,
+  collectMspSuccessors,
+  MspDependencyDialog,
+} from '@/components/workshop/msp-dependency-dialog'
 import { collectDateEnvelope } from '@/lib/workshop/header-rules'
 import {
   applyParentWeightSum,
@@ -125,7 +122,7 @@ const SCHEDULE_COL_WIDTHS = [
   '64px',
   '85px',
   '148px',
-  '56px',
+  '78px',
   '100px',
   '92px',
   '72px',
@@ -134,7 +131,7 @@ const SCHEDULE_COL_WIDTHS = [
 // WBS, نام, پیش‌نیاز, تاریخ, شناوری, محل, مقدار, واحد, کارکرد, قیمت واحد, وزن, وضعیت
 
 const SCHEDULE_COL_COUNT = SCHEDULE_COL_WIDTHS.length
-const SCHEDULE_BASE_WIDTH = 1236
+const SCHEDULE_BASE_WIDTH = 1258
 const EXTRA_SCHEDULE_COL_WIDTH = 112
 /** Sticky identity cols (RTL): pin WBS + نام to the right while scrolling left. */
 const STICKY_WBS_RIGHT = 0
@@ -156,7 +153,8 @@ const SCHEDULE_STICKY_NAME_CELL =
 const TOTAL_PRICE_HELP =
   'از ضرب مقدار در قیمت واحد همان ردیف به‌دست می‌آید. سرشاخه‌ای که زیرشاخه دارد کارکرد ندارد.'
 
-function isScheduleHeader(node: ScheduleTreeNode): boolean {
+function isScheduleHeader(node: ScheduleTreeNode, expandableIds?: Set<string>): boolean {
+  if (expandableIds?.has(node.id)) return true
   return Boolean(node.isSyntheticGroup) || node.packages.length > 0 || node.children.length > 0
 }
 
@@ -312,17 +310,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
   const [edits, setEdits] = useState<Record<string, EditDraft>>({})
   /** Package id currently in row-edit mode (inputs visible after «ویرایش»). */
   const [editingPackageId, setEditingPackageId] = useState<string | null>(null)
-  const [changePanel, setChangePanel] = useState(false)
-  const [changeComment, setChangeComment] = useState('')
-  const [changeForm, setChangeForm] = useState<EditDraft | null>(null)
-  const [todayQty, setTodayQty] = useState('')
-  const [showTodayQty, setShowTodayQty] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [readOnly, setReadOnly] = useState(forceSupervisorView)
   const [canWriteServer, setCanWriteServer] = useState(false)
-  /** Pending date/float/weight edits — flushed by «ثبت نهایی» */
+  /** Pending date/float/weight edits — flushed by «به‌روزرسانی» */
   const [taskDrafts, setTaskDrafts] = useState<
     Record<
       string,
@@ -340,9 +333,14 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
   const [helpWeightParentId, setHelpWeightParentId] = useState<string | null>(null)
   const [helpProgressParentId, setHelpProgressParentId] = useState<string | null>(null)
   const [helpTotalPriceOpen, setHelpTotalPriceOpen] = useState(false)
-  const [predLinkFor, setPredLinkFor] = useState<
-    { kind: 'task' | 'package'; id: string } | null
-  >(null)
+  const [predDialog, setPredDialog] = useState<{
+    kind: 'task' | 'package' | 'draft'
+    id: string
+    wbs: string
+    name: string
+    label: string
+  } | null>(null)
+  const [predDialogSaving, setPredDialogSaving] = useState(false)
   /** Controlled مقدار / قیمت واحد — single source of truth for قیمت کل. */
   const [commercialInputs, setCommercialInputs] = useState<
     Record<string, { quantity: string; unitPrice: string }>
@@ -760,9 +758,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         exp[`pkg:${expandAfter.id}`] = true
       }
       if (expandAfter?.kind === 'schedule') {
-        const parentNode = collectScheduleTaskNodes(loadedNodes).find(
-          (n) => n.taskId === expandAfter.id || n.id === expandAfter.id
-        )
+        const parentNode = findScheduleNode(loadedNodes, expandAfter.id)
         if (parentNode) exp[parentNode.id] = true
       }
       setExpanded((prev) => ({ ...exp, ...prev }))
@@ -771,9 +767,11 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         const found = findPackageInTree(loadedNodes, prev.id)
         return found ? { kind: 'package', id: found.id, name: found.name, pkg: found } : null
       })
-      setEdits({})
-      setInlineDraft(null)
-      setEditingPackageId(null)
+      if (expandAfter) {
+        setEdits({})
+        setInlineDraft(null)
+        setEditingPackageId(null)
+      }
       setHelpWeightParentId(null)
       setHelpProgressParentId(null)
       setHelpTotalPriceOpen(false)
@@ -996,23 +994,6 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     setTaskDrafts((prev) => (Object.keys(prev).length > 0 ? prev : stored))
   }, [projectId, readOnly])
 
-  const selectedPackage = selected?.kind === 'package' ? selected.pkg : null
-  const selectedPackageId = selectedPackage?.id ?? null
-  const editable =
-    !readOnly && selectedPackage
-      ? canEditWorkshopPackageRow(
-          selectedPackage.approvalStatus,
-          selectedPackage.origin ?? 'user_added'
-        )
-      : false
-  const selectedInEditMode =
-    Boolean(selectedPackageId) && editingPackageId === selectedPackageId
-  const canStartSelectedEdit = editable && !selectedInEditMode
-  const deletable =
-    !readOnly && selectedPackage
-      ? canDeletePackage(selectedPackage.approvalStatus, selectedPackage.origin ?? 'user_added')
-      : false
-
   function beginPackageEdit(
     pkg: WorkshopPackageNode,
     fallback?: { start?: string | null; finish?: string | null }
@@ -1029,22 +1010,6 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       [pkg.id]: prev[pkg.id] ?? getEdit(pkg, fallback),
     }))
   }
-  const approved =
-    !readOnly &&
-    selectedPackage &&
-    (selectedPackage.approvalStatus === 'approved' ||
-      (WORKSHOP_SKIP_PM_APPROVAL && selectedPackage.approvalStatus !== 'change_requested'))
-  const canChangeRequest =
-    !readOnly &&
-    selectedPackage &&
-    !WORKSHOP_SKIP_PM_APPROVAL &&
-    (selectedPackage.approvalStatus === 'approved' ||
-      selectedPackage.approvalStatus === 'change_requested')
-  const canSubmit =
-    !WORKSHOP_SKIP_PM_APPROVAL &&
-    !readOnly &&
-    selectedPackage &&
-    (selectedPackage.approvalStatus === 'draft' || selectedPackage.approvalStatus === 'rejected')
 
   function visualScheduleDepth(scheduleNodeId: string): number {
     const n = findScheduleNode(nodes, scheduleNodeId)
@@ -1062,8 +1027,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     if (!row || readOnly) return
     if (row.kind === 'schedule') {
       const node = findScheduleNode(nodes, row.id)
-      if (!node?.taskId || node.isSyntheticGroup) {
-        setMessage('یک فعالیت مشخص را انتخاب کنید (نه ردیف گروه سطح بالا)')
+      if (!node?.taskId) {
+        setMessage('یک فعالیت مشخص را انتخاب کنید')
         return
       }
       setExpanded((x) => ({ ...x, [node.id]: true }))
@@ -1099,7 +1064,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         startDate: toIsoDateOnly(node.startDate) ?? '',
         finishDate: toIsoDateOnly(node.finishDate) ?? '',
         totalFloat: '',
-        predecessorLabel: firstChild ? node.predecessorLabel?.trim() ?? '' : '',
+        predecessorLabel: node.predecessorLabel?.trim() ?? '',
       })
       setMessage(null)
       return
@@ -1129,7 +1094,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       startDate: toIsoDateOnly(pkg.startDate) ?? '',
       finishDate: toIsoDateOnly(pkg.finishDate) ?? '',
       totalFloat: '',
-      predecessorLabel: firstChild ? packagePredecessorLabel(pkg) : '',
+      predecessorLabel: packagePredecessorLabel(pkg),
     })
     setMessage(null)
   }
@@ -1140,49 +1105,63 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     return raw != null && String(raw).trim() ? String(raw).trim() : ''
   }
 
-  function appendPredecessorFs(current: string, wbs: string): string {
-    const token = `${wbs}FS`
-    const next = current
-      .split(',')
-      .map((part) => part.trim())
-      .filter(Boolean)
-    if (next.some((part) => part.startsWith(wbs))) return current
-    return [...next, token].join(', ')
-  }
-
-  function applyPredLinkFromWbs(wbs: string, clicked: { kind: 'task' | 'package'; id: string }) {
-    if (!predLinkFor || !wbs) return false
-    if (predLinkFor.kind === clicked.kind && predLinkFor.id === clicked.id) return false
-
-    if (predLinkFor.kind === 'task') {
-      const target = collectScheduleTaskNodes(nodes).find((item) => item.taskId === predLinkFor.id)
-      const current =
-        taskDrafts[predLinkFor.id]?.predecessorLabel !== undefined
-          ? taskDrafts[predLinkFor.id]?.predecessorLabel ?? ''
-          : target?.predecessorLabel?.trim() ?? ''
-      patchTaskDraft(predLinkFor.id, {
-        predecessorLabel: appendPredecessorFs(current, wbs),
+  const mspActivities = useMemo(() => collectMspActivities(nodes), [nodes])
+  const mspPredItems = useMemo(() => {
+    const items = mspActivities.map((activity) => {
+      if (activity.kind === 'task') {
+        const node = findScheduleNode(nodes, activity.id)
+        const label =
+          taskDrafts[activity.id]?.predecessorLabel !== undefined
+            ? taskDrafts[activity.id]?.predecessorLabel ?? ''
+            : node?.predecessorLabel?.trim() ?? ''
+        return { wbs: activity.wbs, name: activity.name, label }
+      }
+      const pkg = findPackageInTree(nodes, activity.id)
+      const label =
+        edits[activity.id]?.predecessorLabel !== undefined
+          ? edits[activity.id]?.predecessorLabel ?? ''
+          : pkg
+            ? packagePredecessorLabel(pkg)
+            : ''
+      return { wbs: activity.wbs, name: activity.name, label }
+    })
+    if (inlineDraft?.previewWbs) {
+      items.push({
+        wbs: inlineDraft.previewWbs,
+        name: inlineDraft.name || 'زیرشاخه جدید',
+        label: inlineDraft.predecessorLabel,
       })
-      setPredLinkFor(null)
-      return true
     }
+    return items
+  }, [mspActivities, nodes, taskDrafts, edits, inlineDraft])
 
-    const pkg = findPackageInTree(nodes, predLinkFor.id)
-    if (!pkg) {
-      setPredLinkFor(null)
-      return true
+  async function savePredDialogLabel(label: string) {
+    if (!predDialog) return
+    setPredDialogSaving(true)
+    setMessage(null)
+    try {
+      if (predDialog.kind === 'draft') {
+        setInlineDraft((draft) => (draft ? { ...draft, predecessorLabel: label } : draft))
+        setPredDialog(null)
+        return
+      }
+      if (predDialog.kind === 'task') {
+        patchTaskDraft(predDialog.id, { predecessorLabel: label })
+        await saveScheduleTaskFields(predDialog.id, { predecessorLabel: label })
+        setPredDialog(null)
+        await load()
+        return
+      }
+      const pkg = findPackageInTree(nodes, predDialog.id)
+      if (!pkg) throw new Error('زیرشاخه پیدا نشد')
+      setEditField(pkg.id, pkg, { predecessorLabel: label })
+      await savePackagePredFloat(pkg, { predecessorLabel: label })
+      setPredDialog(null)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'ذخیره وابستگی ناموفق بود')
+    } finally {
+      setPredDialogSaving(false)
     }
-    const current =
-      edits[pkg.id]?.predecessorLabel !== undefined
-        ? edits[pkg.id]?.predecessorLabel ?? ''
-        : packagePredecessorLabel(pkg)
-    const next = appendPredecessorFs(current, wbs)
-    setEditField(pkg.id, pkg, { predecessorLabel: next })
-    if (editingPackageId !== pkg.id && next !== current) {
-      void savePackagePredFloat(pkg, { predecessorLabel: next })
-    }
-    setPredLinkFor(null)
-    return true
   }
 
   function packageTotalFloat(pkg: WorkshopPackageNode): string {
@@ -1742,6 +1721,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
               total_float_days: inlineDraft.totalFloat
                 ? Number(inlineDraft.totalFloat)
                 : null,
+              physical_percent_complete: 0,
+              percent_complete: 0,
             },
           }),
         })
@@ -1801,7 +1782,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         /* dates already saved; float refresh is best-effort */
       }
       publishScheduleViewSync(projectId)
-      setMessage('ثبت و بروزرسانی شد — تغییرات در گانت و ارسال برنامه هم اعمال شد')
+      setMessage('به‌روزرسانی شد — تغییرات در گانت و ارسال برنامه هم اعمال شد')
       await load()
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'خطا در ثبت نهایی')
@@ -1809,6 +1790,23 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       setSaving(false)
     }
   }
+
+  const refreshRef = useRef<() => Promise<void>>(async () => {})
+  refreshRef.current = async () => {
+    if (readOnly) {
+      await load()
+      return
+    }
+    await commitFinalSchedule()
+  }
+
+  useEffect(() => {
+    const onRefresh = () => {
+      void refreshRef.current()
+    }
+    window.addEventListener('workshop-refresh', onRefresh)
+    return () => window.removeEventListener('workshop-refresh', onRefresh)
+  }, [])
 
   async function createInline() {
     if (!inlineDraft || !projectId) return
@@ -1858,6 +1856,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
             total_float_days: inlineDraft.totalFloat
               ? Number(inlineDraft.totalFloat)
               : null,
+            physical_percent_complete: 0,
+            percent_complete: 0,
           },
         }),
       })
@@ -1888,122 +1888,11 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     }
   }
 
-  async function submitApproval() {
-    if (!selectedPackageId) return
-    // save dirty first
-    if (selectedPackage && isDirty(selectedPackage)) {
-      await savePackage(selectedPackage)
-    }
-    setMessage(null)
-    const res = await fetch(`/api/workshop/packages/${selectedPackageId}/submit`, { method: 'POST' })
-    const data = await res.json()
-    if (!res.ok) {
-      setMessage(data.error || 'ارسال نشد')
-      return
-    }
-    setMessage('برای مدیر پروژه ارسال شد')
-    await load()
-  }
-
-  async function deleteSelected() {
-    if (!selectedPackageId || !selectedPackage) return
-    if (!window.confirm(`«${selectedPackage.name}» حذف شود؟`)) return
-    setMessage(null)
-    const res = await fetch(`/api/workshop/packages/${selectedPackageId}`, { method: 'DELETE' })
-    const data = await res.json()
-    if (!res.ok) {
-      setMessage(data.error || 'حذف نشد')
-      return
-    }
-    setSelected(null)
-    setMessage('حذف شد')
-    await load()
-  }
-
-  async function submitChangeRequest() {
-    if (!selectedPackageId || !changeForm) return
-    setMessage(null)
-    const res = await fetch(`/api/workshop/packages/${selectedPackageId}/change-request`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        comment: changeComment,
-        change: {
-          name: changeForm.name,
-          quantity: Number(changeForm.quantity),
-          uom: changeForm.uom,
-          location: changeForm.location,
-          crew: changeForm.crew,
-        },
-      }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setMessage(data.error || 'درخواست تغییر ثبت نشد')
-      return
-    }
-    setChangePanel(false)
-    setChangeComment('')
-    setChangeForm(null)
-    setMessage('درخواست تغییر برای مدیر پروژه ارسال شد')
-    await load()
-  }
-
-  async function sendToday() {
-    if (!selectedPackageId) return
-    setMessage(null)
-    const res = await fetch(`/api/workshop/packages/${selectedPackageId}/send-to-today`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        date: new Date().toISOString().slice(0, 10),
-        plannedQty: Number(todayQty),
-      }),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setMessage(data.error || 'ارسال نشد')
-      return
-    }
-    setShowTodayQty(false)
-    setTodayQty('')
-    setMessage('به برنامه امروز اضافه شد')
-    await load()
-  }
-
   const visibleRows = useMemo(
     () => flattenWorkshopSchedule(nodes, expanded),
     [nodes, expanded]
   )
-
-  const canAddSubBranch =
-    !readOnly &&
-    selected &&
-    (selected.kind === 'package' ||
-      (selected.kind === 'schedule' &&
-        findScheduleNode(nodes, selected.id)?.taskId &&
-        !findScheduleNode(nodes, selected.id)?.isSyntheticGroup))
-
-  const inlineDraftValid =
-    inlineDraft &&
-    inlineDraft.name.trim().length > 0 &&
-    Number(inlineDraft.quantity) > 0
-
-  const dirtyPackages = useMemo(() => {
-    const dirty: WorkshopPackageNode[] = []
-    const visit = (pkgs: WorkshopPackageNode[]) => {
-      for (const p of pkgs) {
-        if (isDirty(p)) dirty.push(p)
-        visit(p.children)
-      }
-    }
-    for (const n of nodes) visit(n.packages)
-    return dirty
-  }, [nodes, edits])
-
-  const toolbarSaveEnabled = inlineDraftValid || dirtyPackages.length > 0
-  const hasTaskDrafts = Object.keys(taskDrafts).length > 0
-  const finalCommitEnabled = !readOnly && !saving && !loading
+  const expandableIds = useMemo(() => scheduleExpandableIds(nodes), [nodes])
 
   if (!projectId) {
     return <p className="text-sm text-slate-600">پروژه را از بالا انتخاب کنید.</p>
@@ -2018,7 +1907,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
           description={
             readOnly
               ? 'نمای فقط‌خواندنی سرپرست کارگاه — برای ویرایش به دفتر فنی مراجعه کنید.'
-              : 'در همین جدول ویرایش کنید → ذخیره → ارسال به امروز.'
+              : 'در همین جدول ویرایش کنید. برای ثبت تغییرات «به‌روزرسانی» را بزنید.'
           }
           actions={
             projectId ? (
@@ -2083,297 +1972,36 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       ) : null}
 
       <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden w-full max-w-full min-w-0">
-          {!readOnly && (
-          <div className="flex flex-wrap items-center gap-2 border-b bg-slate-50 px-3 py-2">
-            <button
-              type="button"
-              disabled={!canAddSubBranch}
-              onClick={() => startInlineCreate()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-40"
+          {!projectWeightCheck.ok ? (
+            <div
+              className="flex items-start gap-1.5 border-b border-red-200 bg-red-50 px-3 py-2 text-[11px] leading-snug text-red-800"
+              role="alert"
             >
-              <Plus className="h-4 w-4" />
-              زیرمجموعه
-            </button>
-            <button
-              type="button"
-              disabled={!canStartSelectedEdit || saving}
-              onClick={() => {
-                if (!selectedPackage) return
-                const flat = flattenWorkshopSchedule(nodes, expanded).find(
-                  (r) => r.type === 'package' && r.pkg.id === selectedPackage.id
-                )
-                beginPackageEdit(
-                  selectedPackage,
-                  flat && flat.type === 'package'
-                    ? { start: flat.startDate, finish: flat.finishDate }
-                    : {
-                        start: selectedPackage.startDate,
-                        finish: selectedPackage.finishDate,
-                      }
-                )
-              }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm text-sky-900 disabled:opacity-40"
-              title="ویرایش فعالیت انتخاب‌شده بعد از ذخیره"
-            >
-              <Pencil className="h-4 w-4" />
-              ویرایش
-            </button>
-            <button
-              type="button"
-              disabled={!canSubmit || saving}
-              onClick={() => void submitApproval()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-2 text-sm text-white disabled:opacity-40"
-            >
-              <Send className="h-4 w-4" />
-              ارسال به مدیر پروژه
-            </button>
-            <button
-              type="button"
-              disabled={!finalCommitEnabled}
-              onClick={() => void commitFinalSchedule()}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-white',
-                hasTaskDrafts
-                  ? 'bg-emerald-700 font-bold hover:bg-emerald-800'
-                  : 'bg-emerald-600/40 font-normal'
-              )}
-              title="ذخیره تغییرات و بروزرسانی برنامه"
-            >
-              {saving || loading ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4" />
-              )}
-              ثبت و بروزرسانی
-              {hasTaskDrafts ? (
-                <span className="rounded-full bg-white/20 px-1.5 text-[10px]">
-                  {Object.keys(taskDrafts).length}
-                </span>
-              ) : null}
-            </button>
-            {!projectWeightCheck.ok ? (
-              <div
-                className="inline-flex max-w-md items-start gap-1.5 rounded-lg border border-red-400 bg-red-50 px-2.5 py-1.5 text-[11px] leading-snug text-red-800"
-                role="alert"
-              >
-                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                <span>
-                  خطای وزن‌دهی: جمع وزن سرتیترها و فعالیت‌های بدون‌فرزند سطح پروژه{' '}
-                  <strong className="tabular-nums">{projectWeightCheck.sum}</strong> است؛ باید{' '}
-                  <strong>۱۰۰</strong> باشد
-                  {projectWeightCheck.gap !== 0 ? (
-                    <>
-                      {' '}
-                      (اختلاف{' '}
-                      <strong className="tabular-nums">
-                        {projectWeightCheck.gap > 0 ? '+' : ''}
-                        {projectWeightCheck.gap}
-                      </strong>
-                      )
-                    </>
-                  ) : null}
-                  . کادرهای قرمز همان مقادیری هستند که در این جمع شرکت دارند.
-                </span>
-              </div>
-            ) : null}
-            <button
-              type="button"
-              disabled={!toolbarSaveEnabled || saving}
-              onClick={() => {
-                if (inlineDraft) void createInline()
-                else if (dirtyPackages.length > 0) {
-                  void (async () => {
-                    for (const pkg of dirtyPackages) await savePackage(pkg)
-                  })()
-                } else if (selectedPackage) void savePackage(selectedPackage)
-              }}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm',
-                toolbarSaveEnabled
-                  ? 'border-slate-900 bg-slate-900 font-bold text-white'
-                  : 'border-slate-200 font-normal text-slate-400 opacity-40'
-              )}
-            >
-              <Save className="h-4 w-4" />
-              ذخیره
-            </button>
-            <button
-              type="button"
-              disabled={!deletable || saving}
-              onClick={() => void deleteSelected()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-rose-300 text-rose-800 px-3 py-2 text-sm disabled:opacity-40"
-            >
-              <Trash2 className="h-4 w-4" />
-              حذف
-            </button>
-            <button
-              type="button"
-              disabled={!canChangeRequest}
-              onClick={() => {
-                if (!selectedPackage) return
-                const pending = selectedPackage.pendingChange
-                setChangeForm({
-                  ...getEdit(selectedPackage),
-                  name: pending?.name ?? selectedPackage.name,
-                  quantity: String(pending?.quantity ?? selectedPackage.quantity),
-                  quantityCertainty: selectedPackage.quantityCertainty,
-                  unitPrice: String(selectedPackage.unitPrice),
-                  uom: pending?.uom ?? selectedPackage.uom,
-                  location:
-                    pending?.location !== undefined
-                      ? pending.location ?? ''
-                      : selectedPackage.location ?? '',
-                  crew:
-                    pending?.crew !== undefined ? pending.crew ?? '' : selectedPackage.crew ?? '',
-                  weightPercent:
-                    selectedPackage.weightPercent != null
-                      ? String(selectedPackage.weightPercent)
-                      : '',
-                  startDate: toIsoDateOnly(selectedPackage.startDate) ?? '',
-                  finishDate: toIsoDateOnly(selectedPackage.finishDate) ?? '',
-                })
-                setChangePanel(true)
-              }}
-              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
-            >
-              <Lock className="h-4 w-4" />
-              درخواست تغییر
-            </button>
-            <button
-              type="button"
-              disabled={!approved}
-              onClick={() => setShowTodayQty(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
-            >
-              ارسال به امروز
-            </button>
-          </div>
-          )}
-
-          {predLinkFor ? (
-            <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
-              روی فعالیت یا زیرشاخه پیش‌نیاز کلیک کنید تا مثل MSP پیوند FS ساخته شود. برای انصراف دوباره همان سلول پیش‌نیاز را بزنید.
-            </p>
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>
+                خطای وزن‌دهی: جمع وزن سرتیترها و فعالیت‌های بدون‌فرزند سطح پروژه{' '}
+                <strong className="tabular-nums">{projectWeightCheck.sum}</strong> است؛ باید{' '}
+                <strong>۱۰۰</strong> باشد
+                {projectWeightCheck.gap !== 0 ? (
+                  <>
+                    {' '}
+                    (اختلاف{' '}
+                    <strong className="tabular-nums">
+                      {projectWeightCheck.gap > 0 ? '+' : ''}
+                      {projectWeightCheck.gap}
+                    </strong>
+                    )
+                  </>
+                ) : null}
+                .
+              </span>
+            </div>
           ) : null}
 
-          {showTodayQty && approved && selectedPackage && (
-            <div className="flex flex-wrap items-end gap-3 border-b bg-sky-50 px-3 py-3">
-              <label className="text-sm">
-                مقدار امروز
-                <input
-                  type="number"
-                  className="mt-1 rounded-lg border px-3 py-2 text-sm w-32"
-                  value={todayQty}
-                  onChange={(ev) => setTodayQty(ev.target.value)}
-                />
-              </label>
-              <button
-                type="button"
-                onClick={() => void sendToday()}
-                className="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white"
-              >
-                تأیید ارسال به امروز
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowTodayQty(false)}
-                className="rounded-lg border px-3 py-2 text-sm"
-              >
-                انصراف
-              </button>
-            </div>
-          )}
-
-          {changePanel && changeForm && selectedPackage && (
-            <div className="border-b bg-amber-50 px-3 py-3 space-y-2">
-              <h3 className="text-sm font-semibold">درخواست تغییر — {selectedPackage.name}</h3>
-              <div className="flex flex-wrap gap-2">
-                <input
-                  className="rounded border px-2 py-1.5 text-sm min-w-[160px]"
-                  value={changeForm.name}
-                  onChange={(ev) => setChangeForm({ ...changeForm, name: ev.target.value })}
-                  placeholder="نام"
-                />
-                <input
-                  className="rounded border px-2 py-1.5 text-sm min-w-[120px]"
-                  value={changeForm.location}
-                  onChange={(ev) => setChangeForm({ ...changeForm, location: ev.target.value })}
-                  placeholder="محل"
-                />
-                <input
-                  type="number"
-                  className="rounded border px-2 py-1.5 text-sm w-24"
-                  value={changeForm.quantity}
-                  onChange={(ev) =>
-                    setChangeForm({ ...changeForm, quantity: ev.target.value })
-                  }
-                />
-                <select
-                  className="rounded border px-2 py-1.5 text-sm"
-                  value={changeForm.uom}
-                  onChange={(ev) => setChangeForm({ ...changeForm, uom: ev.target.value })}
-                >
-                  {WORKSHOP_UOMS.map((u) => (
-                    <option key={u} value={u}>
-                      {u}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <textarea
-                className="w-full rounded border px-2 py-1.5 text-sm min-h-[52px]"
-                value={changeComment}
-                onChange={(ev) => setChangeComment(ev.target.value)}
-                placeholder="دلیل تغییر"
-              />
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => void submitChangeRequest()}
-                  className="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white"
-                >
-                  ارسال درخواست
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChangePanel(false)}
-                  className="rounded-lg border px-3 py-2 text-sm"
-                >
-                  انصراف
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="sticky top-0 z-40 border-b border-slate-200 bg-slate-50/95 shadow-sm backdrop-blur-sm">
-            <div className="flex items-center justify-between gap-2 px-3 py-1.5 text-[11px] text-slate-600">
-              <span>
-                اسکرول افقی بالا همیشه در دسترس است — برای ستون‌های بیشتر چپ/راست بکشید.
-              </span>
-              <div className="flex shrink-0 gap-1">
-                <button
-                  type="button"
-                  className="rounded border bg-white px-2 py-1 hover:bg-slate-100"
-                  onClick={() =>
-                    scheduleTableScrollRef.current?.scrollBy({ left: 700, behavior: 'smooth' })
-                  }
-                >
-                  ستون‌های قبلی →
-                </button>
-                <button
-                  type="button"
-                  className="rounded border bg-white px-2 py-1 hover:bg-slate-100"
-                  onClick={() =>
-                    scheduleTableScrollRef.current?.scrollBy({ left: -700, behavior: 'smooth' })
-                  }
-                >
-                  ← ستون‌های بیشتر
-                </button>
-              </div>
-            </div>
+          <div className="sticky top-0 z-40 border-b border-slate-200 bg-slate-200/80">
             <div
               ref={topHScrollRef}
-              className="overflow-x-auto overflow-y-hidden border-t border-slate-200 bg-slate-200/80 [scrollbar-width:thin]"
+              className="overflow-x-auto overflow-y-hidden [scrollbar-width:thin]"
               style={{ height: 14 }}
               onScroll={() => syncHorizontalScroll('top')}
               aria-label="اسکرول افقی جدول"
@@ -2387,7 +2015,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
 
           <div
             ref={scheduleTableScrollRef}
-            className="overflow-auto max-h-[calc(100vh-220px)] w-full [scrollbar-gutter:stable]"
+            className="overflow-auto max-h-[calc(100vh-160px)] w-full [scrollbar-gutter:stable]"
             onScroll={() => syncHorizontalScroll('main')}
           >
             <table
@@ -2471,7 +2099,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                 </tr>
               </thead>
               <tbody>
-                {loading && (
+                {loading && visibleRows.length === 0 && (
                   <tr>
                     <td colSpan={scheduleColCount} className="px-3 py-8 text-center text-slate-500">
                       در حال بارگذاری…
@@ -2515,26 +2143,17 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                     const n = row.node
                     const isSel = selected?.kind === 'schedule' && selected.id === n.id
                     const open = Boolean(expanded[n.id])
-                    const canExpand = Boolean(n.taskId)
+                    const canExpand = expandableIds.has(n.id)
                     const indentPx = 8 + row.depth * 22
                     return (
                       <FragmentRows key={`s-${n.id}`}>
                         <tr
                           onClick={() => {
-                            if (
-                              n.wbs &&
-                              applyPredLinkFromWbs(n.wbs, {
-                                kind: 'task',
-                                id: n.taskId ?? n.id,
-                              })
-                            ) {
-                              return
-                            }
                             setSelected({ kind: 'schedule', id: n.id, name: n.name, wbs: n.wbs })
                           }}
                           className={`group cursor-pointer border-b border-slate-300 hover:bg-slate-50 ${groupFrameClass} ${
                             isSel ? 'bg-amber-50' : 'bg-white'
-                          } ${predLinkFor && !(predLinkFor.kind === 'task' && predLinkFor.id === n.taskId) ? 'ring-1 ring-sky-300' : ''}`}
+                          }`}
                         >
                           <td
                             className={`${SCHEDULE_STICKY_WBS_CELL} font-mono text-[11px] tabular-nums text-slate-600 text-center group-hover:bg-slate-50 ${
@@ -2564,8 +2183,9 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               {canExpand ? (
                                 <button
                                   type="button"
-                                  className="p-0.5 rounded hover:bg-slate-200 shrink-0"
+                                  className="relative z-20 p-0.5 rounded hover:bg-slate-200 shrink-0"
                                   onClick={(e) => {
+                                    e.preventDefault()
                                     e.stopPropagation()
                                     setExpanded((x) => ({ ...x, [n.id]: !open }))
                                   }}
@@ -2579,7 +2199,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               ) : (
                                 <span className="w-4 shrink-0" />
                               )}
-                              <span className="font-medium text-slate-900 truncate text-xs leading-snug">
+                              <span className="min-w-0 flex-1 font-medium text-slate-900 truncate text-xs leading-snug">
                                 {displayActivityName(n.name, n.wbs)}
                               </span>
                               {n.packages.length > 0 && (
@@ -2591,8 +2211,9 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 <button
                                   type="button"
                                   title="افزودن زیرشاخه"
-                                  className="ms-1 rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900 shrink-0"
+                                  className="relative z-20 ms-1 rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900 shrink-0"
                                   onClick={(e) => {
+                                    e.preventDefault()
                                     e.stopPropagation()
                                     startInlineCreate({
                                       kind: 'schedule',
@@ -2615,38 +2236,31 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               'مثال: 3FS+4d یا 4.1FS, 5SS'
                             }
                           >
-                            {!readOnly && n.taskId && !n.isSyntheticGroup ? (
-                              <input
+                            {n.taskId ? (
+                              <button
+                                type="button"
                                 dir="ltr"
-                                className={cn(
-                                  'w-full rounded border bg-white px-1 py-0.5 text-[10px] text-center font-mono',
-                                  predLinkFor?.kind === 'task' && predLinkFor.id === n.taskId
-                                    ? 'border-sky-500 ring-1 ring-sky-300'
-                                    : 'border-slate-200'
-                                )}
-                                value={
-                                  taskDrafts[n.taskId]?.predecessorLabel !== undefined
-                                    ? taskDrafts[n.taskId]?.predecessorLabel ?? ''
-                                    : n.predecessorLabel?.trim() ?? ''
-                                }
-                                placeholder="مثلاً 3FS+4d"
-                                disabled={saving}
-                                title="کلیک کنید، بعد روی پیش‌نیاز بزنید"
+                                className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] text-center font-mono hover:border-sky-400 hover:bg-sky-50"
+                                title="باز کردن پنجره وابستگی مثل MSP"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  setPredLinkFor((current) =>
-                                    current?.kind === 'task' && current.id === n.taskId
-                                      ? null
-                                      : { kind: 'task', id: n.taskId }
-                                  )
-                                }}
-                                onFocus={() => setPredLinkFor({ kind: 'task', id: n.taskId })}
-                                onChange={(ev) => {
-                                  patchTaskDraft(n.taskId!, {
-                                    predecessorLabel: ev.target.value,
+                                  const label =
+                                    taskDrafts[n.taskId!]?.predecessorLabel !== undefined
+                                      ? taskDrafts[n.taskId!]?.predecessorLabel ?? ''
+                                      : n.predecessorLabel?.trim() ?? ''
+                                  setPredDialog({
+                                    kind: 'task',
+                                    id: n.taskId!,
+                                    wbs: n.wbs?.trim() ?? '',
+                                    name: n.name,
+                                    label,
                                   })
                                 }}
-                              />
+                              >
+                                {(taskDrafts[n.taskId]?.predecessorLabel !== undefined
+                                  ? taskDrafts[n.taskId]?.predecessorLabel
+                                  : n.predecessorLabel?.trim()) || '—'}
+                              </button>
                             ) : (
                               <span dir="ltr" className="block text-center">
                                 {n.predecessorLabel?.trim() ? n.predecessorLabel : '—'}
@@ -2657,7 +2271,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             className={`${SCHEDULE_CELL} text-[11px] text-slate-600 tabular-nums leading-tight overflow-hidden`}
                           >
                             {(() => {
-                              const header = isScheduleHeader(n)
+                              const header = isScheduleHeader(n, expandableIds)
                               const env = header ? envelopeForScheduleNode(n) : null
                               const startIso = header
                                 ? env?.start ?? row.startDate
@@ -2723,7 +2337,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                           </td>
                           <td className={`${SCHEDULE_CELL} text-slate-400 text-center`}>—</td>
                           <td className={`${SCHEDULE_CELL} text-center`}>
-                            {n.task && !readOnly && !n.isSyntheticGroup && !isScheduleHeader(n) ? (
+                            {n.task && !readOnly && !n.isSyntheticGroup && !isScheduleHeader(n, expandableIds) ? (
                               <div
                                 className="flex items-center gap-1"
                                 onClick={(event) => event.stopPropagation()}
@@ -2786,30 +2400,19 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             )}
                           </td>
                           <td className={`${SCHEDULE_CELL} text-center`}>
-                            {n.task && !readOnly && !n.isSyntheticGroup && !isScheduleHeader(n) ? (
-                              <select
-                                className="w-full rounded border border-slate-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
+                            {n.task && !readOnly && !n.isSyntheticGroup && !isScheduleHeader(n, expandableIds) ? (
+                              <UomSelect
                                 value={taskUomValue(n.task)}
                                 disabled={readOnly || savingExtraCell === `${n.task.id}:uom`}
-                                title="واحد"
-                                onClick={(event) => event.stopPropagation()}
-                                onChange={(event) =>
-                                  void saveTaskUom(n.task!, event.target.value)
-                                }
-                              >
-                                {WORKSHOP_UOMS.map((u) => (
-                                  <option key={u} value={u}>
-                                    {u}
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={(uom) => void saveTaskUom(n.task!, uom)}
+                              />
                             ) : (
                               <span className="text-slate-400">—</span>
                             )}
                           </td>
                           <td className={SCHEDULE_CELL}>
                             {(() => {
-                              if (!n.taskId || isScheduleHeader(n)) {
+                              if (!n.taskId || isScheduleHeader(n, expandableIds)) {
                                 return <span className="tabular-nums text-slate-400">—</span>
                               }
                               const shown = displayTotalPrice(
@@ -2829,7 +2432,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                           </td>
                           <td className={SCHEDULE_CELL}>
                             {(() => {
-                              if (!n.taskId || isScheduleHeader(n)) {
+                              if (!n.taskId || isScheduleHeader(n, expandableIds)) {
                                 return <span className="tabular-nums text-slate-400">—</span>
                               }
                               const shown = displayUnitPrice(n.taskId, n.task?.unit_price)
@@ -3043,7 +2646,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                           : 'از گزارش روزانه سرپرست کارگاه'
                                       }
                                     >
-                                      {value == null ? '—' : `${value}`}
+                                      {value == null ? '0' : `${value}`}
                                     </span>
                                     {isProgressParent && progressHelp ? (
                                       <button
@@ -3121,7 +2724,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                     <option value="true">بله</option>
                                   </select>
                                 ) : field.type === 'contractor' ? (
-                                  isScheduleHeader(n) ? (
+                                  isScheduleHeader(n, expandableIds) ? (
                                     <span className="text-slate-400">—</span>
                                   ) : (
                                   <select
@@ -3199,6 +2802,15 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               contractors={contractors}
                               groupLast={isGroupLast}
                               calendar={calendar}
+                              onPredClick={() =>
+                                setPredDialog({
+                                  kind: 'draft',
+                                  id: 'inline',
+                                  wbs: inlineDraft.previewWbs,
+                                  name: inlineDraft.name || 'زیرشاخه جدید',
+                                  label: inlineDraft.predecessorLabel,
+                                })
+                              }
                             />
                           )}
                       </FragmentRows>
@@ -3220,14 +2832,11 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                     <FragmentRows key={`p-${p.id}`}>
                       <tr
                         onClick={() => {
-                          if (p.wbs && applyPredLinkFromWbs(p.wbs, { kind: 'package', id: p.id })) {
-                            return
-                          }
                           setSelected({ kind: 'package', id: p.id, name: p.name, pkg: p })
                         }}
                         className={`group cursor-pointer border-b border-slate-300 hover:bg-emerald-50/50 ${groupFrameClass} ${
                           isSel ? 'bg-emerald-50' : 'bg-white'
-                        } ${predLinkFor && !(predLinkFor.kind === 'package' && predLinkFor.id === p.id) ? 'ring-1 ring-sky-300' : ''}`}
+                        }`}
                       >
                         <td
                           className={`${SCHEDULE_STICKY_WBS_CELL} font-mono text-[11px] tabular-nums text-emerald-800 text-center group-hover:bg-emerald-50/50 ${
@@ -3256,8 +2865,9 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             {p.children.length > 0 ? (
                               <button
                                 type="button"
-                                className="p-0.5 rounded hover:bg-slate-200"
+                                className="relative z-20 p-0.5 rounded hover:bg-slate-200 shrink-0"
                                 onClick={(ev) => {
+                                  ev.preventDefault()
                                   ev.stopPropagation()
                                   setExpanded((x) => ({ ...x, [`pkg:${p.id}`]: !open }))
                                 }}
@@ -3276,8 +2886,9 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               <button
                                 type="button"
                                 title="افزودن زیرشاخه"
-                                className="rounded p-1 text-emerald-700 hover:bg-emerald-100"
+                                className="relative z-20 rounded p-1 text-emerald-700 hover:bg-emerald-100 shrink-0"
                                 onClick={(ev) => {
+                                  ev.preventDefault()
                                   ev.stopPropagation()
                                   startInlineCreate({
                                     kind: 'package',
@@ -3329,66 +2940,34 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 onChange={(ev) => setEditField(p.id, p, { name: ev.target.value })}
                               />
                             ) : (
-                              <span className="truncate text-xs">
+                              <span className="min-w-0 flex-1 truncate text-xs">
                                 {displayActivityName(p.name, p.wbs)}
                               </span>
                             )}
                           </div>
                         </td>
                         <td className={SCHEDULE_CELL}>
-                          {canEditPermission ? (
-                            <input
-                              dir="ltr"
-                              className={cn(
-                                'w-full rounded border bg-white px-1 py-0.5 text-[10px] text-center font-mono',
-                                predLinkFor?.kind === 'package' && predLinkFor.id === p.id
-                                  ? 'border-sky-500 ring-1 ring-sky-300'
-                                  : 'border-slate-200'
-                              )}
-                              value={
-                                isRowEditing
+                          <button
+                            type="button"
+                            dir="ltr"
+                            className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] text-center font-mono hover:border-sky-400 hover:bg-sky-50"
+                            title="باز کردن پنجره وابستگی مثل MSP"
+                            onClick={(ev) => {
+                              ev.stopPropagation()
+                              setPredDialog({
+                                kind: 'package',
+                                id: p.id,
+                                wbs: p.wbs?.trim() ?? '',
+                                name: p.name,
+                                label: isRowEditing
                                   ? e.predecessorLabel
-                                  : packagePredecessorLabel(p)
-                              }
-                              placeholder="مثلاً 3FS"
-                              disabled={
-                                readOnly ||
-                                saving ||
-                                savingExtraCell === `pkg:${p.id}:pred-float`
-                              }
-                              title="کلیک کنید، بعد روی پیش‌نیاز بزنید"
-                              onClick={(ev) => {
-                                ev.stopPropagation()
-                                setPredLinkFor((current) =>
-                                  current?.kind === 'package' && current.id === p.id
-                                    ? null
-                                    : { kind: 'package', id: p.id }
-                                )
-                              }}
-                              onFocus={() => setPredLinkFor({ kind: 'package', id: p.id })}
-                              onChange={(ev) => {
-                                if (isRowEditing) {
-                                  setEditField(p.id, p, {
-                                    predecessorLabel: ev.target.value,
-                                  })
-                                } else {
-                                  setEditField(p.id, p, {
-                                    predecessorLabel: ev.target.value,
-                                  })
-                                }
-                              }}
-                              onBlur={(ev) => {
-                                const next = ev.target.value.trim()
-                                if (next === packagePredecessorLabel(p)) return
-                                if (isRowEditing) return
-                                void savePackagePredFloat(p, { predecessorLabel: next })
-                              }}
-                            />
-                          ) : (
-                            <span className="text-slate-400 text-center text-[10px]">
-                              {packagePredecessorLabel(p) || '—'}
-                            </span>
-                          )}
+                                  : packagePredecessorLabel(p),
+                              })
+                            }}
+                          >
+                            {(isRowEditing ? e.predecessorLabel : packagePredecessorLabel(p)) ||
+                              '—'}
+                          </button>
                         </td>
                         <td className={`${SCHEDULE_CELL} text-[11px] text-slate-500 tabular-nums leading-tight`}>
                           {p.children.length > 0 ? (
@@ -3581,29 +3160,17 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                           {p.children.length > 0 ? (
                             <span className="text-slate-400">—</span>
                           ) : (
-                            <select
-                              className="w-full rounded border border-slate-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
+                            <UomSelect
                               value={isRowEditing ? e.uom : p.uom}
-                              disabled={
-                                readOnly || savingExtraCell === `pkg:${p.id}:uom`
-                              }
-                              title="واحد"
-                              onClick={(event) => event.stopPropagation()}
-                              onChange={(event) => {
-                                const value = event.target.value
+                              disabled={readOnly || savingExtraCell === `pkg:${p.id}:uom`}
+                              onChange={(value) => {
                                 if (isRowEditing) {
                                   setEditField(p.id, p, { uom: value })
                                 } else {
                                   void savePackageUom(p, value)
                                 }
                               }}
-                            >
-                              {WORKSHOP_UOMS.map((u) => (
-                                <option key={u} value={u}>
-                                  {u}
-                                </option>
-                              ))}
-                            </select>
+                            />
                           )}
                         </td>
                         <td className={SCHEDULE_CELL}>
@@ -3783,7 +3350,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 >
                                   {field.key === 'percent_complete'
                                     ? value == null
-                                      ? '—'
+                                      ? '0'
                                       : String(value)
                                     : 'خودکار'}
                                 </span>
@@ -3872,6 +3439,15 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             contractors={contractors}
                             groupLast={isGroupLast}
                             calendar={calendar}
+                            onPredClick={() =>
+                              setPredDialog({
+                                kind: 'draft',
+                                id: 'inline',
+                                wbs: inlineDraft.previewWbs,
+                                name: inlineDraft.name || 'زیرشاخه جدید',
+                                label: inlineDraft.predecessorLabel,
+                              })
+                            }
                           />
                         )}
                     </FragmentRows>
@@ -3893,6 +3469,24 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
             />
           </div>
         </section>
+      <MspDependencyDialog
+        open={Boolean(predDialog)}
+        onClose={() => setPredDialog(null)}
+        activityWbs={predDialog?.wbs ?? ''}
+        activityName={predDialog?.name ?? ''}
+        initialLabel={predDialog?.label ?? ''}
+        activities={
+          predDialog?.kind === 'task'
+            ? mspActivities.filter((item) => item.kind === 'task')
+            : mspActivities
+        }
+        successors={
+          predDialog ? collectMspSuccessors(predDialog.wbs, mspPredItems) : []
+        }
+        readOnly={readOnly}
+        saving={predDialogSaving}
+        onSave={(label) => void savePredDialogLabel(label)}
+      />
     </div>
   )
 }
@@ -3911,6 +3505,7 @@ function InlineCreateRow({
   contractors,
   groupLast,
   calendar,
+  onPredClick,
 }: {
   draft: InlineDraft
   setDraft: (d: InlineDraft | null) => void
@@ -3921,6 +3516,7 @@ function InlineCreateRow({
   contractors: Array<{ id: string; name: string }>
   groupLast: boolean
   calendar: 'jalali' | 'gregorian'
+  onPredClick?: () => void
 }) {
   const canSave = draft.name.trim().length > 0 && Number(draft.quantity) > 0
 
@@ -3955,14 +3551,18 @@ function InlineCreateRow({
         </div>
       </td>
       <td className={SCHEDULE_CELL}>
-        <input
+        <button
+          type="button"
           dir="ltr"
-          className="h-7 w-full rounded border border-sky-200 bg-white px-1 text-center text-[10px] font-mono"
-          placeholder="مثلاً 3FS"
-          value={draft.predecessorLabel}
-          onChange={(e) => setDraft({ ...draft, predecessorLabel: e.target.value })}
-          title="پیش‌نیاز"
-        />
+          className="h-7 w-full rounded border border-sky-200 bg-white px-1 text-center text-[10px] font-mono hover:border-sky-400"
+          title="باز کردن پنجره وابستگی مثل MSP"
+          onClick={(e) => {
+            e.stopPropagation()
+            onPredClick?.()
+          }}
+        >
+          {draft.predecessorLabel || '—'}
+        </button>
       </td>
       <td className={SCHEDULE_CELL}>
         <div className="flex items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
@@ -4026,18 +3626,10 @@ function InlineCreateRow({
         </div>
       </td>
       <td className={SCHEDULE_CELL}>
-        <select
-          className="w-full rounded border border-sky-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
+        <UomSelect
           value={draft.uom}
-          title="واحد"
-          onChange={(e) => setDraft({ ...draft, uom: e.target.value })}
-        >
-          {WORKSHOP_UOMS.map((u) => (
-            <option key={u} value={u}>
-              {u}
-            </option>
-          ))}
-        </select>
+          onChange={(uom) => setDraft({ ...draft, uom })}
+        />
       </td>
       <td className={SCHEDULE_CELL}>
         <span
@@ -4096,7 +3688,14 @@ function InlineCreateRow({
       </td>
       {extraFields.map((field) => (
         <td key={field.key} className={`${SCHEDULE_CELL} min-w-[112px]`}>
-          {!field.type ? (
+          {field.key === 'percent_complete' ? (
+            <span
+              className="text-[10px] tabular-nums text-slate-600"
+              title="آیتم جدید با پیشرفت صفر ثبت می‌شود تا سرپرست کارگاه بعداً وارد کند"
+            >
+              0
+            </span>
+          ) : !field.type ? (
             <span className="text-slate-400">خودکار</span>
           ) : field.type === 'contractor' ? (
             <select

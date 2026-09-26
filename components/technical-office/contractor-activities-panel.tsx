@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { WORKSHOP_UOM_LABELS, type WorkshopUom } from '@/lib/workshop/types'
+import { UomStack } from '@/components/workshop/uom-display'
 import { cn } from '@/lib/utils'
 
 function formatMoney(value: number): string {
@@ -12,10 +12,6 @@ function formatMoney(value: number): string {
 
 function formatQty(value: number): string {
   return Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 })
-}
-
-function uomLabel(uom: string): string {
-  return WORKSHOP_UOM_LABELS[uom as WorkshopUom] ?? uom
 }
 
 type ContractorActivity = {
@@ -165,7 +161,9 @@ export function ContractorActivitiesPanel({
                       {row.qtyKind}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-center text-slate-600">{uomLabel(row.uom)}</td>
+                  <td className="px-3 py-2.5 text-center">
+                    <UomStack uom={row.uom} />
+                  </td>
                   <td className="px-3 py-2.5 text-center tabular-nums text-slate-700" dir="ltr">
                     {formatMoney(row.unitPrice)}
                   </td>

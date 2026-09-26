@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { approvalStatusFa } from '@/lib/workshop/approvals'
 import { PageHeader } from '@/components/admin/shared'
 import { ProposedChangeView } from '@/components/workshop/proposed-change-view'
+import { QtyWithUom } from '@/components/workshop/uom-display'
 
 type InboxItem = {
   id: string
@@ -47,6 +48,14 @@ export function ApprovalsWorkspace({ showBanner = true }: { showBanner?: boolean
 
   useEffect(() => {
     void load()
+  }, [load])
+
+  useEffect(() => {
+    const onRefresh = () => {
+      void load()
+    }
+    window.addEventListener('workshop-refresh', onRefresh)
+    return () => window.removeEventListener('workshop-refresh', onRefresh)
   }, [load])
 
   const selected = items.find((i) => i.id === selectedId) ?? null
@@ -111,7 +120,7 @@ export function ApprovalsWorkspace({ showBanner = true }: { showBanner?: boolean
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 mt-1">
-                      {item.location ?? '—'} · {item.quantity} {item.uom}
+                      {item.location ?? '—'} · <QtyWithUom qty={item.quantity} uom={item.uom} />
                       {item.crew ? ` · ${item.crew}` : ''}
                     </p>
                   </button>
@@ -130,7 +139,7 @@ export function ApprovalsWorkspace({ showBanner = true }: { showBanner?: boolean
               <dl className="text-sm space-y-1 text-slate-700">
                 <div>محل: {selected.location ?? '—'}</div>
                 <div>
-                  مقدار: {selected.quantity} {selected.uom}
+                  مقدار: <QtyWithUom qty={selected.quantity} uom={selected.uom} />
                 </div>
                 <div>گروه: {selected.crew ?? '—'}</div>
                 {selected.note && <div>یادداشت: {selected.note}</div>}

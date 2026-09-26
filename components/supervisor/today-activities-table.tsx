@@ -8,6 +8,7 @@ import { CriticalBadge } from '@/components/schedule/task-status-badge'
 import { ReadinessDots } from '@/components/supervisor/traffic-light'
 import type { TodayActivity } from '@/lib/supervisor/types'
 import type { SiteSupervisorMessages } from '@/lib/i18n/site-supervisor'
+import { QtyWithUom } from '@/components/workshop/uom-display'
 import { cn } from '@/lib/utils'
 
 interface TodayActivitiesTableProps {
@@ -124,9 +125,14 @@ export function TodayActivitiesTable({
                   <td className="px-4 py-3 hidden md:table-cell">
                     {isPackage ? (
                       <span className="text-xs text-muted-foreground">
-                        {a.plannedQtyToday != null
-                          ? `${labels.plannedToday}: ${a.plannedQtyToday} ${a.uom ?? ''}`
-                          : '—'}
+                        {a.plannedQtyToday != null ? (
+                          <span className="inline-flex items-center gap-1">
+                            {labels.plannedToday}:{' '}
+                            <QtyWithUom qty={a.plannedQtyToday} uom={a.uom} />
+                          </span>
+                        ) : (
+                          '—'
+                        )}
                       </span>
                     ) : (
                       <Badge variant="secondary">{plannedLabels[a.planned_status]}</Badge>
@@ -136,7 +142,7 @@ export function TodayActivitiesTable({
                     <span className="font-semibold">{a.actual_progress_percent}%</span>
                     {isPackage && a.quantity != null ? (
                       <span className="text-muted-foreground text-xs ms-1">
-                        ({a.quantity} {a.uom})
+                        (<QtyWithUom qty={a.quantity} uom={a.uom} />)
                       </span>
                     ) : (
                       <span className="text-muted-foreground text-xs ms-1">({a.actual_status})</span>
