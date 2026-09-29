@@ -1,18 +1,31 @@
 import type { FormLocale } from '@/lib/project-init/i18n/types'
 
-const EN = {
-  title: 'Project Manager Dashboard',
-  description: 'Project management workspace.',
-} as const
-
-const FA = {
-  title: 'داشبورد مدیر پروژه',
-  description: 'فضای کاری مدیر پروژه.',
-} as const
-
 export type ProjectManagerMessages = {
   title: string
   description: string
+  executiveTitle: string
+  refresh: string
+  loading: string
+  asOf: (isoDate: string) => string
+}
+
+const EN: ProjectManagerMessages = {
+  title: 'Project Manager Dashboard',
+  description: 'Project management workspace.',
+  executiveTitle: 'Project health',
+  refresh: 'Refresh',
+  loading: 'Loading EVM indicators…',
+  asOf: (isoDate) => `As of ${isoDate}`,
+}
+
+const FA: ProjectManagerMessages = {
+  title: 'داشبورد مدیر پروژه',
+  description: 'فضای کاری مدیر پروژه.',
+  executiveTitle: 'سلامت پروژه',
+  refresh: 'بروزرسانی',
+  loading: 'در حال محاسبهٔ شاخص‌های EVM…',
+  asOf: (isoDate) =>
+    `تا تاریخ ${new Date(`${isoDate}T12:00:00Z`).toLocaleDateString('fa-IR-u-ca-persian')}`,
 }
 
 export function getProjectManagerMessages(locale: FormLocale): ProjectManagerMessages {

@@ -86,6 +86,7 @@ export function AdminDashboard() {
         }
       />
 
+      {openDetail === 'dashboards' ? null : (
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           compact
@@ -141,6 +142,7 @@ export function AdminDashboard() {
           sparkline={feeds.sparkline?.attention}
         />
       </section>
+      )}
 
       {openDetail === 'alerts' || openDetail === 'dashboards' ? null : (
         <section className="rounded-[12px] border border-[#5a7088] bg-white px-4 py-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
@@ -237,7 +239,7 @@ function RecentProjectsPreview({
 }
 
 function ControlCenterExpandedPanel() {
-  const { feeds, stats, members, scope, openDetail } = useControlCenterDetails()
+  const { feeds, stats, members, projects, scope, openDetail } = useControlCenterDetails()
   const { locale } = useLocale()
   if (!openDetail || !stats) return null
 
@@ -292,7 +294,13 @@ function ControlCenterExpandedPanel() {
             ))}
           </div>
         ) : null}
-        {openDetail === 'dashboards' ? <RoleDashboardGrid members={scopedMembers} /> : null}
+        {openDetail === 'dashboards' ? (
+          <RoleDashboardGrid
+            members={scopedMembers}
+            projectNames={new Map(projects.map((p) => [p.id, p.name]))}
+            projectId={all ? null : scope}
+          />
+        ) : null}
         {openDetail === 'presence' ? <OnlineUsersPanel users={scopedPresence} /> : null}
       </div>
     </section>

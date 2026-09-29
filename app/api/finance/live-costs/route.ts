@@ -13,71 +13,19 @@ import {
   enumerateProjectJalaliMonths,
   projectDateSpan,
 } from '@/lib/schedule/monthly-deducted-weight'
-import { deductedMonthFromLabel } from '@/lib/finance/overhead-schedule-months'
 import {
-  TOMAN_SCALE,
   buildLiveWorkshopCostModel,
   type ContractorActivityCost,
-  type OverheadMonthAmount,
 } from '@/lib/finance/live-workshop-cost'
-
-function taskDates(row: Record<string, unknown>): { start: string | null; finish: string | null } {
-  return {
-    start: toIsoDateOnly(
-      (row.start_current as string) ??
-        (row.start_planned as string) ??
-        (row.baseline_start as string) ??
-        null
-    ),
-    finish: toIsoDateOnly(
-      (row.finish_current as string) ??
-        (row.finish_planned as string) ??
-        (row.baseline_finish as string) ??
-        null
-    ),
-  }
-}
-
-function isLeafTask(
-  row: Record<string, unknown>,
-  tasks: Array<Record<string, unknown>>,
-  packages: Array<Record<string, unknown>>
-): boolean {
-  const id = String(row.id)
-  if (row.is_summary) return false
-  if (packages.some((pkg) => String(pkg.project_task_id ?? '') === id)) return false
-  if (tasks.some((other) => String(other.parent_id ?? '') === id)) return false
-  const wbs = String(row.wbs_code ?? '').trim()
-  if (
-    wbs &&
-    tasks.some(
-      (other) =>
-        String(other.id) !== id && String(other.wbs_code ?? '').trim().startsWith(`${wbs}.`)
-    )
-  ) {
-    return false
-  }
-  return true
-}
-
-function isLeafPackage(
-  row: Record<string, unknown>,
-  packages: Array<Record<string, unknown>>
-): boolean {
-  const id = String(row.id)
-  return !packages.some((other) => String(other.parent_package_id ?? '') === id)
-}
+import { loadOverheadMonths } from '@/lib/finance/overhead-months'
+import {
+  isLeafPackage,
+  isLeafTask,
+  taskCurrentDates as taskDates,
+} from '@/lib/schedule/leaf-activities'
 
 function todayIsoTehran(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tehran' })
-}
-
-function yearFromLabels(labels: string[]): number | null {
-  for (const label of labels) {
-    const match = String(label).match(/(13|14)\d{2}/)
-    if (match) return Number(match[0])
-  }
-  return null
 }
 
 export async function GET(request: NextRequest) {
@@ -91,16 +39,12 @@ export async function GET(request: NextRequest) {
     const todayIso = todayIsoTehran()
 
     const [
-      { data: workbookRow },
+      overheadMonths,
       { data: tasks, error: taskError },
       { data: packages, error: packageError },
       progressRes,
     ] = await Promise.all([
-      supabase
-        .from('project_overhead_workbooks')
-        .select('month_labels, categories')
-        .eq('project_id', projectId)
-        .maybeSingle(),
+      loadOverheadMonths(supabase, projectId),
       supabase.from('project_tasks').select('*').eq('project_id', projectId),
       supabase.from('workshop_packages').select('*').eq('project_id', projectId),
       supabase
@@ -117,32 +61,6 @@ export async function GET(request: NextRequest) {
       /task_progress_updates|schema cache|does not exist/i.test(progressRes.error.message)
         ? []
         : (progressRes.data ?? [])
-
-    const overheadMonths: OverheadMonthAmount[] = []
-    const labels = Array.isArray(workbookRow?.month_labels)
-      ? (workbookRow.month_labels as string[])
-      : []
-    const categories = Array.isArray(workbookRow?.categories)
-      ? (workbookRow.categories as Array<{ months?: Array<string | number> }>)
-      : []
-    if (labels.length > 0) {
-      const year = yearFromLabels(labels)
-      labels.forEach((label, index) => {
-        const month = deductedMonthFromLabel(label, index, year)
-        if (!month.startIso || !month.endIso) return
-        const stored = categories.reduce((sum, category) => {
-          const raw = category.months?.[index]
-          const value = Number(raw)
-          return sum + (Number.isFinite(value) ? value : 0)
-        }, 0)
-        overheadMonths.push({
-          startIso: month.startIso,
-          endIso: month.endIso,
-          label: month.label,
-          amountToman: stored * TOMAN_SCALE,
-        })
-      })
-    }
 
     const historyById = new Map<string, Array<{ date: string; percent: number }>>()
     for (const row of progressRows ?? []) {

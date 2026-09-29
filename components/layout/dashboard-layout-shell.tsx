@@ -20,9 +20,10 @@ export function DashboardLayoutShell({
 }) {
   const pathname = usePathname()
   const isAdminRoute = pathname.startsWith('/admin')
+  const ownsChrome = pathname.startsWith('/dashboard/manager')
   const wideScheduleLayout = pathname.includes('/dashboard/technical-office')
 
-  if (isAdminRoute) {
+  if (isAdminRoute || ownsChrome) {
     return <>{children}</>
   }
 

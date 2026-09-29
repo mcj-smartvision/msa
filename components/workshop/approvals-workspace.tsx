@@ -22,10 +22,11 @@ type InboxItem = {
 }
 
 export function ApprovalsWorkspace({ showBanner = true }: { showBanner?: boolean }) {
-  const projectId = useSearchParams().get('projectId') ?? ''
+  const searchParams = useSearchParams()
+  const projectId = searchParams.get('projectId') ?? ''
   const [items, setItems] = useState<InboxItem[]>([])
   const [canDecide, setCanDecide] = useState(false)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(() => searchParams.get('focus'))
   const [comment, setComment] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)

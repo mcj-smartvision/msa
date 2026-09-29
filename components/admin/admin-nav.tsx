@@ -12,6 +12,7 @@ import {
   AlertCircle,
   ClipboardCheck,
   CalendarRange,
+  Briefcase,
   type LucideIcon,
 } from 'lucide-react'
 import { BrandLogo } from '@/components/brand/brand-logo'
@@ -119,6 +120,12 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
         icon={LayoutDashboard}
         active={pathname === '/admin' && openDetail === null}
         onClick={goControlCenter}
+      />
+      <FlatLink
+        href="/dashboard/manager"
+        label={fa ? 'مدیر' : 'Manager'}
+        icon={Briefcase}
+        active={linkActive('/dashboard/manager')}
       />
       <FlatLink
         href="/admin/projects"

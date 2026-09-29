@@ -8,6 +8,7 @@ export const ROLE_DASHBOARD_ACCESS: Record<
 > = {
   'site-supervisor': ['site_supervisor'],
   'project-manager': ['project_manager'],
+  manager: ['project_manager'],
   'technical-office': ['technical_office', 'site_supervisor'],
   storekeeper: ['storekeeper'],
   procurement: ['procurement_officer'],

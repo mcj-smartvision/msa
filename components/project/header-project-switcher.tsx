@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { ADMIN_EMAIL } from '@/lib/admin/defaults'
 import {
   ALL_PROJECTS_SCOPE,
+  PROJECT_CHANGE_EVENT,
   readProjectCookie,
   writeProjectCookie,
 } from '@/lib/project/project-cookie'
@@ -186,6 +187,16 @@ export function HeaderProjectSwitcher({
       setSelected(fromCookie)
     }
   }, [pathname, projects, inControlCenter])
+
+  useEffect(() => {
+    if (inControlCenter) return
+    function onProjectChange(event: Event) {
+      const id = (event as CustomEvent<string>).detail
+      if (id && id !== ALL_PROJECTS_SCOPE) setSelected(id)
+    }
+    window.addEventListener(PROJECT_CHANGE_EVENT, onProjectChange)
+    return () => window.removeEventListener(PROJECT_CHANGE_EVENT, onProjectChange)
+  }, [inControlCenter])
 
   function handleChange(projectId: string) {
     setSelected(projectId)

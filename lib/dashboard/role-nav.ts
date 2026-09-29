@@ -26,6 +26,11 @@ export function getRoleNavLinks(context: DashboardUserContext): RoleNavLink[] {
   const links: RoleNavLink[] = []
   const seen = new Set<string>()
 
+  if (context.isSystemAdmin || context.positionKeys.includes('project_manager')) {
+    seen.add('/dashboard/manager')
+    links.push({ href: '/dashboard/manager', label: 'مدیر', roleKey: 'project_manager' })
+  }
+
   for (const key of context.positionKeys) {
     const roleKey = key as SiteRoleKey
     const href = ROLE_DASHBOARD_PATHS[roleKey]
