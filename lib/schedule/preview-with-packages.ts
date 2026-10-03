@@ -94,7 +94,33 @@ function resolvePackageWbsCodes(
   return resolved
 }
 
-function packageToPreviewTask(row: PackageRow, wbs: string | null): ProjectTask {
+/** A package's baseline is its parent MSP activity's baseline (packages carry no baseline of their own). */
+function parentTaskBaseline(
+  row: PackageRow,
+  packagesById: Map<string, PackageRow>,
+  tasksById: Map<string, ProjectTask>
+): { start: string | null; finish: string | null } | null {
+  let current: PackageRow | undefined = row
+  const seen = new Set<string>()
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id)
+    const task = current.project_task_id ? tasksById.get(current.project_task_id) : undefined
+    if (task) {
+      return {
+        start: task.baseline_start ?? task.start_planned ?? null,
+        finish: task.baseline_finish ?? task.finish_planned ?? null,
+      }
+    }
+    current = current.parent_package_id ? packagesById.get(current.parent_package_id) : undefined
+  }
+  return null
+}
+
+function packageToPreviewTask(
+  row: PackageRow,
+  wbs: string | null,
+  baseline: { start: string | null; finish: string | null } | null
+): ProjectTask {
   const start = toIsoDate(row.start_date)
   const finish = toIsoDate(row.finish_date)
   const fields = (row.schedule_fields ?? {}) as Record<string, unknown>
@@ -118,8 +144,8 @@ function packageToPreviewTask(row: PackageRow, wbs: string | null): ProjectTask 
     finish_planned: finish,
     start_current: start,
     finish_current: finish,
-    baseline_start: start,
-    baseline_finish: finish,
+    baseline_start: baseline ? baseline.start : start,
+    baseline_finish: baseline ? baseline.finish : finish,
     percent_complete:
       Number(fields.physical_percent_complete ?? fields.percent_complete ?? 0) || 0,
     physical_percent_complete:
@@ -228,6 +254,8 @@ export async function fetchSchedulePreviewWithPackages(
   )
   const wbsByPackageId = resolvePackageWbsCodes(packages, taskWbsById)
   const packagePredecessorLabels: Record<string, string> = {}
+  const packagesById = new Map(packages.map((row) => [row.id, row]))
+  const tasksById = new Map(taskSummary.tasks.map((task) => [task.id, task]))
   const packageRows = packages.map((row) => {
     const fields =
       row.schedule_fields && typeof row.schedule_fields === 'object'
@@ -237,7 +265,11 @@ export async function fetchSchedulePreviewWithPackages(
     if (pred != null && String(pred).trim()) {
       packagePredecessorLabels[row.id] = String(pred).trim()
     }
-    return packageToPreviewTask(row, wbsByPackageId.get(row.id) ?? row.wbs_code ?? null)
+    return packageToPreviewTask(
+      row,
+      wbsByPackageId.get(row.id) ?? row.wbs_code ?? null,
+      parentTaskBaseline(row, packagesById, tasksById)
+    )
   })
 
   const tasks = [...taskRows, ...packageRows].sort((a, b) =>

@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from 'react'
 import {
   ArrowRight,
   Bell,
+  Calculator,
   CalendarRange,
   ChevronDown,
   CircleHelp,
@@ -53,6 +54,9 @@ import {
   type ManagerHrefs,
 } from './manager-sections'
 import { ManagerProgressChart } from './manager-progress-chart'
+import { ManagerPeriodCompare } from './manager-period-compare'
+import { ManagerBackgroundView } from './manager-background'
+import { PmInboxCard } from './pm-inbox-card'
 import { BlockersDelaysCard, DailyDeltaCard } from './manager-daily-section'
 import { ManagerHelpPanel, type ManagerHelpLink } from './manager-help-panel'
 import { ManagerTour, markTourSeen, readTourSeen, type ManagerTourStep } from './manager-tour'
@@ -70,6 +74,7 @@ const NAV_ICONS: Record<ManagerNavIcon, ComponentType<{ className?: string }>> =
   finance: Wallet,
   contracts: FileSignature,
   reports: FileText,
+  background: Calculator,
 }
 
 const TOUR_STEPS: ManagerTourStep[] = [
@@ -99,6 +104,35 @@ const TOUR_STEPS: ManagerTourStep[] = [
     body: 'خط برنامه (PV)، پیشرفت واقعی تأییدشده و ارزش کسب‌شده (EV) از چپ به راست در طول زمان. نقطهٔ «امروز» همان مقادیر کارت‌های بالای صفحه است.',
   },
 ]
+
+const PERIOD_IDS = MANAGER_PERIODS.map((p) => p.id)
+
+/** Header period, kept in `?period=` so a refresh or a shared link keeps it. */
+function parsePeriod(raw: string | null): ManagerPeriod {
+  return raw && PERIOD_IDS.includes(raw as ManagerPeriod) ? (raw as ManagerPeriod) : 'week'
+}
+
+/**
+ * Header period, kept in `?period=` so a refresh or a shared link keeps it. The URL is updated with
+ * `history.replaceState` so switching never waits for a server re-render of the page.
+ */
+function usePeriodParam(): [ManagerPeriod, (next: ManagerPeriod) => void] {
+  const searchParams = useSearchParams()
+  const urlPeriod = parsePeriod(searchParams.get('period'))
+  const [period, setPeriodState] = useState<ManagerPeriod>(urlPeriod)
+
+  useEffect(() => {
+    setPeriodState(urlPeriod)
+  }, [urlPeriod])
+
+  const setPeriod = useCallback((next: ManagerPeriod) => {
+    setPeriodState(next)
+    const url = new URL(window.location.href)
+    url.searchParams.set('period', next)
+    window.history.replaceState(window.history.state, '', url)
+  }, [])
+  return [period, setPeriod]
+}
 
 function useManagerOverview(projectId: string | null) {
   const [data, setData] = useState<ManagerOverview | null>(null)
@@ -470,13 +504,15 @@ interface ManagerDashboardProps {
   nav: ManagerNavModel
   projectOptions: { id: string; name: string }[]
   initialProjectId: string | null
-  view: 'home' | 'alerts'
+  view: 'home' | 'alerts' | 'background'
 }
 
 export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, view }: ManagerDashboardProps) {
   const projectId = useSyncedProjectId(initialProjectId)
   const { data, loading, error, reload } = useManagerOverview(projectId)
-  const [period, setPeriod] = useState<ManagerPeriod>('week')
+  const [period, setPeriod] = usePeriodParam()
+  const [periodReportOpen, setPeriodReportOpen] = useState(false)
+  const closePeriodReport = useCallback(() => setPeriodReportOpen(false), [])
   const [helpOpen, setHelpOpen] = useState(false)
   const [tourOpen, setTourOpen] = useState(false)
   const [showIntro, setShowIntro] = useState(false)
@@ -526,6 +562,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
       finance: pick('/finance/costs'),
       invoices: pick('/dashboard/accountant'),
       gantt: pick('/dashboard/technical-office') ?? pick('/dashboard/schedule-intelligence'),
+      procurement: pick('/dashboard/procurement'),
       inbox,
     }
   }, [nav, projectId])
@@ -533,6 +570,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
   const helpLinks = useMemo<ManagerHelpLink[]>(() => {
     const candidates: (ManagerHelpLink | null)[] = [
       { label: 'همهٔ هشدارها', description: 'فهرست کامل هشدارها با فیلتر حوزه و سطح', href: '/dashboard/manager/alerts' },
+      { label: 'بک‌گراند محاسبات', description: 'فرمول و ریز محاسبهٔ هر عدد داشبورد', href: '/dashboard/manager/background' },
       hrefs.inbox ? { label: 'کارتابل من', description: 'تصمیم‌ها و تأییدهای در انتظار', href: hrefs.inbox() } : null,
       hrefs.evm ? { label: 'شاخص‌های ارزش کسب‌شده', description: 'جزئیات SPI، CPI و فعالیت‌ها', href: hrefs.evm } : null,
       hrefs.scheduleIntel
@@ -662,7 +700,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
 
       <div className="min-w-0 flex-1">
         {/* The only header on this page */}
-        <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/90 shadow-xs backdrop-blur-md supports-[backdrop-filter]:bg-white/75">
+        <header className="sticky top-0 z-40 border-b border-sky-200 bg-[#e8f1fb]/95 shadow-xs backdrop-blur-md supports-[backdrop-filter]:bg-[#e8f1fb]/85">
           <div className="flex min-h-16 flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-5">
             <button
               type="button"
@@ -673,24 +711,42 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
               <Menu className="h-4 w-4" aria-hidden />
             </button>
 
-            <div className="relative min-w-0">
+            <div className={cn('relative min-w-0', view === 'home' && 'max-w-full shrink-0')}>
               <select
                 value={projectId ?? ''}
                 onChange={(event) => {
                   if (event.target.value) writeProjectCookie(event.target.value)
                 }}
                 aria-label="انتخاب پروژه"
-                className="h-10 max-w-[240px] appearance-none truncate rounded-xl border border-slate-200/80 bg-white py-0 pe-3.5 ps-9 text-[15px] font-bold tracking-tight text-slate-900 shadow-xs transition-colors hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                className={cn(
+                  'h-10 appearance-none truncate rounded-xl border border-slate-200/80 bg-white py-0 pe-9 ps-3.5 text-[15px] font-bold tracking-tight text-slate-900 shadow-xs transition-colors hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
+                  view === 'home' ? 'w-72 max-w-[70vw]' : 'max-w-[240px]'
+                )}
               >
                 {!projectId ? <option value="">انتخاب پروژه…</option> : null}
                 {projectOptions.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name}
+                    {view === 'home' ? `اتاق فرمان ${p.name}` : p.name}
                   </option>
                 ))}
               </select>
               <ChevronDown className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
             </div>
+
+            {view === 'home' ? (
+              <button
+                type="button"
+                onClick={startTour}
+                title="یک تور کوتاه ۵ مرحله‌ای از بخش‌های اصلی"
+                className={cn(
+                  'inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-1',
+                  showIntro && !tourOpen && 'ring-2 ring-primary/30 ring-offset-1'
+                )}
+              >
+                <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                شروع تور
+              </button>
+            ) : null}
 
             {data ? (
               <StatusTag tone={overall.tone} label={overall.label} className="px-2.5 py-1 text-xs" />
@@ -705,7 +761,10 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                   type="button"
                   role="radio"
                   aria-checked={period === option.id}
-                  onClick={() => setPeriod(option.id)}
+                  onClick={() => {
+                    setPeriod(option.id)
+                    if (view === 'home') setPeriodReportOpen(true)
+                  }}
                   className={cn(
                     'rounded-lg px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
                     period === option.id
@@ -767,42 +826,16 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
 
           {view === 'alerts' ? (
             <AllAlertsView overview={data} loading={loading} period={period} hrefs={hrefs} />
+          ) : view === 'background' ? (
+            <ManagerBackgroundView projectId={projectId} overview={data} loading={loading} />
           ) : (
             <>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h1 className="text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl">
-                  اتاق فرمان {activeProjectName ? <span className="text-slate-500">· {activeProjectName}</span> : null}
-                </h1>
-                <p className="text-xs text-slate-500">
-                  {data?.project?.endDate ? `پایان قراردادی ${jalaliDate(data.project.endDate)} · ` : ''}
-                  {data ? `امروز ${jalaliDate(data.site.date)}` : ''}
+              <h1 className="sr-only">اتاق فرمان {activeProjectName}</h1>
+              {data ? (
+                <p className="-mb-2 text-xs text-slate-500">
+                  {data.project?.endDate ? `پایان قراردادی ${jalaliDate(data.project.endDate)} · ` : ''}
+                  امروز {jalaliDate(data.site.date)}
                 </p>
-              </div>
-
-              {showIntro && !tourOpen ? (
-                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-orange-200/60 bg-gradient-to-l from-orange-50/80 to-white px-4 py-3 shadow-xs">
-                  <Sparkles className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-                  <p className="min-w-0 flex-1 text-sm leading-7 text-slate-700">
-                    <strong className="text-slate-900">به اتاق فرمان پروژه خوش آمدید.</strong> یک تور کوتاه ۵ مرحله‌ای بخش‌های
-                    اصلی را نشان می‌دهد.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={startTour}
-                      className="rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-1"
-                    >
-                      شروع تور
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => closeTour(false)}
-                      className="rounded-lg px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-                    >
-                      بعداً
-                    </button>
-                  </div>
-                </div>
               ) : null}
 
               {/* Mobile order: decisions, alerts, pulse first; desktop follows the grid. */}
@@ -812,9 +845,30 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                     overview={data}
                     loading={loading}
                     hrefs={hrefs}
-                    criticalCount={data?.alerts.status === 'ok' ? criticalAlerts.length : null}
+                    inbox={<PmInboxCard projectId={projectId} overview={data} hrefs={hrefs} />}
                   />
                 </div>
+
+                <ManagerPeriodCompare
+                  projectId={projectId}
+                  period={period}
+                  refreshKey={data?.generatedAt ?? null}
+                  reportOpen={periodReportOpen}
+                  onReportClose={closePeriodReport}
+                  showSection={false}
+                />
+
+                <SectionCard
+                  tourId="chart"
+                  className="order-5 lg:order-1 lg:col-span-12"
+                  title="منحنی S پیشرفت پروژه"
+                  icon={<LineChartIcon className="h-4 w-4" aria-hidden />}
+                  hint="خط برنامه (PV)، پیشرفت واقعی ثبت‌شده و ارزش کسب‌شده (EV) به درصد تجمعی، از اولین گزارش ثبت‌شدهٔ پیشرفت تا امروز. نقطهٔ «امروز» دقیقاً همان مقادیر کارت‌های بالای صفحه است."
+                >
+                  <SectionBody result={data?.progress} loading={loading} rows={5}>
+                    {(curve) => <ManagerProgressChart curve={curve} />}
+                  </SectionBody>
+                </SectionCard>
 
                 <div className="order-5 grid grid-cols-1 gap-5 lg:order-2 lg:col-span-12 lg:grid-cols-12 lg:gap-6">
                   <DailyDeltaCard
@@ -857,18 +911,6 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                   period={period}
                   hrefs={hrefs}
                 />
-
-                <SectionCard
-                  tourId="chart"
-                  className="order-6 lg:order-5 lg:col-span-12"
-                  title="منحنی S پیشرفت پروژه"
-                  icon={<LineChartIcon className="h-4 w-4" aria-hidden />}
-                  hint="خط برنامه (PV)، پیشرفت واقعی تأییدشده و ارزش کسب‌شده (EV) به درصد تجمعی. نقطهٔ «امروز» دقیقاً همان مقادیر کارت‌های بالای صفحه است."
-                >
-                  <SectionBody result={data?.progress} loading={loading} rows={5}>
-                    {(curve) => <ManagerProgressChart curve={curve} />}
-                  </SectionBody>
-                </SectionCard>
 
                 <ResourcesFinanceSection
                   className="order-7 lg:order-6 lg:col-span-12"

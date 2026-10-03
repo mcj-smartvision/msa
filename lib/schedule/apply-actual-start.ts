@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { todayTehranIso } from '@/lib/time/tehran'
 import {
   canSnapshotPlannedAsBaseline,
   ScheduleRebuildError,
@@ -172,7 +173,7 @@ export async function applyActualStartToSchedule(
   const shifted = shiftScheduleByActualStart(actualStart, rows, baselineStart)
   const shiftDays = shifted.deltaDays
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayTehranIso()
   let tasksInProgress = 0
   let tasksCompleted = 0
   let tasksDelayed = 0

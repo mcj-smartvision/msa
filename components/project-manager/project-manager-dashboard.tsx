@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { RagStatusBadge } from './rag-status-badge'
 import { EvmKpiWidgets } from './evm-kpi-widgets'
 import { EvmSourcesButton } from './evm-sources-dialog'
+import { ControlsKpiCards, ScheduleSpiCard, useProjectControls } from './controls-kpi-cards'
 
 interface ProjectManagerDashboardProps {
   initialContext: DashboardUserContext
@@ -59,6 +60,8 @@ export function ProjectManagerDashboard({
   const t = getProjectManagerMessages(locale)
   const projectId = useSyncedProjectId(initialProjectId)
   const { snapshot, loading, error, reload } = useProjectEvm(projectId)
+  const controls = useProjectControls(projectId)
+  const reloadAll = useCallback(() => Promise.all([reload(), controls.reload()]).then(() => undefined), [reload, controls.reload])
 
   if (projectOptions.length === 0) {
     return (
@@ -90,7 +93,7 @@ export function ProjectManagerDashboard({
             {snapshot ? <span>{t.asOf(snapshot.metrics.asOf)}</span> : null}
             <button
               type="button"
-              onClick={() => void reload()}
+              onClick={() => void reloadAll()}
               disabled={loading || !projectId}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
             >
@@ -109,7 +112,7 @@ export function ProjectManagerDashboard({
         ) : null}
 
         {snapshot ? (
-          <EvmKpiWidgets metrics={snapshot.metrics} float={snapshot.float} />
+          <EvmKpiWidgets metrics={snapshot.metrics} float={snapshot.float} scheduleCard={<ScheduleSpiCard state={controls} />} />
         ) : loading ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -117,6 +120,8 @@ export function ProjectManagerDashboard({
           </div>
         ) : null}
       </section>
+
+      <ControlsKpiCards state={controls} />
     </div>
   )
 }

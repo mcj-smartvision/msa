@@ -65,7 +65,8 @@ describe('project S-curve series', () => {
       baselinePercentComplete: 100,
       progressWeight: 100,
     })
-    expect(progressForSCurveAsOf(activity, [], '2026-01-01', '2026-02-01')).toBe(0)
+    expect(progressForSCurveAsOf(activity, [], '2025-12-31', '2026-02-01')).toBe(0)
+    expect(progressForSCurveAsOf(activity, [], '2026-01-01', '2026-02-01')).toBeCloseTo(100 / 31, 1)
     expect(progressForSCurveAsOf(activity, [], '2026-01-16', '2026-02-01')).toBeGreaterThan(40)
     expect(progressForSCurveAsOf(activity, [], '2026-01-31', '2026-02-01')).toBe(100)
     // Before today: phases baseline along plan (partial MSP %)

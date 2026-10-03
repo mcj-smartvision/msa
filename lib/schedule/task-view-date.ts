@@ -1,4 +1,5 @@
 import { toIsoDateOnly } from '@/lib/schedule/dates'
+import { todayTehranIso } from '@/lib/time/tehran'
 import { compareWbs } from '@/lib/schedule/wbs-utils'
 import type { ProjectTask } from '@/types/schedule'
 
@@ -114,7 +115,7 @@ export function sortTasksForSchedulePreview(
 }
 
 export function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
+  return todayTehranIso()
 }
 
 /**

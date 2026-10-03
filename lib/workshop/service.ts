@@ -47,6 +47,8 @@ import {
 } from './wbs-numbering'
 import { fetchTaskPredecessorDisplay, fetchTaskPredecessorLabels } from '@/lib/schedule/predecessor-labels'
 import { seedNewPackageProgressFields } from '@/lib/workshop/header-rules'
+import { resolveSiblingWeights, type WeightIssue } from '@/lib/schedule/weight-consistency'
+import { normalizeScheduleWeightPercent } from '@/lib/schedule/weighted-progress'
 import type {
   CreatePackageInput,
   PackageChangePayload,
@@ -186,6 +188,41 @@ export async function getWorkshopCapabilities(
     canComment,
     readOnly: !canWrite,
   }
+}
+
+/**
+ * Absolute-weight check for the sibling group a package belongs to (children must sum to the
+ * parent's weight). Returned as a warning with the save response; it never blocks the save.
+ */
+export async function checkPackageSiblingWeights(
+  supabase: SupabaseClient,
+  pkg: Record<string, unknown>
+): Promise<WeightIssue | null> {
+  const parentPackageId = pkg.parent_package_id ? String(pkg.parent_package_id) : null
+  const parentTaskId = pkg.project_task_id ? String(pkg.project_task_id) : null
+  if (!parentPackageId && !parentTaskId) return null
+
+  let siblingsQuery = supabase.from('workshop_packages').select('*').eq('project_id', String(pkg.project_id))
+  siblingsQuery = parentPackageId
+    ? siblingsQuery.eq('parent_package_id', parentPackageId)
+    : siblingsQuery.eq('project_task_id', parentTaskId!).is('parent_package_id', null)
+  const [siblings, parent] = await Promise.all([
+    siblingsQuery,
+    parentPackageId
+      ? supabase.from('workshop_packages').select('*').eq('id', parentPackageId).maybeSingle()
+      : supabase.from('project_tasks').select('id, name, schedule_weight, physical_weight').eq('id', parentTaskId!).maybeSingle(),
+  ])
+  if (siblings.error || parent.error || !parent.data) return null
+
+  const parentRow = parent.data as Record<string, unknown>
+  const parentWeight = parentPackageId
+    ? resolvePackageWeight(parentRow)
+    : normalizeScheduleWeightPercent(Number(parentRow.physical_weight ?? parentRow.schedule_weight))
+  const rows = (siblings.data ?? []) as Record<string, unknown>[]
+  return resolveSiblingWeights(parentWeight, rows.map(resolvePackageWeight), {
+    id: String(parentRow.id),
+    label: String(parentRow.name ?? '') || null,
+  }).issue
 }
 
 async function loadPackage(supabase: SupabaseClient, packageId: string) {

@@ -34,13 +34,13 @@ function weightOf(task: TaskRow): number {
   return Number(raw)
 }
 
-/** Same dates the schedule editor shows as شروع / پایان. */
+/** Frozen baseline first: planned weight is PV and must not move when current dates slip. */
 function scheduleStart(task: TaskRow): string | null {
-  return isoDay(task.start_current) ?? isoDay(task.start_planned) ?? isoDay(task.baseline_start)
+  return isoDay(task.baseline_start) ?? isoDay(task.start_planned) ?? isoDay(task.start_current)
 }
 
 function scheduleFinish(task: TaskRow): string | null {
-  return isoDay(task.finish_current) ?? isoDay(task.finish_planned) ?? isoDay(task.baseline_finish)
+  return isoDay(task.baseline_finish) ?? isoDay(task.finish_planned) ?? isoDay(task.finish_current)
 }
 
 function signature(start: string | null, finish: string | null, weight: number): string {

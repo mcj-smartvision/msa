@@ -163,7 +163,7 @@ export function ScheduleCatchUpPanel({
     for (const row of editorRows) {
       // Only push planned onto leaves / non-parents; parents will roll up
       if (!rollup.parentIds.has(row.taskId)) {
-        planned[row.taskId] = row.plannedPercent
+        planned[row.taskId] = Math.round(row.plannedPercent)
       } else {
         planned[row.taskId] = draftPct[row.taskId] ?? row.actualPercent
       }
@@ -171,7 +171,7 @@ export function ScheduleCatchUpPanel({
     // For due rows that are leaves, use planned
     for (const row of compliance.rows) {
       if (!rollup.parentIds.has(row.taskId)) {
-        planned[row.taskId] = row.plannedPercent
+        planned[row.taskId] = Math.round(row.plannedPercent)
       }
     }
     void saveUpdates(buildRolledUpdates(planned))
@@ -385,7 +385,7 @@ export function ScheduleCatchUpPanel({
                       <td className="px-3 py-2 text-xs text-muted-foreground hidden md:table-cell whitespace-nowrap">
                         <FormattedDate value={row.start} /> → <FormattedDate value={row.finish} />
                       </td>
-                      <td className="px-3 py-2 text-end tabular-nums">{row.plannedPercent}%</td>
+                      <td className="px-3 py-2 text-end tabular-nums">{Math.round(row.plannedPercent)}%</td>
                       <td className="px-3 py-2 text-end tabular-nums font-semibold">
                         <div className="inline-flex items-center justify-end gap-1">
                           <span>{value}%</span>
@@ -523,7 +523,7 @@ export function ScheduleCatchUpPanel({
                   const next = { ...prev }
                   for (const row of editorRows) {
                     if (!rollup.parentIds.has(row.taskId)) {
-                      next[row.taskId] = row.plannedPercent
+                      next[row.taskId] = Math.round(row.plannedPercent)
                     }
                   }
                   return next

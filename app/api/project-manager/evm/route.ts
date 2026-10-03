@@ -8,10 +8,7 @@ import { ROLE_DASHBOARD_ACCESS } from '@/lib/schedule/access'
 import { toIsoDateOnly } from '@/lib/schedule/dates'
 import { loadProjectEvm } from '@/lib/evm/load-project-evm'
 import { workshopErrorResponse } from '@/lib/workshop/service'
-
-function todayIsoTehran(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tehran' })
-}
+import { todayTehranIso } from '@/lib/time/tehran'
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,7 +26,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const today = todayIsoTehran()
+    const today = todayTehranIso()
     const asOf = toIsoDateOnly(request.nextUrl.searchParams.get('asOf')) ?? today
 
     const snapshot = await loadProjectEvm(createServiceClient(), projectId, { asOf, today })

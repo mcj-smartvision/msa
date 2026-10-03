@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createPackage, workshopErrorResponse } from '@/lib/workshop/service'
+import { checkPackageSiblingWeights, createPackage, workshopErrorResponse } from '@/lib/workshop/service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
             ? body.finish_date
             : undefined,
     })
-    return NextResponse.json({ package: pkg })
+    const weightWarning = await checkPackageSiblingWeights(supabase, pkg).catch(() => null)
+    return NextResponse.json({ package: pkg, weightWarning })
   } catch (error) {
     return workshopErrorResponse(error)
   }

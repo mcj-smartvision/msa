@@ -1,10 +1,9 @@
-import { plannedPercentAsOf } from '@/lib/evm/metrics'
 import { faNumber } from '@/lib/manager/format'
+import { weightedPlannedPercent } from '@/lib/schedule/planned-progress'
 import type {
   ManagerBlocker,
-  ManagerCriticalDelay,
-  ManagerCriticalDelays,
   ManagerDailyDelta,
+  ManagerUpcomingDeadline,
 } from '@/lib/manager/overview-types'
 
 const DAY_MS = 86_400_000
@@ -15,10 +14,6 @@ function dateOnly(value: string | null | undefined): string | null {
 
 function addDays(iso: string, days: number): string {
   return new Date(Date.parse(`${iso}T12:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10)
-}
-
-function dayDiff(a: string, b: string): number {
-  return Math.round((Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T12:00:00Z`)) / DAY_MS)
 }
 
 /* ------------------------------------------------------------ Daily delta */
@@ -38,21 +33,6 @@ export interface DailyScheduleRow {
   baselineFinish: string | null
   currentStart: string | null
   currentFinish: string | null
-}
-
-function plannedWeightedAt(
-  rows: DailyScheduleRow[],
-  totalWeight: number,
-  pick: (row: DailyScheduleRow) => { start: string | null; finish: string | null },
-  asOf: string
-): number {
-  if (totalWeight <= 0) return 0
-  let done = 0
-  for (const row of rows) {
-    const { start, finish } = pick(row)
-    done += row.weight * plannedPercentAsOf(start, finish, asOf)
-  }
-  return done / totalWeight
 }
 
 /**
@@ -100,18 +80,15 @@ export function buildDailyDelta(input: {
   }
 
   const yesterday = addDays(today, -1)
-  const baselineOf = (r: DailyScheduleRow) => ({ start: r.baselineStart, finish: r.baselineFinish })
-  const currentOf = (r: DailyScheduleRow) => ({ start: r.currentStart, finish: r.currentFinish })
-  const increment = (pick: typeof baselineOf) =>
-    Math.max(0, plannedWeightedAt(rows, totalWeight, pick, today) - plannedWeightedAt(rows, totalWeight, pick, yesterday))
-
-  // Once the baseline window has passed it allots nothing to today; the updated schedule then
-  // carries today's target.
-  const baselinePlanned = increment(baselineOf)
-  const currentPlanned = baselinePlanned > 0.0001 ? 0 : increment(currentOf)
-  const planBasis: ManagerDailyDelta['planBasis'] = currentPlanned > 0.0001 ? 'current' : 'baseline'
-  const plannedPercent = planBasis === 'current' ? currentPlanned : baselinePlanned
-  const windowOf = planBasis === 'current' ? currentOf : baselineOf
+  const windows = rows.map((r) => ({ weight: r.weight, start: r.baselineStart, finish: r.baselineFinish }))
+  const plannedPercent = Math.max(
+    0,
+    (weightedPlannedPercent(windows, today) ?? 0) - (weightedPlannedPercent(windows, yesterday) ?? 0)
+  )
+  const baselineEnded = rows.every((r) => {
+    const f = dateOnly(r.baselineFinish ?? r.baselineStart)
+    return !f || f < today
+  })
 
   let plannedActivities = 0
   let plannedReportedActivities = 0
@@ -120,9 +97,8 @@ export function buildDailyDelta(input: {
   for (const row of rows) {
     const reported = (deltaOf.get(row.id) ?? 0) > 0
     if (reported) reportedActivities += 1
-    const { start, finish } = windowOf(row)
-    const s = dateOnly(start)
-    const f = dateOnly(finish ?? start)
+    const s = dateOnly(row.baselineStart)
+    const f = dateOnly(row.baselineFinish ?? row.baselineStart)
     if (s && f && s <= today && today <= f) {
       plannedActivities += 1
       if (reported) plannedReportedActivities += 1
@@ -137,7 +113,7 @@ export function buildDailyDelta(input: {
     actualPercent,
     deltaPercent: actualPercent - plannedPercent,
     fulfillmentPercent: plannedPercent > 0.0001 ? (actualPercent / plannedPercent) * 100 : null,
-    planBasis,
+    baselineEnded,
     overdueActivities,
     plannedActivities,
     plannedReportedActivities,
@@ -162,44 +138,23 @@ export interface ScheduleTaskRow {
   percent: number
 }
 
-/**
- * Unfinished activities on (or at zero/negative float next to) the critical path whose forecast
- * finish slips past the baseline. An overdue activity is forecast to finish no earlier than today.
- */
-export function buildCriticalDelays(rows: ScheduleTaskRow[], today: string, limit = 5): ManagerCriticalDelays {
-  const items: ManagerCriticalDelay[] = []
+/** Unfinished leaf activities ordered by their forecast finish from today on. */
+export function buildUpcomingDeadlines(rows: ScheduleTaskRow[], today: string, limit = 3): ManagerUpcomingDeadline[] {
+  const items: ManagerUpcomingDeadline[] = []
   for (const row of rows) {
     if (row.isSummary || row.actualFinish || row.percent >= 100) continue
-    const onPath = row.isCritical || (row.totalFloatDays != null && row.totalFloatDays <= 0)
-    const baseline = dateOnly(row.baselineFinish)
-    const current = dateOnly(row.currentFinish)
-    if (!onPath || !baseline || !current) continue
-    const overdue = current < today
-    const forecast = overdue ? today : current
-    const delayDays = dayDiff(forecast, baseline)
-    if (delayDays <= 0) continue
-    items.push({
-      id: row.id,
-      name: row.name,
-      wbs: row.wbs,
-      delayDays,
-      totalFloatDays: row.totalFloatDays,
-      importance:
-        row.totalFloatDays != null && row.totalFloatDays < 0 ? 'negative_float' : row.isCritical ? 'critical' : 'zero_float',
-      percent: row.percent,
-      baselineFinish: baseline,
-      forecastFinish: forecast,
-      overdue,
-    })
+    const due = dateOnly(row.currentFinish) ?? dateOnly(row.baselineFinish)
+    if (!due || due < today) continue
+    items.push({ id: row.id, name: row.name, wbs: row.wbs, due, percent: row.percent })
   }
-  items.sort((a, b) => b.delayDays - a.delayDays || a.percent - b.percent)
-  return { items: items.slice(0, limit), total: items.length }
+  items.sort((a, b) => a.due.localeCompare(b.due) || a.name.localeCompare(b.name, 'fa'))
+  return items.slice(0, limit)
 }
 
 /* ---------------------------------------------------------------- Blockers */
 
 export interface BlockerInputs {
-  blockedWorkOrders: { id: string; taskName: string; constraints: string[]; planDate: string }[]
+  blockedWorkOrders: { id: string; taskName: string; wbs?: string | null; constraints: string[]; planDate: string }[]
   constraintNotes: { id: string; note: string; createdAt: string }[]
   stock: { id: string; name: string; current: number; min: number; unit: string | null; updatedAt: string | null }[]
   criticalNcrs: { id: string; label: string; createdAt: string | null }[]

@@ -70,8 +70,10 @@ async function updateProjectTask(
 async function updateWorkshopPackage(
   supabase: SupabaseClient,
   projectId: string,
+  userId: string,
   packageId: string,
   pct: number,
+  reportDate: string | undefined,
   now: string
 ): Promise<boolean> {
   const { data: pkg } = await supabase
@@ -102,7 +104,18 @@ async function updateWorkshopPackage(
     .maybeSingle()
 
   if (error) throw new WorkshopError('VALIDATION', error.message)
-  return Boolean(updated)
+  if (!updated) return false
+
+  // Best-effort history; ignore until migration 99 is applied
+  await supabase.from('package_progress_updates').insert({
+    project_id: projectId,
+    package_id: packageId,
+    progress_date: reportDate ?? now.slice(0, 10),
+    percent_complete: pct,
+    entered_by: userId,
+  })
+
+  return true
 }
 
 /**
@@ -149,8 +162,10 @@ export async function persistSupervisorPhysicalProgress(
       const ok = await updateWorkshopPackage(
         supabase,
         projectId,
+        userId,
         ref.entityId,
         pct,
+        row.reportDate,
         now
       )
       if (ok) updatedPackages += 1

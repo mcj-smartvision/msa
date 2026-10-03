@@ -55,21 +55,3 @@ export function weightedProgressPercent(
   const factor = 10 ** precision
   return Math.round(raw * factor) / factor
 }
-
-/** Effective project weight for a workshop package under an MSP activity */
-export function packageProgressWeight(
-  packageWeightPercent: number | null | undefined,
-  parentScheduleWeight: number | null | undefined,
-  leafSiblingCount: number
-): number {
-  const parentW = normalizeScheduleWeightPercent(parentScheduleWeight)
-  const pkgW = packageWeightPercent
-
-  if (parentW > 0) {
-    if (pkgW != null && pkgW > 0) return (parentW * pkgW) / 100
-    return parentW / Math.max(1, leafSiblingCount)
-  }
-
-  if (pkgW != null && pkgW > 0) return pkgW
-  return 1
-}

@@ -23,12 +23,12 @@ import type {
   ManagerBlocker,
   ManagerBlockerCategory,
   ManagerBlockers,
-  ManagerCriticalDelay,
   ManagerCriticalDelays,
   ManagerDailyDelta,
   SectionResult,
 } from '@/lib/manager/overview-types'
 import { InfoHint, SectionBody } from './manager-ui'
+import { CriticalFrontsList } from './critical-fronts-list'
 
 const DAY_MS = 86_400_000
 
@@ -106,7 +106,7 @@ function DailyDeltaBody({ data }: { data: ManagerDailyDelta }) {
       <dl className="grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-slate-50 p-3">
           <dt className="text-xs text-slate-500">
-            {data.planBasis === 'current' ? 'برنامهٔ به‌روز امروز' : 'برنامهٔ مصوب امروز'}
+            برنامهٔ مصوب امروز
           </dt>
           <dd className="mt-1.5 text-2xl font-black leading-none tracking-tight tabular-nums text-slate-900">{pct(planned)}</dd>
         </div>
@@ -170,7 +170,7 @@ function DailyDeltaBody({ data }: { data: ManagerDailyDelta }) {
           <Sparkles className="mt-1 h-3.5 w-3.5 shrink-0 text-primary/80" aria-hidden />
           <span>
             <strong className="font-semibold text-slate-700">خلاصهٔ سیستم: </strong>
-            {data.planBasis === 'current' ? 'برنامهٔ مبنا پیش از امروز به پایان رسیده و هدف امروز از برنامهٔ به‌روز است. ' : ''}
+            {data.baselineEnded ? 'دورهٔ برنامهٔ مبنا پیش از امروز به پایان رسیده و برای امروز سهمی تعریف نمی‌کند. ' : ''}
             {data.plannedActivities > 0
               ? `${faNumber(data.plannedReportedActivities)} فعالیت از ${faNumber(data.plannedActivities)} فعالیت برنامه‌ای امروز پیشرفت ثبت کرده‌اند`
               : 'فعالیتی برای امروز زمان‌بندی نشده است'}
@@ -297,36 +297,6 @@ function BlockerRow({ item }: { item: ManagerBlocker }) {
   )
 }
 
-const IMPORTANCE: Record<ManagerCriticalDelay['importance'], { label: string; cls: string }> = {
-  negative_float: { label: 'شناوری منفی', cls: 'bg-rose-500/10 text-rose-700 ring-rose-600/15' },
-  critical: { label: 'مسیر بحرانی (CPM)', cls: 'bg-orange-500/10 text-orange-700 ring-orange-600/15' },
-  zero_float: { label: 'شناوری صفر', cls: 'bg-amber-500/10 text-amber-700 ring-amber-600/15' },
-}
-
-function DelayRow({ item }: { item: ManagerCriticalDelay }) {
-  const importance = IMPORTANCE[item.importance]
-  return (
-    <li className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3 transition-colors hover:border-slate-200 hover:bg-slate-50/60">
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-bold leading-6 text-slate-800" title={item.name}>
-          {item.name}
-        </p>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-5 text-slate-500">
-          <span className={cn('rounded-full px-2 py-px font-semibold ring-1 ring-inset', importance.cls)}>{importance.label}</span>
-          <span className="tabular-nums">پیشرفت {faNumber(item.percent, 0)}٪</span>
-          <span className="tabular-nums">
-            {item.overdue ? 'موعد گذشته' : `پایان پیش‌بینی ${jalaliDate(item.forecastFinish)}`}
-          </span>
-        </div>
-      </div>
-      <div className="shrink-0 text-left">
-        <p className="text-lg font-black leading-6 tabular-nums text-rose-600">−{faNumber(item.delayDays)}</p>
-        <p className="text-[10px] text-slate-400">روز تأخیر</p>
-      </div>
-    </li>
-  )
-}
-
 function SubHeader({ icon, title, count }: { icon: ReactNode; title: string; count?: ReactNode }) {
   return (
     <h3 className="mb-3 flex items-center gap-2 text-[13px] font-bold text-slate-800">
@@ -381,7 +351,7 @@ export function BlockersDelaysCard({
       className={className}
       icon={<Construction className="h-4 w-4" aria-hidden />}
       title="گلوگاه‌های فعال و جبهه‌های بحرانی"
-      hint="موانع از دستور کارهای «متوقف» برنامهٔ روزانهٔ کارگاه، کسری انبار، NCRهای بحرانی و هشدارهای باز برنامه‌ریزی جمع می‌شوند. تأخیر هر فعالیت = پایان پیش‌بینی (یا امروز، اگر موعدش گذشته) منهای پایان برنامهٔ مبنا؛ فقط فعالیت‌های ناتمام روی مسیر بحرانی یا با شناوری صفر/منفی."
+      hint="موانع از دستور کارهای «متوقف» برنامهٔ روزانهٔ کارگاه، کسری انبار، NCRهای بحرانی و هشدارهای باز برنامه‌ریزی جمع می‌شوند. تأخیر هر فعالیت = پایان پیش‌بینی (یا امروز، اگر موعدش گذشته) منهای پایان برنامهٔ مبنا. با شبکهٔ CPM فقط فعالیت‌های ناتمام روی مسیر بحرانی یا با شناوری صفر/منفی و Total Float آن‌ها نمایش داده می‌شود؛ بدون CPM، همهٔ فعالیت‌های عقب از baseline با گزارش دادهٔ ناقص. پیشرفت برنامه = سهم سپری‌شدهٔ بازهٔ مبنا (روز تقویمی). علت/مانع از هشدارهای باز و دستور کارهای متوقف امروز."
       badge={
         ganttHref ? (
           <Link
@@ -425,31 +395,15 @@ export function BlockersDelaysCard({
         <div className="md:pr-5">
           <SubHeader
             icon={<TriangleAlert className="h-4 w-4 text-amber-500" aria-hidden />}
-            title="مهم‌ترین جبهه‌های تأخیردار در مسیر بحرانی"
+            title={
+              delays?.status === 'ok' && delays.data.mode === 'baseline'
+                ? 'جبهه‌های تأخیردار نسبت به برنامهٔ مبنا'
+                : 'مهم‌ترین جبهه‌های تأخیردار در مسیر بحرانی'
+            }
             count={delays?.status === 'ok' && delays.data.total > 0 ? <CountPill value={delays.data.total} tone="rose" /> : undefined}
           />
           <SectionBody result={delays} loading={loading} rows={3}>
-            {(data) =>
-              data.items.length === 0 ? (
-                <Calm
-                  title="فعالیت تأخیرداری روی مسیر بحرانی نیست"
-                  description="همهٔ فعالیت‌های ناتمام مسیر بحرانی تا امروز در محدودهٔ برنامهٔ مبنا هستند."
-                />
-              ) : (
-                <>
-                  <ul className="space-y-2">
-                    {data.items.map((item) => (
-                      <DelayRow key={item.id} item={item} />
-                    ))}
-                  </ul>
-                  {data.total > data.items.length ? (
-                    <p className="mt-2 text-xs text-slate-500">
-                      {faNumber(data.total - data.items.length)} فعالیت تأخیردار دیگر در Gantt
-                    </p>
-                  ) : null}
-                </>
-              )
-            }
+            {(data) => <CriticalFrontsList data={data} />}
           </SectionBody>
         </div>
       </div>

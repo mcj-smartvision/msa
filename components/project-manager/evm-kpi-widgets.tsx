@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import type { EvmCostSource, EvmMetrics } from '@/lib/evm/metrics'
 import { DEFAULT_RAG_THRESHOLDS, type FloatHealth } from '@/lib/evm/ragStatus'
@@ -11,6 +12,7 @@ const COST_SOURCE_LABEL: Record<EvmCostSource, string> = {
 }
 
 const BUDGET_BASIS_LABEL: Record<EvmMetrics['budgetBasis'], string> = {
+  technical_office_cost: 'بودجه = ستون «هزینه» برنامهٔ دفتر فنی (جمع فعالیت‌های برگ)',
   contract_value: 'بودجه = مقدار × قیمت واحد فعالیت‌ها',
   weighted_project_budget: 'بودجه پروژه به نسبت وزن فعالیت‌ها تقسیم شده',
   none: 'بودجه‌ای برای فعالیت‌ها ثبت نشده است',
@@ -61,7 +63,16 @@ function KpiCard({
   )
 }
 
-export function EvmKpiWidgets({ metrics, float }: { metrics: EvmMetrics; float: FloatHealth }) {
+export function EvmKpiWidgets({
+  metrics,
+  float,
+  scheduleCard,
+}: {
+  metrics: EvmMetrics
+  float: FloatHealth
+  /** The «زمان‌بندی» card (SPI(t) primary, SPI secondary) rendered by the explainable engine. */
+  scheduleCard: ReactNode
+}) {
   const acHelp = (Object.keys(COST_SOURCE_LABEL) as EvmCostSource[])
     .map((key) => `${COST_SOURCE_LABEL[key]}: ${formatToman(metrics.acBySource[key])}`)
     .join('\n')
@@ -69,24 +80,18 @@ export function EvmKpiWidgets({ metrics, float }: { metrics: EvmMetrics; float: 
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard
-          title="SPI — شاخص عملکرد زمانی"
-          value={metrics.spi == null ? '—' : metrics.spi.toFixed(2)}
-          valueClassName={indexTone(metrics.spi)}
-          caption={metrics.spi == null ? 'ارزش برنامه‌ای هنوز صفر است' : 'EV ÷ PV'}
-          help="نسبت ارزش کسب‌شده به ارزش برنامه‌ای؛ کمتر از ۱ یعنی عقب‌تر از برنامه."
-        />
+        {scheduleCard}
         <KpiCard
           title="CPI — شاخص عملکرد هزینه"
           value={metrics.cpi == null ? '—' : metrics.cpi.toFixed(2)}
           valueClassName={indexTone(metrics.cpi)}
-          caption={metrics.cpi == null ? 'هزینهٔ واقعی ثبت نشده است' : 'EV ÷ AC'}
+          caption={metrics.cpi == null ? 'هزینهٔ واقعی ثبت نشده است' : 'EV ریالی (Σ بودجه × پیشرفت) ÷ AC'}
           help="نسبت ارزش کسب‌شده به هزینهٔ واقعی؛ کمتر از ۱ یعنی بیش از بودجه خرج شده."
         />
         <KpiCard
           title="پیشرفت واقعی (کسب‌شده)"
           value={`${metrics.earnedPercent.toFixed(1)}%`}
-          caption={`برنامه‌ای: ${metrics.plannedPercent.toFixed(1)}٪ · ${metrics.activityCount} فعالیت بودجه‌دار`}
+          caption={`برنامه‌ای: ${metrics.plannedPercent.toFixed(1)}٪ · ${metrics.activityCount} فعالیت ${metrics.progressBasis === 'schedule_weight' ? 'وزن‌دار' : 'بودجه‌دار'}`}
           help="درصد کسب‌شده طبق پیشرفت فیزیکی تأییدشدهٔ دفتر فنی و درصد برنامه‌ای طبق baseline برنامه MSP."
         />
         <KpiCard

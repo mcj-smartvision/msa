@@ -7,16 +7,22 @@ import type { AttendanceDashboardSnapshot } from '@/lib/attendance/types'
 import { POSITION_LABELS } from '@/lib/i18n/position-labels'
 import { faNumber, jalaliDate } from '@/lib/manager/format'
 import { MANAGER_REMINDER_PREFIX, PULSE_ROLES } from '@/lib/manager/pulse-config'
+import { tehranDateIso } from '@/lib/manager/period-comparison'
 import {
   actualPercentOf,
   buildProgressCurve,
-  scheduleVarianceDays,
+  scheduleForecast,
+  type ProgressRecordRow,
   type ProgressSnapshotRow,
 } from '@/lib/manager/progress-curve'
+import { buildControlsSnapshot } from '@/lib/project-controls/controls-snapshot'
+import { buildEvForecast } from '@/lib/project-controls/ev-forecast'
+import { buildEarnedScheduleKpis } from '@/lib/project-controls/kpis'
+import { buildCriticalFronts, type BuildCriticalFrontsInput, type CriticalFrontCauseInput } from '@/lib/manager/critical-fronts'
 import {
   buildBlockers,
-  buildCriticalDelays,
   buildDailyDelta,
+  buildUpcomingDeadlines,
   type BlockerInputs,
   type DailyScheduleRow,
 } from '@/lib/manager/daily-performance'
@@ -26,10 +32,12 @@ import type {
   ManagerAlert,
   ManagerBlockers,
   ManagerCriticalDelays,
+  ManagerUpcomingDeadline,
   ManagerDailyDelta,
   ManagerCurve,
   ManagerDecisionItem,
   ManagerEvmSummary,
+  ManagerHse,
   ManagerInvoiceSummary,
   ManagerOverview,
   ManagerPulseKey,
@@ -51,6 +59,9 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 const NOT_BUILT = 'جدول‌های این بخش هنوز در پایگاه داده ساخته نشده‌اند.'
+
+const DAY_MS = 86_400_000
+const HSE_WINDOW_DAYS = 30
 
 async function section<T>(
   run: () => Promise<SectionResult<T>>,
@@ -208,6 +219,43 @@ export async function loadManagerOverview(
     return { status: 'ok', data: { rows: (legacy.data ?? []) as Row[], source: 'legacy' } }
   }, 'بارگذاری NCR ناموفق بود')
 
+  const hsePromise = section<ManagerHse>(async () => {
+    const { data, error } = await service
+      .from('ai_actions')
+      .select('payload, created_at')
+      .eq('project_id', projectId)
+      .eq('type', 'hse_alert')
+      .eq('status', 'confirmed_by_user')
+    if (error) throw new Error(error.message)
+    const rows = (data ?? []) as Row[]
+    if (rows.length === 0) {
+      return { status: 'unavailable', reason: 'هنوز هشدار HSE از سرپرست کارگاه برای این پروژه ثبت نشده است.' }
+    }
+    const windowStart = new Date(now - HSE_WINDOW_DAYS * DAY_MS).toISOString()
+    const summary: ManagerHse = {
+      windowDays: HSE_WINDOW_DAYS,
+      critical: 0,
+      warning: 0,
+      info: 0,
+      totalEver: rows.length,
+      lastAlertAt: null,
+      lastSeriousAt: null,
+      daysSinceSerious: null,
+    }
+    for (const row of rows) {
+      const at = str(row.created_at)
+      const severity = String((row.payload as Row | null)?.severity ?? 'warning')
+      const level = severity === 'critical' || severity === 'info' ? severity : 'warning'
+      if (at && (!summary.lastAlertAt || at > summary.lastAlertAt)) summary.lastAlertAt = at
+      if (level !== 'info' && at && (!summary.lastSeriousAt || at > summary.lastSeriousAt)) summary.lastSeriousAt = at
+      if (at && at >= windowStart) summary[level] += 1
+    }
+    if (summary.lastSeriousAt) {
+      summary.daysSinceSerious = Math.max(0, Math.floor((now - Date.parse(summary.lastSeriousAt)) / DAY_MS))
+    }
+    return { status: 'ok', data: summary }
+  }, 'بارگذاری هشدارهای HSE ناموفق بود')
+
   const dailyReportPromise = service
     .from('daily_reports')
     .select('report_date, created_at, approved_by_manager')
@@ -293,12 +341,38 @@ export async function loadManagerOverview(
 
   const progressUpdatesPromise = service
     .from('task_progress_updates')
-    .select('task_id, percent_complete, created_at')
+    .select('task_id, percent_complete, progress_date, created_at')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true })
+    .limit(20000)
+
+  const packageUpdatesPromise = service
+    .from('package_progress_updates')
+    .select('package_id, percent_complete, progress_date, created_at')
     .eq('project_id', projectId)
     .order('created_at', { ascending: true })
     .limit(20000)
 
   const tasksPromise = service.from('project_tasks').select('*').eq('project_id', projectId)
+
+  const dependenciesPromise = service
+    .from('task_dependencies')
+    .select('predecessor_task_id, successor_task_id')
+    .eq('project_id', projectId)
+
+  const cpmRunPromise = service
+    .from('schedule_calculations')
+    .select('calculated_at')
+    .eq('project_id', projectId)
+    .order('calculated_at', { ascending: false })
+    .limit(1)
+
+  const packageLinksPromise = service
+    .from('workshop_packages')
+    .select('id, project_task_id, parent_package_id')
+    .eq('project_id', projectId)
+
+  const subcontractorsPromise = service.from('project_subcontractors').select('id, name').eq('project_id', projectId)
 
   const sitePlanPromise = section<{
     blocked: BlockerInputs['blockedWorkOrders']
@@ -316,7 +390,7 @@ export async function loadManagerOverview(
     const [orders, logs] = await Promise.all([
       service
         .from('site_ops_work_orders')
-        .select('id, constraints, site_ops_operational_tasks(name)')
+        .select('id, constraints, site_ops_operational_tasks(name, wbs)')
         .eq('daily_plan_id', String(planRow.id))
         .eq('status', 'BLOCKED'),
       service
@@ -332,10 +406,11 @@ export async function loadManagerOverview(
       data: {
         blocked: ((orders.data ?? []) as Row[]).map((row) => {
           const task = row.site_ops_operational_tasks as Row | Row[] | null
-          const name = Array.isArray(task) ? task[0]?.name : task?.name
+          const op = Array.isArray(task) ? task[0] : task
           return {
             id: String(row.id),
-            taskName: String(name ?? 'دستور کار بدون نام'),
+            taskName: String(op?.name ?? 'دستور کار بدون نام'),
+            wbs: str(op?.wbs)?.trim() || null,
             constraints: Array.isArray(row.constraints) ? (row.constraints as unknown[]).map(String) : [],
             planDate: String(planRow.plan_date),
           }
@@ -367,6 +442,7 @@ export async function loadManagerOverview(
     attendanceRes,
     inventoryRes,
     quality,
+    hse,
     dailyReportRes,
     lastTransitRes,
     gatesRes,
@@ -375,9 +451,14 @@ export async function loadManagerOverview(
     invoices,
     snapshotsRes,
     progressUpdatesRes,
+    packageUpdatesRes,
     tasksRes,
     sitePlan,
     openAlertsRes,
+    dependenciesRes,
+    cpmRunRes,
+    packageLinksRes,
+    subcontractorsRes,
   ] = await Promise.all([
     projectPromise,
     evmSnapshotPromise,
@@ -386,6 +467,7 @@ export async function loadManagerOverview(
     attendancePromise,
     inventoryPromise,
     qualityPromise,
+    hsePromise,
     dailyReportPromise,
     lastTransitPromise,
     gatesPromise,
@@ -394,9 +476,14 @@ export async function loadManagerOverview(
     invoicesPromise,
     snapshotsPromise,
     progressUpdatesPromise,
+    packageUpdatesPromise,
     tasksPromise,
     sitePlanPromise,
     openAlertsPromise,
+    dependenciesPromise,
+    cpmRunPromise,
+    packageLinksPromise,
+    subcontractorsPromise,
   ])
 
   /* ------------------------------------------------------------- EVM */
@@ -407,6 +494,7 @@ export async function loadManagerOverview(
     evmSnapshot = evmRes.snapshot
     const m = evmSnapshot.metrics
     const actualPercent = actualPercentOf(evmSnapshot.activities, (a) => a.physicalPercent)
+    const forecast = scheduleForecast(evmSnapshot.activities, m.earnedPercent, today)
     evm = {
       status: 'ok',
       data: {
@@ -419,14 +507,17 @@ export async function loadManagerOverview(
         bac: m.bac,
         pv: m.pv,
         ev: m.ev,
+        evAmount: m.evAmount,
         ac: m.ac,
         sv: m.sv,
         cv: m.cv,
         activityCount: m.activityCount,
         budgetBasis: m.budgetBasis,
+        progressBasis: m.progressBasis,
         criticalFloatDays: evmSnapshot.float.criticalFloatDays,
         floatConsumptionPercent: evmSnapshot.float.floatConsumptionPercent,
-        scheduleVarianceDays: scheduleVarianceDays(evmSnapshot.activities, m.bac, m.earnedPercent, today),
+        scheduleVarianceDays: forecast?.varianceDays ?? null,
+        scheduleForecast: forecast,
         rag: evmSnapshot.rag,
       },
     }
@@ -448,14 +539,32 @@ export async function loadManagerOverview(
           snapshotMonth: String(row.snapshot_month).slice(0, 10),
           cumulativePercent: num(row.cumulative_percent) ?? 0,
         }))
+    const records: ProgressRecordRow[] = []
+    const pushRecord = (id: unknown, percent: unknown, date: unknown, at: unknown) => {
+      const pct = num(percent)
+      const created = str(at)
+      const day = str(date)?.slice(0, 10) ?? (created ? tehranDateIso(Date.parse(created)) : null)
+      if (id == null || pct == null || !created || !day) return
+      records.push({ activityId: String(id), date: day, at: created, percent: pct })
+    }
+    if (!progressUpdatesRes.error) {
+      for (const row of (progressUpdatesRes.data ?? []) as Row[]) pushRecord(row.task_id, row.percent_complete, row.progress_date, row.created_at)
+    }
+    if (!packageUpdatesRes.error) {
+      for (const row of (packageUpdatesRes.data ?? []) as Row[]) pushRecord(row.package_id, row.percent_complete, row.progress_date, row.created_at)
+    }
     const curve = buildProgressCurve({
       activities: evmSnapshot.activities,
-      bac: evm.data.bac,
       budgetBasis: evm.data.budgetBasis,
       earnedPercent: evm.data.earnedPercent,
       actualPercent: evm.data.actualPercent,
       today,
       snapshots,
+      records,
+      forecast: (dates) => {
+        const controls = buildControlsSnapshot({ evm: evmSnapshot!, periodUnit: 'months' })
+        return buildEvForecast(controls, buildEarnedScheduleKpis(controls), dates)
+      },
     })
     progress = curve
       ? { status: 'ok', data: curve }
@@ -863,6 +972,18 @@ export async function loadManagerOverview(
   }
 
   const taskRows = tasksRes.error ? [] : ((tasksRes.data ?? []) as Row[])
+  const scheduleTaskRows = taskRows.map((row) => ({
+    id: String(row.id),
+    name: String(row.name ?? 'فعالیت بدون نام'),
+    wbs: str(row.wbs_code),
+    isCritical: row.is_critical === true,
+    isSummary: row.is_summary === true,
+    totalFloatDays: num(row.total_float_days),
+    baselineFinish: str(row.baseline_finish),
+    currentFinish: str(row.finish_current) ?? str(row.finish_planned),
+    actualFinish: str(row.actual_finish),
+    percent: num(row.physical_percent_complete) ?? num(row.percent_complete) ?? 0,
+  }))
   let delays: SectionResult<ManagerCriticalDelays>
   if (tasksRes.error) {
     delays = isMissingRelation(tasksRes.error.message)
@@ -876,23 +997,27 @@ export async function loadManagerOverview(
   } else {
     delays = {
       status: 'ok',
-      data: buildCriticalDelays(
-        taskRows.map((row) => ({
-          id: String(row.id),
-          name: String(row.name ?? 'فعالیت بدون نام'),
-          wbs: str(row.wbs_code),
-          isCritical: row.is_critical === true,
-          isSummary: row.is_summary === true,
-          totalFloatDays: num(row.total_float_days),
-          baselineFinish: str(row.baseline_finish),
-          currentFinish: str(row.finish_current) ?? str(row.finish_planned),
-          actualFinish: str(row.actual_finish),
-          percent: num(row.physical_percent_complete) ?? num(row.percent_complete) ?? 0,
-        })),
-        today
+      data: buildCriticalFronts(
+        criticalFrontsInput({
+          projectId,
+          today,
+          taskRows,
+          evmActivities: evmSnapshot?.activities ?? null,
+          packageLinks: packageLinksRes.error ? null : ((packageLinksRes.data ?? []) as Row[]),
+          subcontractors: subcontractorsRes.error ? [] : ((subcontractorsRes.data ?? []) as Row[]),
+          dependencies: dependenciesRes.error ? null : ((dependenciesRes.data ?? []) as Row[]),
+          cpmCalculatedAt: cpmRunRes.error ? null : str(((cpmRunRes.data ?? []) as Row[])[0]?.calculated_at),
+          alerts: openAlertsRes.error ? null : ((openAlertsRes.data ?? []) as Row[]),
+          blockedWorkOrders: sitePlan.status === 'ok' ? sitePlan.data.blocked : null,
+        })
       ),
     }
   }
+  const upcoming: SectionResult<ManagerUpcomingDeadline[]> = tasksRes.error
+    ? isMissingRelation(tasksRes.error.message)
+      ? { status: 'unavailable', reason: NOT_BUILT }
+      : { status: 'error', message: tasksRes.error.message }
+    : { status: 'ok', data: buildUpcomingDeadlines(scheduleTaskRows, today) }
 
   const ownerNames = (keys: string[]): string | null => {
     const found = membersWith(keys)
@@ -979,7 +1104,7 @@ export async function loadManagerOverview(
       scheduleAlerts.ok || evm.status === 'ok'
         ? { status: 'ok', data: alerts }
         : { status: 'error', message: 'message' in scheduleAlerts ? scheduleAlerts.message : 'خطا' },
-    site: { date: today, attendance, inventory, quality: qualitySummary },
+    site: { date: today, attendance, inventory, quality: qualitySummary, hse },
     pulse: { status: 'ok', data: pulseSources },
     resources,
     invoices,
@@ -987,5 +1112,124 @@ export async function loadManagerOverview(
     daily,
     blockers,
     delays,
+    upcoming,
+  }
+}
+
+const ALERT_CAUSE_KIND: Record<string, CriticalFrontCauseInput['kind']> = {
+  material_purchase: 'material',
+  delay_risk: 'schedule',
+  milestone_risk: 'schedule',
+  critical_path: 'schedule',
+}
+
+/** Maps the raw rows of the overview queries onto the critical-fronts builder input. */
+function criticalFrontsInput(input: {
+  projectId: string
+  today: string
+  taskRows: Row[]
+  evmActivities: ProjectEvmSnapshot['activities'] | null
+  packageLinks: Row[] | null
+  subcontractors: Row[]
+  dependencies: Row[] | null
+  cpmCalculatedAt: string | null
+  alerts: Row[] | null
+  blockedWorkOrders: BlockerInputs['blockedWorkOrders'] | null
+}): BuildCriticalFrontsInput {
+  const packagesById = new Map((input.packageLinks ?? []).map((p) => [String(p.id), p]))
+  const rootTaskOf = (packageId: string): string | null => {
+    const seen = new Set<string>()
+    let current = packagesById.get(packageId)
+    while (current && !seen.has(String(current.id))) {
+      seen.add(String(current.id))
+      if (current.project_task_id) return String(current.project_task_id)
+      current = current.parent_package_id ? packagesById.get(String(current.parent_package_id)) : undefined
+    }
+    return null
+  }
+  const rollup = new Map<string, { weight: number; earned: number; count: number; sum: number }>()
+  for (const activity of input.evmActivities ?? []) {
+    if (activity.kind !== 'package') continue
+    const taskId = rootTaskOf(activity.id)
+    if (!taskId) continue
+    const agg = rollup.get(taskId) ?? { weight: 0, earned: 0, count: 0, sum: 0 }
+    agg.weight += activity.weight
+    agg.earned += activity.weight * activity.physicalPercent
+    agg.count += 1
+    agg.sum += activity.physicalPercent
+    rollup.set(taskId, agg)
+  }
+
+  const contractorName = new Map(input.subcontractors.map((s) => [String(s.id), String(s.name ?? '')]))
+  const tasks = input.taskRows.map((row) => {
+    const id = String(row.id)
+    const baseline = taskBaselineDates(row)
+    const agg = rollup.get(id)
+    const own = num(row.physical_percent_complete) ?? num(row.percent_complete) ?? 0
+    const contractorId = str(row.resolved_subcontractor_id) ?? str(row.subcontractor_id)
+    return {
+      id,
+      name: String(row.name ?? 'فعالیت بدون نام'),
+      wbs: str(row.wbs_code)?.trim() || null,
+      isSummary: row.is_summary === true,
+      isCritical: row.is_critical === true,
+      totalFloatDays: num(row.total_float_days),
+      baselineStart: baseline.start,
+      baselineFinish: baseline.finish,
+      currentFinish: str(row.finish_current)?.slice(0, 10) ?? str(row.finish_planned)?.slice(0, 10) ?? null,
+      actualFinish: str(row.actual_finish),
+      percent: agg ? (agg.weight > 0 ? agg.earned / agg.weight : agg.sum / agg.count) : own,
+      percentFromPackages: Boolean(agg),
+      contractor: contractorId ? contractorName.get(contractorId) || null : null,
+    }
+  })
+
+  const causes: CriticalFrontCauseInput[] = []
+  const causeSources: string[] = []
+  if (input.alerts) {
+    causeSources.push('هشدارهای باز برنامه‌ریزی')
+    for (const row of input.alerts) {
+      if (!row.related_task_id) continue
+      causes.push({
+        taskId: String(row.related_task_id),
+        kind: ALERT_CAUSE_KIND[String(row.alert_type ?? '')] ?? 'schedule',
+        source: 'alert',
+        ref: `alert:${String(row.id)}`,
+        label_fa: String(row.message ?? 'هشدار باز برنامه‌ریزی'),
+        severity: row.severity === 'critical' ? 'critical' : 'warning',
+        since: str(row.created_at),
+      })
+    }
+  }
+  if (input.blockedWorkOrders) {
+    causeSources.push('دستور کارهای متوقف برنامهٔ امروز کارگاه (تطبیق WBS)')
+    const taskIdByWbs = new Map(tasks.filter((t) => t.wbs).map((t) => [t.wbs!, t.id]))
+    for (const wo of input.blockedWorkOrders) {
+      const taskId = wo.wbs ? taskIdByWbs.get(wo.wbs) : undefined
+      if (!taskId) continue
+      causes.push({
+        taskId,
+        kind: 'site',
+        source: 'work_order',
+        ref: `work_order:${wo.id}`,
+        label_fa: wo.constraints.length ? `دستور کار متوقف — ${wo.constraints.join('، ')}` : 'دستور کار امروز «متوقف» ثبت شده',
+        severity: 'critical',
+        since: wo.planDate,
+      })
+    }
+  }
+
+  return {
+    projectId: input.projectId,
+    today: input.today,
+    tasks,
+    dependencies: input.dependencies
+      ? input.dependencies
+          .filter((d) => d.predecessor_task_id && d.successor_task_id)
+          .map((d) => ({ predecessorId: String(d.predecessor_task_id), successorId: String(d.successor_task_id) }))
+      : null,
+    cpmCalculatedAt: input.cpmCalculatedAt,
+    causes,
+    causeSources,
   }
 }

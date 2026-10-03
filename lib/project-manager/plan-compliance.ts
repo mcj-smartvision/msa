@@ -1,4 +1,6 @@
 import { diffDaysIso, toIsoDateOnly } from '@/lib/schedule/dates'
+import { taskBaselineDates } from '@/lib/schedule/leaf-activities'
+import { plannedPercentInWindow } from '@/lib/schedule/planned-progress'
 import {
   getTaskScheduleStatus,
   taskEffectiveFinish,
@@ -53,20 +55,9 @@ export interface PlanComplianceSummary {
   allRows: PlanComplianceRow[]
 }
 
-/** Linear planned % for a task as of a calendar day. */
+/** Baseline planned % for a task as of a day — the shared convention in `planned-progress.ts`. */
 export function plannedPercentByDate(task: ProjectTask, asOf: string): number {
-  const start = taskEffectiveStart(task)
-  const finish = taskEffectiveFinish(task)
-  if (!start) return 0
-  if (asOf < start) return 0
-  if (!finish || finish <= start) {
-    return asOf >= start ? 100 : 0
-  }
-  if (asOf >= finish) return 100
-  const total = diffDaysIso(start, finish)
-  if (total <= 0) return asOf >= start ? 100 : 0
-  const elapsed = diffDaysIso(start, asOf)
-  return Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)))
+  return plannedPercentInWindow(taskBaselineDates(task as unknown as Record<string, unknown>), asOf)
 }
 
 function classifyCheck(planned: number, actual: number): PlanComplianceCheck {

@@ -1,7 +1,10 @@
 import { toGregorian, toJalaali } from 'jalaali-js'
-import { plannedPercentAsOf } from '@/lib/evm/metrics'
+import { progressWeightOf, resolveProgressBasis, weightedPercents } from '@/lib/evm/metrics'
 import type { ProjectEvmActivityRow } from '@/lib/evm/load-project-evm'
-import type { ManagerCurve, ManagerCurvePoint } from '@/lib/manager/overview-types'
+import { DAYS_PER_UNIT, solveEarnedSchedule } from '@/lib/project-controls/earned-schedule'
+import { buildBaselinePVCurve } from '@/lib/project-controls/pv-curve'
+import type { EvForecast } from '@/lib/project-controls/ev-forecast'
+import type { ManagerCurve, ManagerCurvePoint, ManagerScheduleForecast } from '@/lib/manager/overview-types'
 
 const DAY_MS = 86_400_000
 
@@ -47,12 +50,9 @@ function projectSpan(activities: ProjectEvmActivityRow[]): { start: string; fini
   return start && finish ? { start, finish } : null
 }
 
-/** PV ÷ BAC at a date — identical to the EVM metric used by the cards. */
-export function plannedPercentAt(activities: ProjectEvmActivityRow[], bac: number, asOf: string): number {
-  if (bac <= 0) return 0
-  let pv = 0
-  for (const a of activities) pv += a.budget * (plannedPercentAsOf(a.baselineStart, a.baselineFinish, asOf) / 100)
-  return (pv / bac) * 100
+/** Σ wᵢ·plannedᵢ ÷ Σ wᵢ at a date — identical to the planned percent behind the SPI card. */
+export function plannedPercentAt(activities: ProjectEvmActivityRow[], asOf: string): number {
+  return weightedPercents(activities, asOf).plannedPercent
 }
 
 /** Weight-based approved physical progress; null when the schedule carries no weights. */
@@ -71,26 +71,48 @@ export function actualPercentOf(
 }
 
 /**
- * Earned-schedule variance in days: how far today is from the date the plan reached today's
- * earned progress. Positive means behind plan.
+ * Earned Schedule in calendar days on the weight-basis baseline curve (the same engine as the
+ * background page): AT = today − start, ES from the curve, variance = AT − ES (positive = behind).
+ * Two finish forecasts: optimistic = baseline finish + variance (remaining work at plan speed,
+ * never before today while work remains); trend = today + (PD − ES) ÷ SPI(t).
  */
-export function scheduleVarianceDays(
+export function scheduleForecast(
   activities: ProjectEvmActivityRow[],
-  bac: number,
   earnedPercent: number,
   today: string
-): number | null {
-  const span = projectSpan(activities)
-  if (!span || bac <= 0) return null
-  let lo = 0
-  let hi = Math.max(0, dayDiff(span.finish, span.start))
-  if (plannedPercentAt(activities, bac, span.finish) < earnedPercent - 0.01) return null
-  while (lo < hi) {
-    const mid = Math.floor((lo + hi) / 2)
-    if (plannedPercentAt(activities, bac, addDays(span.start, mid)) >= earnedPercent - 0.01) hi = mid
-    else lo = mid + 1
+): ManagerScheduleForecast | null {
+  const basis = resolveProgressBasis(activities)
+  const curve = buildBaselinePVCurve(
+    activities.map((a) => ({
+      weight: progressWeightOf(a, basis),
+      baselineStart: a.baselineStart,
+      baselineFinish: a.baselineFinish,
+    })),
+    DAYS_PER_UNIT.days,
+    { scaleTo: 100 }
+  )
+  if (!curve) return null
+  const pd = curve.plannedDurationPeriods
+  const at = dayDiff(today, curve.projectStartDate)
+  const { es } = solveEarnedSchedule(curve.points, earnedPercent, pd)
+  const varianceDays = Math.round(at - es)
+  const spiT = at > 0 ? es / at : null
+  const done = earnedPercent >= 99.95
+  let forecastFinish = addDays(curve.baselineFinishDate, varianceDays)
+  if (!done && forecastFinish < today) forecastFinish = today
+  const trendFinish = done ? today : spiT != null && spiT > 0 ? addDays(today, Math.round((pd - es) / spiT)) : null
+  return {
+    start: curve.projectStartDate,
+    plannedFinish: curve.baselineFinishDate,
+    forecastFinish,
+    trendFinish,
+    varianceDays,
+    actualTimeDays: at,
+    earnedScheduleDays: es,
+    plannedDurationDays: pd,
+    spiT,
+    planPeriodEnded: today > curve.baselineFinishDate,
   }
-  return dayDiff(today, addDays(span.start, lo))
 }
 
 export interface ProgressSnapshotRow {
@@ -99,73 +121,146 @@ export interface ProgressSnapshotRow {
   cumulativePercent: number
 }
 
+/** One recorded progress report of a task or package (`task_progress_updates` / `package_progress_updates`). */
+export interface ProgressRecordRow {
+  activityId: string
+  /** Report date the progress belongs to (YYYY-MM-DD). */
+  date: string
+  /** Entry time, orders several records of the same day. */
+  at: string
+  percent: number
+}
+
 /**
- * Monthly S-curve on Jalali month ends. The point for the current month is today itself, so the
- * last plotted values equal the KPI cards (PV/BAC, EV/BAC and weighted actual).
+ * S-curve on Jalali month ends plus every day with recorded progress. The today point equals the
+ * KPI cards (weighted planned, earned and actual percent). Actual and EV are drawn only from the first
+ * recorded progress on: an activity keeps its first recorded value before that record and its
+ * current value when it has no record at all, so no gain is invented.
  */
 export function buildProgressCurve(input: {
   activities: ProjectEvmActivityRow[]
-  bac: number
   budgetBasis: ManagerCurve['budgetBasis']
   earnedPercent: number
   actualPercent: number | null
   today: string
   snapshots: ProgressSnapshotRow[]
+  records?: ProgressRecordRow[]
+  /** Explainable-engine EV forecast, sampled on the given Jalali month ends (see `buildEvForecast`). */
+  forecast?: (dates: string[]) => EvForecast
 }): ManagerCurve | null {
-  const { activities, bac, today } = input
+  const { today } = input
+  const basis = resolveProgressBasis(input.activities)
+  const activities = input.activities.filter((a) => progressWeightOf(a, basis) > 0)
+  const totalWeight = activities.reduce((s, a) => s + progressWeightOf(a, basis), 0)
   const span = projectSpan(activities)
-  if (!span || bac <= 0) return null
+  if (!span || totalWeight <= 0) return null
 
-  const byActivity = new Map<string, ProgressSnapshotRow[]>()
+  const snapshotsOf = new Map<string, ProgressSnapshotRow[]>()
   for (const row of input.snapshots) {
-    const list = byActivity.get(row.activityId) ?? []
+    const list = snapshotsOf.get(row.activityId) ?? []
     list.push(row)
-    byActivity.set(row.activityId, list)
+    snapshotsOf.set(row.activityId, list)
   }
-  for (const list of byActivity.values()) list.sort((a, b) => a.snapshotMonth.localeCompare(b.snapshotMonth))
-  const hasHistory = byActivity.size > 0
+  for (const list of snapshotsOf.values()) list.sort((a, b) => a.snapshotMonth.localeCompare(b.snapshotMonth))
 
-  const percentAtMonth = (a: ProjectEvmActivityRow, monthStart: string): number => {
-    const list = byActivity.get(a.id)
-    if (!list) return 0
-    let value = 0
+  const ids = new Set(activities.map((a) => a.id))
+  const recordsOf = new Map<string, ProgressRecordRow[]>()
+  for (const row of input.records ?? []) {
+    if (!ids.has(row.activityId) || row.date > today) continue
+    const list = recordsOf.get(row.activityId) ?? []
+    list.push(row)
+    recordsOf.set(row.activityId, list)
+  }
+  for (const list of recordsOf.values()) list.sort((a, b) => a.date.localeCompare(b.date) || a.at.localeCompare(b.at))
+
+  const useSnapshots = snapshotsOf.size > 0
+  const useRecords = !useSnapshots && recordsOf.size > 0
+  let historyStart: string | null = null
+  if (useRecords) {
+    for (const list of recordsOf.values()) if (!historyStart || list[0].date < historyStart) historyStart = list[0].date
+  }
+
+  const percentAt = (a: ProjectEvmActivityRow, date: string): number => {
+    if (useSnapshots) {
+      const monthStart = jalaliMonthStart(date)
+      let value = 0
+      for (const row of snapshotsOf.get(a.id) ?? []) {
+        if (row.snapshotMonth > monthStart) break
+        value = row.cumulativePercent
+      }
+      return value
+    }
+    const list = recordsOf.get(a.id)
+    if (!list) return a.physicalPercent
+    let value = list[0].percent
     for (const row of list) {
-      if (row.snapshotMonth > monthStart) break
-      value = row.cumulativePercent
+      if (row.date > date) break
+      value = row.percent
     }
     return value
   }
 
-  const todayMonth = jalaliMonthStart(today)
+  const valuesAt = (date: string): { earned: number | null; actual: number | null } => {
+    if (date > today) return { earned: null, actual: null }
+    if (date === today) return { earned: input.earnedPercent, actual: input.actualPercent }
+    if (useRecords && historyStart && date < historyStart) return { earned: null, actual: null }
+    if (!useSnapshots && !useRecords) return { earned: null, actual: null }
+    let earned = 0
+    for (const a of activities) earned += progressWeightOf(a, basis) * percentAt(a, date)
+    return { earned: earned / totalWeight, actual: actualPercentOf(activities, (a) => percentAt(a, date)) }
+  }
+
+  const dates = new Map<string, ManagerCurvePoint['kind']>()
   const last = span.finish > today ? span.finish : today
-  const points: ManagerCurvePoint[] = []
   let cursor = jalaliMonthStart(span.start)
   let guard = 0
   while (cursor <= last && guard < 240) {
     guard += 1
-    const isCurrent = cursor === todayMonth
-    const date = isCurrent ? today : jalaliMonthEnd(cursor)
-    const past = date < today
-    let earned: number | null = null
-    let actual: number | null = null
-    if (isCurrent) {
-      earned = input.earnedPercent
-      actual = input.actualPercent
-    } else if (past && hasHistory) {
-      let ev = 0
-      for (const a of activities) ev += a.budget * (percentAtMonth(a, cursor) / 100)
-      earned = (ev / bac) * 100
-      actual = actualPercentOf(activities, (a) => percentAtMonth(a, cursor))
+    const end = jalaliMonthEnd(cursor)
+    if (end !== today) dates.set(end, 'month')
+    cursor = addDays(end, 1)
+  }
+  for (const list of recordsOf.values()) {
+    for (const row of list) if (row.date < today && !dates.has(row.date)) dates.set(row.date, 'record')
+  }
+  dates.set(today, 'today')
+
+  let forecast: EvForecast = input.forecast
+    ? input.forecast(monthEndsFrom(today, 240))
+    : { status: 'unavailable', reason_fa: 'شاخص‌های Earned Schedule برای پیش‌بینی در دسترس نیست' }
+  if (forecast.status === 'ok' && forecast.asOf !== today) {
+    forecast = { status: 'unavailable', reason_fa: `تاریخ وضعیت شاخص‌ها (${forecast.asOf}) با امروز (${today}) یکی نیست` }
+  }
+  const forecastAt = new Map<string, number>()
+  if (forecast.status === 'ok') {
+    for (const point of forecast.points) {
+      forecastAt.set(point.date, point.earned)
+      if (!dates.has(point.date)) dates.set(point.date, point.date === forecast.finishDate ? 'forecast' : 'month')
     }
-    points.push({
-      date,
-      isToday: isCurrent,
-      planned: plannedPercentAt(activities, bac, date),
-      earned,
-      actual,
-    })
-    cursor = addDays(jalaliMonthEnd(cursor), 1)
   }
 
-  return { points, hasHistory, budgetBasis: input.budgetBasis }
+  const points: ManagerCurvePoint[] = [...dates.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, kind]) => ({
+      date,
+      isToday: kind === 'today',
+      kind,
+      planned: plannedPercentAt(activities, date),
+      ...valuesAt(date),
+      forecast: forecastAt.get(date) ?? null,
+    }))
+
+  return { points, hasHistory: useSnapshots || useRecords, historyStart, budgetBasis: input.budgetBasis, forecast }
+}
+
+/** Jalali month ends after `iso`, `count` of them. */
+function monthEndsFrom(iso: string, count: number): string[] {
+  const out: string[] = []
+  let cursor = jalaliMonthStart(iso)
+  for (let i = 0; i < count; i++) {
+    const end = jalaliMonthEnd(cursor)
+    if (end > iso) out.push(end)
+    cursor = addDays(end, 1)
+  }
+  return out
 }

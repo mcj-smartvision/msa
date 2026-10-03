@@ -7,9 +7,11 @@ import {
   AlertTriangle,
   ArrowLeft,
   BellRing,
+  Calculator,
   CalendarClock,
   Check,
   CheckCircle2,
+  ChevronLeft,
   CircleSlash,
   ClipboardCheck,
   ClipboardList,
@@ -19,6 +21,7 @@ import {
   HardHat,
   OctagonAlert,
   Package,
+  Plus,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
@@ -31,6 +34,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DEFAULT_RAG_THRESHOLDS } from '@/lib/evm/ragStatus'
+import { CumulativeProgressSheet } from './cumulative-progress-sheet'
 import {
   compactToman,
   compactTomanParts,
@@ -122,6 +126,7 @@ export interface ManagerHrefs {
   finance?: string
   invoices?: string
   gantt?: string
+  procurement?: string
   inbox: ((focusId?: string) => string) | null
 }
 
@@ -142,91 +147,210 @@ export function domainHref(domain: ManagerAlertDomain, hrefs: ManagerHrefs): str
 
 /* -------------------------------------------------------- Health bar */
 
+type RingTone = Exclude<Tone, 'none'> | 'info'
+
+export type PillarVisual =
+  | { kind: 'gauge'; value: number | null; max: number; target: number }
+  | { kind: 'ring'; center: string | null; unit?: string; segments: { value: number; tone: RingTone }[]; total: number }
+  | { kind: 'empty' }
+
+export interface PillarAction {
+  kind: 'add' | 'details'
+  label: string
+  href?: string
+}
+
 export interface HealthPillar {
   key: string
   label: string
   tone: Tone
-  value: string
-  detail: string
+  subtitle: string
+  visual: PillarVisual
+  /** Colored one-line verdict under the visual. */
+  status?: string
+  action?: PillarAction
   href?: string
 }
 
-function stateMissing(result: SectionResult<unknown> | undefined): string {
+function stateMissing(result: SectionResult<unknown> | undefined, unavailable = 'داده هنوز متصل نشده'): string {
   if (!result) return 'در حال بارگذاری'
-  if (result.status === 'unavailable') return 'داده هنوز متصل نشده'
+  if (result.status === 'unavailable') return unavailable
   if (result.status === 'error') return 'خطا در بارگذاری'
   return ''
 }
+
+const details = (href: string | undefined): PillarAction => ({ kind: 'details', label: 'جزئیات', href })
 
 export function buildHealthPillars(overview: ManagerOverview | null, hrefs: ManagerHrefs): HealthPillar[] {
   const evm = overview?.evm.status === 'ok' ? overview.evm.data : null
   const inventory = overview?.site.inventory
   const quality = overview?.site.quality
+  const hse = overview?.site.hse
 
-  const materials: HealthPillar = (() => {
-    if (inventory?.status !== 'ok') {
-      return { key: 'materials', label: 'تأمین مصالح', tone: 'none', value: '—', detail: stateMissing(inventory), href: hrefs.inventory }
+  const schedule: HealthPillar = {
+    key: 'schedule',
+    label: 'زمان‌بندی',
+    tone: indexTone(evm?.spi),
+    subtitle: 'شاخص عملکرد زمانی (SPI)',
+    visual: { kind: 'gauge', value: evm?.spi ?? null, max: 1.5, target: 1 },
+    status:
+      evm?.spi != null
+        ? `با ${faPercent(evm.spi * 100, 0)} سرعت برنامه پیش می‌رویم`
+        : evm
+          ? 'ارزش برنامه‌ای هنوز صفر است'
+          : stateMissing(overview?.evm),
+    href: hrefs.evm,
+  }
+
+  const cost: HealthPillar = (() => {
+    const base = { key: 'cost', label: 'هزینه و بودجه' }
+    if (!evm) {
+      return { ...base, tone: 'none', subtitle: stateMissing(overview?.evm), visual: { kind: 'empty' }, action: details(hrefs.evm) }
     }
-    const empty = inventory.data.lowStock.filter((i) => i.current <= 0).length
-    const low = inventory.data.lowStock.length
+    if (evm.cpi == null) {
+      return {
+        ...base,
+        tone: 'none',
+        subtitle: 'هزینهٔ واقعی ثبت نشده',
+        visual: { kind: 'empty' },
+        action: { kind: 'add', label: 'ثبت هزینه', href: hrefs.finance ?? hrefs.evm },
+      }
+    }
+    const tone = indexTone(evm.cpi)
     return {
-      key: 'materials',
-      label: 'تأمین مصالح',
-      tone: empty > 0 ? 'critical' : low > 0 ? 'warn' : 'good',
-      value: low === 0 ? 'بدون کمبود' : `${faNumber(low)} قلم کمبود`,
-      detail:
-        low === 0
-          ? `همهٔ ${faNumber(inventory.data.trackedCount)} قلم بالاتر از حداقل موجودی`
-          : empty > 0
-            ? `${faNumber(empty)} قلم تمام شده`
-            : 'زیر حداقل موجودی',
-      href: hrefs.inventory,
+      ...base,
+      tone,
+      subtitle: 'شاخص عملکرد هزینه (CPI)',
+      visual: {
+        kind: 'ring',
+        center: faNumber(evm.cpi, 2),
+        unit: 'CPI',
+        segments: [{ value: Math.min(evm.cpi, 1.5), tone: tone === 'none' ? 'good' : tone }],
+        total: 1.5,
+      },
+      status: evm.cv >= 0 ? `${compactToman(evm.cv)} زیر بودجه` : `${compactToman(-evm.cv)} بیش از بودجه`,
+      action: details(hrefs.finance ?? hrefs.evm),
+    }
+  })()
+
+  const safety: HealthPillar = (() => {
+    const base = { key: 'hse', label: 'ایمنی (HSE)' }
+    if (hse?.status !== 'ok') {
+      return {
+        ...base,
+        tone: 'none',
+        subtitle: stateMissing(hse, 'هنوز هشدار HSE ثبت نشده'),
+        visual: { kind: 'empty' },
+        action: { kind: 'add', label: 'اتصال داده', href: hrefs.hse },
+      }
+    }
+    const { critical, warning, info, windowDays, daysSinceSerious } = hse.data
+    const total = critical + warning + info
+    return {
+      ...base,
+      tone: critical > 0 ? 'critical' : warning > 0 ? 'warn' : 'good',
+      subtitle: `هشدارهای HSE در ${faNumber(windowDays)} روز اخیر`,
+      visual:
+        total === 0
+          ? { kind: 'ring', center: null, segments: [], total: 0 }
+          : {
+              kind: 'ring',
+              center: faNumber(total),
+              unit: 'هشدار',
+              segments: [
+                { value: critical, tone: 'critical' },
+                { value: warning, tone: 'warn' },
+                { value: info, tone: 'info' },
+              ],
+              total,
+            },
+      status:
+        critical > 0
+          ? `${faNumber(critical)} هشدار بحرانی`
+          : daysSinceSerious != null
+            ? `${faNumber(daysSinceSerious)} روز بدون حادثه`
+            : 'بدون حادثهٔ جدی ثبت‌شده',
+      action: details(hrefs.hse),
     }
   })()
 
   const qualityPillar: HealthPillar = (() => {
+    const base = { key: 'quality', label: 'کیفیت QA/QC' }
     if (quality?.status !== 'ok') {
-      return { key: 'quality', label: 'کیفیت QA/QC', tone: 'none', value: '—', detail: stateMissing(quality), href: hrefs.quality }
+      return {
+        ...base,
+        tone: 'none',
+        subtitle: stateMissing(quality),
+        visual: { kind: 'empty' },
+        action: { kind: 'add', label: 'اتصال داده', href: hrefs.quality },
+      }
     }
     const { openNcrCount, criticalNcrCount } = quality.data
     return {
-      key: 'quality',
-      label: 'کیفیت QA/QC',
+      ...base,
       tone: criticalNcrCount > 0 ? 'critical' : openNcrCount > 0 ? 'warn' : 'good',
-      value: openNcrCount === 0 ? 'بدون NCR باز' : `${faNumber(openNcrCount)} NCR باز`,
-      detail: criticalNcrCount > 0 ? `${faNumber(criticalNcrCount)} مورد بحرانی` : 'عدم انطباق‌های باز',
-      href: hrefs.quality,
+      subtitle: 'عدم انطباق‌های باز',
+      visual:
+        openNcrCount === 0
+          ? { kind: 'ring', center: null, segments: [], total: 0 }
+          : {
+              kind: 'ring',
+              center: faNumber(openNcrCount),
+              unit: 'NCR باز',
+              segments: [
+                { value: criticalNcrCount, tone: 'critical' },
+                { value: openNcrCount - criticalNcrCount, tone: 'warn' },
+              ],
+              total: openNcrCount,
+            },
+      status:
+        openNcrCount === 0
+          ? 'بدون NCR باز'
+          : criticalNcrCount > 0
+            ? `${faNumber(criticalNcrCount)} مورد بحرانی`
+            : 'بدون مورد بحرانی',
+      action: details(hrefs.quality),
     }
   })()
 
-  return [
-    {
-      key: 'schedule',
-      label: 'زمان‌بندی',
-      tone: indexTone(evm?.spi),
-      value: evm?.spi != null ? `SPI ${faNumber(evm.spi, 2)}` : '—',
-      detail: evm ? (evm.spi != null ? 'شاخص عملکرد زمانی' : 'ارزش برنامه‌ای هنوز صفر است') : stateMissing(overview?.evm),
-      href: hrefs.evm,
-    },
-    {
-      key: 'cost',
-      label: 'هزینه و بودجه',
-      tone: indexTone(evm?.cpi),
-      value: evm?.cpi != null ? `CPI ${faNumber(evm.cpi, 2)}` : '—',
-      detail: evm ? (evm.cpi != null ? 'شاخص عملکرد هزینه' : 'هزینهٔ واقعی ثبت نشده') : stateMissing(overview?.evm),
-      href: hrefs.evm,
-    },
-    {
-      key: 'hse',
-      label: 'ایمنی HSE',
-      tone: 'none',
-      value: '—',
-      detail: 'داده هنوز متصل نشده',
-      href: hrefs.hse,
-    },
-    qualityPillar,
-    materials,
-  ]
+  const materials: HealthPillar = (() => {
+    const base = { key: 'materials', label: 'تأمین مصالح' }
+    if (inventory?.status !== 'ok') {
+      return {
+        ...base,
+        tone: 'none',
+        subtitle: stateMissing(inventory, 'کالایی در انبار ثبت نشده'),
+        visual: { kind: 'empty' },
+        action: { kind: 'add', label: 'اتصال داده', href: hrefs.inventory },
+      }
+    }
+    const tracked = inventory.data.trackedCount
+    const low = inventory.data.lowStock.length
+    const empty = inventory.data.lowStock.filter((i) => i.current <= 0).length
+    return {
+      ...base,
+      tone: empty > 0 ? 'critical' : low > 0 ? 'warn' : 'good',
+      subtitle: `${faNumber(tracked)} قلم کالای تحت پایش`,
+      visual:
+        low === 0
+          ? { kind: 'ring', center: null, segments: [], total: 0 }
+          : {
+              kind: 'ring',
+              center: faNumber(low),
+              unit: 'قلم کمبود',
+              segments: [
+                { value: empty, tone: 'critical' },
+                { value: low - empty, tone: 'warn' },
+                { value: tracked - low, tone: 'good' },
+              ],
+              total: tracked,
+            },
+      status: low === 0 ? 'بدون کمبود' : empty > 0 ? `${faNumber(empty)} قلم تمام شده` : 'زیر حداقل موجودی',
+      action: details(hrefs.inventory),
+    }
+  })()
+
+  return [schedule, cost, safety, qualityPillar, materials]
 }
 
 export function overallStatus(pillars: HealthPillar[]): { tone: Tone; label: string } {
@@ -236,45 +360,189 @@ export function overallStatus(pillars: HealthPillar[]): { tone: Tone; label: str
   return { tone: 'none', label: 'دادهٔ ناکافی' }
 }
 
+const PILLAR_TONE: Record<Tone, { card: string; color: string; text: string; badge: string }> = {
+  good: { card: 'from-emerald-50/70', color: '#10b981', text: 'text-emerald-600', badge: 'سالم' },
+  warn: { card: 'from-amber-50/80', color: '#f59e0b', text: 'text-amber-600', badge: 'نیازمند توجه' },
+  critical: { card: 'from-rose-50/90', color: '#f43f5e', text: 'text-rose-600', badge: 'بحرانی' },
+  none: { card: 'from-white', color: '#cbd5e1', text: 'text-slate-400', badge: 'بدون داده' },
+}
+
+const RING_COLORS: Record<RingTone, string> = {
+  good: '#10b981',
+  warn: '#f59e0b',
+  critical: '#f43f5e',
+  info: '#38bdf8',
+}
+
+function SemiGauge({ value, max, target, tone }: { value: number | null; max: number; target: number; tone: Tone }) {
+  const cx = 100
+  const cy = 100
+  const r = 78
+  const point = (fraction: number, radius = r) => {
+    const angle = Math.PI * (1 - Math.min(Math.max(fraction, 0), 1))
+    return { x: cx + radius * Math.cos(angle), y: cy - radius * Math.sin(angle) }
+  }
+  const start = point(0)
+  const end = point(1)
+  const valueEnd = value != null && value > 0 ? point(value / max) : null
+  const tickIn = point(target / max, r - 16)
+  const tickOut = point(target / max, r + 16)
+  const color = PILLAR_TONE[tone].color
+
+  return (
+    <svg viewBox="0 0 200 112" className="block w-[68px]" aria-hidden>
+      <path
+        d={`M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}`}
+        fill="none"
+        stroke="#e2e8f0"
+        strokeWidth={18}
+        strokeLinecap="round"
+      />
+      {valueEnd ? (
+        <path
+          d={`M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${valueEnd.x} ${valueEnd.y}`}
+          fill="none"
+          stroke={color}
+          strokeWidth={18}
+          strokeLinecap="round"
+        />
+      ) : null}
+      <line x1={tickIn.x} y1={tickIn.y} x2={tickOut.x} y2={tickOut.y} stroke="#475569" strokeWidth={5} strokeLinecap="round" />
+      <text x={cx} y={cy + 4} textAnchor="middle" style={{ fill: value != null ? color : '#94a3b8' }} className="text-[50px] font-extrabold">
+        {value != null ? faNumber(value, 2) : '—'}
+      </text>
+    </svg>
+  )
+}
+
+function Ring({ visual, tone }: { visual: Exclude<PillarVisual, { kind: 'gauge' }>; tone: Tone }) {
+  const r = 44
+  const c = 2 * Math.PI * r
+  if (visual.kind === 'empty') {
+    return (
+      <svg viewBox="0 0 120 120" className="block h-12 w-12" aria-hidden>
+        <circle cx={60} cy={60} r={r} fill="none" stroke="#d6d3d1" strokeWidth={9} strokeDasharray="5 12.3" strokeLinecap="round" />
+        <line x1={52} y1={60} x2={68} y2={60} stroke="#a8a29e" strokeWidth={3} strokeLinecap="round" />
+      </svg>
+    )
+  }
+  const color = PILLAR_TONE[tone].color
+  if (visual.center == null) {
+    return (
+      <svg viewBox="0 0 120 120" className="block h-12 w-12" aria-hidden>
+        <circle cx={60} cy={60} r={r} fill="none" stroke={color} strokeWidth={14} />
+        <circle cx={60} cy={60} r={5} fill="white" stroke={color} strokeWidth={3} />
+      </svg>
+    )
+  }
+  let offset = 0
+  return (
+    <svg viewBox="0 0 120 120" className="block h-12 w-12" aria-hidden>
+      <circle cx={60} cy={60} r={r} fill="none" stroke="#e2e8f0" strokeWidth={14} />
+      <g transform="rotate(-90 60 60)">
+        {visual.segments.map((segment, index) => {
+          if (segment.value <= 0 || visual.total <= 0) return null
+          const length = (segment.value / visual.total) * c
+          const dash = (
+            <circle
+              key={index}
+              cx={60}
+              cy={60}
+              r={r}
+              fill="none"
+              stroke={RING_COLORS[segment.tone]}
+              strokeWidth={14}
+              strokeDasharray={`${length} ${c - length}`}
+              strokeDashoffset={-offset}
+            />
+          )
+          offset += length
+          return dash
+        })}
+      </g>
+      <text x={60} y={73} textAnchor="middle" style={{ fill: color }} className="text-[36px] font-extrabold">
+        {visual.center}
+      </text>
+    </svg>
+  )
+}
+
+function PillarCard({ pillar, loading }: { pillar: HealthPillar; loading: boolean }) {
+  const style = PILLAR_TONE[pillar.tone]
+  const { visual, action } = pillar
+  const body = (
+    <>
+      <div className="flex w-[72px] shrink-0 flex-col items-center justify-center gap-1">
+        {visual.kind === 'gauge' ? (
+          <SemiGauge value={visual.value} max={visual.max} target={visual.target} tone={pillar.tone} />
+        ) : (
+          <Ring visual={visual} tone={pillar.tone} />
+        )}
+        <span
+          className={cn(
+            'inline-flex max-w-full items-center whitespace-nowrap rounded-full px-1.5 text-[10px] font-semibold leading-4 ring-1 ring-inset',
+            TONE_STYLE[pillar.tone].chip,
+            loading && 'animate-pulse'
+          )}
+        >
+          {style.badge}
+        </span>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <p className="truncate text-[13px] font-bold text-slate-800" title={pillar.label}>
+          {pillar.label}
+        </p>
+        <p className="truncate text-[11px] text-slate-500">{pillar.subtitle}</p>
+        <div className="flex min-h-[18px] items-center justify-between gap-2 text-[11px] font-bold">
+          {pillar.status ? <span className={cn('truncate', style.text)} title={pillar.status}>{pillar.status}</span> : <span />}
+          {action?.href ? (
+            <Link
+              href={action.href}
+              className={cn(
+                'inline-flex shrink-0 items-center gap-0.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
+                action.kind === 'add' ? 'text-orange-600 hover:text-orange-700' : 'text-orange-400 hover:text-orange-600'
+              )}
+            >
+              {action.label}
+              {action.kind === 'add' ? (
+                <Plus className="h-3 w-3" aria-hidden />
+              ) : (
+                <ChevronLeft className="h-3 w-3 rtl:rotate-0 ltr:rotate-180" aria-hidden />
+              )}
+            </Link>
+          ) : null}
+        </div>
+      </div>
+    </>
+  )
+  const cls = cn(
+    'flex h-full items-center gap-2.5 rounded-xl border border-[#1e2a5e]/45 bg-gradient-to-br via-white to-white px-2.5 py-2 shadow-xs transition-all duration-200',
+    style.card
+  )
+  return !action && pillar.href ? (
+    <Link
+      href={pillar.href}
+      className={cn(cls, 'hover:-translate-y-px hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 motion-reduce:hover:translate-y-0')}
+    >
+      {body}
+    </Link>
+  ) : (
+    <div className={cn(cls, 'hover:shadow-soft')}>{body}</div>
+  )
+}
+
 export function HealthBar({ pillars, loading }: { pillars: HealthPillar[]; loading: boolean }) {
   return (
-    <div data-tour="health" className="border-t border-slate-100 bg-slate-50/60">
+    <div data-tour="health" className="border-t border-sky-200/60">
       <ul
         aria-label="نوار سلامت پروژه"
-        className="flex snap-x gap-2.5 overflow-x-auto px-3 py-2.5 sm:px-5 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-7"
+        className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-2 px-3 py-2 sm:px-5 lg:px-7"
       >
-        {pillars.map((pillar) => {
-          const style = TONE_STYLE[pillar.tone]
-          const content = (
-            <>
-              <span className={cn('h-2 w-2 shrink-0 rounded-full', style.dot, loading && 'animate-pulse')} aria-hidden />
-              <span className="min-w-0">
-                <span className="block whitespace-nowrap text-[11px] font-medium leading-4 text-slate-500">{pillar.label}</span>
-                <span className="block truncate text-[13px] font-bold leading-5 tabular-nums text-slate-800">
-                  <span className="sr-only">{style.label}: </span>
-                  {pillar.value}
-                </span>
-              </span>
-              <span className="ms-auto hidden truncate text-[11px] text-slate-400 2xl:inline">{pillar.detail}</span>
-            </>
-          )
-          const cls =
-            'flex min-w-[150px] snap-start items-center gap-3 rounded-xl border border-slate-200/70 bg-white px-3.5 py-2 shadow-xs transition-all duration-200'
-          return (
-            <li key={pillar.key} title={`${pillar.label}: ${pillar.detail}`}>
-              {pillar.href ? (
-                <Link
-                  href={pillar.href}
-                  className={cn(cls, 'hover:-translate-y-px hover:border-slate-300/80 hover:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 motion-reduce:hover:translate-y-0')}
-                >
-                  {content}
-                </Link>
-              ) : (
-                <div className={cls}>{content}</div>
-              )}
-            </li>
-          )
-        })}
+        {pillars.map((pillar) => (
+          <li key={pillar.key} title={`${pillar.label}: ${pillar.subtitle}`}>
+            <PillarCard pillar={pillar} loading={loading} />
+          </li>
+        ))}
       </ul>
     </div>
   )
@@ -287,12 +555,15 @@ function KpiCard({
   tag,
   href,
   hint,
+  action,
   children,
 }: {
   title: string
   tag?: ReactNode
   href?: string
   hint: string
+  /** Interactive control next to the title; the card link then becomes an overlay so the control is not nested in it. */
+  action?: ReactNode
   children: ReactNode
 }) {
   const base =
@@ -300,12 +571,26 @@ function KpiCard({
   const body = (
     <>
       <div className="flex min-h-[26px] items-start justify-between gap-2">
-        <p className="text-sm font-bold text-slate-800">{title}</p>
+        <p className="flex items-center gap-1 text-sm font-bold text-slate-800">
+          {title}
+          {action ? <span className="pointer-events-auto relative z-10">{action}</span> : null}
+        </p>
         {tag}
       </div>
       {children}
     </>
   )
+  if (href && action) {
+    return (
+      <div
+        title={hint}
+        className={cn(base, 'relative focus-within:ring-2 focus-within:ring-primary/60 hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-md motion-reduce:hover:translate-y-0')}
+      >
+        <Link href={href} aria-label={title} className="absolute inset-0 rounded-2xl focus-visible:outline-none" />
+        <div className="pointer-events-none relative flex flex-1 flex-col">{body}</div>
+      </div>
+    )
+  }
   return href ? (
     <Link
       href={href}
@@ -321,12 +606,20 @@ function KpiCard({
   )
 }
 
-function BigValue({ value, unit, muted }: { value: string; unit?: string; muted?: boolean }) {
+const TONE_TEXT: Record<Tone, string> = {
+  good: 'text-emerald-600',
+  warn: 'text-amber-600',
+  critical: 'text-rose-600',
+  none: 'text-slate-900',
+}
+
+function BigValue({ value, unit, muted, className }: { value: string; unit?: string; muted?: boolean; className?: string }) {
   return (
     <p className="mt-4 flex items-baseline gap-1.5">
       <span
         className={cn(
           'text-2xl font-black leading-none tracking-tight tabular-nums text-slate-900 sm:text-[28px]',
+          className,
           muted && 'text-slate-300'
         )}
       >
@@ -369,36 +662,212 @@ function SubValues({ rows }: { rows: { k: string; label: string; value: string; 
   )
 }
 
-function DualProgress({ actual, planned }: { actual: number; planned: number }) {
+function ProgressVsPlan({ actual, planned }: { actual: number; planned: number }) {
   const a = Math.max(0, Math.min(100, actual))
   const p = Math.max(0, Math.min(100, planned))
-  const behind = a + 0.5 < p
   return (
-    <div className="mt-auto pt-4" aria-hidden>
-      <div className="relative h-2 rounded-full bg-slate-100">
-        <div
-          className={cn(
-            'absolute inset-y-0 right-0 rounded-full bg-gradient-to-l shadow-[inset_0_-1px_0_rgb(0_0_0/0.06)]',
-            behind ? 'from-amber-300 to-amber-500' : 'from-emerald-300 to-emerald-500'
-          )}
-          style={{ width: `${a}%` }}
-        />
-        <div
-          className="absolute -top-1 h-4 w-[3px] rounded-full bg-slate-700 ring-2 ring-white"
-          style={{ right: `calc(${p}% - 1.5px)` }}
-        />
+    <div className="mt-4" aria-hidden>
+      <div className="relative mx-1 h-4">
+        <span
+          className="absolute -top-4 translate-x-1/2 whitespace-nowrap text-[10.5px] font-bold text-slate-700"
+          style={{ right: `${p}%` }}
+        >
+          برنامه
+        </span>
       </div>
-      <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
-        <span className="inline-flex items-center gap-1.5">
-          <span className={cn('h-1.5 w-3 rounded-full', behind ? 'bg-amber-400' : 'bg-emerald-400')} />
-          واقعی تأییدشده
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-3 w-[3px] rounded-full bg-slate-700" />
-          برنامه تا امروز
-        </span>
+      <div className="relative mx-1 h-3.5">
+        <div className="absolute inset-0 rounded-full bg-slate-100" />
+        <div className="absolute inset-y-0 right-0 rounded-full bg-orange-600" style={{ width: `${a}%` }} />
+        <span
+          className="absolute -top-1.5 h-[26px] w-[3px] translate-x-1/2 rounded-full bg-slate-800 ring-2 ring-white"
+          style={{ right: `${p}%` }}
+        />
       </div>
     </div>
+  )
+}
+
+function LegendRow({ swatch, label, value }: { swatch: ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt className="flex min-w-0 items-center gap-2 text-slate-700">
+        <span className="flex w-3.5 shrink-0 justify-center">{swatch}</span>
+        <span className="truncate">{label}</span>
+      </dt>
+      <dd className="shrink-0 font-bold tabular-nums text-slate-800">{value}</dd>
+    </div>
+  )
+}
+
+const DAY_MS = 86_400_000
+
+function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to.slice(0, 10)}T12:00:00Z`) - Date.parse(`${from.slice(0, 10)}T12:00:00Z`)) / DAY_MS)
+}
+
+interface TimelineMarker {
+  key: string
+  label: string
+  date: string
+  shape: 'today' | 'forecast' | 'contract'
+}
+
+const TIMELINE_ROW_PX = 30
+const TIMELINE_MIN_GAP = 24
+
+function ScheduleTimeline({
+  start,
+  today,
+  forecast,
+  contract,
+  color,
+}: {
+  start: string
+  today: string
+  forecast: string
+  contract: string | null
+  color: string
+}) {
+  const end = [today, forecast, contract].reduce<string>((max, d) => (d && d > max ? d : max), start)
+  const span = Math.max(1, daysBetween(start, end))
+  const pos = (d: string) => Math.max(0, Math.min(100, (daysBetween(start, d) / span) * 100))
+
+  const markers: TimelineMarker[] = [
+    { key: 'today', label: 'امروز', date: today, shape: 'today' },
+    { key: 'forecast', label: 'پایان پیش‌بینی', date: forecast, shape: 'forecast' },
+    ...(contract ? [{ key: 'contract', label: 'موعد قرارداد', date: contract, shape: 'contract' as const }] : []),
+  ]
+  const rowEnds: number[] = []
+  const placed = [...markers]
+    .sort((a, b) => pos(a.date) - pos(b.date))
+    .map((m) => {
+      const p = pos(m.date)
+      let row = rowEnds.findIndex((last) => p - last >= TIMELINE_MIN_GAP)
+      if (row < 0) row = rowEnds.length
+      rowEnds[row] = p
+      return { ...m, p, row }
+    })
+  const todayPos = pos(today)
+  const forecastPos = pos(forecast)
+
+  return (
+    <div className="mt-4" aria-hidden>
+      <div className="relative mx-2 h-4">
+        <div className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-slate-100" />
+        <div
+          className="absolute top-1/2 right-0 h-2 -translate-y-1/2 rounded-full"
+          style={{ width: `${todayPos}%`, backgroundColor: color }}
+        />
+        {forecastPos > todayPos ? (
+          <div
+            className="absolute top-1/2 h-2 -translate-y-1/2 opacity-25"
+            style={{ right: `${todayPos}%`, width: `${forecastPos - todayPos}%`, backgroundColor: color }}
+          />
+        ) : null}
+        {placed.map((m) =>
+          m.shape === 'today' ? (
+            <span
+              key={m.key}
+              className="absolute top-1/2 h-4 w-4 -translate-y-1/2 translate-x-1/2 rounded-full border-[3px] bg-white"
+              style={{ right: `${m.p}%`, borderColor: color }}
+            />
+          ) : m.shape === 'forecast' ? (
+            <span
+              key={m.key}
+              className="absolute top-1/2 h-3 w-3 -translate-y-1/2 translate-x-1/2 rotate-45 rounded-[2px] bg-slate-800 ring-2 ring-white"
+              style={{ right: `${m.p}%` }}
+            />
+          ) : (
+            <span
+              key={m.key}
+              className="absolute top-1/2 h-5 w-[3px] -translate-y-1/2 translate-x-1/2 rounded-full bg-slate-800"
+              style={{ right: `${m.p}%` }}
+            />
+          )
+        )}
+      </div>
+      <div className="relative mx-2 mt-1.5" style={{ height: rowEnds.length * TIMELINE_ROW_PX }}>
+        {placed.map((m) => (
+          <div
+            key={m.key}
+            className={cn(
+              'absolute whitespace-nowrap text-center leading-4',
+              m.p < 12 ? 'translate-x-0 text-right' : m.p > 88 ? 'translate-x-full text-left' : 'translate-x-1/2'
+            )}
+            style={{ right: `${m.p}%`, top: m.row * TIMELINE_ROW_PX }}
+          >
+            <p className="text-[10.5px] font-bold" style={m.shape === 'today' ? { color } : undefined}>
+              <span className={m.shape === 'today' ? undefined : 'text-slate-700'}>{m.label}</span>
+            </p>
+            <p className="text-[10px] tabular-nums text-slate-500">{jalaliDate(m.date)}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CostGauge({ cpi, tone }: { cpi: number | null; tone: Tone }) {
+  const cx = 100
+  const cy = 100
+  const r = 72
+  const max = 1.5
+  const point = (fraction: number, radius = r) => {
+    const angle = Math.PI * (1 - Math.min(Math.max(fraction, 0), 1))
+    return { x: cx + radius * Math.cos(angle), y: cy - radius * Math.sin(angle) }
+  }
+  const start = point(0)
+  const end = point(1)
+  const arc = (to: { x: number; y: number }) => `M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${to.x} ${to.y}`
+  const color = PILLAR_TONE[tone].color
+  const tickIn = point(1 / max, r - 14)
+  const tickOut = point(1 / max, r + 14)
+
+  return (
+    <div className="mt-3 flex justify-center" aria-hidden>
+      <svg viewBox="0 0 200 112" className="block w-[150px]">
+        {cpi == null ? (
+          <path d={arc(end)} fill="none" stroke="#d6d3d1" strokeWidth={14} strokeDasharray="1 17" strokeLinecap="round" />
+        ) : (
+          <>
+            <path d={arc(end)} fill="none" stroke="#e2e8f0" strokeWidth={14} strokeLinecap="round" />
+            {cpi > 0 ? <path d={arc(point(cpi / max))} fill="none" stroke={color} strokeWidth={14} strokeLinecap="round" /> : null}
+            <line x1={tickIn.x} y1={tickIn.y} x2={tickOut.x} y2={tickOut.y} stroke="#475569" strokeWidth={4} strokeLinecap="round" />
+          </>
+        )}
+        {cpi == null ? (
+          <line x1={88} y1={88} x2={112} y2={88} stroke="#a8a29e" strokeWidth={5} strokeLinecap="round" />
+        ) : (
+          <text x={cx} y={cy - 4} textAnchor="middle" style={{ fill: color }} className="text-[34px] font-extrabold">
+            {faNumber(cpi, 2)}
+          </text>
+        )}
+      </svg>
+    </div>
+  )
+}
+
+function CostTile({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div
+      className={cn(
+        'flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1.5 py-3 text-center',
+        value == null ? 'border border-dashed border-slate-300 bg-slate-50/60' : 'bg-slate-50'
+      )}
+    >
+      <span className={cn('text-sm font-bold tabular-nums', value == null ? 'text-slate-300' : 'text-slate-800')}>
+        {value ?? '—'}
+      </span>
+      <span className="max-w-full break-words text-[11px] leading-4 text-slate-500">{label}</span>
+    </div>
+  )
+}
+
+function Chip({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-600">
+      {children}
+    </span>
   )
 }
 
@@ -406,13 +875,15 @@ export function KpiStrip({
   overview,
   loading,
   hrefs,
-  criticalCount,
+  inbox,
 }: {
   overview: ManagerOverview | null
   loading: boolean
   hrefs: ManagerHrefs
-  criticalCount: number | null
+  /** «اقدامات معوق و بحران‌ها» — the PM Inbox card. */
+  inbox: ReactNode
 }) {
+  const [explainOpen, setExplainOpen] = useState(false)
   if (!overview && loading) {
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -428,16 +899,40 @@ export function KpiStrip({
   const missing = evmResult?.status === 'unavailable' ? evmResult.reason : evmResult?.status === 'error' ? evmResult.message : 'داده هنوز متصل نشده'
   const actual = evm ? evm.actualPercent ?? evm.earnedPercent : null
   const gapPoints = evm ? evm.earnedPercent - evm.plannedPercent : null
-  const decisions = overview?.decisions.status === 'ok' ? overview.decisions.data.total : null
-  const pending = (decisions ?? 0) + (criticalCount ?? 0)
   const spiTone = indexTone(evm?.spi)
   const cpiTone = indexTone(evm?.cpi)
+  const costReady = evm != null && evm.budgetBasis !== 'none' && evm.ac > 0
+  const forecast = evm?.scheduleForecast ?? null
+  const contractEnd = overview?.project?.endDate?.slice(0, 10) ?? null
+  const contractReserve = forecast && contractEnd ? daysBetween(forecast.forecastFinish, contractEnd) : null
+  const projectId = overview?.project?.id ?? null
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {explainOpen && projectId && overview ? (
+        <CumulativeProgressSheet
+          projectId={projectId}
+          today={overview.site.date}
+          card={{ planned: evm?.plannedPercent ?? null, actual }}
+          onClose={() => setExplainOpen(false)}
+        />
+      ) : null}
       <KpiCard
         title="پیشرفت تجمعی"
         href={hrefs.evm}
+        action={
+          evm && projectId ? (
+            <button
+              type="button"
+              onClick={() => setExplainOpen(true)}
+              aria-label="مشاهدهٔ فرآیند محاسبه و فرمول"
+              title="مشاهدهٔ فرآیند محاسبه و فرمول"
+              className="inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-orange-50 hover:text-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
+            >
+              <Calculator className="h-4 w-4" aria-hidden />
+            </button>
+          ) : undefined
+        }
         hint="پیشرفت فیزیکی تأییدشده (وزنی) در برابر پیشرفت برنامه‌ای تا امروز؛ همان نقطهٔ امروز در نمودار S."
         tag={
           evm && actual != null ? (
@@ -449,8 +944,40 @@ export function KpiStrip({
       >
         {evm && actual != null ? (
           <>
-            <BigValue value={faNumber(actual, 1)} unit="٪ تأییدشده" />
-            <DualProgress actual={actual} planned={evm.plannedPercent} />
+            <p className="mt-1 text-xs text-slate-500">کار انجام‌شده در برابر برنامه</p>
+            <BigValue value={faPercent(actual)} unit="ثبت‌شده" />
+            <ProgressVsPlan actual={actual} planned={evm.plannedPercent} />
+            <dl className="mt-4 space-y-2.5 text-xs">
+              <LegendRow swatch={<span className="h-3 w-3 rounded-[3px] bg-orange-600" />} label="پیشرفت فیزیکی ثبت‌شده (وزنی)" value={faPercent(actual)} />
+              <LegendRow swatch={<span className="h-3.5 w-[3px] rounded-full bg-slate-800" />} label="برنامه تا امروز" value={faPercent(evm.plannedPercent)} />
+              <LegendRow
+                swatch={<span className="h-3 w-3 rounded-[3px] border-2 border-slate-400" />}
+                label="ارزش کسب‌شده (EV، بر مبنای بودجه)"
+                value={faPercent(evm.earnedPercent)}
+              />
+            </dl>
+            <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-4">
+              {(() => {
+                const gap = actual - evm.plannedPercent
+                const behind = gap < -0.05
+                return (
+                  <span
+                    className={cn(
+                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold tabular-nums',
+                      behind ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                    )}
+                  >
+                    {Math.abs(gap) < 0.05
+                      ? 'هم‌پای برنامه'
+                      : `${faNumber(Math.abs(gap), 1)} واحد ${behind ? 'عقب‌تر از' : 'جلوتر از'} برنامه`}
+                  </span>
+                )
+              })()}
+              <span className="inline-flex items-center gap-0.5 text-xs font-bold text-orange-600 group-hover:text-orange-700">
+                جزئیات
+                <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-0 ltr:rotate-180" aria-hidden />
+              </span>
+            </div>
           </>
         ) : (
           <>
@@ -463,18 +990,20 @@ export function KpiStrip({
       <KpiCard
         title="انحراف زمانی"
         href={hrefs.evm}
-        hint="چند روز از برنامه عقب یا جلو هستیم (تاریخی که برنامه به پیشرفت کسب‌شدهٔ امروز می‌رسید) و شاخص SPI."
+        hint="چند روز از برنامه عقب یا جلو هستیم (تاریخی که برنامه به پیشرفت کسب‌شدهٔ امروز می‌رسید) و شاخص SPI. پایان پیش‌بینی = پایان برنامهٔ مبنا به‌علاوهٔ همین انحراف، با این فرض که باقی کار طبق برنامه پیش برود."
         tag={evm?.spi != null ? <StatusTag tone={spiTone} label={`SPI ${faNumber(evm.spi, 2)}`} /> : undefined}
       >
         {evm && evm.spi != null ? (
           <>
+            <p className="mt-1 text-xs text-slate-500">پیش‌بینی پایان پروژه</p>
             {evm.scheduleVarianceDays != null ? (
               <BigValue
+                className={TONE_TEXT[spiTone]}
                 value={faNumber(Math.abs(evm.scheduleVarianceDays))}
-                unit={evm.scheduleVarianceDays > 0 ? 'روز عقب' : evm.scheduleVarianceDays < 0 ? 'روز جلو' : 'روز'}
+                unit={evm.scheduleVarianceDays > 0 ? 'روز عقب' : evm.scheduleVarianceDays < 0 ? 'روز جلو' : 'روز (طبق برنامه)'}
               />
             ) : (
-              <BigValue value={faNumber(Math.abs(gapPoints ?? 0), 1)} unit="واحد درصد" />
+              <BigValue className={TONE_TEXT[spiTone]} value={faNumber(Math.abs(gapPoints ?? 0), 1)} unit="واحد درصد" />
             )}
             {gapPoints != null ? (
               <Meta>
@@ -482,13 +1011,39 @@ export function KpiStrip({
                 {gapPoints < 0 ? 'عقب‌تر' : 'جلوتر'} از برنامه (بر مبنای ارزش)
               </Meta>
             ) : null}
-            <SubValues
-              rows={[
-                { k: 'PV', label: 'برنامه تا امروز', value: faNumber(evm.plannedPercent, evm.plannedPercent >= 99.95 ? 0 : 1), unit: '٪' },
-                { k: 'EV', label: 'ارزش کسب‌شده', value: faNumber(evm.earnedPercent, evm.earnedPercent >= 99.95 ? 0 : 1), unit: '٪' },
-                { k: 'SPI', label: 'شاخص', value: faNumber(evm.spi, 2) },
-              ]}
-            />
+            {forecast ? (
+              <ScheduleTimeline
+                start={forecast.start}
+                today={evm.asOf}
+                forecast={forecast.forecastFinish}
+                contract={contractEnd}
+                color={PILLAR_TONE[spiTone].color}
+              />
+            ) : null}
+            <div className="mt-auto pt-3">
+              {contractReserve != null ? (
+                <p className={cn('text-xs font-bold', contractReserve >= 0 ? 'text-emerald-700' : 'text-rose-600')}>
+                  {contractReserve > 0
+                    ? `${faNumber(contractReserve)} روز ذخیره تا موعد قرارداد`
+                    : contractReserve < 0
+                      ? `${faNumber(-contractReserve)} روز تأخیر نسبت به موعد قرارداد`
+                      : 'پایان پیش‌بینی هم‌زمان با موعد قرارداد'}
+                </p>
+              ) : forecast ? (
+                <p className="text-xs text-slate-500">موعد قراردادی پروژه ثبت نشده است.</p>
+              ) : null}
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap gap-1.5">
+                  <Chip>SPI {faNumber(evm.spi, 2)}</Chip>
+                  <Chip>EV {faPercent(evm.earnedPercent)}</Chip>
+                  <Chip>PV {faPercent(evm.plannedPercent)}</Chip>
+                </div>
+                <span className="inline-flex items-center gap-0.5 text-xs font-bold text-orange-600 group-hover:text-orange-700">
+                  جزئیات
+                  <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-0 ltr:rotate-180" aria-hidden />
+                </span>
+              </div>
+            </div>
           </>
         ) : (
           <>
@@ -500,76 +1055,86 @@ export function KpiStrip({
 
       <KpiCard
         title="انحراف هزینه"
-        href={hrefs.evm}
-        hint="CV = EV − AC. منفی یعنی هزینهٔ واقعی بیشتر از ارزش کار انجام‌شده است."
-        tag={evm?.cpi != null ? <StatusTag tone={cpiTone} label={`CPI ${faNumber(evm.cpi, 2)}`} /> : undefined}
-      >
-        {evm && evm.budgetBasis !== 'none' && evm.ac > 0 ? (
-          <>
-            <BigValue value={`${evm.cv < 0 ? '−' : '+'}${compactTomanParts(evm.cv).value}`} unit={compactTomanParts(evm.cv).unit} />
-            <Meta className={evm.cv < 0 ? 'text-rose-600' : 'text-emerald-600'}>
-              {evm.cv < 0 ? 'هزینهٔ واقعی بیش از ارزش کار انجام‌شده' : 'هزینهٔ واقعی کمتر از ارزش کار انجام‌شده'}
-            </Meta>
-            <SubValues
-              rows={[
-                { k: 'BAC', label: 'بودجه کل', v: evm.bac },
-                { k: 'EV', label: 'ارزش کسب‌شده', v: evm.ev },
-                { k: 'AC', label: 'هزینه واقعی', v: evm.ac },
-              ].map((row) => ({
-                k: row.k,
-                label: row.label,
-                value: compactTomanParts(row.v).value,
-                unit: compactTomanParts(row.v).unit.replace(' تومان', ''),
-              }))}
-            />
-          </>
-        ) : (
-          <>
-            <BigValue value="—" muted />
-            <Meta>
-              {evm ? (evm.budgetBasis === 'none' ? 'بودجهٔ فعالیت‌ها ثبت نشده است.' : 'هزینهٔ واقعی ثبت نشده است.') : missing}
-            </Meta>
-          </>
-        )}
-      </KpiCard>
-
-      <KpiCard
-        title="اقدامات معوق و بحران‌ها"
-        hint="تصمیم‌های باز در کارتابل شما به‌علاوهٔ هشدارهای فوری (قرمز)."
+        hint="CV = EV − AC. منفی یعنی هزینهٔ واقعی بیشتر از ارزش کار انجام‌شده است. EAC = BAC ÷ CPI؛ مصرف بودجه = AC ÷ BAC."
         tag={
-          decisions != null || criticalCount != null ? (
-            <StatusTag
-              tone={(criticalCount ?? 0) > 0 ? 'critical' : pending > 0 ? 'warn' : 'good'}
-              label={(criticalCount ?? 0) > 0 ? 'اقدام فوری' : pending > 0 ? 'در انتظار' : 'رسیدگی‌شده'}
-            />
-          ) : undefined
+          costReady && evm?.cpi != null ? (
+            <StatusTag tone={cpiTone} label={`CPI ${faNumber(evm.cpi, 2)}`} />
+          ) : (
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500">بدون داده</span>
+          )
         }
       >
-        {decisions != null || criticalCount != null ? (
-          <>
-            <BigValue value={faNumber(pending)} unit="مورد" />
-            <div className="mt-auto flex flex-wrap gap-2 pt-4 text-xs">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-500/10 px-2.5 py-1 font-medium tabular-nums text-slate-600 ring-1 ring-inset ring-slate-500/10">
-                <ClipboardCheck className="h-3.5 w-3.5 text-slate-400" aria-hidden />
-                {decisions != null ? `${faNumber(decisions)} تصمیم باز` : 'کارتابل: —'}
-              </span>
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium tabular-nums ring-1 ring-inset',
-                  (criticalCount ?? 0) > 0
-                    ? 'bg-rose-500/10 text-rose-700 ring-rose-600/15'
-                    : 'bg-slate-500/10 text-slate-600 ring-slate-500/10'
-                )}
-              >
-                <OctagonAlert className="h-3.5 w-3.5 opacity-70" aria-hidden />
-                {criticalCount != null ? `${faNumber(criticalCount)} هشدار فوری` : 'هشدارها: —'}
-              </span>
-            </div>
-          </>
-        ) : (
-          <BigValue value="—" muted />
-        )}
+        {(() => {
+          const subtitle = costReady
+            ? evm.cv < 0
+              ? 'هزینهٔ واقعی بیش از ارزش کار انجام‌شده'
+              : 'هزینهٔ واقعی کمتر از ارزش کار انجام‌شده'
+            : evm
+              ? evm.budgetBasis === 'none'
+                ? 'بودجهٔ فعالیت‌ها ثبت نشده'
+                : 'هزینهٔ واقعی ثبت نشده'
+              : missing
+          const eac = costReady && evm.cpi != null && evm.cpi > 0 ? evm.bac / evm.cpi : null
+          const used = costReady && evm.bac > 0 ? (evm.ac / evm.bac) * 100 : null
+          const money = (v: number) => {
+            const parts = compactTomanParts(v)
+            return `${parts.value} ${parts.unit.replace(' تومان', '')}`.trim()
+          }
+          return (
+            <>
+              <p className={cn('mt-1 text-xs', costReady ? (evm.cv < 0 ? 'text-rose-600' : 'text-emerald-600') : 'text-slate-500')}>
+                {subtitle}
+              </p>
+              <CostGauge cpi={costReady ? evm.cpi : null} tone={cpiTone} />
+              {costReady ? (
+                <p className="text-center text-xs text-slate-600">
+                  انحراف هزینه (CV):{' '}
+                  <span className={cn('font-bold tabular-nums', evm.cv < 0 ? 'text-rose-600' : 'text-emerald-600')}>
+                    {evm.cv < 0 ? '−' : '+'}
+                    {money(Math.abs(evm.cv))}
+                  </span>
+                </p>
+              ) : (
+                <p className="text-center text-xs text-slate-500">با ثبت هزینه، این موارد فعال می‌شوند:</p>
+              )}
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <CostTile label="CPI" value={costReady && evm.cpi != null ? faNumber(evm.cpi, 2) : null} />
+                <CostTile label="هزینهٔ نهایی (EAC)" value={eac != null ? money(eac) : null} />
+                <CostTile label="مصرف بودجه" value={used != null ? faPercent(used) : null} />
+              </div>
+              <div className="mt-auto flex justify-end pt-4">
+                {costReady ? (
+                  <Link
+                    href={hrefs.finance ?? hrefs.evm ?? '#'}
+                    className="inline-flex items-center gap-0.5 rounded text-xs font-bold text-orange-600 hover:text-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                  >
+                    جزئیات
+                    <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-0 ltr:rotate-180" aria-hidden />
+                  </Link>
+                ) : evm && evm.budgetBasis !== 'none' && (hrefs.finance ?? hrefs.evm) ? (
+                  <Link
+                    href={(hrefs.finance ?? hrefs.evm) as string}
+                    className="inline-flex items-center gap-1 rounded-xl bg-orange-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
+                  >
+                    <Plus className="h-4 w-4" aria-hidden />
+                    ثبت هزینه
+                  </Link>
+                ) : evm && hrefs.evm ? (
+                  <Link
+                    href={hrefs.evm}
+                    className="inline-flex items-center gap-0.5 rounded text-xs font-bold text-orange-600 hover:text-orange-700"
+                  >
+                    تعریف بودجه
+                    <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-0 ltr:rotate-180" aria-hidden />
+                  </Link>
+                ) : null}
+              </div>
+            </>
+          )
+        })()}
       </KpiCard>
+
+      {inbox}
     </div>
   )
 }

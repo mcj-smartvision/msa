@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { todayTehranIso } from '@/lib/time/tehran'
 import {
   computeProgressPace,
   paceThresholdsFromAlertSettings,
@@ -95,7 +96,7 @@ export async function persistProjectProgressPace(
   }
 
   const fallbackStatus =
-    toIsoDateOnly(options?.statusDate) ?? new Date().toISOString().slice(0, 10)
+    toIsoDateOnly(options?.statusDate) ?? todayTehranIso()
 
   let settings = { ...DEFAULT_PROJECT_ALERT_SETTINGS }
   try {

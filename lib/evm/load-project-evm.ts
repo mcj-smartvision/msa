@@ -11,10 +11,13 @@ import {
   packageSchedulePhysicalPercent,
   schedulePhysicalPercent,
 } from '@/lib/schedule/physical-progress'
+import { normalizeScheduleWeightPercent } from '@/lib/schedule/weighted-progress'
 import {
-  normalizeScheduleWeightPercent,
-  packageProgressWeight,
-} from '@/lib/schedule/weighted-progress'
+  checkProjectWeightTotal,
+  logWeightIssues,
+  resolveSiblingWeights,
+  type WeightIssue,
+} from '@/lib/schedule/weight-consistency'
 import { readPackageUnitPrice } from '@/lib/workshop/package-commercial'
 import { resolvePackageWeight } from '@/lib/workshop/package-weight'
 import {
@@ -66,7 +69,9 @@ export interface ProjectEvmSnapshot {
   }
   rag: RagResult
   projectBudget: number | null
-  /** Budgeted leaf activities whose PV/EV sum to the project totals. */
+  /** Weight-consistency problems found while resolving leaf weights; the numbers are still computed. */
+  weightIssues: WeightIssue[]
+  /** Leaf activities with a schedule weight or a budget (rows behind PV/EV/SPI and the cost EV). */
   activities: ProjectEvmActivityRow[]
   /** Cost records up to the as-of date that sum to AC. */
   costs: EvmCostEntry[]
@@ -87,6 +92,10 @@ async function optionalRows(
   return (data ?? []) as Row[]
 }
 
+/**
+ * Packages are scheduled inside their MSP activity, so their PV follows the parent activity's
+ * frozen baseline. A package's own dates are used only when it has no parent activity.
+ */
 function packageBaselineDates(
   pkg: Row,
   packagesById: Map<string, Row>,
@@ -96,18 +105,21 @@ function packageBaselineDates(
   const seen = new Set<string>()
   while (current && !seen.has(String(current.id))) {
     seen.add(String(current.id))
-    const start = toIsoDateOnly((current.start_date as string) ?? null)
-    const finish = toIsoDateOnly((current.finish_date as string) ?? null)
-    if (start || finish) return { start: start ?? finish, finish: finish ?? start }
-    const parentPackageId = current.parent_package_id ? String(current.parent_package_id) : null
-    if (parentPackageId) {
-      current = packagesById.get(parentPackageId)
-      continue
-    }
     const task = current.project_task_id ? tasksById.get(String(current.project_task_id)) : null
-    return task ? taskBaselineDates(task) : { start: null, finish: null }
+    if (task) return taskBaselineDates(task)
+    const parentPackageId = current.parent_package_id ? String(current.parent_package_id) : null
+    if (!parentPackageId) break
+    current = packagesById.get(parentPackageId)
   }
-  return { start: null, finish: null }
+  const start = toIsoDateOnly((pkg.start_date as string) ?? null)
+  const finish = toIsoDateOnly((pkg.finish_date as string) ?? null)
+  return { start: start ?? finish, finish: finish ?? start }
+}
+
+/** «هزینه» column of the technical office schedule (MSP Cost, Toman). Summary rows are rollups and never read. */
+function taskCost(row: Row | undefined): number {
+  const cost = Number(row?.cost)
+  return Number.isFinite(cost) && cost > 0 ? cost : 0
 }
 
 function taskWeight(row: Row | undefined): number {
@@ -115,41 +127,95 @@ function taskWeight(row: Row | undefined): number {
   return normalizeScheduleWeightPercent(Number(row.physical_weight ?? row.schedule_weight))
 }
 
-/** Project-level weight of a package: parent weight × its share (or an equal split). */
-function packageEffectiveWeight(
-  pkg: Row,
+/** Project-level (absolute) weight of every package, resolved one sibling group at a time. */
+export function resolvePackageWeights(
   packages: Row[],
-  packagesById: Map<string, Row>,
-  tasksById: Map<string, Row>,
-  seen: Set<string> = new Set()
-): number {
-  const id = String(pkg.id)
-  if (seen.has(id)) return 0
-  seen.add(id)
-  const parentPackageId = pkg.parent_package_id ? String(pkg.parent_package_id) : null
-  const parent = parentPackageId ? packagesById.get(parentPackageId) : undefined
-  const parentWeight = parent
-    ? packageEffectiveWeight(parent, packages, packagesById, tasksById, seen)
-    : taskWeight(pkg.project_task_id ? tasksById.get(String(pkg.project_task_id)) : undefined)
-  const siblings = packages.filter((other) =>
-    parentPackageId
-      ? String(other.parent_package_id ?? '') === parentPackageId
-      : !other.parent_package_id &&
-        String(other.project_task_id ?? '') === String(pkg.project_task_id ?? '')
-  ).length
-  return packageProgressWeight(resolvePackageWeight(pkg), parentWeight, siblings)
+  tasksById: Map<string, Row>
+): { weights: Map<string, number>; issues: WeightIssue[] } {
+  const packagesById = new Map(packages.map((p) => [String(p.id), p]))
+  const groupKey = (pkg: Row) =>
+    pkg.parent_package_id ? `p:${String(pkg.parent_package_id)}` : `t:${String(pkg.project_task_id ?? '')}`
+  const groups = new Map<string, Row[]>()
+  for (const pkg of packages) {
+    const key = groupKey(pkg)
+    groups.set(key, [...(groups.get(key) ?? []), pkg])
+  }
+
+  const weights = new Map<string, number>()
+  const issues: WeightIssue[] = []
+  const resolvedGroups = new Set<string>()
+  const resolving = new Set<string>()
+
+  const weightOf = (id: string): number => {
+    if (weights.has(id)) return weights.get(id)!
+    const pkg = packagesById.get(id)
+    if (!pkg || resolving.has(id)) return 0
+    resolving.add(id)
+    resolveGroup(groupKey(pkg))
+    resolving.delete(id)
+    return weights.get(id) ?? 0
+  }
+
+  const resolveGroup = (key: string) => {
+    if (resolvedGroups.has(key)) return
+    resolvedGroups.add(key)
+    const members = groups.get(key) ?? []
+    const parentId = key.slice(2) || null
+    const parentPackage = key.startsWith('p:') && parentId ? packagesById.get(parentId) : undefined
+    const parentTask = key.startsWith('t:') && parentId ? tasksById.get(parentId) : undefined
+    const parentWeight = parentPackage ? weightOf(parentId!) : taskWeight(parentTask)
+    const label = String((parentPackage ?? parentTask)?.name ?? '') || null
+    const result = resolveSiblingWeights(parentWeight, members.map(resolvePackageWeight), { id: parentId, label })
+    members.forEach((member, index) => weights.set(String(member.id), result.weights[index] ?? 0))
+    if (result.issue) issues.push(result.issue)
+  }
+
+  for (const key of groups.keys()) resolveGroup(key)
+  return { weights, issues }
 }
 
 function buildActivities(
   tasks: Row[],
   packages: Row[],
   projectBudget: number | null
-): { activities: Array<EvmActivity & EvmActivitySource>; basis: EvmMetrics['budgetBasis'] } {
+): {
+  activities: Array<EvmActivity & EvmActivitySource>
+  basis: EvmMetrics['budgetBasis']
+  weightIssues: WeightIssue[]
+} {
   const tasksById = new Map(tasks.map((t) => [String(t.id), t]))
   const packagesById = new Map(packages.map((p) => [String(p.id), p]))
+  const packageWeights = resolvePackageWeights(packages, tasksById)
 
-  const items: Array<Omit<EvmActivity, 'budget'> & EvmActivitySource & { contractValue: number }> =
+  const items: Array<Omit<EvmActivity, 'budget'> & EvmActivitySource & { contractValue: number; mspCost: number }> =
     []
+
+  const leafPackages = packages.filter((row) => isLeafPackage(row, packages))
+  const rootTaskOf = (pkg: Row): string | null => {
+    const seen = new Set<string>()
+    let current: Row | undefined = pkg
+    while (current && !seen.has(String(current.id))) {
+      seen.add(String(current.id))
+      if (current.project_task_id) return String(current.project_task_id)
+      current = current.parent_package_id ? packagesById.get(String(current.parent_package_id)) : undefined
+    }
+    return null
+  }
+  const packageGroups = new Map<string, Row[]>()
+  for (const pkg of leafPackages) {
+    const taskId = rootTaskOf(pkg)
+    if (taskId) packageGroups.set(taskId, [...(packageGroups.get(taskId) ?? []), pkg])
+  }
+  /** A task's technical-office cost is split over its leaf packages by their resolved weight (equally if unweighted). */
+  const packageCost = (pkg: Row): number => {
+    const taskId = rootTaskOf(pkg)
+    const group = taskId ? packageGroups.get(taskId) ?? [] : []
+    const cost = taskCost(taskId ? tasksById.get(taskId) : undefined)
+    if (!(cost > 0) || group.length === 0) return 0
+    const weightOf = (p: Row) => packageWeights.weights.get(String(p.id)) ?? 0
+    const groupWeight = group.reduce((s, p) => s + weightOf(p), 0)
+    return groupWeight > 0 ? (cost * weightOf(pkg)) / groupWeight : cost / group.length
+  }
 
   for (const row of tasks) {
     if (!isLeafTask(row, tasks, packages)) continue
@@ -167,12 +233,12 @@ function buildActivities(
       quantity,
       unitPrice,
       contractValue: quantity * unitPrice,
+      mspCost: taskCost(row),
       weight: taskWeight(row),
     })
   }
 
-  for (const row of packages) {
-    if (!isLeafPackage(row, packages)) continue
+  for (const row of leafPackages) {
     const fields =
       row.schedule_fields && typeof row.schedule_fields === 'object'
         ? (row.schedule_fields as Row)
@@ -191,14 +257,19 @@ function buildActivities(
       quantity,
       unitPrice,
       contractValue: quantity * unitPrice,
-      weight: packageEffectiveWeight(row, packages, packagesById, tasksById),
+      mspCost: packageCost(row),
+      weight: packageWeights.weights.get(String(row.id)) ?? 0,
     })
   }
 
+  const totalIssue = checkProjectWeightTotal(items.map((item) => item.weight))
+  const weightIssues = totalIssue ? [...packageWeights.issues, totalIssue] : packageWeights.issues
+
   const { basis, budgets } = resolveActivityBudgets(items, projectBudget)
   return {
+    weightIssues,
     basis,
-    activities: items.map(({ contractValue: _c, ...item }, index) => ({
+    activities: items.map(({ contractValue: _c, mspCost: _m, ...item }, index) => ({
       ...item,
       budget: budgets[index] ?? 0,
     })),
@@ -352,7 +423,8 @@ export async function loadProjectEvm(
   ])
 
   const projectBudget = project.data?.budget != null ? Number(project.data.budget) : null
-  const { activities, basis } = buildActivities(tasks, packages, projectBudget)
+  const { activities, basis, weightIssues } = buildActivities(tasks, packages, projectBudget)
+  logWeightIssues(`project ${projectId}`, weightIssues)
 
   const [costs, float] = await Promise.all([
     loadCosts(service, projectId, options.asOf, options.today),
@@ -391,8 +463,9 @@ export async function loadProjectEvm(
     },
     rag,
     projectBudget,
+    weightIssues,
     activities: breakdownActivities(
-      activities.filter((a) => a.budget > 0),
+      activities.filter((a) => a.budget > 0 || a.weight > 0),
       metrics.asOf
     ).sort((a, b) => compareWbs(a.wbs, b.wbs)),
     costs: costs.filter((c) => c.date <= metrics.asOf),

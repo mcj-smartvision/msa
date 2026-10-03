@@ -1,12 +1,12 @@
 import { toIsoDateOnly } from '@/lib/schedule/dates'
-import { inclusiveDayCount } from '@/lib/schedule/monthly-deducted-weight'
+import { CALENDAR_DAYS, plannedPercentInWindow, type WorkCalendar } from '@/lib/schedule/planned-progress'
 
 export type EvmCostSource = 'expense' | 'vendor_bill' | 'overhead'
 
 export const EVM_COST_SOURCES: readonly EvmCostSource[] = ['expense', 'vendor_bill', 'overhead']
 
 /** Budget basis used for BAC: priced schedule lines, or project budget spread by MSP weight. */
-export type EvmBudgetBasis = 'contract_value' | 'weighted_project_budget' | 'none'
+export type EvmBudgetBasis = 'technical_office_cost' | 'contract_value' | 'weighted_project_budget' | 'none'
 
 export interface EvmActivity {
   id: string
@@ -17,7 +17,16 @@ export interface EvmActivity {
   baselineFinish: string | null
   /** Physical progress approved by the technical office (0–100). */
   physicalPercent: number
+  /** Project-level schedule weight (MSP وزن, percent-points); drives PV, EV and SPI. */
+  weight?: number
 }
+
+/**
+ * PV, EV and SPI use normalized schedule weights (the same basis as «پیشرفت تجمعی»). Budgets
+ * are used only for cost: evAmount = Σ(budget × physical %), CPI and TCPI. When no activity
+ * carries a weight, budgets stand in as weights.
+ */
+export type EvmProgressBasis = 'schedule_weight' | 'budget'
 
 export interface EvmCostEntry {
   source: EvmCostSource
@@ -39,20 +48,29 @@ export interface EvmActivityBreakdown extends EvmActivity {
 export interface EvmMetrics {
   asOf: string
   budgetBasis: EvmBudgetBasis
+  progressBasis: EvmProgressBasis
   bac: number
+  /** BAC × planned % (schedule-weight basis). */
   pv: number
+  /** BAC × earned % (schedule-weight basis); SPI = EV ÷ PV. */
   ev: number
+  /** Σ(budget × physical %): the cost-basis earned value used by CV, CPI and TCPI. */
+  evAmount: number
   ac: number
   /** EV − PV */
   sv: number
-  /** EV − AC */
+  /** evAmount − AC */
   cv: number
-  /** EV / PV — null when PV is zero. */
+  /** earned % ÷ planned % — null when nothing is planned yet. */
   spi: number | null
-  /** EV / AC — null when AC is zero. */
+  /** evAmount ÷ AC — null unless AC > 0 and the budget is real. */
   cpi: number | null
+  /** Σ wᵢ·plannedᵢ ÷ Σ wᵢ */
   plannedPercent: number
+  /** Σ wᵢ·physicalᵢ ÷ Σ wᵢ (equals «پیشرفت تجمعی») */
   earnedPercent: number
+  /** Σ wᵢ of the activities in the progress basis. */
+  totalWeight: number
   acBySource: Record<EvmCostSource, number>
   activityCount: number
 }
@@ -74,24 +92,14 @@ export function safeRatio(numerator: number, denominator: number): number | null
   return numerator / denominator
 }
 
-/**
- * Linear baseline progress: 0 before start, 100 on/after finish, and the share of
- * elapsed calendar days (both ends inclusive) in between.
- */
+/** Baseline planned percent as of a date — see `lib/schedule/planned-progress.ts` for the convention. */
 export function plannedPercentAsOf(
   baselineStart: string | null,
   baselineFinish: string | null,
-  asOfIso: string
+  asOfIso: string,
+  calendar: WorkCalendar = CALENDAR_DAYS
 ): number {
-  const start = toIsoDateOnly(baselineStart)
-  const finish = toIsoDateOnly(baselineFinish) ?? start
-  const asOf = toIsoDateOnly(asOfIso)
-  if (!start || !finish || !asOf) return 0
-  if (asOf < start) return 0
-  if (asOf >= finish) return 100
-  const total = inclusiveDayCount(start, finish)
-  if (total <= 0) return 100
-  return clampPercent((inclusiveDayCount(start, asOf) / total) * 100)
+  return plannedPercentInWindow({ start: baselineStart, finish: baselineFinish }, asOfIso, calendar)
 }
 
 /** Per-activity PV and EV — the rows that sum to the project PV and EV. */
@@ -142,13 +150,21 @@ export function computeActualCost(
 }
 
 /**
- * Per-activity budgets. Priced lines (quantity × unit price) win; when none are priced,
- * the project budget is spread by MSP weight so SPI still works.
+ * Per-activity budgets. The technical office's activity cost (MSP Cost column) wins; then priced
+ * lines (quantity × unit price); when neither exists, the project budget is spread by MSP weight
+ * so SPI still works.
  */
-export function resolveActivityBudgets<T extends { contractValue: number; weight: number }>(
+export function resolveActivityBudgets<T extends { contractValue: number; weight: number; mspCost?: number }>(
   items: T[],
   projectBudget: number | null
 ): { basis: EvmBudgetBasis; budgets: number[] } {
+  const costed = items.reduce((sum, item) => sum + Math.max(0, finite(item.mspCost)), 0)
+  if (costed > 0) {
+    return {
+      basis: 'technical_office_cost',
+      budgets: items.map((item) => Math.max(0, finite(item.mspCost))),
+    }
+  }
   const priced = items.reduce((sum, item) => sum + Math.max(0, finite(item.contractValue)), 0)
   if (priced > 0) {
     return {
@@ -167,6 +183,35 @@ export function resolveActivityBudgets<T extends { contractValue: number; weight
   return { basis: 'none', budgets: items.map(() => 0) }
 }
 
+/** The weight each activity carries in PV/EV/SPI under the chosen progress basis. */
+export function progressWeightOf(activity: EvmActivity, basis: EvmProgressBasis): number {
+  return Math.max(0, finite(basis === 'schedule_weight' ? activity.weight : activity.budget))
+}
+
+export function resolveProgressBasis(activities: EvmActivity[]): EvmProgressBasis {
+  return activities.some((a) => finite(a.weight) > 0) ? 'schedule_weight' : 'budget'
+}
+
+/** Σ wᵢ·pᵢ ÷ Σ wᵢ for planned (as of a date) and earned percent. */
+export function weightedPercents(
+  activities: EvmActivity[],
+  asOfIso: string,
+  basis: EvmProgressBasis = resolveProgressBasis(activities)
+): { plannedPercent: number; earnedPercent: number; totalWeight: number } {
+  let totalWeight = 0
+  let planned = 0
+  let earned = 0
+  for (const a of activities) {
+    const w = progressWeightOf(a, basis)
+    if (w <= 0) continue
+    totalWeight += w
+    planned += w * plannedPercentAsOf(a.baselineStart, a.baselineFinish, asOfIso)
+    earned += w * clampPercent(a.physicalPercent)
+  }
+  if (totalWeight <= 0) return { plannedPercent: 0, earnedPercent: 0, totalWeight: 0 }
+  return { plannedPercent: planned / totalWeight, earnedPercent: earned / totalWeight, totalWeight }
+}
+
 export function computeEvmMetrics(input: {
   activities: EvmActivity[]
   costs: EvmCostEntry[]
@@ -174,26 +219,35 @@ export function computeEvmMetrics(input: {
   budgetBasis: EvmBudgetBasis
 }): EvmMetrics {
   const asOf = toIsoDateOnly(input.asOf) ?? input.asOf
-  const activities = input.activities.filter((a) => finite(a.budget) > 0)
-  const bac = activities.reduce((sum, a) => sum + finite(a.budget), 0)
-  const pv = computePlannedValue(activities, asOf)
-  const ev = computeEarnedValue(activities)
+  const progressBasis = resolveProgressBasis(input.activities)
+  const progress = input.activities.filter((a) => progressWeightOf(a, progressBasis) > 0)
+  const { plannedPercent, earnedPercent, totalWeight } = weightedPercents(progress, asOf, progressBasis)
+
+  const budgeted = input.activities.filter((a) => finite(a.budget) > 0)
+  const bac = budgeted.reduce((sum, a) => sum + finite(a.budget), 0)
+  const evAmount = computeEarnedValue(budgeted)
+  const pv = (bac * plannedPercent) / 100
+  const ev = (bac * earnedPercent) / 100
   const actual = computeActualCost(input.costs, asOf)
+  const budgetBasis = bac > 0 ? input.budgetBasis : 'none'
 
   return {
     asOf,
-    budgetBasis: bac > 0 ? input.budgetBasis : 'none',
+    budgetBasis,
+    progressBasis,
     bac,
     pv,
     ev,
+    evAmount,
     ac: actual.total,
     sv: ev - pv,
-    cv: ev - actual.total,
-    spi: safeRatio(ev, pv),
-    cpi: safeRatio(ev, actual.total),
-    plannedPercent: bac > 0 ? (pv / bac) * 100 : 0,
-    earnedPercent: bac > 0 ? (ev / bac) * 100 : 0,
+    cv: evAmount - actual.total,
+    spi: safeRatio(earnedPercent, plannedPercent),
+    cpi: actual.total > 0 && budgetBasis !== 'none' ? safeRatio(evAmount, actual.total) : null,
+    plannedPercent,
+    earnedPercent,
+    totalWeight,
     acBySource: actual.bySource,
-    activityCount: activities.length,
+    activityCount: progress.length,
   }
 }

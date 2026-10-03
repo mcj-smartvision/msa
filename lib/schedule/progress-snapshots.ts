@@ -1,5 +1,6 @@
 import { toGregorian, toJalaali } from 'jalaali-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { todayTehranIso } from '@/lib/time/tehran'
 
 export type JalaliSnapshotMonth = {
   /** Gregorian YYYY-MM-DD of day 1 of this Jalali month */
@@ -48,10 +49,7 @@ export function jalaliSnapshotMonth(isoDate: string): JalaliSnapshotMonth | null
 }
 
 export function todayIso(now = new Date()): string {
-  const y = now.getFullYear()
-  const m = pad2(now.getMonth() + 1)
-  const d = pad2(now.getDate())
-  return `${y}-${m}-${d}`
+  return todayTehranIso(now.getTime())
 }
 
 type TaskRow = {

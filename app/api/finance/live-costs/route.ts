@@ -23,10 +23,7 @@ import {
   isLeafTask,
   taskCurrentDates as taskDates,
 } from '@/lib/schedule/leaf-activities'
-
-function todayIsoTehran(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tehran' })
-}
+import { todayTehranIso } from '@/lib/time/tehran'
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,7 +33,7 @@ export async function GET(request: NextRequest) {
     const supabase = createClient()
     const user = await requireUser(supabase)
     await assertProjectAccess(supabase, user.id, projectId)
-    const todayIso = todayIsoTehran()
+    const todayIso = todayTehranIso()
 
     const [
       overheadMonths,

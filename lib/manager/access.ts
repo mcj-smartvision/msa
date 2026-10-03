@@ -3,9 +3,10 @@ import { isSystemAdmin } from '@/lib/admin/access'
 import { loadMemberPositionKeys } from '@/lib/site-ops/auth'
 import { SiteOpsError } from '@/lib/site-ops-domain/errors'
 import { ROLE_DASHBOARD_ACCESS } from '@/lib/schedule/access'
+import { todayTehranIso } from '@/lib/time/tehran'
 
 export function todayIsoTehran(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tehran' })
+  return todayTehranIso()
 }
 
 export async function assertManagerAccess(

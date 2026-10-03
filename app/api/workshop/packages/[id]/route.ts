@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
+  checkPackageSiblingWeights,
   deletePackage,
   listPackageEvents,
   updatePackage,
@@ -50,7 +51,11 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
             : undefined,
       scheduleFields: body.scheduleFields ?? body.schedule_fields,
     })
-    return NextResponse.json({ package: pkg })
+    const weightWarning =
+      body.weightPercent !== undefined || body.weight_percent !== undefined
+        ? await checkPackageSiblingWeights(supabase, pkg).catch(() => null)
+        : null
+    return NextResponse.json({ package: pkg, weightWarning })
   } catch (error) {
     return workshopErrorResponse(error)
   }

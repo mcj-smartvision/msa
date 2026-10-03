@@ -1,9 +1,8 @@
+import { taskBaselineDates } from '@/lib/schedule/leaf-activities'
+import { plannedPercentInWindow } from '@/lib/schedule/planned-progress'
 import { compareWbs } from '@/lib/schedule/wbs-utils'
-import {
-  normalizeScheduleWeightPercent,
-  packageProgressWeight,
-  weightedProgressPercent,
-} from '@/lib/schedule/weighted-progress'
+import { normalizeScheduleWeightPercent, weightedProgressPercent } from '@/lib/schedule/weighted-progress'
+import { logWeightIssues, resolveSiblingWeights, type WeightIssue } from '@/lib/schedule/weight-consistency'
 import { WORKSHOP_SKIP_PM_APPROVAL } from '@/lib/workshop/approvals'
 import type { ScheduleTreeNode, WorkshopPackageNode } from '@/lib/workshop/types'
 
@@ -14,6 +13,9 @@ export type DailyReportActivity = {
   kind: 'schedule' | 'package'
   plannedStartDate: string
   plannedFinishDate: string | null
+  /** Frozen baseline window that drives planned progress; the planned dates above drive today's work list. */
+  baselineStartDate?: string | null
+  baselineFinishDate?: string | null
   /** Weight for project progress (percent points — MSP وزن or package share) */
   progressWeight: number
   /** Legacy quantity/duration helper (not used for % rollup) */
@@ -85,6 +87,15 @@ function clampPercent(value: number): number {
   return Math.min(100, Math.max(0, Math.round(value)))
 }
 
+/** The activity's frozen baseline window (planned dates for legacy rows), else the tree dates. */
+function nodeBaselineWindow(node: ScheduleTreeNode): { start: string | null; finish: string | null } {
+  if (node.task) {
+    const dates = taskBaselineDates(node.task as unknown as Record<string, unknown>)
+    if (dates.start || dates.finish) return dates
+  }
+  return { start: isoDay(node.startDate), finish: isoDay(node.finishDate) }
+}
+
 function hasReportableLeafPackages(packages: WorkshopPackageNode[]): boolean {
   for (const pkg of packages) {
     if (!packageReportable(pkg)) continue
@@ -127,20 +138,6 @@ function shouldAddScheduleFallback(node: ScheduleTreeNode, allNodes: ScheduleTre
   return true
 }
 
-function countLeafReportablePackages(packages: WorkshopPackageNode[]): number {
-  let count = 0
-  for (const pkg of packages) {
-    if (!packageReportable(pkg)) continue
-    const reportableChildren = pkg.children.filter(packageReportable)
-    if (reportableChildren.length > 0) {
-      count += countLeafReportablePackages(reportableChildren)
-      continue
-    }
-    count += 1
-  }
-  return count
-}
-
 function walkPackages(
   packages: WorkshopPackageNode[],
   parentStart: string | null,
@@ -148,13 +145,23 @@ function walkPackages(
   parentTaskName: string | null,
   parentTaskWbs: string | null,
   parentTaskId: string | null,
-  parentScheduleWeight: number | null | undefined,
-  leafSiblingCount: number,
+  /** Absolute weight of the parent (MSP task or parent package). */
+  parentWeight: number | null | undefined,
   out: DailyReportActivity[],
-  parentBaselinePercent = 0
+  parentBaselinePercent = 0,
+  parentBaseline: { start: string | null; finish: string | null } = { start: parentStart, finish: parentFinish },
+  weightIssues: WeightIssue[] = []
 ) {
-  for (const pkg of packages) {
-    if (!packageReportable(pkg)) continue
+  const reportable = packages.filter(packageReportable)
+  const { weights, issue } = resolveSiblingWeights(
+    normalizeScheduleWeightPercent(parentWeight),
+    reportable.map((pkg) => pkg.weightPercent),
+    { id: parentTaskId, label: parentTaskName }
+  )
+  if (issue) weightIssues.push(issue)
+
+  reportable.forEach((pkg, index) => {
+    const progressWeight = weights[index] ?? 0
     const reportableChildren = pkg.children.filter(packageReportable)
     if (reportableChildren.length > 0) {
       walkPackages(
@@ -164,21 +171,17 @@ function walkPackages(
         parentTaskName,
         parentTaskWbs,
         parentTaskId,
-        parentScheduleWeight,
-        leafSiblingCount,
+        progressWeight,
         out,
-        parentBaselinePercent
+        parentBaselinePercent,
+        parentBaseline,
+        weightIssues
       )
-      continue
+      return
     }
     const start = isoDay(parentStart) ?? ''
     const finish = isoDay(parentFinish)
     const quantity = effectivePackageQuantity(pkg)
-    const progressWeight = packageProgressWeight(
-      pkg.weightPercent,
-      parentScheduleWeight,
-      leafSiblingCount
-    )
     out.push({
       id: `package:${pkg.id}`,
       name: pkg.name,
@@ -186,6 +189,8 @@ function walkPackages(
       kind: 'package',
       plannedStartDate: start,
       plannedFinishDate: finish,
+      baselineStartDate: isoDay(parentBaseline.start),
+      baselineFinishDate: isoDay(parentBaseline.finish),
       progressWeight,
       plannedDurationDays: quantity,
       quantity,
@@ -196,7 +201,7 @@ function walkPackages(
       parentTaskId,
       baselinePercentComplete: parentBaselinePercent,
     })
-  }
+  })
 }
 
 function walkOrphanPackages(
@@ -236,11 +241,11 @@ export function buildDailyReportActivitiesFromTree(
   orphanPackages: WorkshopPackageNode[] = []
 ): DailyReportActivity[] {
   const out: DailyReportActivity[] = []
+  const weightIssues: WeightIssue[] = []
 
   for (const node of nodes) {
     const packages = node.packages ?? []
     if (node.taskId && packages.length) {
-      const leafCount = countLeafReportablePackages(packages.filter(packageReportable))
       walkPackages(
         packages.filter(packageReportable),
         node.startDate,
@@ -249,14 +254,16 @@ export function buildDailyReportActivitiesFromTree(
         node.wbs,
         node.taskId,
         node.scheduleWeight,
-        leafCount,
         out,
-        clampPercent(node.percentComplete ?? 0)
+        clampPercent(node.percentComplete ?? 0),
+        nodeBaselineWindow(node),
+        weightIssues
       )
     }
 
     if (shouldAddScheduleFallback(node, nodes)) {
       const progressWeight = normalizeScheduleWeightPercent(node.scheduleWeight) || 1
+      const baseline = nodeBaselineWindow(node)
       out.push({
         id: `schedule:${node.taskId}`,
         name: node.name,
@@ -264,6 +271,8 @@ export function buildDailyReportActivitiesFromTree(
         kind: 'schedule',
         plannedStartDate: isoDay(node.startDate) ?? '',
         plannedFinishDate: isoDay(node.finishDate),
+        baselineStartDate: baseline.start,
+        baselineFinishDate: baseline.finish,
         progressWeight,
         plannedDurationDays: scheduleTaskWeight(node),
         parentTaskName: node.name,
@@ -275,6 +284,7 @@ export function buildDailyReportActivitiesFromTree(
   }
 
   walkOrphanPackages(orphanPackages.filter(packageReportable), out)
+  logWeightIssues('daily-report-activities', weightIssues)
 
   return out.sort((a, b) => compareWbs(a.wbs, b.wbs))
 }
@@ -290,6 +300,7 @@ export function buildSCurveActivitiesFromTree(nodes: ScheduleTreeNode[]): DailyR
     if (!node.taskId || node.isSyntheticGroup) continue
     if (!isLeafWbsNode(node, nodes)) continue
 
+    const baseline = nodeBaselineWindow(node)
     out.push({
       id: `schedule:${node.taskId}`,
       name: node.name,
@@ -297,6 +308,8 @@ export function buildSCurveActivitiesFromTree(nodes: ScheduleTreeNode[]): DailyR
       kind: 'schedule',
       plannedStartDate: isoDay(node.startDate) ?? '',
       plannedFinishDate: isoDay(node.finishDate),
+      baselineStartDate: baseline.start,
+      baselineFinishDate: baseline.finish,
       progressWeight: normalizeScheduleWeightPercent(node.scheduleWeight) || 1,
       plannedDurationDays: scheduleTaskWeight(node),
       parentTaskName: node.name,
@@ -667,18 +680,13 @@ function linearPlannedPercentForActivity(
   activity: DailyReportActivity,
   asOfDate: string
 ): number {
-  const start = activity.plannedStartDate
-  const finish = activity.plannedFinishDate
-  if (!start) return 0
-  if (asOfDate < start) return 0
-  if (!finish || finish <= start) return 100
-  if (asOfDate >= finish) return 100
-  const startMs = new Date(`${start}T12:00:00`).getTime()
-  const finishMs = new Date(`${finish}T12:00:00`).getTime()
-  const asOfMs = new Date(`${asOfDate}T12:00:00`).getTime()
-  const total = Math.max(1, finishMs - startMs)
-  const elapsed = Math.max(0, asOfMs - startMs)
-  return Math.min(100, Math.round((elapsed / total) * 100))
+  const hasBaseline = Boolean(activity.baselineStartDate || activity.baselineFinishDate)
+  return plannedPercentInWindow(
+    hasBaseline
+      ? { start: activity.baselineStartDate, finish: activity.baselineFinishDate }
+      : { start: activity.plannedStartDate || null, finish: activity.plannedFinishDate },
+    asOfDate
+  )
 }
 
 /** Weighted planned progress from MSP activity date windows */

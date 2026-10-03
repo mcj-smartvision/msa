@@ -24,17 +24,17 @@ function weightOf(task: TaskRow): number {
 
 function scheduleStart(task: TaskRow): string | null {
   return (
-    toIsoDateOnly(task.start_current) ??
+    toIsoDateOnly(task.baseline_start) ??
     toIsoDateOnly(task.start_planned) ??
-    toIsoDateOnly(task.baseline_start)
+    toIsoDateOnly(task.start_current)
   )
 }
 
 function scheduleFinish(task: TaskRow): string | null {
   return (
-    toIsoDateOnly(task.finish_current) ??
+    toIsoDateOnly(task.baseline_finish) ??
     toIsoDateOnly(task.finish_planned) ??
-    toIsoDateOnly(task.baseline_finish)
+    toIsoDateOnly(task.finish_current)
   )
 }
 
