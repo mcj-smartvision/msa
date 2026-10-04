@@ -536,10 +536,10 @@ export function HealthBar({ pillars, loading }: { pillars: HealthPillar[]; loadi
     <div data-tour="health" className="border-t border-sky-200/60">
       <ul
         aria-label="نوار سلامت پروژه"
-        className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-2 px-3 py-2 sm:px-5 lg:px-7"
+        className="flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain px-3 py-2 [scrollbar-width:thin] sm:px-5 lg:px-7 xl:grid xl:snap-none xl:grid-cols-5 xl:overflow-visible"
       >
         {pillars.map((pillar) => (
-          <li key={pillar.key} title={`${pillar.label}: ${pillar.subtitle}`}>
+          <li key={pillar.key} title={`${pillar.label}: ${pillar.subtitle}`} className="w-[220px] shrink-0 snap-start xl:w-auto">
             <PillarCard pillar={pillar} loading={loading} />
           </li>
         ))}

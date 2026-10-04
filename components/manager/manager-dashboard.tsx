@@ -55,6 +55,7 @@ import {
 } from './manager-sections'
 import { ManagerProgressChart } from './manager-progress-chart'
 import { CostPerformanceSection } from './cost-performance-section'
+import { WeeklyCommitmentsSection } from './weekly-commitments-section'
 import { ManagerPeriodCompare } from './manager-period-compare'
 import { ManagerBackgroundView } from './manager-background'
 import { PmInboxCard } from './pm-inbox-card'
@@ -702,7 +703,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
       <div className="min-w-0 flex-1">
         {/* The only header on this page */}
         <header className="sticky top-0 z-40 border-b border-sky-200 bg-[#e8f1fb]/95 shadow-xs backdrop-blur-md supports-[backdrop-filter]:bg-[#e8f1fb]/85">
-          <div className="flex min-h-16 flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-5">
+          <div className="flex min-h-16 flex-wrap items-center gap-x-2 gap-y-2 px-3 py-2.5 sm:px-5 xl:gap-x-3">
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}
@@ -721,7 +722,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                 aria-label="انتخاب پروژه"
                 className={cn(
                   'h-10 appearance-none truncate rounded-xl border border-slate-200/80 bg-white py-0 pe-9 ps-3.5 text-[15px] font-bold tracking-tight text-slate-900 shadow-xs transition-colors hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
-                  view === 'home' ? 'w-72 max-w-[70vw]' : 'max-w-[240px]'
+                  view === 'home' ? 'w-44 max-w-[70vw] xl:w-72' : 'max-w-[240px]'
                 )}
               >
                 {!projectId ? <option value="">انتخاب پروژه…</option> : null}
@@ -745,7 +746,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                 )}
               >
                 <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                شروع تور
+                <span className="lg:max-xl:sr-only">شروع تور</span>
               </button>
             ) : null}
 
@@ -767,7 +768,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                     if (view === 'home') setPeriodReportOpen(true)
                   }}
                   className={cn(
-                    'rounded-lg px-2.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
+                    'rounded-lg px-2 py-1 text-xs transition-colors xl:px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
                     period === option.id
                       ? 'bg-white font-semibold text-slate-900 shadow-xs ring-1 ring-slate-200/70'
                       : 'text-slate-500 hover:text-slate-900'
@@ -788,7 +789,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
               >
                 {loading ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" aria-hidden />}
-                <span className="hidden md:inline">
+                <span className="hidden xl:inline">
                   {data ? `همگام‌سازی ${relativeTimeFa(data.generatedAt)}` : loading ? 'در حال بارگذاری…' : 'همگام‌سازی'}
                 </span>
               </button>
@@ -876,6 +877,13 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                   result={data?.evm}
                   loading={loading}
                   costHref={hrefs.finance ?? hrefs.evm}
+                />
+
+                <WeeklyCommitmentsSection
+                  className="order-5 lg:order-1 lg:col-span-12"
+                  projectId={projectId}
+                  overview={data}
+                  loading={loading}
                 />
 
                 <div className="order-5 grid grid-cols-1 gap-5 lg:order-2 lg:col-span-12 lg:grid-cols-12 lg:gap-6">
