@@ -54,6 +54,7 @@ import {
   type ManagerHrefs,
 } from './manager-sections'
 import { ManagerProgressChart } from './manager-progress-chart'
+import { CostPerformanceSection } from './cost-performance-section'
 import { ManagerPeriodCompare } from './manager-period-compare'
 import { ManagerBackgroundView } from './manager-background'
 import { PmInboxCard } from './pm-inbox-card'
@@ -869,6 +870,13 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                     {(curve) => <ManagerProgressChart curve={curve} />}
                   </SectionBody>
                 </SectionCard>
+
+                <CostPerformanceSection
+                  className="order-5 lg:order-1 lg:col-span-12"
+                  result={data?.evm}
+                  loading={loading}
+                  costHref={hrefs.finance ?? hrefs.evm}
+                />
 
                 <div className="order-5 grid grid-cols-1 gap-5 lg:order-2 lg:col-span-12 lg:grid-cols-12 lg:gap-6">
                   <DailyDeltaCard
