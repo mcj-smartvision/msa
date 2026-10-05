@@ -105,6 +105,129 @@ function Missing({ text }: { text: string }) {
   return <p className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50/70 px-3 py-2.5 text-[11.5px] leading-6 text-slate-600">{text}</p>
 }
 
+const GHOST_STROKE = '#cbd5e1'
+
+/** Hollow, faded preview of a chart or table that has no data yet, with the reason underneath. */
+function Ghost({ reason, children }: { reason: string; children: ReactNode }) {
+  return (
+    <div className="mt-3">
+      <div className="relative select-none" aria-hidden>
+        <div className="opacity-70">{children}</div>
+        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-dashed border-slate-300 bg-white/90 px-3 py-1 text-[11px] font-bold text-slate-500">
+          بدون داده
+        </span>
+      </div>
+      <p className="mt-2 text-[10.5px] leading-5 text-slate-400">{reason}</p>
+    </div>
+  )
+}
+
+function GhostValue() {
+  return (
+    <div className="mt-1">
+      <p className="text-[40px] font-extrabold leading-none tabular-nums text-transparent" style={{ WebkitTextStroke: `1.5px ${GHOST_STROKE}` }}>
+        —٪
+      </p>
+      <div className="mt-3 space-y-2">
+        <div className="h-2.5 w-4/5 rounded-full border border-dashed border-slate-300" />
+        <div className="h-2.5 w-3/5 rounded-full border border-dashed border-slate-300" />
+      </div>
+    </div>
+  )
+}
+
+function GhostPpcTrend({ target }: { target: number }) {
+  const W = 560
+  const H = 200
+  const PL = 8
+  const PR = 36
+  const PT = 20
+  const PB = 28
+  const n = 8
+  const slot = (W - PL - PR) / n
+  const bw = slot * 0.6
+  const x = (i: number) => W - PR - (i + 1) * slot + (slot - bw) / 2
+  const y = (v: number) => PT + ((100 - v) / 100) * (H - PT - PB)
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full">
+      {[0, 50, 100].map((v) => (
+        <g key={v}>
+          <line x1={PL} x2={W - PR} y1={y(v)} y2={y(v)} stroke="#eef2f6" />
+          <text x={W - PR + 6} y={y(v) + 4} fontSize={10} fill={GHOST_STROKE}>
+            {pct(v)}
+          </text>
+        </g>
+      ))}
+      {Array.from({ length: n }).map((_, i) => (
+        <g key={i}>
+          <rect x={x(i)} y={y(100)} width={bw} height={H - PB - y(100)} rx={6} fill="none" stroke={GHOST_STROKE} strokeDasharray="4 4" />
+          <text x={x(i) + bw / 2} y={H - 9} textAnchor="middle" fontSize={9.5} fill={GHOST_STROKE}>
+            هفتهٔ —
+          </text>
+        </g>
+      ))}
+      <line x1={PL} x2={W - PR} y1={y(target)} y2={y(target)} stroke="#94a3b8" strokeWidth={1.4} strokeDasharray="5 4" />
+      <text x={PL + 2} y={y(target) - 5} fontSize={10} fontWeight={700} fill="#94a3b8">
+        {`هدف ${pct(target)}`}
+      </text>
+    </svg>
+  )
+}
+
+function GhostCommitments() {
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="rounded-[11px] border border-dashed border-slate-300 px-2.5 py-2">
+          <div className="h-2.5 w-3/4 rounded-full border border-dashed border-slate-300" />
+          <div className="mt-2 h-1.5 rounded-full border border-dashed border-slate-300" />
+          <div className="mt-2 flex justify-between text-[10.5px] text-slate-300">
+            <span>—٪</span>
+            <span>علت —</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function GhostDonut() {
+  return (
+    <div className="grid grid-cols-1 items-center gap-3.5 sm:grid-cols-[170px_1fr]">
+      <svg viewBox="0 0 120 120" className="mx-auto block w-full max-w-[170px]">
+        <circle cx={60} cy={60} r={50} fill="none" stroke={GHOST_STROKE} strokeDasharray="4 4" />
+        <circle cx={60} cy={60} r={34} fill="none" stroke={GHOST_STROKE} strokeDasharray="4 4" />
+        <text x={60} y={64} textAnchor="middle" fontSize={22} fontWeight={800} fill={GHOST_STROKE}>
+          —
+        </text>
+      </svg>
+      <div>
+        {['مصالح', 'اکیپ', 'نقشه و اطلاعات فنی', 'تجهیزات'].map((label) => (
+          <div key={label} className="grid grid-cols-[10px_1fr_auto] items-center gap-2 px-1 py-1.5 text-xs text-slate-300">
+            <i className="h-2.5 w-2.5 rounded-[3px] border border-dashed border-slate-300" />
+            <span>{label}</span>
+            <b>—</b>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function GhostLockBars() {
+  return (
+    <div className="space-y-2.5">
+      {['مصالح', 'نقشه و اطلاعات فنی', 'اکیپ', 'تجهیزات', 'مجوز'].map((label) => (
+        <div key={label} className="grid grid-cols-[110px_1fr_28px] items-center gap-2 text-xs text-slate-300">
+          <span>{label}</span>
+          <div className="h-4 rounded-md border border-dashed border-slate-300" />
+          <b className="text-left">—</b>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Sparkline({ values }: { values: number[] }) {
   if (values.length < 2) return null
   const W = 120
@@ -354,7 +477,9 @@ function WeeklyCommitmentsBody({
               </p>
             </>
           ) : (
-            <Missing text={ppcMissing ?? 'داده‌ای نیست'} />
+            <Ghost reason={ppcMissing ?? 'داده‌ای نیست'}>
+              <GhostValue />
+            </Ghost>
           )}
         </div>
 
@@ -438,7 +563,13 @@ function WeeklyCommitmentsBody({
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[1.2fr_1fr]">
         <div className={CARD}>
           <CardTop title="روند هفتگی PPC" sub={ppcData ? `${faNumber(ppcData.weeks.length)} هفتهٔ بسته‌شدهٔ اخیر در برابر هدف` : 'هفته‌های بسته‌شدهٔ اخیر در برابر هدف'} />
-          {ppcData && ppcData.weeks.length ? <PpcTrend data={ppcData} /> : <Missing text={ppcMissing ?? 'هفتهٔ بسته‌شده‌ای نیست'} />}
+          {ppcData && ppcData.weeks.length ? (
+            <PpcTrend data={ppcData} />
+          ) : (
+            <Ghost reason={ppcMissing ?? 'هفتهٔ بسته‌شده‌ای نیست'}>
+              <GhostPpcTrend target={ppcData?.target ?? 80} />
+            </Ghost>
+          )}
         </div>
         <div className={CARD}>
           <CardTop
@@ -486,7 +617,9 @@ function WeeklyCommitmentsBody({
               </p>
             </>
           ) : (
-            <Missing text={ppcMissing ?? 'برای این هفته تعهدی ثبت نشده است'} />
+            <Ghost reason={ppcMissing ?? 'برای این هفته تعهدی ثبت نشده است'}>
+              <GhostCommitments />
+            </Ghost>
           )}
         </div>
       </div>
@@ -513,12 +646,16 @@ function WeeklyCommitmentsBody({
               ) : null}
             </>
           ) : (
-            <Missing text={ppcData ? 'در این هفته‌ها همهٔ تعهدات انجام شده و علتی ثبت نشده است.' : ppcMissing ?? 'داده‌ای نیست'} />
+            <Ghost reason={ppcData ? 'در این هفته‌ها همهٔ تعهدات انجام شده و علتی ثبت نشده است.' : ppcMissing ?? 'داده‌ای نیست'}>
+              <GhostDonut />
+            </Ghost>
           )}
         </div>
         <div className={CARD}>
           <CardTop title="قفل‌های هفته‌های آینده" sub="تعداد کارهایی که به‌علت هر قفل (محدودیت) هنوز آماده اجرا نیستند" />
-          <Missing text={LOCKS_MISSING} />
+          <Ghost reason={LOCKS_MISSING}>
+            <GhostLockBars />
+          </Ghost>
         </div>
       </div>
 

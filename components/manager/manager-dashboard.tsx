@@ -204,7 +204,7 @@ function SidebarGroup({
 }) {
   const Icon = NAV_ICONS[group.icon]
   const childActive = group.children?.some((c) => pathname.startsWith(c.href)) ?? false
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const itemClass = (active: boolean) =>
     cn(
       'flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',

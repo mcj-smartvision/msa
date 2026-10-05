@@ -1134,7 +1134,10 @@ export function KpiStrip({
         })()}
       </KpiCard>
 
-      {inbox}
+      {/* The inbox takes the row height of the KPI cards and scrolls inside, instead of stretching the row. */}
+      <div className="relative sm:min-h-[340px]">
+        <div className="h-full sm:absolute sm:inset-0">{inbox}</div>
+      </div>
     </div>
   )
 }

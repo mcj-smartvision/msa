@@ -253,7 +253,7 @@ export function PmInboxCard({
   const critical = (items ?? []).filter((item) => item.severity === 'critical').length
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+    <div className="flex h-full min-h-0 flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
       <div className="flex min-h-[26px] items-start justify-between gap-2">
         <p className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
           <Inbox className="h-4 w-4 text-slate-500" aria-hidden />
@@ -311,7 +311,7 @@ export function PmInboxCard({
               )
             })}
           </div>
-          <ul className="mt-1 max-h-[420px] divide-y divide-slate-100 overflow-y-auto pe-1">
+          <ul className="mt-1 max-h-[420px] min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto overscroll-contain pe-1 sm:max-h-none">
             {visible.map((item) => (
               <InboxRow key={item.id} item={item} onAction={(i, a) => void onAction(i, a)} busy={busy} />
             ))}
