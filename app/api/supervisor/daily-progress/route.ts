@@ -25,13 +25,14 @@ export async function GET(request: NextRequest) {
     for (;;) {
       const { data, error } = await supabase
         .from('task_progress_updates')
-        .select('task_id, progress_date, percent_complete')
+        .select('task_id, progress_date, percent_complete, created_at')
         .eq('project_id', projectId)
         .order('progress_date', { ascending: true })
+        .order('created_at', { ascending: true })
         .range(from, from + pageSize - 1)
       if (error) {
         if (/task_progress_updates|schema cache|does not exist/i.test(error.message)) {
-          return NextResponse.json({ updates: [] })
+          return NextResponse.json({ updates: [], packageUpdates: [] })
         }
         throw new Error(error.message)
       }
@@ -40,7 +41,17 @@ export async function GET(request: NextRequest) {
       if (batch.length < pageSize) break
       from += pageSize
     }
-    return NextResponse.json({ updates })
+
+    // Package history is optional until migration 99 is applied.
+    const { data: packageRows, error: packageError } = await supabase
+      .from('package_progress_updates')
+      .select('package_id, progress_date, percent_complete, created_at')
+      .eq('project_id', projectId)
+      .order('progress_date', { ascending: true })
+      .order('created_at', { ascending: true })
+    const packageUpdates = packageError ? [] : packageRows ?? []
+
+    return NextResponse.json({ updates, packageUpdates })
   } catch (error) {
     if (error instanceof WorkshopError) return workshopErrorResponse(error)
     const message = error instanceof Error ? error.message : 'خواندن گزارش روزانه ناموفق بود'

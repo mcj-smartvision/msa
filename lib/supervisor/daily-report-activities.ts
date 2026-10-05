@@ -37,7 +37,10 @@ export type DailyReportActivity = {
 export type DailyProgressEntry = {
   activityId: string
   reportDate: string
+  /** Cumulative percent of the activity at the end of `reportDate`. */
   percentComplete: number
+  /** Progress gained that day: the rise over the previous report's cumulative. */
+  dailyIncrement?: number
   /** ISO timestamp when this row was saved (for history view) */
   savedAt?: string
 }

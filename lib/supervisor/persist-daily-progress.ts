@@ -10,7 +10,7 @@ export type SupervisorProgressUpdate = {
 
 function clampPercent(value: number): number {
   if (!Number.isFinite(value)) return 0
-  return Math.min(100, Math.max(0, Math.round(value)))
+  return Math.min(100, Math.max(0, Math.round(value * 100) / 100))
 }
 
 async function updateProjectTask(
