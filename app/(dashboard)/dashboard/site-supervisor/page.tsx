@@ -46,7 +46,9 @@ export default async function SiteSupervisorPage({
           ? 'inspection'
           : searchParams?.section === 'drawings'
               ? 'drawings'
-              : 'daily-report'
+              : searchParams?.section === 'report-background'
+                ? 'report-background'
+                : 'daily-report'
       }
     />
   )

@@ -7,6 +7,7 @@ import { useLocale } from '@/components/i18n/locale-provider'
 import { PageHeader, LoadingBlock, ErrorBlock, EmptyState } from '@/components/admin/shared'
 import { SupervisorDrawingsZoningPanel } from '@/components/supervisor/supervisor-drawings-zoning-panel'
 import { DailyReportPanel } from '@/components/supervisor/daily-report-panel'
+import { DailyReportBackgroundPanel } from '@/components/supervisor/daily-report-background-panel'
 import { ScheduleDateInput } from '@/components/schedule/schedule-date-input'
 import { SupervisorOverviewPanel } from '@/components/supervisor/supervisor-overview-panel'
 import { TodayActivitiesTable } from '@/components/supervisor/today-activities-table'
@@ -288,6 +289,11 @@ export function SiteSupervisorDashboard({
             hint: 'ثبت درصد پیشرفت روزانه فعالیت‌ها',
           },
           {
+            id: 'report-background',
+            label: 'بک‌گراند گزارش‌های روزانه',
+            hint: 'همه درصدهای ثبت‌شده به تفکیک روز — مشاهده و ویرایش',
+          },
+          {
             id: 'safety',
             label: 'ایمنی و اخطارها',
             hint: 'اعلان‌های تأییدشده برای اقدام میدانی',
@@ -412,6 +418,8 @@ export function SiteSupervisorDashboard({
             projectName={projectOptions.find((p) => p.id === projectId)?.name ?? ''}
           />
         ) : null}
+
+        {activeSection === 'report-background' ? <DailyReportBackgroundPanel projectId={projectId} /> : null}
 
         {activeSection === 'today' ? (
             <TodayActivitiesTable

@@ -11,6 +11,7 @@ export type SupervisorNavId =
   | 'inspection'
   | 'today'
   | 'daily-report'
+  | 'report-background'
   | 'lookahead'
   | 'issues'
   | 'resources'
