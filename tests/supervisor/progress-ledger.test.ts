@@ -1,5 +1,30 @@
 import { describe, expect, it } from 'vitest'
-import { buildProgressLedgerRows, ledgerDateRange } from '@/lib/supervisor/progress-ledger'
+import {
+  buildProgressLedgerRows,
+  ledgerDateRange,
+  plannedProgressFrom,
+  plannedWorkdays,
+} from '@/lib/supervisor/progress-ledger'
+
+describe('required progress', () => {
+  it('counts the planned working days, Saturday to Thursday', () => {
+    // 2026-10-03 (Sat) … 2026-10-10 (Sat): 8 days, one Friday → 7 working days
+    expect(plannedWorkdays('2026-10-03', '2026-10-10')).toBe(7)
+    expect(plannedWorkdays('2026-10-09', '2026-10-09')).toBe(0)
+    expect(plannedWorkdays(null, '2026-10-09')).toBe(0)
+  })
+
+  it('rises by 100 / workdays from the first reported day, skipping Fridays, and ends at 100', () => {
+    // first report on Wednesday 2026-10-07, 3 working days → Wed, Thu, (Fri off), Sat
+    const plan = plannedProgressFrom('2026-10-07', 3)
+    expect([...plan.entries()].map(([d, p]) => [d, p.daily, p.cumulative])).toEqual([
+      ['2026-10-07', 33.33, 33.33],
+      ['2026-10-08', 33.33, 66.67],
+      ['2026-10-10', 33.33, 100],
+    ])
+    expect(plannedProgressFrom('2026-10-07', 0).size).toBe(0)
+  })
+})
 import type { DailyReportActivity } from '@/lib/supervisor/daily-report-activities'
 import type { ScheduleTreeNode, WorkshopPackageNode } from '@/lib/workshop/types'
 

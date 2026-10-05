@@ -78,6 +78,47 @@ export function buildProgressLedgerRows(
   return rows
 }
 
+/** Site week is Saturday–Thursday; Friday is the day off. */
+export const isSiteWorkday = (iso: string) => new Date(`${iso}T00:00:00Z`).getUTCDay() !== 5
+
+const nextDay = (iso: string) => {
+  const d = new Date(`${iso}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Working days (Saturday–Thursday) from an activity's planned start to its planned finish, inclusive. */
+export function plannedWorkdays(startDate: string | null, finishDate: string | null): number {
+  if (!startDate || !finishDate || finishDate < startDate) return 0
+  let workdays = 0
+  for (let d = startDate; d <= finishDate; d = nextDay(d)) if (isSiteWorkday(d)) workdays++
+  return workdays
+}
+
+export interface PlannedDay {
+  /** Required progress per working day: 100 divided by the activity's planned working days. */
+  daily: number
+  /** Required cumulative percent by the end of this day; 100 on the last working day. */
+  cumulative: number
+}
+
+/**
+ * Required progress counted from the day the activity's first progress was reported: on each of the
+ * next `workdays` working days the cumulative rises by 100 / `workdays`, reaching 100 on the last one.
+ */
+export function plannedProgressFrom(firstDate: string, workdays: number): Map<string, PlannedDay> {
+  const out = new Map<string, PlannedDay>()
+  if (workdays <= 0) return out
+  const daily = Math.round(10000 / workdays) / 100
+  let k = 0
+  for (let d = firstDate; k < workdays; d = nextDay(d)) {
+    if (!isSiteWorkday(d)) continue
+    k++
+    out.set(d, { daily, cumulative: k === workdays ? 100 : Math.round((10000 * k) / workdays) / 100 })
+  }
+  return out
+}
+
 /** First and last project day from the schedule rows, widened to cover `extraDates` (reports, today). */
 export function ledgerDateRange(rows: ProgressLedgerRow[], extraDates: string[]): { from: string; to: string } | null {
   const dates = [
