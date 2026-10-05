@@ -22,6 +22,7 @@ import {
 } from '@/lib/project-manager/plan-compliance'
 import { applyWeightedParentRollup } from '@/lib/schedule/parent-progress-rollup'
 import { todayIso } from '@/lib/schedule/task-view-date'
+import { publishScheduleViewSync } from '@/lib/schedule/schedule-view-sync'
 import type { ProjectTask } from '@/types/schedule'
 import { formatScheduleWeightDisplay } from '@/lib/workshop/package-weight'
 import { cn } from '@/lib/utils'
@@ -130,6 +131,7 @@ export function ScheduleCatchUpPanel({
       if (Array.isArray(data.tasks) && data.tasks.length > 0) {
         onTasksUpdated(data.tasks as ProjectTask[])
       }
+      publishScheduleViewSync(projectId)
       setMode('done')
       setSavedMsg(
         fa

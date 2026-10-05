@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
       const { data: existing } = await supabase
         .from('project_tasks')
-        .select('actual_start, start_current, start_planned')
+        .select('actual_start, start_current, start_planned, percent_complete')
         .eq('id', taskId)
         .eq('project_id', projectId)
         .maybeSingle()
@@ -78,6 +78,17 @@ export async function POST(request: NextRequest) {
 
       if (error) throw new Error(error.message)
       updated++
+
+      // History drives the supervisor progress chart; best-effort like the supervisor report.
+      if (existing && Number(existing.percent_complete ?? 0) !== pct) {
+        await supabase.from('task_progress_updates').insert({
+          project_id: projectId,
+          task_id: taskId,
+          progress_date: now.slice(0, 10),
+          percent_complete: pct,
+          created_by: user.id,
+        })
+      }
     }
 
     try {
