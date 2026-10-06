@@ -6,6 +6,7 @@ import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { useScheduleCalendar } from '@/features/schedule/hooks/use-schedule-calendar'
 import { formatScheduleDate } from '@/features/schedule/lib/dates'
+import { applyWeightedParentRollup } from '@/features/schedule/lib/parent-progress-rollup'
 import { useScheduleViewSync } from '@/features/schedule/lib/schedule-view-sync'
 import {
 buildDailyReportActivitiesFromTree,
@@ -198,6 +199,28 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
     return rows.filter((r) => r.name.toLowerCase().includes(q) || (r.wbs ?? '').toLowerCase().includes(q))
   }, [rows, query])
 
+  /**
+   * Heading rows show Σ(weight × child%) / Σ(weight) of their schedule children, using the
+   * live cumulative of each reported activity (drafts included), like the schedule editor.
+   * The stored percent of a heading is not refreshed when its children are reported.
+   */
+  const headingPercents = useMemo(() => {
+    const scheduleRows = rows.filter((r) => !r.key.startsWith('package:') && r.wbs)
+    const rollup = applyWeightedParentRollup(
+      scheduleRows.map((r) => {
+        let percent = r.schedulePercent ?? 0
+        if (r.activityId) {
+          const last = [...(cellsByActivity.get(r.activityId)?.values() ?? [])].at(-1)
+          percent = last?.cumulative ?? baselineOf.get(r.activityId) ?? 0
+        }
+        return { id: r.key, wbs: r.wbs, name: r.name, weight: r.scheduleWeight, percent }
+      })
+    )
+    const out = new Map<string, number>()
+    for (const key of rollup.parentIds) out.set(key, rollup.percents[key]!)
+    return out
+  }, [rows, cellsByActivity, baselineOf])
+
   useEffect(() => {
     if (scrolledToToday.current || days.length === 0) return
     const cell = scrollRef.current?.querySelector('[data-today]')
@@ -376,7 +399,9 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
             {visibleRows.map((row) => {
               const editable = row.activityId != null
               const cells = row.activityId ? cellsByActivity.get(row.activityId) : undefined
-              const total = row.activityId ? cumulativeOf(row.activityId) : row.schedulePercent
+              const total = row.activityId
+                ? cumulativeOf(row.activityId)
+                : headingPercents.get(row.key) ?? row.schedulePercent
               const plannedByDate = row.activityId ? plannedByActivity.get(row.activityId) : undefined
               return (
                 <tr key={row.key} className="group">

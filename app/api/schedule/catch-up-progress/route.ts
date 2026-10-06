@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { isSystemAdmin } from '@/features/admin/lib/access'
+import { persistParentProgressRollup } from '@/features/schedule/lib/persist-parent-progress'
 import { persistProjectProgressPace } from '@/features/schedule/lib/persist-progress-pace'
 
 /**
@@ -89,6 +90,12 @@ export async function POST(request: NextRequest) {
           created_by: user.id,
         })
       }
+    }
+
+    try {
+      await persistParentProgressRollup(supabase, projectId)
+    } catch (error) {
+      console.error('[catch-up-progress] heading rollup failed', error)
     }
 
     try {

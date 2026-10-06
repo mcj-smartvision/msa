@@ -10,6 +10,8 @@ export interface ProgressLedgerRow {
   activityId: string | null
   /** Schedule percent of the row (used for headings and never-reported activities). */
   schedulePercent: number | null
+  /** MSP weight of schedule rows (null for workshop sub-items); drives the heading rollup. */
+  scheduleWeight: number | null
   startDate: string | null
   finishDate: string | null
 }
@@ -40,6 +42,7 @@ export function buildProgressLedgerRows(
         depth,
         activityId: reportable.has(id) ? id : null,
         schedulePercent: null,
+        scheduleWeight: null,
         startDate: pkgStart,
         finishDate: pkgFinish,
       })
@@ -56,6 +59,7 @@ export function buildProgressLedgerRows(
       depth: node.depth,
       activityId: id && reportable.has(id) ? id : null,
       schedulePercent: node.percentComplete ?? null,
+      scheduleWeight: node.scheduleWeight ?? null,
       startDate: day(node.startDate),
       finishDate: day(node.finishDate),
     })
@@ -70,6 +74,7 @@ export function buildProgressLedgerRows(
       depth: 0,
       activityId: null,
       schedulePercent: null,
+      scheduleWeight: null,
       startDate: null,
       finishDate: null,
     })

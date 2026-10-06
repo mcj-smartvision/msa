@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { persistParentProgressRollup } from '@/features/schedule/lib/persist-parent-progress'
 import { WorkshopError } from '@/features/workshop/lib/domain'
 import { parseDailyReportActivityRef } from '@/features/supervisor/lib/daily-report-activities'
 
@@ -177,6 +178,14 @@ export async function persistSupervisorPhysicalProgress(
       'VALIDATION',
       'هیچ فعالیت متناظری در برنامه برای ذخیره پیشرفت پیدا نشد'
     )
+  }
+
+  if (updatedTasks > 0) {
+    try {
+      await persistParentProgressRollup(supabase, projectId)
+    } catch (error) {
+      console.error('[persist-daily-progress] heading rollup failed', error)
+    }
   }
 
   try {

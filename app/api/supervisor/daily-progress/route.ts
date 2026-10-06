@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
+import { persistParentProgressRollup } from '@/features/schedule/lib/persist-parent-progress'
 import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
 import { parseDailyReportActivityRef } from '@/features/supervisor/lib/daily-report-activities'
 import { persistSupervisorPhysicalProgress } from '@/features/supervisor/lib/persist-daily-progress'
@@ -61,6 +62,57 @@ export async function GET(request: NextRequest) {
 }
 
 /**
+ * After a day's report is removed, the activity's stored percent goes back to its latest remaining
+ * report. With no report left the stored (e.g. imported) percent is kept as is.
+ */
+async function restoreLatestReportedPercent(
+  supabase: ReturnType<typeof createClient>,
+  projectId: string,
+  ref: ReturnType<typeof parseDailyReportActivityRef>
+) {
+  const isPackage = ref.kind === 'package'
+  const { data: latest } = await supabase
+    .from(isPackage ? 'package_progress_updates' : 'task_progress_updates')
+    .select('percent_complete')
+    .eq('project_id', projectId)
+    .eq(isPackage ? 'package_id' : 'task_id', ref.entityId)
+    .order('progress_date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (!latest) return
+  const pct = Number(latest.percent_complete)
+  const now = new Date().toISOString()
+
+  if (!isPackage) {
+    await supabase
+      .from('project_tasks')
+      .update({ percent_complete: pct, physical_percent_complete: pct, updated_at: now })
+      .eq('id', ref.entityId)
+      .eq('project_id', projectId)
+    return
+  }
+  const { data: pkg } = await supabase
+    .from('workshop_packages')
+    .select('schedule_fields')
+    .eq('id', ref.entityId)
+    .eq('project_id', projectId)
+    .maybeSingle()
+  if (!pkg) return
+  const fields =
+    pkg.schedule_fields && typeof pkg.schedule_fields === 'object'
+      ? { ...(pkg.schedule_fields as Record<string, unknown>) }
+      : {}
+  fields.percent_complete = pct
+  fields.physical_percent_complete = pct
+  await supabase
+    .from('workshop_packages')
+    .update({ schedule_fields: fields, updated_at: now })
+    .eq('id', ref.entityId)
+    .eq('project_id', projectId)
+}
+
+/**
  * DELETE /api/supervisor/daily-progress
  * Body: { projectId, deletions: [{ activityId, reportDate }] }
  * Removes the progress history of those activities on those days.
@@ -108,12 +160,19 @@ export async function DELETE(request: NextRequest) {
         if (count) {
           throw new Error(
             ref.kind === 'package'
-              ? 'حذف گزارش زیرشاخه‌ها در دیتابیس مجاز نیست (جدول package_progress_updates فقط درج دارد).'
+              ? 'حذف گزارش زیرشاخه‌ها هنوز در دیتابیس فعال نشده است؛ فایل database/102-package-progress-delete.sql را یک بار در Supabase SQL Editor اجرا کنید.'
               : 'حذف گزارش در دیتابیس مجاز نیست.'
           )
         }
       }
       deleted += (data ?? []).length
+      if ((data ?? []).length > 0) await restoreLatestReportedPercent(supabase, projectId, ref)
+    }
+
+    try {
+      await persistParentProgressRollup(supabase, projectId)
+    } catch (error) {
+      console.error('[supervisor/daily-progress] heading rollup failed', error)
     }
     return NextResponse.json({ ok: true, deleted })
   } catch (error) {

@@ -31,7 +31,9 @@ function findPgDump() {
   if (process.platform === 'win32') {
     const base = 'C:\\Program Files\\PostgreSQL'
     if (existsSync(base)) {
-      for (const dir of readdirSync(base)) {
+      // Newest first: pg_dump must not be older than the Supabase server.
+      const versions = readdirSync(base).sort((a, b) => Number(b) - Number(a))
+      for (const dir of versions) {
         const candidate = join(base, dir, 'bin', 'pg_dump.exe')
         if (existsSync(candidate)) return candidate
       }
