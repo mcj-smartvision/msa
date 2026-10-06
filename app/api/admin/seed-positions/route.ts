@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { isSystemAdmin } from '@/lib/admin/access'
-import { fetchPositions, seedProjectPositions } from '@/utils/admin'
+import { createClient } from '@/shared/lib/supabase/server'
+import { isSystemAdmin } from '@/features/admin/lib/access'
+import { fetchPositions, seedProjectPositions } from '@/features/admin/services/admin'
 
 export async function POST(request: NextRequest) {
   try {

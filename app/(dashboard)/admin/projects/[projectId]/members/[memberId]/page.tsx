@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useSupabase } from '@/hooks/useSupabase'
-import { fetchPositions, fetchProjectMember } from '@/utils/admin'
-import { PageHeader, LoadingBlock, ErrorBlock } from '@/components/admin/shared'
-import { MemberForm } from '@/components/admin/member-form'
-import { AdminPasswordPanel } from '@/components/admin/admin-password-panel'
-import { Button } from '@/components/ui/button'
-import type { Position, ProjectMember } from '@/types/admin'
+import { useSupabase } from '@/shared/hooks/use-supabase'
+import { fetchPositions, fetchProjectMember } from '@/features/admin/services/admin'
+import { PageHeader, LoadingBlock, ErrorBlock } from '@/features/admin/components/shared'
+import { MemberForm } from '@/features/admin/components/member-form'
+import { AdminPasswordPanel } from '@/features/admin/components/admin-password-panel'
+import { Button } from '@/shared/components/ui/button'
+import type { Position, ProjectMember } from '@/shared/types/admin'
 
 export default function MemberProfilePage({
   params,

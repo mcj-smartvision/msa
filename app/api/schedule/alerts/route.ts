@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/shared/lib/supabase/server'
 import {
-  acknowledgeScheduleAlert,
-  listActiveScheduleAlerts,
-} from '@/lib/schedule/schedule-alerts-api'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+acknowledgeScheduleAlert,
+listActiveScheduleAlerts,
+} from '@/features/schedule/lib/schedule-alerts-api'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 /** GET /api/schedule/alerts?projectId=... — active (unacknowledged) alerts */
 export async function GET(request: NextRequest) {

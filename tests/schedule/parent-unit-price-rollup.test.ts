@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
-  applyParentUnitPriceSum,
-  commercialLineAmount,
-  quantityTimesUnitPrice,
-} from '@/lib/schedule/parent-unit-price-rollup'
+applyParentUnitPriceSum,
+commercialLineAmount,
+quantityTimesUnitPrice,
+} from '@/features/schedule/lib/parent-unit-price-rollup'
 
 describe('commercialLineAmount', () => {
   it('multiplies qty × unit price', () => {

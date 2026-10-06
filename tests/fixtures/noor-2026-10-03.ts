@@ -1,4 +1,4 @@
-import type { EvmActivity } from '@/lib/evm/metrics'
+import type { EvmActivity } from '@/features/evm/lib/metrics'
 
 /**
  * Noor project (023edfc0-6021-4969-a419-b3bdf2ee88fd) as served by /api/project-manager/evm on

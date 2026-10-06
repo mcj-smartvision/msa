@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { SiteOpsError } from '@/lib/site-ops-domain/errors'
-import { createWeeklyPlan, listWeeklyPlans } from '@/lib/wwp/service'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { SiteOpsError } from '@/features/site-ops/domain/errors'
+import { createWeeklyPlan, listWeeklyPlans } from '@/features/wwp/lib/service'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 /** GET /api/wwp?projectId= — weekly work plans with their commitments (RLS: project members). */
 export async function GET(request: NextRequest) {

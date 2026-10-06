@@ -17,7 +17,7 @@ function loadEnvLocal() {
 
 loadEnvLocal()
 
-import { createServiceClient } from '../lib/supabase/service'
+import { createServiceClient } from '../shared/lib/supabase/service'
 
 const NOOR = '023edfc0-6021-4969-a419-b3bdf2ee88fd'
 const VEGAS = '1684afec-83cf-488a-956a-c2a36189cf2b'

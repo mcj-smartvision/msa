@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyParentWeightSum } from '@/lib/schedule/parent-weight-rollup'
+import { applyParentWeightSum } from '@/features/schedule/lib/parent-weight-rollup'
 
 describe('applyParentWeightSum', () => {
   it('sets parent weight to sum of direct children', () => {

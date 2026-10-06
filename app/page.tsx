@@ -1,8 +1,8 @@
-import { LandingPage } from '@/components/landing/landing-page'
+import { LandingPage } from '@/features/landing/components/landing-page'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
-import { resolvePostLoginPath } from '@/lib/dashboard/redirect'
+import { createClient } from '@/shared/lib/supabase/server'
+import { fetchDashboardUserContext } from '@/shared/lib/dashboard/user-context'
+import { resolvePostLoginPath } from '@/shared/lib/dashboard/redirect'
 
 export default async function Home() {
   const supabase = createClient()

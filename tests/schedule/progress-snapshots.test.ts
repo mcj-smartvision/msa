@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { jalaliSnapshotMonth } from '@/lib/schedule/progress-snapshots'
+import { jalaliSnapshotMonth } from '@/features/schedule/lib/progress-snapshots'
 
 describe('jalaliSnapshotMonth', () => {
   it('labels the month as Jalali day 1 and stores the Gregorian first day', () => {

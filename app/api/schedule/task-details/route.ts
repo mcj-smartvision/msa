@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { assertProjectAccess, requireUser } from '@/lib/site-ops/auth'
-import { updateScheduleTaskFields } from '@/lib/schedule/update-schedule-task-fields'
-import { WorkshopError } from '@/lib/workshop/domain'
-import { getWorkshopCapabilities, workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
+import { updateScheduleTaskFields } from '@/features/schedule/lib/update-schedule-task-fields'
+import { WorkshopError } from '@/features/workshop/lib/domain'
+import { getWorkshopCapabilities, workshopErrorResponse } from '@/features/workshop/lib/service'
 
 const TEXT_FIELDS = new Set([
   'name',
@@ -184,7 +184,7 @@ export async function PATCH(request: NextRequest) {
         field === 'schedule_weight'
       ) {
         try {
-          const { persistPlannedWeights } = await import('@/lib/schedule/persist-planned-weights')
+          const { persistPlannedWeights } = await import('@/features/schedule/lib/persist-planned-weights')
           await persistPlannedWeights(supabase, projectId, taskId)
         } catch {
           /* planned weights optional until migration 94 */
@@ -192,7 +192,7 @@ export async function PATCH(request: NextRequest) {
       }
       if (field === 'physical_weight' || field === 'schedule_weight') {
         try {
-          const { persistEarnedWeights } = await import('@/lib/schedule/persist-earned-weights')
+          const { persistEarnedWeights } = await import('@/features/schedule/lib/persist-earned-weights')
           await persistEarnedWeights(supabase, projectId)
         } catch {
           /* earned weights optional until migration 95 */

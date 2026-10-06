@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
-import { AddMemberPage } from '@/components/admin/add-member-page'
-import { LoadingBlock } from '@/components/admin/shared'
+import { AddMemberPage } from '@/features/admin/components/add-member-page'
+import { LoadingBlock } from '@/features/admin/components/shared'
 
 export default function AdminAddMemberRoute() {
   return (

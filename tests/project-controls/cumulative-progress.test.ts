@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { breakdownActivities, computeEvmMetrics, type EvmActivity } from '@/lib/evm/metrics'
-import type { ProjectEvmSnapshot } from '@/lib/evm/load-project-evm'
-import { buildExplainedCumulativeProgress, CUMULATIVE_FORMULA_LATEX } from '@/lib/project-controls/cumulative-progress'
+import { breakdownActivities, computeEvmMetrics, type EvmActivity } from '@/features/evm/lib/metrics'
+import type { ProjectEvmSnapshot } from '@/features/evm/lib/load-project-evm'
+import { buildExplainedCumulativeProgress, CUMULATIVE_FORMULA_LATEX } from '@/features/project-controls/lib/cumulative-progress'
 import { NOOR_ACTIVITIES, NOOR_PROJECT_ID, NOOR_STATUS_DATE } from '../fixtures/noor-2026-10-03'
 
 function evmOf(activities: EvmActivity[], asOf = NOOR_STATUS_DATE): ProjectEvmSnapshot {

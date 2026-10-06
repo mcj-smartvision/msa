@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireQcEngineUser, signRequestDrawing } from '@/lib/qc-engine/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { requireQcEngineUser, signRequestDrawing } from '@/features/qc/engine/service'
 
 function guessContentType(fileName: string, header: string | null) {
   if (header && header !== 'application/octet-stream') return header

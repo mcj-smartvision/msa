@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
-  appendProgressHistoryEntry,
-  buildActivityProgressInputs,
-  computeOverallProjectProgress,
-  computeOverallProjectProgressFromHistory,
-  latestProgressFromHistory,
-  rollupHierarchicalProgress,
-  type ActivityProgressHistoryRecord,
-  type WbsProgressNode,
-} from '@/lib/schedule/project-progress'
+appendProgressHistoryEntry,
+buildActivityProgressInputs,
+computeOverallProjectProgress,
+computeOverallProjectProgressFromHistory,
+latestProgressFromHistory,
+rollupHierarchicalProgress,
+type ActivityProgressHistoryRecord,
+type WbsProgressNode,
+} from '@/features/schedule/lib/project-progress'
 
 describe('computeOverallProjectProgress', () => {
   it('normalizes when weights do not sum to 100', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { checkProjectWeightTotal, resolveSiblingWeights } from '@/lib/schedule/weight-consistency'
-import { resolvePackageWeights } from '@/lib/evm/load-project-evm'
+import { checkProjectWeightTotal, resolveSiblingWeights } from '@/features/schedule/lib/weight-consistency'
+import { resolvePackageWeights } from '@/features/evm/lib/load-project-evm'
 
 describe('resolveSiblingWeights (absolute package weights)', () => {
   it('keeps absolute weights that sum to the parent (Noor: 6 + 11 = 17)', () => {

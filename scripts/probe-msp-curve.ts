@@ -1,11 +1,11 @@
 import { readFileSync, writeFileSync } from 'fs'
-import { parseMspXml } from '../lib/schedule/msp-parser'
-import { normalizeScheduleWeightPercent } from '../lib/schedule/weighted-progress'
+import { parseMspXml } from '../features/schedule/lib/msp-parser'
+import { normalizeScheduleWeightPercent } from '../features/schedule/lib/weighted-progress'
 import {
   calculatePlannedProjectProgress,
   calculateSCurveActualProgress,
   type DailyReportActivity,
-} from '../lib/supervisor/daily-report-activities'
+} from '../features/supervisor/lib/daily-report-activities'
 
 const xmlPath =
   process.argv[2] ||

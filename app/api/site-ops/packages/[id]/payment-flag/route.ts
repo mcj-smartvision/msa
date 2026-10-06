@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { updatePaymentFlag } from '@/lib/site-ops/service'
-import { siteOpsErrorResponse } from '@/lib/site-ops/http'
-import type { PaymentFlag } from '@/lib/site-ops-domain'
+import { createClient } from '@/shared/lib/supabase/server'
+import { updatePaymentFlag } from '@/features/site-ops/lib/service'
+import { siteOpsErrorResponse } from '@/features/site-ops/lib/http'
+import type { PaymentFlag } from '@/features/site-ops/domain'
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {

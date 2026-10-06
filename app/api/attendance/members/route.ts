@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { attendanceErrorResponse } from '@/lib/attendance/service'
-import { assertProjectAccess, requireUser } from '@/lib/site-ops/auth'
-import { isSystemAdmin } from '@/lib/admin/access'
-import { loadMemberPositionKeys } from '@/lib/site-ops/auth'
-import { AttendanceError } from '@/lib/attendance/domain'
+import { createClient } from '@/shared/lib/supabase/server'
+import { attendanceErrorResponse } from '@/features/attendance/lib/service'
+import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
+import { isSystemAdmin } from '@/features/admin/lib/access'
+import { loadMemberPositionKeys } from '@/features/site-ops/lib/auth'
+import { AttendanceError } from '@/features/attendance/lib/domain'
 
 const READ_POSITIONS = new Set([
   'security',

@@ -1,9 +1,9 @@
 import { toGregorian } from 'jalaali-js'
 import { describe, expect, it } from 'vitest'
-import { earnedWeightsOnMonths } from '@/lib/schedule/earned-month-weight'
-import { enumerateProjectJalaliMonths } from '@/lib/schedule/monthly-deducted-weight'
-import { accumulateMonthlyProjectProgress } from '@/lib/schedule/monthly-project-progress'
-import { plannedWeightsOnMonths } from '@/lib/schedule/planned-month-weight'
+import { earnedWeightsOnMonths } from '@/features/schedule/lib/earned-month-weight'
+import { enumerateProjectJalaliMonths } from '@/features/schedule/lib/monthly-deducted-weight'
+import { accumulateMonthlyProjectProgress } from '@/features/schedule/lib/monthly-project-progress'
+import { plannedWeightsOnMonths } from '@/features/schedule/lib/planned-month-weight'
 
 function gregorianIso(jy: number, jm: number, jd: number): string {
   const g = toGregorian(jy, jm, jd)

@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { loadRolePageData } from '@/lib/dashboard/load-role-page'
-import { hasRoleDashboardAccess } from '@/lib/schedule/access'
-import { ProjectManagerDashboard } from '@/components/project-manager/project-manager-dashboard'
+import { createClient } from '@/shared/lib/supabase/server'
+import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'
+import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
+import { ProjectManagerDashboard } from '@/features/project-manager/components/project-manager-dashboard'
 
 export default async function ProjectManagerPage() {
   const supabase = createClient()

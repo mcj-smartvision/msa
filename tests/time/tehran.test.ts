@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { tehranDateIso, tehranPeriodStartMs, todayTehranIso, toTehranDateOnly } from '@/lib/time/tehran'
+import { tehranDateIso, tehranPeriodStartMs, todayTehranIso, toTehranDateOnly } from '@/shared/lib/time/tehran'
 
 describe('tehran time', () => {
   it('rolls the date over at Tehran midnight, not UTC midnight', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calculateCpm } from '@/lib/schedule/cpm-calculate'
+import { calculateCpm } from '@/features/schedule/lib/cpm-calculate'
 
 /**
  * Required network (بخش ۲):

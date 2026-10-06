@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { isQcActivityType, qcActivityAiGuide, QC_ACTIVITY_TYPES } from '@/lib/qc-engine/activity-types'
+import { createClient } from '@/shared/lib/supabase/server'
+import { isQcActivityType, qcActivityAiGuide, QC_ACTIVITY_TYPES } from '@/features/qc/engine/activity-types'
 import {
-  formatSpeechSummary,
-  mergeParsedSpeech,
-  parseRequestSpeech,
-  consolidateInspectionItems,
-  type ParsedQcRequestSpeech,
-  type QcSpeechItem,
-} from '@/lib/qc-engine/parse-request-speech'
+formatSpeechSummary,
+mergeParsedSpeech,
+parseRequestSpeech,
+consolidateInspectionItems,
+type ParsedQcRequestSpeech,
+type QcSpeechItem,
+} from '@/features/qc/engine/parse-request-speech'
 
 const ACTIVITY_UNION = QC_ACTIVITY_TYPES.map((key) => `"${key}"`).join(' | ')
 

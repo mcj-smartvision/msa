@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
-  accrueOverheadAsOf,
-  buildLiveWorkshopCostModel,
-  contractorExecutedAsOf,
-} from '@/lib/finance/live-workshop-cost'
+accrueOverheadAsOf,
+buildLiveWorkshopCostModel,
+contractorExecutedAsOf,
+} from '@/features/finance/lib/live-workshop-cost'
 
 const months = [
   {

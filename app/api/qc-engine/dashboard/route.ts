@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/shared/lib/supabase/server'
 import {
-  assertProjectMember,
-  loadQcEngineDashboard,
-  requireQcEngineUser,
-} from '@/lib/qc-engine/service'
+assertProjectMember,
+loadQcEngineDashboard,
+requireQcEngineUser,
+} from '@/features/qc/engine/service'
 
 export async function GET(request: NextRequest) {
   try {

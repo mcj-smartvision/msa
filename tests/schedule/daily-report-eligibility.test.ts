@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  activitiesEligibleForDailyReport,
-  partitionEligibleByTiming,
-  type DailyProgressEntry,
-  type DailyReportActivity,
-} from '@/lib/supervisor/daily-report-activities'
+activitiesEligibleForDailyReport,
+partitionEligibleByTiming,
+type DailyProgressEntry,
+type DailyReportActivity,
+} from '@/features/supervisor/lib/daily-report-activities'
 
 const base = (
   partial: Partial<DailyReportActivity> & Pick<DailyReportActivity, 'id' | 'name'>

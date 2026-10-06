@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { DailyReportHistoryPage } from '@/components/supervisor/daily-report-history-page'
+import { DailyReportHistoryPage } from '@/features/supervisor/components/daily-report-history-page'
 
 export default function SiteSupervisorDailyReportsPage() {
   return (

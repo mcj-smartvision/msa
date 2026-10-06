@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { assertProjectAccess, requireUser } from '@/lib/site-ops/auth'
-import { fetchSchedulePreviewWithPackages } from '@/lib/schedule/preview-with-packages'
-import { fetchProjectScheduleMeta } from '@/lib/schedule/apply-actual-start'
-import { fetchTaskPredecessorLabels } from '@/lib/schedule/predecessor-labels'
-import { compareWbs } from '@/lib/schedule/wbs-utils'
-import { WorkshopError } from '@/lib/workshop/domain'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
+import { fetchSchedulePreviewWithPackages } from '@/features/schedule/lib/preview-with-packages'
+import { fetchProjectScheduleMeta } from '@/features/schedule/lib/apply-actual-start'
+import { fetchTaskPredecessorLabels } from '@/features/schedule/lib/predecessor-labels'
+import { compareWbs } from '@/features/schedule/lib/wbs-utils'
+import { WorkshopError } from '@/features/workshop/lib/domain'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 /**
  * GET /api/schedule/preview?projectId=...

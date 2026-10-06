@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkWwpAction, projectWeekNumber, validateOutcome, weekBounds } from '@/lib/wwp/policy'
+import { checkWwpAction, projectWeekNumber, validateOutcome, weekBounds } from '@/features/wwp/lib/policy'
 
 const week = { startDate: '2026-10-03', endDate: '2026-10-09' }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { isSystemAdmin } from '@/lib/admin/access'
-import { persistProjectProgressPace } from '@/lib/schedule/persist-progress-pace'
+import { createClient } from '@/shared/lib/supabase/server'
+import { isSystemAdmin } from '@/features/admin/lib/access'
+import { persistProjectProgressPace } from '@/features/schedule/lib/persist-progress-pace'
 
 /**
  * POST /api/schedule/catch-up-progress

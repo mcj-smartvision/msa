@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
-import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
-import { hasRoleDashboardAccess } from '@/lib/schedule/access'
-import { PROJECT_COOKIE } from '@/lib/project/project-cookie'
-import { SecurityDashboard } from '@/components/security/security-dashboard'
+import { createClient } from '@/shared/lib/supabase/server'
+import { fetchDashboardUserContext } from '@/shared/lib/dashboard/user-context'
+import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
+import { PROJECT_COOKIE } from '@/shared/lib/project/project-cookie'
+import { SecurityDashboard } from '@/features/security/components/security-dashboard'
 
 export default async function SecurityDashboardPage() {
   const supabase = createClient()

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { explainDependencyLink } from '@/lib/schedule/dependency-explain'
+import { explainDependencyLink } from '@/features/schedule/lib/dependency-explain'
 
 describe('explainDependencyLink', () => {
   it('names both activities clearly as from → next', () => {

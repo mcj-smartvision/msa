@@ -1,9 +1,9 @@
 'use client'
 
-import { AccountPageShell } from '@/components/account/account-page-shell'
-import { AccountPasswordForm } from '@/components/account/account-password-form'
-import { accountCopy } from '@/lib/account/copy'
-import { useLocale } from '@/components/i18n/locale-provider'
+import { AccountPageShell } from '@/features/account/components/account-page-shell'
+import { AccountPasswordForm } from '@/features/account/components/account-password-form'
+import { accountCopy } from '@/features/account/lib/copy'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
 
 export default function AccountPasswordPage() {
   const { locale } = useLocale()

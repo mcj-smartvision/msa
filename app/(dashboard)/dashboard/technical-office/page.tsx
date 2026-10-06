@@ -1,10 +1,10 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { loadRolePageData } from '@/lib/dashboard/load-role-page'
-import { hasRoleDashboardAccess } from '@/lib/schedule/access'
-import { TechnicalOfficeDashboard } from '@/components/technical-office/technical-office-dashboard'
-import { ScheduleSendSection } from '@/components/technical-office/schedule-send-section'
+import { createClient } from '@/shared/lib/supabase/server'
+import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'
+import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
+import { TechnicalOfficeDashboard } from '@/features/technical-office/components/technical-office-dashboard'
+import { ScheduleSendSection } from '@/features/technical-office/components/schedule-send-section'
 
 export const dynamic = 'force-dynamic'
 

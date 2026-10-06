@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/shared/lib/supabase/server'
 import {
-  checkPackageSiblingWeights,
-  deletePackage,
-  listPackageEvents,
-  updatePackage,
-  workshopErrorResponse,
-} from '@/lib/workshop/service'
+checkPackageSiblingWeights,
+deletePackage,
+listPackageEvents,
+updatePackage,
+workshopErrorResponse,
+} from '@/features/workshop/lib/service'
 
 type Ctx = { params: { id: string } }
 

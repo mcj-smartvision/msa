@@ -1,4 +1,4 @@
-import { SettingsPage } from '@/components/hse/settings-page'
+import { SettingsPage } from '@/features/hse/components/settings-page'
 
 export default function HseSettingsRoute() {
   return <SettingsPage />

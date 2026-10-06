@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/shared/lib/supabase/server'
 import {
-  mergeParsedDailyReportVoice,
-  parseDailyReportVoice,
-  type DailyReportVoiceActivityRef,
-  type ParsedDailyReportVoice,
-} from '@/lib/supervisor/parse-daily-report-voice'
+mergeParsedDailyReportVoice,
+parseDailyReportVoice,
+type DailyReportVoiceActivityRef,
+type ParsedDailyReportVoice,
+} from '@/features/supervisor/lib/parse-daily-report-voice'
 
 const SYSTEM_PROMPT = `You are a construction site daily-report assistant for Persian speech transcripts.
 Input is speech-to-text from a site supervisor. Fix ASR mistakes and organize content.

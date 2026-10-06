@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { loadRolePageData } from '@/lib/dashboard/load-role-page'
-import { hasRoleDashboardAccess } from '@/lib/schedule/access'
-import { QcOfficeDrawingsPage } from '@/components/qc/qc-office-drawings-page'
+import { createClient } from '@/shared/lib/supabase/server'
+import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'
+import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
+import { QcOfficeDrawingsPage } from '@/features/qc/components/qc-office-drawings-page'
 
 export default async function SiteSupervisorInspectionDrawingsPage({
   searchParams,

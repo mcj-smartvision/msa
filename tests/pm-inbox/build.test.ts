@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { ControlsSnapshot, ExplainedKpi, KpiStatus, SnapshotField } from '@/types/project-controls'
-import { buildPmInboxItems, nextWeekStart } from '@/lib/pm-inbox/build'
-import type { DailyReportPulse, PmInboxSnapshot } from '@/lib/pm-inbox/types'
+import type { ControlsSnapshot, ExplainedKpi, KpiStatus, SnapshotField } from '@/shared/types/project-controls'
+import { buildPmInboxItems, nextWeekStart } from '@/features/project-manager/lib/pm-inbox/build'
+import type { DailyReportPulse, PmInboxSnapshot } from '@/features/project-manager/lib/pm-inbox/types'
 
 const AS_OF = '2026-10-03'
 

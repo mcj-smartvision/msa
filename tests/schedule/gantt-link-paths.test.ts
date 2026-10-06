@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildGanttLinkPath, type GanttBarAnchor } from '@/lib/schedule/gantt-link-paths'
+import { buildGanttLinkPath, type GanttBarAnchor } from '@/features/schedule/lib/gantt-link-paths'
 
 const a = (partial: Partial<GanttBarAnchor> & Pick<GanttBarAnchor, 'id' | 'rowIndex'>): GanttBarAnchor => ({
   startX: 0,

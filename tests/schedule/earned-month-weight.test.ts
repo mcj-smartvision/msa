@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
-  earnedMonthlyWeights,
-  earnedWeightsFromDailyReports,
-  earnedWeightsFromPhysicalProgress,
-} from '@/lib/schedule/earned-month-weight'
+earnedMonthlyWeights,
+earnedWeightsFromDailyReports,
+earnedWeightsFromPhysicalProgress,
+} from '@/features/schedule/lib/earned-month-weight'
 
 describe('earnedMonthlyWeights', () => {
   it('uses successive snapshot deltas and ignores gaps and baseline length', () => {

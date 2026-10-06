@@ -1,19 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildActivityProgressTimeline,
-  buildActivityWeekProgress,
-  calendarDays,
-  cumulativeBefore,
-  cumulativeEntry,
-  reportedDays,
-  historyFromServer,
-  latestReport,
-  mergeProgressHistory,
-  siteWeekStart,
-  withLatestReports,
-  withoutDay,
-} from '@/lib/supervisor/weekly-activity-progress'
-import type { DailyProgressEntry } from '@/lib/supervisor/daily-report-activities'
+buildActivityProgressTimeline,
+buildActivityWeekProgress,
+calendarDays,
+cumulativeBefore,
+cumulativeEntry,
+reportedDays,
+historyFromServer,
+latestReport,
+mergeProgressHistory,
+siteWeekStart,
+withLatestReports,
+withoutDay,
+} from '@/features/supervisor/lib/weekly-activity-progress'
+import type { DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
 
 const e = (reportDate: string, percentComplete: number, activityId = 'a1'): DailyProgressEntry => ({ activityId, reportDate, percentComplete })
 

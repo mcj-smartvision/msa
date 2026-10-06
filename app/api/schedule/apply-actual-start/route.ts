@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { isSystemAdmin } from '@/lib/admin/access'
-import { applyActualStartToSchedule } from '@/lib/schedule/apply-actual-start'
+import { createClient } from '@/shared/lib/supabase/server'
+import { isSystemAdmin } from '@/features/admin/lib/access'
+import { applyActualStartToSchedule } from '@/features/schedule/lib/apply-actual-start'
 
 /**
  * POST /api/schedule/apply-actual-start

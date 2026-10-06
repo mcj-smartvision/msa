@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { assertProjectAccess, requireUser } from '@/lib/site-ops/auth'
-import { parseDailyReportActivityRef } from '@/lib/supervisor/daily-report-activities'
-import { persistSupervisorPhysicalProgress } from '@/lib/supervisor/persist-daily-progress'
-import { WorkshopError } from '@/lib/workshop/domain'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
+import { parseDailyReportActivityRef } from '@/features/supervisor/lib/daily-report-activities'
+import { persistSupervisorPhysicalProgress } from '@/features/supervisor/lib/persist-daily-progress'
+import { WorkshopError } from '@/features/workshop/lib/domain'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 /**
  * GET /api/supervisor/daily-progress?projectId=

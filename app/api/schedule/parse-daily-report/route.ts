@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { parseDailyReportText } from '@/lib/schedule/ai-parser'
+import { createClient } from '@/shared/lib/supabase/server'
+import { parseDailyReportText } from '@/features/schedule/lib/ai-parser'
 
 /**
  * POST /api/schedule/parse-daily-report

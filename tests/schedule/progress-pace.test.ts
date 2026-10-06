@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classifyPaceRatio, computeProgressPace, resolvePaceActualStart } from '@/lib/schedule/progress-pace'
+import { classifyPaceRatio, computeProgressPace, resolvePaceActualStart } from '@/features/schedule/lib/progress-pace'
 
 describe('computeProgressPace', () => {
   it('returns null when not started', () => {

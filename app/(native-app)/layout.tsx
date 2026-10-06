@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/shared/lib/supabase/server'
 
 /** Fullscreen native shell — no desktop dashboard chrome. */
 export default async function NativeAppLayout({ children }: { children: React.ReactNode }) {

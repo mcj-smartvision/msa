@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyWeightedParentRollup, formatProgressRollupFormula } from '@/lib/schedule/parent-progress-rollup'
+import { applyWeightedParentRollup, formatProgressRollupFormula } from '@/features/schedule/lib/parent-progress-rollup'
 
 describe('applyWeightedParentRollup', () => {
   it('computes foundation parent from weighted children (user example)', () => {

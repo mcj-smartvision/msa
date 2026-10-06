@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  computeAlertQuadrant,
-  isCriticalOrNearCritical,
-} from '@/lib/schedule/progress-alert-quadrant'
+computeAlertQuadrant,
+isCriticalOrNearCritical,
+} from '@/features/schedule/lib/progress-alert-quadrant'
 
 describe('progress alert quadrant', () => {
   const near = 5

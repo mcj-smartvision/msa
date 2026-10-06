@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { ControlsSnapshot, SnapshotField } from '@/types/project-controls'
-import { buildExplainedMetric } from '@/lib/project-controls/explained-metric'
-import { buildPpcKpi, buildTcpiKpi } from '@/lib/project-controls/kpis'
-import { buildControlsSnapshot } from '@/lib/project-controls/controls-snapshot'
-import type { ProjectEvmSnapshot } from '@/lib/evm/load-project-evm'
+import type { ControlsSnapshot, SnapshotField } from '@/shared/types/project-controls'
+import { buildExplainedMetric } from '@/features/project-controls/lib/explained-metric'
+import { buildPpcKpi, buildTcpiKpi } from '@/features/project-controls/lib/kpis'
+import { buildControlsSnapshot } from '@/features/project-controls/lib/controls-snapshot'
+import type { ProjectEvmSnapshot } from '@/features/evm/lib/load-project-evm'
 
 const AS_OF = '2026-10-01'
 

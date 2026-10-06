@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCostPerformance, cpiTone, moneyScale, tcpiTone } from '@/lib/manager/cost-performance'
+import { buildCostPerformance, cpiTone, moneyScale, tcpiTone } from '@/features/manager/lib/cost-performance'
 
 describe('buildCostPerformance', () => {
   it('matches the reference design numbers (BAC 100, AC 71.5, EV 65)', () => {

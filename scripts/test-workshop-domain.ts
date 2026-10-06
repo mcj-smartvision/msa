@@ -9,13 +9,13 @@ import {
   canEditWorkshopPackageRow,
   canReviseChangeRequest,
   WORKSHOP_SKIP_PM_APPROVAL,
-} from '../lib/workshop/approvals'
+} from '../features/workshop/lib/approvals'
 import {
   decodePackageWeightFromNote,
   encodePackageWeightInNote,
   resolvePackageWeight,
-} from '../lib/workshop/package-weight'
-import { inferReviewReason, validateCreatePackage, WorkshopError } from '../lib/workshop/domain'
+} from '../features/workshop/lib/package-weight'
+import { inferReviewReason, validateCreatePackage, WorkshopError } from '../features/workshop/lib/domain'
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg)

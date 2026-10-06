@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { createClient } from '@/lib/supabase/server'
-import { assertProjectAccess, requireUser } from '@/lib/site-ops/auth'
-import { getWorkshopCapabilities, workshopErrorResponse } from '@/lib/workshop/service'
-import { WorkshopError } from '@/lib/workshop/domain'
+import { createClient } from '@/shared/lib/supabase/server'
+import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
+import { getWorkshopCapabilities, workshopErrorResponse } from '@/features/workshop/lib/service'
+import { WorkshopError } from '@/features/workshop/lib/domain'
 
 type Activity = {
   entityType: 'task' | 'package'

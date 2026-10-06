@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/shared/lib/supabase/server'
 import {
-  attendanceErrorResponse,
-  bindGateCamera,
-} from '@/lib/attendance/service'
+attendanceErrorResponse,
+bindGateCamera,
+} from '@/features/attendance/lib/service'
 
 export async function PATCH(request: NextRequest) {
   try {

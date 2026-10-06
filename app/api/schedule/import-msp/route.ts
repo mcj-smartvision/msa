@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { isSystemAdmin } from '@/lib/admin/access'
-import { importMspScheduleToProject } from '@/lib/schedule/msp-import'
+import { createClient } from '@/shared/lib/supabase/server'
+import { isSystemAdmin } from '@/features/admin/lib/access'
+import { importMspScheduleToProject } from '@/features/schedule/lib/msp-import'
 
 /**
  * POST /api/schedule/import-msp

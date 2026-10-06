@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { assertProjectAccess, requireUser } from '@/lib/site-ops/auth'
-import { toIsoDateOnly } from '@/lib/schedule/dates'
+import { createClient } from '@/shared/lib/supabase/server'
+import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
+import { toIsoDateOnly } from '@/features/schedule/lib/dates'
 import {
-  buildDependencyNetwork,
-  type DependencyNetworkLink,
-  type DependencyNetworkTask,
-} from '@/lib/schedule/dependency-network'
-import { DEFAULT_MSP_MINUTES_PER_DAY } from '@/lib/schedule/predecessor-format'
-import { WorkshopError } from '@/lib/workshop/domain'
-import { workshopErrorResponse } from '@/lib/workshop/service'
-import type { TaskRelationType } from '@/types/schedule'
+buildDependencyNetwork,
+type DependencyNetworkLink,
+type DependencyNetworkTask,
+} from '@/features/schedule/lib/dependency-network'
+import { DEFAULT_MSP_MINUTES_PER_DAY } from '@/features/schedule/lib/predecessor-format'
+import { WorkshopError } from '@/features/workshop/lib/domain'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
+import type { TaskRelationType } from '@/shared/types/schedule'
 
 function taskDates(row: Record<string, unknown>): { start: string | null; finish: string | null } {
   return {

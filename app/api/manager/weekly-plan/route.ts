@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
-import { requireUser } from '@/lib/site-ops/auth'
-import { SiteOpsError } from '@/lib/site-ops-domain/errors'
-import { assertManagerAccess } from '@/lib/manager/access'
-import { loadLatestClosedWeeklyPlan } from '@/lib/project-controls/load-weekly-plan'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { createServiceClient } from '@/shared/lib/supabase/service'
+import { requireUser } from '@/features/site-ops/lib/auth'
+import { SiteOpsError } from '@/features/site-ops/domain/errors'
+import { assertManagerAccess } from '@/features/manager/lib/access'
+import { loadLatestClosedWeeklyPlan } from '@/features/project-controls/lib/load-weekly-plan'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 /** GET /api/manager/weekly-plan?projectId= — latest closed WWP week (PPC input), or why it is missing. */
 export async function GET(request: NextRequest) {

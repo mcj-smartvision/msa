@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { breakdownActivities, computeEvmMetrics, type EvmActivity } from '@/lib/evm/metrics'
-import type { ProjectEvmSnapshot } from '@/lib/evm/load-project-evm'
-import { buildControlsSnapshot } from '@/lib/project-controls/controls-snapshot'
-import { buildEvForecast, pvAtPeriod } from '@/lib/project-controls/ev-forecast'
-import { buildEarnedScheduleKpis } from '@/lib/project-controls/kpis'
+import { breakdownActivities, computeEvmMetrics, type EvmActivity } from '@/features/evm/lib/metrics'
+import type { ProjectEvmSnapshot } from '@/features/evm/lib/load-project-evm'
+import { buildControlsSnapshot } from '@/features/project-controls/lib/controls-snapshot'
+import { buildEvForecast, pvAtPeriod } from '@/features/project-controls/lib/ev-forecast'
+import { buildEarnedScheduleKpis } from '@/features/project-controls/lib/kpis'
 import { NOOR_ACTIVITIES, NOOR_PROJECT_ID, NOOR_STATUS_DATE } from '../fixtures/noor-2026-10-03'
 
 const NOW = new Date('2026-10-03T08:00:00.000Z')

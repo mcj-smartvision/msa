@@ -1,9 +1,9 @@
 'use client'
 
-import { AccountPageShell } from '@/components/account/account-page-shell'
-import { AccountLogoutPanel } from '@/components/account/account-logout-panel'
-import { accountCopy } from '@/lib/account/copy'
-import { useLocale } from '@/components/i18n/locale-provider'
+import { AccountPageShell } from '@/features/account/components/account-page-shell'
+import { AccountLogoutPanel } from '@/features/account/components/account-logout-panel'
+import { accountCopy } from '@/features/account/lib/copy'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
 
 export default function AccountLogoutPage() {
   const { locale } = useLocale()

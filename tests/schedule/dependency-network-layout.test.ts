@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildDependencyNetwork } from '@/lib/schedule/dependency-network'
-import { alignedEdgeRoute, layoutDependencyNetwork } from '@/lib/schedule/dependency-network-layout'
+import { buildDependencyNetwork } from '@/features/schedule/lib/dependency-network'
+import { alignedEdgeRoute, layoutDependencyNetwork } from '@/features/schedule/lib/dependency-network-layout'
 
 describe('dependency network layout', () => {
   it('puts predecessors in a right-hand column and successors to the left', () => {

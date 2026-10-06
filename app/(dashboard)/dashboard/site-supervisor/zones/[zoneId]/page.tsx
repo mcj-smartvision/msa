@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { loadRolePageData } from '@/lib/dashboard/load-role-page'
-import { hasRoleDashboardAccess } from '@/lib/schedule/access'
-import { ZoneMapFullPage } from '@/components/supervisor/zone-map-full-page'
+import { createClient } from '@/shared/lib/supabase/server'
+import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'
+import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
+import { ZoneMapFullPage } from '@/features/supervisor/components/zone-map-full-page'
 
 export default async function SiteSupervisorZoneMapPage({
   params,

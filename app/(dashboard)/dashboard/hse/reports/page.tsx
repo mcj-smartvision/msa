@@ -1,4 +1,4 @@
-import { ReportsPage } from '@/components/hse/reports-page'
+import { ReportsPage } from '@/features/hse/components/reports-page'
 
 export default function HseReportsRoute() {
   return <ReportsPage />

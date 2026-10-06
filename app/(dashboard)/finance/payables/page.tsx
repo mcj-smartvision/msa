@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { loadRolePageData } from '@/lib/dashboard/load-role-page'
-import { hasRoleDashboardAccess } from '@/lib/schedule/access'
-import { ContractorPayables } from '@/components/finance/contractor-payables'
+import { createClient } from '@/shared/lib/supabase/server'
+import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'
+import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
+import { ContractorPayables } from '@/features/finance/components/contractor-payables'
 
 /** بدهی پیمانکاران — liabilities tracked separately from expense recognition */
 export default async function FinancePayablesPage() {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { isSystemAdmin } from '@/lib/admin/access'
-import { runProjectCpmCalculation } from '@/lib/schedule/run-project-cpm'
+import { createClient } from '@/shared/lib/supabase/server'
+import { isSystemAdmin } from '@/features/admin/lib/access'
+import { runProjectCpmCalculation } from '@/features/schedule/lib/run-project-cpm'
 
 /**
  * GET /api/schedule/calculate?projectId=...

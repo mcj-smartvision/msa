@@ -4,39 +4,39 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Cpu,
-  Plus,
-  Radio,
-  ServerCrash,
-  ShieldAlert,
-  UserX,
-  Users,
+Cpu,
+Plus,
+Radio,
+ServerCrash,
+ShieldAlert,
+UserX,
+Users,
 } from 'lucide-react'
-import { useSupabase } from '@/hooks/useSupabase'
-import { fetchAdminProjects, fetchAllMembers } from '@/utils/admin'
-import { fetchControlCenterFeeds } from '@/lib/admin/control-center'
+import { useSupabase } from '@/shared/hooks/use-supabase'
+import { fetchAdminProjects, fetchAllMembers } from '@/features/admin/services/admin'
+import { fetchControlCenterFeeds } from '@/features/admin/lib/control-center'
 import {
-  countIdleUsers,
-  countLiveSessions,
-  fetchAdminOpsMetrics,
-} from '@/lib/admin/projects-ops'
-import { LoadingBlock, ErrorBlock } from '@/components/admin/shared'
-import { ControlKpiCard, ProjectsControlHeader } from '@/components/admin/projects-control/control-chrome'
+countIdleUsers,
+countLiveSessions,
+fetchAdminOpsMetrics,
+} from '@/features/admin/lib/projects-ops'
+import { LoadingBlock, ErrorBlock } from '@/features/admin/components/shared'
+import { ControlKpiCard, ProjectsControlHeader } from '@/features/admin/components/projects-control/control-chrome'
 import {
-  EmptyProjectsState,
-  ProjectRow,
-} from '@/components/admin/projects-control/project-row'
-import { ActivityFeed } from '@/components/admin/activity-feed'
-import { Button } from '@/components/ui/button'
-import { openProjectDirectory } from '@/lib/account/open-account-page'
-import { sortProjectsRecent } from '@/components/admin/project-directory-table'
+EmptyProjectsState,
+ProjectRow,
+} from '@/features/admin/components/projects-control/project-row'
+import { ActivityFeed } from '@/features/admin/components/activity-feed'
+import { Button } from '@/shared/components/ui/button'
+import { openProjectDirectory } from '@/features/account/lib/open-account-page'
+import { sortProjectsRecent } from '@/features/admin/components/project-directory-table'
 import type {
-  AdminOpsMetrics,
-  AdminProject,
-  AuthActivityUser,
-  ControlCenterFeeds,
-  ProjectMember,
-} from '@/types/admin'
+AdminOpsMetrics,
+AdminProject,
+AuthActivityUser,
+ControlCenterFeeds,
+ProjectMember,
+} from '@/shared/types/admin'
 
 const IDLE_DAYS_KEY = 'liparta.admin.idleDays'
 const EMPTY_FEEDS: ControlCenterFeeds = {
@@ -79,8 +79,6 @@ export default function AdminProjectsPage() {
   const [idleDays, setIdleDays] = useState(14)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [successNote, setSuccessNote] = useState<string | null>(null)
-
   useEffect(() => {
     setIdleDays(readIdleDays())
   }, [])
@@ -204,12 +202,6 @@ export default function AdminProjectsPage() {
           </>
         }
       />
-
-      {successNote ? (
-        <div className="rounded-lg border border-[#2E8B68]/30 bg-[#EAF6F0] px-3 py-2 text-sm text-[#2E8B68]">
-          {successNote}
-        </div>
-      ) : null}
 
       {error ? <ErrorBlock message={error} onRetry={() => void loadProjects('refresh')} /> : null}
 

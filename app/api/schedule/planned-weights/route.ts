@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { assertProjectAccess, requireUser } from '@/lib/site-ops/auth'
-import { persistPlannedWeights } from '@/lib/schedule/persist-planned-weights'
-import { WorkshopError } from '@/lib/workshop/domain'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
+import { persistPlannedWeights } from '@/features/schedule/lib/persist-planned-weights'
+import { WorkshopError } from '@/features/workshop/lib/domain'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 /**
  * POST /api/schedule/planned-weights

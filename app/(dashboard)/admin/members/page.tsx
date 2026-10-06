@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
-import { AdminMembersPage } from '@/components/admin/admin-members-page'
-import { LoadingBlock } from '@/components/admin/shared'
+import { AdminMembersPage } from '@/features/admin/components/admin-members-page'
+import { LoadingBlock } from '@/features/admin/components/shared'
 
 export default function AdminMembersRoute() {
   return (

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
-import { requireUser } from '@/lib/site-ops/auth'
-import { SiteOpsError } from '@/lib/site-ops-domain/errors'
-import { assertManagerAccess } from '@/lib/manager/access'
-import { getPeriodComparison } from '@/lib/manager/load-period-comparison'
-import type { ManagerPeriod } from '@/lib/manager/overview-types'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { createServiceClient } from '@/shared/lib/supabase/service'
+import { requireUser } from '@/features/site-ops/lib/auth'
+import { SiteOpsError } from '@/features/site-ops/domain/errors'
+import { assertManagerAccess } from '@/features/manager/lib/access'
+import { getPeriodComparison } from '@/features/manager/lib/load-period-comparison'
+import type { ManagerPeriod } from '@/features/manager/lib/overview-types'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 const PERIODS: ManagerPeriod[] = ['today', 'week', 'month']
 

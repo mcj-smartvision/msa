@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
-import { resolvePostLoginPath } from '@/lib/dashboard/redirect'
-import { DashboardClient } from '@/components/dashboard/dashboard-client'
+import { createClient } from '@/shared/lib/supabase/server'
+import { fetchDashboardUserContext } from '@/shared/lib/dashboard/user-context'
+import { resolvePostLoginPath } from '@/shared/lib/dashboard/redirect'
+import { DashboardClient } from '@/features/dashboard/components/dashboard-client'
 
 export default async function DashboardPage() {
   const supabase = createClient()

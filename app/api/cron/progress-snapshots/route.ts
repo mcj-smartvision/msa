@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/service'
-import { captureProgressSnapshots } from '@/lib/schedule/progress-snapshots'
+import { createServiceClient } from '@/shared/lib/supabase/service'
+import { captureProgressSnapshots } from '@/features/schedule/lib/progress-snapshots'
 
 /**
  * Nightly job. Writes only on the last Jalali day unless ?force=1.

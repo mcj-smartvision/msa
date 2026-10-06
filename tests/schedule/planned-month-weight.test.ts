@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { enumerateProjectJalaliMonths } from '@/lib/schedule/monthly-deducted-weight'
-import { plannedMonthlyWeights } from '@/lib/schedule/planned-month-weight'
+import { enumerateProjectJalaliMonths } from '@/features/schedule/lib/monthly-deducted-weight'
+import { plannedMonthlyWeights } from '@/features/schedule/lib/planned-month-weight'
 
 describe('plannedMonthlyWeights', () => {
   it('splits weight by inclusive start and finish days', () => {

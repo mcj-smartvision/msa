@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { isSystemAdmin } from '@/lib/admin/access'
-import { fetchAdminProjects, fetchAllMembers } from '@/utils/admin'
-import { fetchControlCenterFeeds } from '@/lib/admin/control-center'
-import { ProjectDirectoryPage } from '@/components/admin/project-directory-page'
+import { createClient } from '@/shared/lib/supabase/server'
+import { isSystemAdmin } from '@/features/admin/lib/access'
+import { fetchAdminProjects, fetchAllMembers } from '@/features/admin/services/admin'
+import { fetchControlCenterFeeds } from '@/features/admin/lib/control-center'
+import { ProjectDirectoryPage } from '@/features/admin/components/project-directory-page'
 
 export default async function ProjectDirectoryRoute() {
   const supabase = createClient()

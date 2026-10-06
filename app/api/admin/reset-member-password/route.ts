@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { isSystemAdmin } from '@/lib/admin/access'
-import { createServiceClient } from '@/lib/supabase/service'
-import { fetchProjectMember, updateProjectMember } from '@/utils/admin'
+import { createClient } from '@/shared/lib/supabase/server'
+import { isSystemAdmin } from '@/features/admin/lib/access'
+import { createServiceClient } from '@/shared/lib/supabase/service'
+import { fetchProjectMember, updateProjectMember } from '@/features/admin/services/admin'
 
 export async function POST(request: NextRequest) {
   try {

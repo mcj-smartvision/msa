@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { ProjectAdminNav } from '@/components/admin/admin-nav'
+import { createClient } from '@/shared/lib/supabase/server'
+import { ProjectAdminNav } from '@/features/admin/components/admin-nav'
 
 export default async function ProjectAdminLayout({
   children,

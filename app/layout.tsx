@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import { LocaleProvider } from '@/components/i18n/locale-provider'
-import { ScheduleCalendarProvider } from '@/components/schedule/schedule-calendar-provider'
+import { LocaleProvider } from '@/shared/components/i18n/locale-provider'
+import { ScheduleCalendarProvider } from '@/features/schedule/components/schedule-calendar-provider'
 import './globals.css'
 
 export const metadata: Metadata = {

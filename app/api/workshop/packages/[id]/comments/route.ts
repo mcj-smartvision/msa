@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/shared/lib/supabase/server'
 import {
-  commentOnPackage,
-  listPackageComments,
-  workshopErrorResponse,
-} from '@/lib/workshop/service'
+commentOnPackage,
+listPackageComments,
+workshopErrorResponse,
+} from '@/features/workshop/lib/service'
 
 type Ctx = { params: { id: string } }
 

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { isSystemAdmin } from '@/lib/admin/access'
-import { createServiceClient } from '@/lib/supabase/service'
-import { createProjectMember, findProfileByEmail, updateProjectMember } from '@/utils/admin'
-import { normalizeLoginIdentifier, isDeliverableEmail } from '@/lib/auth/login-identifier'
+import { createClient } from '@/shared/lib/supabase/server'
+import { isSystemAdmin } from '@/features/admin/lib/access'
+import { createServiceClient } from '@/shared/lib/supabase/service'
+import { createProjectMember, findProfileByEmail, updateProjectMember } from '@/features/admin/services/admin'
+import { normalizeLoginIdentifier, isDeliverableEmail } from '@/shared/lib/auth/login-identifier'
 
 export async function POST(request: NextRequest) {
   try {

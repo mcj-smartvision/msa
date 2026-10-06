@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
-  computeEarnedSchedule,
-  EarnedScheduleDomainError,
-  ragFromSpiT,
-  solveEarnedSchedule,
-} from '@/lib/project-controls/earned-schedule'
-import { buildBaselinePVCurve } from '@/lib/project-controls/pv-curve'
-import type { PVCurvePoint } from '@/types/project-controls'
+computeEarnedSchedule,
+EarnedScheduleDomainError,
+ragFromSpiT,
+solveEarnedSchedule,
+} from '@/features/project-controls/lib/earned-schedule'
+import { buildBaselinePVCurve } from '@/features/project-controls/lib/pv-curve'
+import type { PVCurvePoint } from '@/shared/types/project-controls'
 
 const curve: PVCurvePoint[] = [
   { periodIndex: 0, cumulativePV: 0 },

@@ -1,9 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { ProjectForm } from '@/components/project-init/ProjectForm'
-import { PageHeader } from '@/components/admin/shared'
-import { Button } from '@/components/ui/button'
+import { ProjectForm } from '@/features/project-init/components/project-form'
+import { PageHeader } from '@/features/admin/components/shared'
+import { Button } from '@/shared/components/ui/button'
 
 export default function ProjectInitializePage() {
   return (

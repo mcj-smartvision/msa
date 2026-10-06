@@ -21,9 +21,9 @@ function loadEnvLocal() {
 
 loadEnvLocal()
 
-import { createServiceClient } from '../lib/supabase/service'
-import { exportMspXmlFromProject } from '../lib/schedule/msp-export'
-import { storeScheduleXml } from '../lib/schedule/schedule-files'
+import { createServiceClient } from '../shared/lib/supabase/service'
+import { exportMspXmlFromProject } from '../features/schedule/lib/msp-export'
+import { storeScheduleXml } from '../features/schedule/lib/schedule-files'
 
 const NOOR_ID = '023edfc0-6021-4969-a419-b3bdf2ee88fd'
 

@@ -1,4 +1,4 @@
-import { IncidentDetailPage } from '@/components/hse/incident-detail-page'
+import { IncidentDetailPage } from '@/features/hse/components/incident-detail-page'
 
 export default function HseIncidentDetailRoute({
   params,

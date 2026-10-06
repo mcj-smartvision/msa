@@ -2,16 +2,16 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useSupabase } from '@/hooks/useSupabase'
-import { fetchPositions, fetchProjectMembers } from '@/utils/admin'
-import { PageHeader, LoadingBlock, ErrorBlock, StatusBadge, EmptyState } from '@/components/admin/shared'
-import { MemberForm } from '@/components/admin/member-form'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { getAdminMemberMessages } from '@/lib/i18n/admin-member'
-import { useLocale } from '@/components/i18n/locale-provider'
-import { formatLoginDisplay } from '@/lib/auth/login-identifier'
-import type { Position, ProjectMember } from '@/types/admin'
+import { useSupabase } from '@/shared/hooks/use-supabase'
+import { fetchPositions, fetchProjectMembers } from '@/features/admin/services/admin'
+import { PageHeader, LoadingBlock, ErrorBlock, StatusBadge, EmptyState } from '@/features/admin/components/shared'
+import { MemberForm } from '@/features/admin/components/member-form'
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
+import { Button } from '@/shared/components/ui/button'
+import { getAdminMemberMessages } from '@/shared/lib/i18n/admin-member'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
+import { formatLoginDisplay } from '@/shared/lib/auth/login-identifier'
+import type { Position, ProjectMember } from '@/shared/types/admin'
 
 export default function ProjectMembersPage({ params }: { params: { projectId: string } }) {
   const supabase = useSupabase()

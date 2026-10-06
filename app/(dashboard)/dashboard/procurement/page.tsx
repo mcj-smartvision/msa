@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { loadRolePageData } from '@/lib/dashboard/load-role-page'
-import { hasRoleDashboardAccess } from '@/lib/schedule/access'
-import { ProcurementDashboard } from '@/components/procurement/procurement-dashboard'
+import { createClient } from '@/shared/lib/supabase/server'
+import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'
+import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
+import { ProcurementDashboard } from '@/features/procurement/components/procurement-dashboard'
 
 export default async function ProcurementDashboardPage() {
   const supabase = createClient()

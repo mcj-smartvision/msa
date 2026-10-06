@@ -2,13 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { resolvePostLoginPath } from '@/lib/dashboard/redirect'
-import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
+import { createClient } from '@/shared/lib/supabase/client'
+import { Button } from '@/shared/components/ui/button'
+import { Input } from '@/shared/components/ui/input'
+import { Label } from '@/shared/components/ui/label'
+import { Alert, AlertDescription } from '@/shared/components/ui/alert'
+import { resolvePostLoginPath } from '@/shared/lib/dashboard/redirect'
+import { fetchDashboardUserContext } from '@/shared/lib/dashboard/user-context'
 import { HardHat, ShieldCheck, Lock } from 'lucide-react'
 
 export default function FirstLoginClient() {

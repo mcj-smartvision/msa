@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { deleteCommitment, recordCommitmentOutcome, updateCommitment } from '@/lib/wwp/service'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { deleteCommitment, recordCommitmentOutcome, updateCommitment } from '@/features/wwp/lib/service'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 type Ctx = { params: { id: string } }
 

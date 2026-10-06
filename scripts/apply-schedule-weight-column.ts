@@ -21,7 +21,7 @@ function loadEnvLocal() {
 
 loadEnvLocal()
 
-import { createServiceClient } from '../lib/supabase/service'
+import { createServiceClient } from '../shared/lib/supabase/service'
 
 async function main() {
   const sql = readFileSync(resolve(process.cwd(), 'database/66-schedule-task-weight.sql'), 'utf8')

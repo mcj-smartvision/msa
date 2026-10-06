@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCriticalFronts, type BuildCriticalFrontsInput, type CriticalFrontTask } from '@/lib/manager/critical-fronts'
+import { buildCriticalFronts, type BuildCriticalFrontsInput, type CriticalFrontTask } from '@/features/manager/lib/critical-fronts'
 
 const TODAY = '2026-10-03'
 const PROJECT = 'p-1'

@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
-import { isSystemAdmin } from '@/lib/admin/access'
-import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
-import { buildProjectOptions } from '@/lib/dashboard/load-role-page'
-import { getRoleNavLinks } from '@/lib/dashboard/role-nav'
-import { PROJECT_COOKIE } from '@/lib/project/project-cookie'
-import { DashboardLayoutShell } from '@/components/layout/dashboard-layout-shell'
+import { createClient } from '@/shared/lib/supabase/server'
+import { isSystemAdmin } from '@/features/admin/lib/access'
+import { fetchDashboardUserContext } from '@/shared/lib/dashboard/user-context'
+import { buildProjectOptions } from '@/shared/lib/dashboard/load-role-page'
+import { getRoleNavLinks } from '@/shared/lib/dashboard/role-nav'
+import { PROJECT_COOKIE } from '@/shared/lib/project/project-cookie'
+import { DashboardLayoutShell } from '@/shared/components/layout/dashboard-layout-shell'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()

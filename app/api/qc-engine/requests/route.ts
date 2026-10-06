@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/shared/lib/supabase/server'
 import {
-  assertProjectMember,
-  assertRequestEditable,
-  assertRequestInspectable,
-  attachMarkedDrawings,
-  canActAsQcInspector,
-  createInspectionRequest,
-  deleteInspectionRequests,
-  markRequestOpenedByInspector,
-  recordInspectorDecision,
-  saveInspectorReport,
-  requireQcEngineUser,
-  resubmitRejectedInspectionRequest,
-  setRequestStatus,
-  submitInspectionRequest,
-  updateInspectionRequest,
-} from '@/lib/qc-engine/service'
-import { parseQcRequestPriority, type QcRequestStatus } from '@/lib/qc-engine/types'
+assertProjectMember,
+assertRequestEditable,
+assertRequestInspectable,
+attachMarkedDrawings,
+canActAsQcInspector,
+createInspectionRequest,
+deleteInspectionRequests,
+markRequestOpenedByInspector,
+recordInspectorDecision,
+saveInspectorReport,
+requireQcEngineUser,
+resubmitRejectedInspectionRequest,
+setRequestStatus,
+submitInspectionRequest,
+updateInspectionRequest,
+} from '@/features/qc/engine/service'
+import { parseQcRequestPriority, type QcRequestStatus } from '@/features/qc/engine/types'
 
 function selectedDrawingIdsFromForm(form: FormData) {
   return String(form.get('selectedDrawingIds') ?? '')

@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
-  breakdownActivities,
-  computeActualCost,
-  computeEvmMetrics,
-  plannedPercentAsOf,
-  resolveActivityBudgets,
-  safeRatio,
-  type EvmActivity,
-} from '@/lib/evm/metrics'
+breakdownActivities,
+computeActualCost,
+computeEvmMetrics,
+plannedPercentAsOf,
+resolveActivityBudgets,
+safeRatio,
+type EvmActivity,
+} from '@/features/evm/lib/metrics'
 
 describe('safeRatio', () => {
   it('returns null for zero or invalid denominators', () => {

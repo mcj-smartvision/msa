@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { formatLoginDisplay } from '@/lib/auth/login-identifier'
+import { createClient } from '@/shared/lib/supabase/server'
+import { formatLoginDisplay } from '@/shared/lib/auth/login-identifier'
 
 const FIELDS = new Set(['username', 'full_name', 'phone', 'contact_email', 'other'])
 

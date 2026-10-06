@@ -21,10 +21,10 @@ function loadEnvLocal() {
 
 loadEnvLocal()
 
-import { createServiceClient } from '../lib/supabase/service'
-import { exportMspXmlFromProject } from '../lib/schedule/msp-export'
-import { importMspScheduleToProject } from '../lib/schedule/msp-import'
-import { applyActualStartToSchedule } from '../lib/schedule/apply-actual-start'
+import { createServiceClient } from '../shared/lib/supabase/service'
+import { exportMspXmlFromProject } from '../features/schedule/lib/msp-export'
+import { importMspScheduleToProject } from '../features/schedule/lib/msp-import'
+import { applyActualStartToSchedule } from '../features/schedule/lib/apply-actual-start'
 
 const VEGAS_ID = '1684afec-83cf-488a-956a-c2a36189cf2b'
 const NOOR_ID = '023edfc0-6021-4969-a419-b3bdf2ee88fd'

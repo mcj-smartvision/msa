@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { loadRolePageData } from '@/lib/dashboard/load-role-page'
-import { hasRoleDashboardAccess } from '@/lib/schedule/access'
-import { IncidentDetailPage } from '@/components/hse/incident-detail-page'
+import { createClient } from '@/shared/lib/supabase/server'
+import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'
+import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
+import { IncidentDetailPage } from '@/features/hse/components/incident-detail-page'
 
 /** جزئیات حادثه برای سرپرست کارگاه — بدون layout HSE */
 export default async function SiteSupervisorIncidentDetailPage({

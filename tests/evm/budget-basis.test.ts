@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveActivityBudgets } from '@/lib/evm/metrics'
+import { resolveActivityBudgets } from '@/features/evm/lib/metrics'
 
 describe('activity budgets — technical office cost first', () => {
   it('uses the «هزینه» column when any activity has a cost (Noor leaf costs → BAC 3,000)', () => {

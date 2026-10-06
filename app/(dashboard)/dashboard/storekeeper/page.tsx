@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
-import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
-import { PROJECT_COOKIE } from '@/lib/project/project-cookie'
-import { StorekeeperDashboard } from '@/components/storekeeper/storekeeper-dashboard'
+import { createClient } from '@/shared/lib/supabase/server'
+import { fetchDashboardUserContext } from '@/shared/lib/dashboard/user-context'
+import { PROJECT_COOKIE } from '@/shared/lib/project/project-cookie'
+import { StorekeeperDashboard } from '@/features/storekeeper/components/storekeeper-dashboard'
 
 export default async function StorekeeperDashboardPage() {
   const supabase = createClient()

@@ -1,4 +1,4 @@
-import { OverviewPage } from '@/components/hse/overview-page'
+import { OverviewPage } from '@/features/hse/components/overview-page'
 
 export default function HseOverviewRoute() {
   return <OverviewPage />

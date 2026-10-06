@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildWeeklyCommitments,
-  indexHistoryFromCurve,
-  indexTone,
-  ppcTone,
-  type WwpCommitmentRow,
-  type WwpWeekRow,
-} from '@/lib/manager/weekly-commitments'
-import type { ManagerCurvePoint } from '@/lib/manager/overview-types'
+buildWeeklyCommitments,
+indexHistoryFromCurve,
+indexTone,
+ppcTone,
+type WwpCommitmentRow,
+type WwpWeekRow,
+} from '@/features/manager/lib/weekly-commitments'
+import type { ManagerCurvePoint } from '@/features/manager/lib/overview-types'
 
 const week = (n: number, planned: number, completed: number): WwpWeekRow => {
   const start = new Date(Date.UTC(2026, 6, 4 + 7 * n)).toISOString().slice(0, 10)

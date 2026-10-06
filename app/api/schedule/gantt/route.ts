@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { getProjectGanttRows } from '@/lib/schedule/gantt-service'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { getProjectGanttRows } from '@/features/schedule/lib/gantt-service'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 /** GET /api/schedule/gantt?projectId=... */
 export async function GET(request: NextRequest) {

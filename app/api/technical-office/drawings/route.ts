@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
+import { createClient } from '@/shared/lib/supabase/server'
+import { fetchDashboardUserContext } from '@/shared/lib/dashboard/user-context'
 import {
-  DRAWING_MAX_BYTES,
-  DRAWING_MAX_FILES,
-  canUploadProjectDrawings,
-  canViewProjectDrawings,
-  getDrawingFormat,
-  listProjectDrawings,
-  saveDrawingToStorage,
-} from '@/lib/technical-office/drawings'
-import type { DrawingDiscipline } from '@/lib/technical-office/drawings-shared'
+DRAWING_MAX_BYTES,
+DRAWING_MAX_FILES,
+canUploadProjectDrawings,
+canViewProjectDrawings,
+getDrawingFormat,
+listProjectDrawings,
+saveDrawingToStorage,
+} from '@/features/technical-office/lib/drawings'
+import type { DrawingDiscipline } from '@/features/technical-office/lib/drawings-shared'
 
 function drawingTitle(sharedTitle: string, fileName: string, total: number) {
   const base = fileName.replace(/\.(pdf|dwg)$/i, '')

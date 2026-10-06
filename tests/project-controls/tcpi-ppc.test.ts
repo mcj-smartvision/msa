@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computePpc, computeTcpi, computeTcpiPpc, ragFromPpc, ragFromTcpi } from '@/lib/project-controls/tcpi-ppc'
+import { computePpc, computeTcpi, computeTcpiPpc, ragFromPpc, ragFromTcpi } from '@/features/project-controls/lib/tcpi-ppc'
 
 describe('computeTcpi', () => {
   it('computes the ratio with substitution and catalog texts', () => {

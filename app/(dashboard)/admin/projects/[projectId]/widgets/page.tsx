@@ -1,16 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useSupabase } from '@/hooks/useSupabase'
+import { useSupabase } from '@/shared/hooks/use-supabase'
 import {
-  fetchDashboardWidgets,
-  fetchPositionWidgets,
-  fetchPositions,
-  upsertWidgetVisibility,
-} from '@/utils/admin'
-import { PageHeader, LoadingBlock, ErrorBlock } from '@/components/admin/shared'
-import { WidgetVisibilityEditor } from '@/components/admin/widget-visibility-editor'
-import type { DashboardWidget, Position, PositionDashboardWidget } from '@/types/admin'
+fetchDashboardWidgets,
+fetchPositionWidgets,
+fetchPositions,
+upsertWidgetVisibility,
+} from '@/features/admin/services/admin'
+import { PageHeader, LoadingBlock, ErrorBlock } from '@/features/admin/components/shared'
+import { WidgetVisibilityEditor } from '@/features/admin/components/widget-visibility-editor'
+import type { DashboardWidget, Position, PositionDashboardWidget } from '@/shared/types/admin'
 
 export default function ProjectWidgetsPage({ params }: { params: { projectId: string } }) {
   const supabase = useSupabase()

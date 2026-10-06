@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireQcEngineUser, saveChecklistVerdicts } from '@/lib/qc-engine/service'
-import type { QcVerdict } from '@/lib/qc-engine/types'
+import { createClient } from '@/shared/lib/supabase/server'
+import { requireQcEngineUser, saveChecklistVerdicts } from '@/features/qc/engine/service'
+import type { QcVerdict } from '@/features/qc/engine/types'
 
 export async function POST(request: NextRequest) {
   try {

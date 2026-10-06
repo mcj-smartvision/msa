@@ -2,8 +2,8 @@
  * Local smoke test — flat delta shift (no double-shift, no CPM drift).
  * Run: npx tsx scripts/test-reschedule-engine.ts
  */
-import { shiftScheduleByActualStart } from '../lib/schedule/reschedule-engine'
-import type { ProjectTask } from '../types/schedule'
+import { shiftScheduleByActualStart } from '../features/schedule/lib/reschedule-engine'
+import type { ProjectTask } from '../shared/types/schedule'
 
 function task(
   id: string,

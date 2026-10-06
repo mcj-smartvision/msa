@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { FINANCIAL_COST_TYPES } from '@/lib/finance/types'
+import { createClient } from '@/shared/lib/supabase/server'
+import { FINANCIAL_COST_TYPES } from '@/features/finance/lib/types'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60

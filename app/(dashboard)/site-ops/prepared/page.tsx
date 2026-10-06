@@ -1,4 +1,4 @@
-import { PreparedWorkspace } from '@/components/workshop/prepared-workspace'
+import { PreparedWorkspace } from '@/features/workshop/components/prepared-workspace'
 
 export default function WorkshopPreparedPage() {
   return <PreparedWorkspace />

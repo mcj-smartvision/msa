@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDaysIso, formatScheduleDate, toIsoDateOnly } from '@/lib/schedule/dates'
+import { addDaysIso, formatScheduleDate, toIsoDateOnly } from '@/features/schedule/lib/dates'
 
 describe('toIsoDateOnly civil dates', () => {
   it('keeps pure YYYY-MM-DD unchanged', () => {

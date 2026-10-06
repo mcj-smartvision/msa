@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { loadRolePageData } from '@/lib/dashboard/load-role-page'
-import { hasRoleDashboardAccess } from '@/lib/schedule/access'
-import { fetchAllProjectTasks, fetchUnresolvedAlerts } from '@/utils/schedule'
-import { SiteSupervisorDashboard } from '@/components/schedule/site-supervisor-dashboard'
+import { createClient } from '@/shared/lib/supabase/server'
+import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'
+import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
+import { fetchAllProjectTasks, fetchUnresolvedAlerts } from '@/features/schedule/services/schedule'
+import { SiteSupervisorDashboard } from '@/features/schedule/components/site-supervisor-dashboard'
 
 export default async function SiteSupervisorPage({
   searchParams,

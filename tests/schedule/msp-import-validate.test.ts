@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { validateMspImport } from '@/lib/schedule/msp-import-validate'
-import type { MspParsedDependency, MspParsedTask } from '@/lib/schedule/msp-import'
+import { validateMspImport } from '@/features/schedule/lib/msp-import-validate'
+import type { MspParsedDependency, MspParsedTask } from '@/features/schedule/lib/msp-import'
 
 function task(partial: Partial<MspParsedTask> & Pick<MspParsedTask, 'msp_uid' | 'name'>): MspParsedTask {
   return {

@@ -1,11 +1,11 @@
 import { toGregorian } from 'jalaali-js'
 import { describe, expect, it } from 'vitest'
-import { enumerateProjectJalaliMonths } from '@/lib/schedule/monthly-deducted-weight'
+import { enumerateProjectJalaliMonths } from '@/features/schedule/lib/monthly-deducted-weight'
 import {
-  allocateOverhead,
-  buildProgressAndOverhead,
-  monthlyProgressFromCumulative,
-} from '@/lib/schedule/month-progress-overhead'
+allocateOverhead,
+buildProgressAndOverhead,
+monthlyProgressFromCumulative,
+} from '@/features/schedule/lib/month-progress-overhead'
 
 function gregorianIso(jy: number, jm: number, jd: number): string {
   const g = toGregorian(jy, jm, jd)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyParentDurationSum } from '@/lib/schedule/parent-duration-rollup'
+import { applyParentDurationSum } from '@/features/schedule/lib/parent-duration-rollup'
 
 describe('applyParentDurationSum', () => {
   it('sums direct children onto parent summary', () => {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
-import { canViewProjectDrawings, getProjectDrawing } from '@/lib/technical-office/drawings'
+import { createClient } from '@/shared/lib/supabase/server'
+import { fetchDashboardUserContext } from '@/shared/lib/dashboard/user-context'
+import { canViewProjectDrawings, getProjectDrawing } from '@/features/technical-office/lib/drawings'
 
 export async function GET(
   _request: NextRequest,

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { isSystemAdmin } from '@/lib/admin/access'
-import { createServiceClient } from '@/lib/supabase/service'
-import type { AuthActivityUser } from '@/types/admin'
+import { createClient } from '@/shared/lib/supabase/server'
+import { isSystemAdmin } from '@/features/admin/lib/access'
+import { createServiceClient } from '@/shared/lib/supabase/service'
+import type { AuthActivityUser } from '@/shared/types/admin'
 
 export const dynamic = 'force-dynamic'
 

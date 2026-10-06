@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
-import { resolvePostLoginPath } from '@/lib/dashboard/redirect'
+import { createClient } from '@/shared/lib/supabase/server'
+import { fetchDashboardUserContext } from '@/shared/lib/dashboard/user-context'
+import { resolvePostLoginPath } from '@/shared/lib/dashboard/redirect'
 import FirstLoginClient from './first-login-client'
 
 export default async function FirstLoginPage() {

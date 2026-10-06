@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/shared/lib/supabase/server'
 import {
-  attendanceErrorResponse,
-  deleteEnrollment,
-  deleteEnrollmentSample,
-  enrollPerson,
-  listEnrollments,
-  updateEnrollment,
-} from '@/lib/attendance/service'
+attendanceErrorResponse,
+deleteEnrollment,
+deleteEnrollmentSample,
+enrollPerson,
+listEnrollments,
+updateEnrollment,
+} from '@/features/attendance/lib/service'
 
 export async function GET(request: NextRequest) {
   try {

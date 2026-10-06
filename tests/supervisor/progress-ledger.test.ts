@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildProgressLedgerRows,
-  ledgerDateRange,
-  plannedProgressFrom,
-  plannedWorkdays,
-} from '@/lib/supervisor/progress-ledger'
+buildProgressLedgerRows,
+ledgerDateRange,
+plannedProgressFrom,
+plannedWorkdays,
+} from '@/features/supervisor/lib/progress-ledger'
+import type { DailyReportActivity } from '@/features/supervisor/lib/daily-report-activities'
+import type { ScheduleTreeNode, WorkshopPackageNode } from '@/features/workshop/lib/types'
 
 describe('required progress', () => {
   it('counts the planned working days, Saturday to Thursday', () => {
@@ -25,8 +27,6 @@ describe('required progress', () => {
     expect(plannedProgressFrom('2026-10-07', 0).size).toBe(0)
   })
 })
-import type { DailyReportActivity } from '@/lib/supervisor/daily-report-activities'
-import type { ScheduleTreeNode, WorkshopPackageNode } from '@/lib/workshop/types'
 
 const node = (id: string, wbs: string, depth: number, extra: Partial<ScheduleTreeNode> = {}): ScheduleTreeNode => ({
   id,

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
-import { requireUser } from '@/lib/site-ops/auth'
-import { SiteOpsError } from '@/lib/site-ops-domain/errors'
-import { assertManagerAccess } from '@/lib/manager/access'
-import { loadWeeklyCommitments } from '@/lib/manager/load-weekly-commitments'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { createServiceClient } from '@/shared/lib/supabase/service'
+import { requireUser } from '@/features/site-ops/lib/auth'
+import { SiteOpsError } from '@/features/site-ops/domain/errors'
+import { assertManagerAccess } from '@/features/manager/lib/access'
+import { loadWeeklyCommitments } from '@/features/manager/lib/load-weekly-commitments'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 /** GET /api/manager/weekly-commitments?projectId= — PPC history, this week's commitments and RNC, or why they are missing. */
 export async function GET(request: NextRequest) {

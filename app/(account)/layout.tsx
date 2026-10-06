@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/shared/lib/supabase/server'
 
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()

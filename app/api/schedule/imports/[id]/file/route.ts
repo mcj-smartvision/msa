@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { isSystemAdmin } from '@/lib/admin/access'
+import { createClient } from '@/shared/lib/supabase/server'
+import { isSystemAdmin } from '@/features/admin/lib/access'
 import {
-  buildScheduleXmlDownload,
-  fetchScheduleImportRow,
-  scheduleDownloadHeaders,
-} from '@/lib/schedule/schedule-download'
+buildScheduleXmlDownload,
+fetchScheduleImportRow,
+scheduleDownloadHeaders,
+} from '@/features/schedule/lib/schedule-download'
 
 async function canAccessProjectSchedule(
   supabase: Awaited<ReturnType<typeof createClient>>,

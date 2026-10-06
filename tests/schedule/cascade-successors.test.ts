@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  applyDateChangeWithSuccessorCascade,
-  successorStartFromLink,
-} from '@/lib/schedule/cascade-successors'
+applyDateChangeWithSuccessorCascade,
+successorStartFromLink,
+} from '@/features/schedule/lib/cascade-successors'
 
 describe('successorStartFromLink', () => {
   it('FS places successor on predecessor finish day', () => {

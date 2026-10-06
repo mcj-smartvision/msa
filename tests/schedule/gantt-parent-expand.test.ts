@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  applyGanttDateChange,
-  expandAncestorsForChild,
-  rollupAncestorsToChildren,
-} from '@/lib/schedule/gantt-parent-expand'
-import { resolveGanttBarTone } from '@/lib/schedule/gantt-tone'
+applyGanttDateChange,
+expandAncestorsForChild,
+rollupAncestorsToChildren,
+} from '@/features/schedule/lib/gantt-parent-expand'
+import { resolveGanttBarTone } from '@/features/schedule/lib/gantt-tone'
 
 describe('rollupAncestorsToChildren', () => {
   it('expands parent when child grows past parent', () => {

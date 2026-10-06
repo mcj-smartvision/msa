@@ -1,9 +1,9 @@
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { importCreRun } from '@/lib/site-ops/service'
-import { siteOpsErrorResponse } from '@/lib/site-ops/http'
+import { createClient } from '@/shared/lib/supabase/server'
+import { importCreRun } from '@/features/site-ops/lib/service'
+import { siteOpsErrorResponse } from '@/features/site-ops/lib/http'
 
 const ALLOWED = new Set(['cre-control-ready.json', 'cre-not-control-ready.json'])
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { buildPlanCompliance } from '@/lib/project-manager/plan-compliance'
-import { compareWbs } from '@/lib/schedule/wbs-utils'
-import type { ProjectTask } from '@/types/schedule'
+import { buildPlanCompliance } from '@/features/project-manager/lib/plan-compliance'
+import { compareWbs } from '@/features/schedule/lib/wbs-utils'
+import type { ProjectTask } from '@/shared/types/schedule'
 
 function task(
   partial: Partial<ProjectTask> & Pick<ProjectTask, 'id' | 'name' | 'wbs_code'>

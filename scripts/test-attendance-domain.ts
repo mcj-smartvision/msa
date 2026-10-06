@@ -6,8 +6,8 @@ import {
   buildPresence,
   computeOutsideMs,
   nextDirection,
-} from '../lib/attendance/domain'
-import type { AttendanceTransit } from '../lib/attendance/types'
+} from '../features/attendance/lib/domain'
+import type { AttendanceTransit } from '../features/attendance/lib/types'
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg)

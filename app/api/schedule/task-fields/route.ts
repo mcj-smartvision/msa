@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { updateScheduleTaskFields } from '@/lib/schedule/update-schedule-task-fields'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { updateScheduleTaskFields } from '@/features/schedule/lib/update-schedule-task-fields'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 /**
  * PATCH /api/schedule/task-fields

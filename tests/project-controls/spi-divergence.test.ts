@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { ExplainedKpi } from '@/types/project-controls'
-import { SPI_DIVERGENCE_WARNING_FA, spiDivergenceWarning } from '@/lib/project-controls/kpis'
+import type { ExplainedKpi } from '@/shared/types/project-controls'
+import { SPI_DIVERGENCE_WARNING_FA, spiDivergenceWarning } from '@/features/project-controls/lib/kpis'
 
 function kpi(value: number | null): ExplainedKpi {
   return {

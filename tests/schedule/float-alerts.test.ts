@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildScheduleAlertDrafts,
-  computeFloatConsumptionRate,
-  DEFAULT_PROJECT_ALERT_SETTINGS,
-} from '@/lib/schedule/float-alerts'
+buildScheduleAlertDrafts,
+computeFloatConsumptionRate,
+DEFAULT_PROJECT_ALERT_SETTINGS,
+} from '@/features/schedule/lib/float-alerts'
 
 describe('computeFloatConsumptionRate', () => {
   it('uses (prev - current) / daysBetween and weekly = rate * 7', () => {

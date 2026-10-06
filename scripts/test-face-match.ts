@@ -7,7 +7,7 @@ import {
   euclideanDistance,
   l2Normalize,
   matchEmbedding,
-} from '../lib/attendance/face-match'
+} from '../features/attendance/lib/face-match'
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg)

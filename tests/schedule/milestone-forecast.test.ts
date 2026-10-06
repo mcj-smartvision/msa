@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDaysIso } from '@/lib/schedule/dates'
+import { addDaysIso } from '@/features/schedule/lib/dates'
 
 describe('milestone predicted date from CPM epoch', () => {
   it('maps early_finish days onto calendar baseline once', () => {

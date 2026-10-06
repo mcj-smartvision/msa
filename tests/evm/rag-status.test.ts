@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { evaluateRagStatus, summarizeFloatHealth } from '@/lib/evm/ragStatus'
+import { evaluateRagStatus, summarizeFloatHealth } from '@/features/evm/lib/rag-status'
 
 const base = { spi: 1, cpi: 1, criticalFloatDays: 5, floatConsumptionPercent: 10 }
 

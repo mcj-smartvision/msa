@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { formatLagDaysSuffix, formatPredLabel } from '@/lib/schedule/predecessor-format'
-import { sortTasksForSchedulePreview } from '@/lib/schedule/task-view-date'
-import type { ProjectTask } from '@/types/schedule'
+import { formatLagDaysSuffix, formatPredLabel } from '@/features/schedule/lib/predecessor-format'
+import { sortTasksForSchedulePreview } from '@/features/schedule/lib/task-view-date'
+import type { ProjectTask } from '@/shared/types/schedule'
 
 const task = (
   partial: Pick<

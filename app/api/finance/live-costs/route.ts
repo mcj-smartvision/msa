@@ -1,29 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { assertProjectAccess, requireUser } from '@/lib/site-ops/auth'
-import { WorkshopError } from '@/lib/workshop/domain'
-import { workshopErrorResponse } from '@/lib/workshop/service'
-import { readPackageUnitPrice } from '@/lib/workshop/package-commercial'
+import { createClient } from '@/shared/lib/supabase/server'
+import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
+import { WorkshopError } from '@/features/workshop/lib/domain'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
+import { readPackageUnitPrice } from '@/features/workshop/lib/package-commercial'
 import {
-  packageSchedulePhysicalPercent,
-  schedulePhysicalPercent,
-} from '@/lib/schedule/physical-progress'
-import { toIsoDateOnly } from '@/lib/schedule/dates'
+packageSchedulePhysicalPercent,
+schedulePhysicalPercent,
+} from '@/features/schedule/lib/physical-progress'
+import { toIsoDateOnly } from '@/features/schedule/lib/dates'
 import {
-  enumerateProjectJalaliMonths,
-  projectDateSpan,
-} from '@/lib/schedule/monthly-deducted-weight'
+enumerateProjectJalaliMonths,
+projectDateSpan,
+} from '@/features/schedule/lib/monthly-deducted-weight'
 import {
-  buildLiveWorkshopCostModel,
-  type ContractorActivityCost,
-} from '@/lib/finance/live-workshop-cost'
-import { loadOverheadMonths } from '@/lib/finance/overhead-months'
+buildLiveWorkshopCostModel,
+type ContractorActivityCost,
+} from '@/features/finance/lib/live-workshop-cost'
+import { loadOverheadMonths } from '@/features/finance/lib/overhead-months'
 import {
-  isLeafPackage,
-  isLeafTask,
-  taskCurrentDates as taskDates,
-} from '@/lib/schedule/leaf-activities'
-import { todayTehranIso } from '@/lib/time/tehran'
+isLeafPackage,
+isLeafTask,
+taskCurrentDates as taskDates,
+} from '@/features/schedule/lib/leaf-activities'
+import { todayTehranIso } from '@/shared/lib/time/tehran'
 
 export async function GET(request: NextRequest) {
   try {

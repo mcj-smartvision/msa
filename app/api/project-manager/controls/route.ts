@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { isSystemAdmin } from '@/lib/admin/access'
-import { loadMemberPositionKeys, requireUser } from '@/lib/site-ops/auth'
-import { SiteOpsError } from '@/lib/site-ops-domain/errors'
-import { ROLE_DASHBOARD_ACCESS } from '@/lib/schedule/access'
-import { toIsoDateOnly } from '@/lib/schedule/dates'
-import { workshopErrorResponse } from '@/lib/workshop/service'
-import { getControlsSnapshot } from '@/server/controls/get-controls-snapshot'
+import { createClient } from '@/shared/lib/supabase/server'
+import { isSystemAdmin } from '@/features/admin/lib/access'
+import { loadMemberPositionKeys, requireUser } from '@/features/site-ops/lib/auth'
+import { SiteOpsError } from '@/features/site-ops/domain/errors'
+import { ROLE_DASHBOARD_ACCESS } from '@/features/schedule/lib/access'
+import { toIsoDateOnly } from '@/features/schedule/lib/dates'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
+import { getControlsSnapshot } from '@/features/project-controls/server/get-controls-snapshot'
 
 const UNITS = ['days', 'weeks', 'months'] as const
 

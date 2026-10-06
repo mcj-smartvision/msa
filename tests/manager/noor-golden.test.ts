@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { breakdownActivities, computeEvmMetrics, type EvmCostEntry } from '@/lib/evm/metrics'
-import type { ProjectEvmSnapshot } from '@/lib/evm/load-project-evm'
-import { buildControlsSnapshot } from '@/lib/project-controls/controls-snapshot'
-import { buildAllKpis, buildPpcKpi, buildTcpiKpi } from '@/lib/project-controls/kpis'
-import { scheduleForecast } from '@/lib/manager/progress-curve'
+import { breakdownActivities, computeEvmMetrics, type EvmCostEntry } from '@/features/evm/lib/metrics'
+import type { ProjectEvmSnapshot } from '@/features/evm/lib/load-project-evm'
+import { buildControlsSnapshot } from '@/features/project-controls/lib/controls-snapshot'
+import { buildAllKpis, buildPpcKpi, buildTcpiKpi } from '@/features/project-controls/lib/kpis'
+import { scheduleForecast } from '@/features/manager/lib/progress-curve'
 import { NOOR_ACTIVITIES, NOOR_PROJECT_ID, NOOR_STATUS_DATE } from '../fixtures/noor-2026-10-03'
 
 /**

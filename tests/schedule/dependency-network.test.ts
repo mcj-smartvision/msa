@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDependencyNetwork } from '@/lib/schedule/dependency-network'
+import { buildDependencyNetwork } from '@/features/schedule/lib/dependency-network'
 
 describe('buildDependencyNetwork', () => {
   it('keeps only leaves and marks activities with no links as isolated', () => {

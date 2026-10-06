@@ -4,7 +4,7 @@
  */
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { parseCrePhase1Export } from '../lib/cre-contract'
+import { parseCrePhase1Export } from '../features/cre-contract/lib'
 import {
   approveActual,
   assertCanMarkCleanDone,
@@ -19,7 +19,7 @@ import {
   SiteOpsError,
   submitActual,
   validateChildRollup,
-} from '../lib/site-ops-domain'
+} from '../features/site-ops/domain'
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg)

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireQcEngineUser, uploadResultPhoto, uploadRequestInspectionMedia } from '@/lib/qc-engine/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { requireQcEngineUser, uploadResultPhoto, uploadRequestInspectionMedia } from '@/features/qc/engine/service'
 
 export async function POST(request: NextRequest) {
   try {

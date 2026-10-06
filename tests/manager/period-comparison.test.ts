@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { toGregorian } from 'jalaali-js'
 import {
-  buildPeriodComparison,
-  buildPeriodWindows,
-  compareValues,
-  jalaaliMonthLength,
-  percentAt,
-  physicalAt,
-  type ActivityHistory,
-} from '@/lib/manager/period-comparison'
+buildPeriodComparison,
+buildPeriodWindows,
+compareValues,
+jalaaliMonthLength,
+percentAt,
+physicalAt,
+type ActivityHistory,
+} from '@/features/manager/lib/period-comparison'
 
 const HOUR = 3_600_000
 const DAY = 86_400_000

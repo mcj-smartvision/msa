@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { getMilestoneTrend } from '@/lib/schedule/schedule-alerts-api'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { getMilestoneTrend } from '@/features/schedule/lib/schedule-alerts-api'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 /** GET /api/schedule/milestone-trend?projectId=... */
 export async function GET(request: NextRequest) {

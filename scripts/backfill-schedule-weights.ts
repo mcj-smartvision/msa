@@ -21,8 +21,8 @@ function loadEnvLocal() {
 
 loadEnvLocal()
 
-import { createServiceClient } from '../lib/supabase/service'
-import { backfillScheduleWeightsFromStoredXml } from '../lib/schedule/schedule-weight-backfill'
+import { createServiceClient } from '../shared/lib/supabase/service'
+import { backfillScheduleWeightsFromStoredXml } from '../features/schedule/lib/schedule-weight-backfill'
 
 const DEFAULT_PROJECT_ID = '023edfc0-6021-4969-a419-b3bdf2ee88fd'
 

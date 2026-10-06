@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { accumulateMonthlyProjectProgress } from '@/lib/schedule/monthly-project-progress'
+import { accumulateMonthlyProjectProgress } from '@/features/schedule/lib/monthly-project-progress'
 
 describe('accumulateMonthlyProjectProgress', () => {
   it('builds planned and earned running totals for an S-curve', () => {

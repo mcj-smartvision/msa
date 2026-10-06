@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  buildProjectProgressSeries,
-  calculateSCurveActualProgress,
-  progressForSCurveAsOf,
-  resolveProjectCurveDateRange,
-  type DailyReportActivity,
-  type DailyProgressEntry,
-} from '@/lib/supervisor/daily-report-activities'
+buildProjectProgressSeries, progressForSCurveAsOf,
+resolveProjectCurveDateRange,
+type DailyReportActivity,
+type DailyProgressEntry
+} from '@/features/supervisor/lib/daily-report-activities'
 
 const baseActivity = (
   partial: Partial<DailyReportActivity> & Pick<DailyReportActivity, 'id' | 'name'>

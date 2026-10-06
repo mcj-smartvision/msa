@@ -1,27 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { persistProjectProgressPace } from '@/lib/schedule/persist-progress-pace'
+import { createClient } from '@/shared/lib/supabase/server'
+import { persistProjectProgressPace } from '@/features/schedule/lib/persist-progress-pace'
 import {
-  computeProgressPace,
-  paceStatusFa,
-  paceThresholdsFromAlertSettings,
-  resolvePaceActualStart,
-  resolvePaceDurationDays,
-} from '@/lib/schedule/progress-pace'
-import { DEFAULT_PROJECT_ALERT_SETTINGS } from '@/lib/schedule/float-alerts'
+computeProgressPace,
+paceStatusFa,
+paceThresholdsFromAlertSettings,
+resolvePaceActualStart,
+resolvePaceDurationDays,
+} from '@/features/schedule/lib/progress-pace'
+import { DEFAULT_PROJECT_ALERT_SETTINGS } from '@/features/schedule/lib/float-alerts'
 import {
-  alertQuadrantFa,
-  computeAlertQuadrant,
-  type AlertQuadrant,
-} from '@/lib/schedule/progress-alert-quadrant'
-import { loadProjectAlertSettings } from '@/lib/schedule/run-float-alerts'
-import { toIsoDateOnly } from '@/lib/schedule/dates'
-import { compareWbs, wbsDepth } from '@/lib/schedule/wbs-utils'
+alertQuadrantFa,
+computeAlertQuadrant,
+type AlertQuadrant,
+} from '@/features/schedule/lib/progress-alert-quadrant'
+import { loadProjectAlertSettings } from '@/features/schedule/lib/run-float-alerts'
+import { toIsoDateOnly } from '@/features/schedule/lib/dates'
+import { compareWbs, wbsDepth } from '@/features/schedule/lib/wbs-utils'
 import {
-  applyWeightedParentRollup,
-  type ProgressRollupNode,
-} from '@/lib/schedule/parent-progress-rollup'
-import { isDirectChildWbs } from '@/lib/schedule/parent-weight-rollup'
+applyWeightedParentRollup,
+type ProgressRollupNode,
+} from '@/features/schedule/lib/parent-progress-rollup'
+import { isDirectChildWbs } from '@/features/schedule/lib/parent-weight-rollup'
 
 /**
  * GET  — سر‌تیترها / مادرها با رنگ ۲×۲ (فرزندان برگ نمایش داده نمی‌شوند)

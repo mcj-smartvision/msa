@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { reportSupervisorPackageProgress, workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { reportSupervisorPackageProgress, workshopErrorResponse } from '@/features/workshop/lib/service'
 
 export async function POST(
   request: NextRequest,

@@ -1,4 +1,4 @@
-import { LiveOperationsPage } from '@/components/hse/live-operations-page'
+import { LiveOperationsPage } from '@/features/hse/components/live-operations-page'
 
 export default function HseLiveRoute() {
   return <LiveOperationsPage />

@@ -1,4 +1,4 @@
-import { ExceptionsClient } from '@/components/site-ops/exceptions-client'
+import { ExceptionsClient } from '@/features/site-ops/components/exceptions-client'
 
 export default function SiteOpsExceptionsPage() {
   return <ExceptionsClient />

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  CALENDAR_DAYS,
-  plannedPercentInWindow,
-  weightedPlannedPercent,
-  type WorkCalendar,
-} from '@/lib/schedule/planned-progress'
+CALENDAR_DAYS,
+plannedPercentInWindow,
+weightedPlannedPercent,
+type WorkCalendar,
+} from '@/features/schedule/lib/planned-progress'
 
 describe('CALENDAR_DAYS', () => {
   it('counts both ends', () => {

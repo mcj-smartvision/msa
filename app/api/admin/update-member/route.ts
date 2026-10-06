@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
-import { isSystemAdmin } from '@/lib/admin/access'
-import { updateProjectMember, fetchProjectMember } from '@/utils/admin'
+import { createClient } from '@/shared/lib/supabase/server'
+import { createServiceClient } from '@/shared/lib/supabase/service'
+import { isSystemAdmin } from '@/features/admin/lib/access'
+import { updateProjectMember, fetchProjectMember } from '@/features/admin/services/admin'
 import {
-  isDeliverableEmail,
-  isSiteLocalEmail,
-} from '@/lib/auth/login-identifier'
+isDeliverableEmail,
+isSiteLocalEmail,
+} from '@/shared/lib/auth/login-identifier'
 
 export async function POST(request: NextRequest) {
   try {

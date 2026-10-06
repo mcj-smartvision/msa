@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { fetchDashboardUserContext } from '@/lib/dashboard/user-context'
+import { createClient } from '@/shared/lib/supabase/server'
+import { fetchDashboardUserContext } from '@/shared/lib/dashboard/user-context'
 import {
-  ACCOUNTANT_DESKTOP_PATH,
-  shouldAskAccountantShell,
-} from '@/lib/dashboard/accountant-shell'
-import { ChooseAccountantShellClient } from '@/components/finance/choose-accountant-shell-client'
+ACCOUNTANT_DESKTOP_PATH,
+shouldAskAccountantShell,
+} from '@/shared/lib/dashboard/accountant-shell'
+import { ChooseAccountantShellClient } from '@/features/finance/components/choose-accountant-shell-client'
 
 export default async function ChooseAccountantShellPage() {
   const supabase = createClient()

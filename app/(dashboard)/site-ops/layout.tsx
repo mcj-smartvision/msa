@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { SiteOpsShell } from '@/components/site-ops/site-ops-shell'
+import { SiteOpsShell } from '@/features/site-ops/components/site-ops-shell'
 
 export default function SiteOpsLayout({ children }: { children: React.ReactNode }) {
   return (

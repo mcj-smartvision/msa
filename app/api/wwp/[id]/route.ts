@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { SiteOpsError } from '@/lib/site-ops-domain/errors'
-import { addCommitment, closeWeeklyPlan, deleteDraftPlan, freezeWeeklyPlan } from '@/lib/wwp/service'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { SiteOpsError } from '@/features/site-ops/domain/errors'
+import { addCommitment, closeWeeklyPlan, deleteDraftPlan, freezeWeeklyPlan } from '@/features/wwp/lib/service'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 type Ctx = { params: { id: string } }
 

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/shared/lib/supabase/server'
 import {
-  attendanceErrorResponse,
-  recognizeAndRecord,
-} from '@/lib/attendance/service'
+attendanceErrorResponse,
+recognizeAndRecord,
+} from '@/features/attendance/lib/service'
 
 export async function POST(request: NextRequest) {
   try {

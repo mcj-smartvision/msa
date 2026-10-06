@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { loadRolePageData } from '@/lib/dashboard/load-role-page'
-import { hasRoleDashboardAccess } from '@/lib/schedule/access'
-import { PageHeader } from '@/components/admin/shared'
-import { PmSubcontractorsPageClient } from '@/components/project-manager/pm-subcontractors-page-client'
+import { createClient } from '@/shared/lib/supabase/server'
+import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'
+import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
+import { PageHeader } from '@/features/admin/components/shared'
+import { PmSubcontractorsPageClient } from '@/features/project-manager/components/pm-subcontractors-page-client'
 
 export default async function ProjectSubcontractorsPage() {
   const supabase = createClient()

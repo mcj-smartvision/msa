@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useSupabase } from '@/hooks/useSupabase'
-import { createPosition, fetchPositions, updatePosition } from '@/utils/admin'
-import { PageHeader, LoadingBlock, ErrorBlock, StatusBadge } from '@/components/admin/shared'
-import { PositionForm } from '@/components/admin/position-form'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import type { CreatePositionInput, Position } from '@/types/admin'
+import { useSupabase } from '@/shared/hooks/use-supabase'
+import { createPosition, fetchPositions, updatePosition } from '@/features/admin/services/admin'
+import { PageHeader, LoadingBlock, ErrorBlock, StatusBadge } from '@/features/admin/components/shared'
+import { PositionForm } from '@/features/admin/components/position-form'
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
+import { Button } from '@/shared/components/ui/button'
+import type { CreatePositionInput, Position } from '@/shared/types/admin'
 
 export default function ProjectPositionsPage({ params }: { params: { projectId: string } }) {
   const supabase = useSupabase()

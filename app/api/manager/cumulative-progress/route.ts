@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
-import { requireUser } from '@/lib/site-ops/auth'
-import { SiteOpsError } from '@/lib/site-ops-domain/errors'
-import { assertManagerAccess } from '@/lib/manager/access'
-import { toIsoDateOnly } from '@/lib/schedule/dates'
-import { getExplainedCumulativeProgress } from '@/server/controls/get-explained-cumulative-progress'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { createServiceClient } from '@/shared/lib/supabase/service'
+import { requireUser } from '@/features/site-ops/lib/auth'
+import { SiteOpsError } from '@/features/site-ops/domain/errors'
+import { assertManagerAccess } from '@/features/manager/lib/access'
+import { toIsoDateOnly } from '@/features/schedule/lib/dates'
+import { getExplainedCumulativeProgress } from '@/features/project-controls/server/get-explained-cumulative-progress'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 /** GET /api/manager/cumulative-progress?projectId=&asOf= — explained Planned / Actual cumulative % with WBS breakdown. */
 export async function GET(request: NextRequest) {

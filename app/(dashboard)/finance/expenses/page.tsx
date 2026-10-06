@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { loadRolePageData } from '@/lib/dashboard/load-role-page'
-import { hasRoleDashboardAccess } from '@/lib/schedule/access'
-import { ExpenseManagement } from '@/components/finance/expense-management'
+import { createClient } from '@/shared/lib/supabase/server'
+import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'
+import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
+import { ExpenseManagement } from '@/features/finance/components/expense-management'
 
 /** Dedicated Expense Management — micro expenses live here, not on the accountant dashboard. */
 export default async function FinanceExpensesPage() {

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
-import { assertProjectAccess, requireUser } from '@/lib/site-ops/auth'
-import { captureProgressSnapshots } from '@/lib/schedule/progress-snapshots'
-import { WorkshopError } from '@/lib/workshop/domain'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { createServiceClient } from '@/shared/lib/supabase/service'
+import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
+import { captureProgressSnapshots } from '@/features/schedule/lib/progress-snapshots'
+import { WorkshopError } from '@/features/workshop/lib/domain'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 function cronAuthorized(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET

@@ -2,14 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { PageHeader } from '@/components/admin/shared'
-import { HeaderCalendarSwitcher } from '@/components/schedule/header-calendar-switcher'
+import { createClient } from '@/shared/lib/supabase/client'
+import { Button } from '@/shared/components/ui/button'
+import { Input } from '@/shared/components/ui/input'
+import { Label } from '@/shared/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
+import { Alert, AlertDescription } from '@/shared/components/ui/alert'
+import { PageHeader } from '@/features/admin/components/shared'
+import { HeaderCalendarSwitcher } from '@/features/schedule/components/header-calendar-switcher'
 
 export default function SettingsPage() {
   const router = useRouter()

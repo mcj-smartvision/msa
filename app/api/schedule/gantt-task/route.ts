@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { updateGanttTaskDates } from '@/lib/schedule/gantt-service'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { updateGanttTaskDates } from '@/features/schedule/lib/gantt-service'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 /** PATCH /api/schedule/gantt-task — drag/resize persist + parent expand */
 export async function PATCH(request: NextRequest) {

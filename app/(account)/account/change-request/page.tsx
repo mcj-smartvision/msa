@@ -1,9 +1,9 @@
 'use client'
 
-import { AccountPageShell } from '@/components/account/account-page-shell'
-import { AccountChangeRequestForm } from '@/components/account/account-change-request-form'
-import { accountCopy } from '@/lib/account/copy'
-import { useLocale } from '@/components/i18n/locale-provider'
+import { AccountPageShell } from '@/features/account/components/account-page-shell'
+import { AccountChangeRequestForm } from '@/features/account/components/account-change-request-form'
+import { accountCopy } from '@/features/account/lib/copy'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
 
 export default function AccountChangeRequestPage() {
   const { locale } = useLocale()

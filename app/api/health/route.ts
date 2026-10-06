@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getPublicEnvStatus } from '@/lib/env/public'
-import { createServiceClient } from '@/lib/supabase/service'
+import { getPublicEnvStatus } from '@/shared/lib/env/public'
+import { createServiceClient } from '@/shared/lib/supabase/service'
 
 export const dynamic = 'force-dynamic'
 

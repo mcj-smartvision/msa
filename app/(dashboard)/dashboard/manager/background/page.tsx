@@ -1,5 +1,5 @@
-import { loadManagerPageProps } from '@/lib/manager/page-props'
-import { ManagerDashboard } from '@/components/manager/manager-dashboard'
+import { loadManagerPageProps } from '@/features/manager/lib/page-props'
+import { ManagerDashboard } from '@/features/manager/components/manager-dashboard'
 
 export default async function ManagerBackgroundPage() {
   const props = await loadManagerPageProps()

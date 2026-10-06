@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { allocateExecutedByMonths, buildContractorMonthlyCostModel } from '@/lib/finance/contractor-monthly-cost'
-import { enumerateProjectJalaliMonths } from '@/lib/schedule/monthly-deducted-weight'
+import { allocateExecutedByMonths, buildContractorMonthlyCostModel } from '@/features/finance/lib/contractor-monthly-cost'
+import { enumerateProjectJalaliMonths } from '@/features/schedule/lib/monthly-deducted-weight'
 
 describe('contractor monthly cost', () => {
   it('spreads executed cost across the activity months', () => {

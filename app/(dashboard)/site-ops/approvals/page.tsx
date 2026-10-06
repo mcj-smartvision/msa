@@ -1,4 +1,4 @@
-import { ApprovalsWorkspace } from '@/components/workshop/approvals-workspace'
+import { ApprovalsWorkspace } from '@/features/workshop/components/approvals-workspace'
 
 export default function WorkshopApprovalsPage() {
   return <ApprovalsWorkspace />

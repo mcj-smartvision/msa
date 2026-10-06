@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
-import { requireUser } from '@/lib/site-ops/auth'
-import { SiteOpsError } from '@/lib/site-ops-domain/errors'
-import { assertManagerAccess } from '@/lib/manager/access'
+import { createClient } from '@/shared/lib/supabase/server'
+import { createServiceClient } from '@/shared/lib/supabase/service'
+import { requireUser } from '@/features/site-ops/lib/auth'
+import { SiteOpsError } from '@/features/site-ops/domain/errors'
+import { assertManagerAccess } from '@/features/manager/lib/access'
 import {
-  MANAGER_REMINDER_PREFIX,
-  PULSE_ROLES,
-  REMINDER_COOLDOWN_MS,
-  REMINDER_COPY,
-  isPulseKey,
-} from '@/lib/manager/pulse-config'
-import { resolveNotifyEmail } from '@/lib/auth/login-identifier'
-import { sendEmail } from '@/lib/email/send'
-import { workshopErrorResponse } from '@/lib/workshop/service'
+MANAGER_REMINDER_PREFIX,
+PULSE_ROLES,
+REMINDER_COOLDOWN_MS,
+REMINDER_COPY,
+isPulseKey,
+} from '@/features/manager/lib/pulse-config'
+import { resolveNotifyEmail } from '@/shared/lib/auth/login-identifier'
+import { sendEmail } from '@/shared/lib/email/send'
+import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 type Row = Record<string, unknown>
 

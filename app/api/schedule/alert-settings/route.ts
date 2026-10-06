@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/shared/lib/supabase/server'
 import {
-  loadProjectAlertSettings,
-  saveProjectAlertSettings,
-  type ProjectAlertSettingsPatch,
-} from '@/lib/schedule/run-float-alerts'
+loadProjectAlertSettings,
+saveProjectAlertSettings,
+type ProjectAlertSettingsPatch,
+} from '@/features/schedule/lib/run-float-alerts'
 
 /**
  * GET  /api/schedule/alert-settings?projectId=…

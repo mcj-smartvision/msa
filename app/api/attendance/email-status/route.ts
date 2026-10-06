@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { getEmailRuntimeStatus } from '@/lib/email/send'
-import { requireUser } from '@/lib/site-ops/auth'
-import { attendanceErrorResponse } from '@/lib/attendance/service'
+import { createClient } from '@/shared/lib/supabase/server'
+import { getEmailRuntimeStatus } from '@/shared/lib/email/send'
+import { requireUser } from '@/features/site-ops/lib/auth'
+import { attendanceErrorResponse } from '@/features/attendance/lib/service'
 
 export async function GET() {
   try {
