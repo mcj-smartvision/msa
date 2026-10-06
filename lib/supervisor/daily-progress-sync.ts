@@ -32,3 +32,19 @@ export async function postDailyProgress(
   }
   if (synced) publishScheduleViewSync(projectId)
 }
+
+/** Removes the progress history of activities on given days via DELETE /api/supervisor/daily-progress. */
+export async function deleteDailyProgress(
+  projectId: string,
+  deletions: { activityId: string; reportDate: string }[]
+): Promise<void> {
+  if (deletions.length === 0) return
+  const res = await fetch('/api/supervisor/daily-progress', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId, deletions }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'حذف گزارش ناموفق بود')
+  publishScheduleViewSync(projectId)
+}

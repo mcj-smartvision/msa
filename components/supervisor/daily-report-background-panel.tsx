@@ -16,9 +16,10 @@ import {
   upsertDailyEntries,
   writeProjectDailyProgress,
 } from '@/lib/supervisor/daily-progress-storage'
-import { postDailyProgress } from '@/lib/supervisor/daily-progress-sync'
+import { deleteDailyProgress, postDailyProgress } from '@/lib/supervisor/daily-progress-sync'
 import {
   buildProgressLedgerRows,
+  ledgerDateRange,
   plannedProgressFrom,
   plannedWorkdays,
   type PlannedDay,
@@ -27,11 +28,13 @@ import {
   calendarDays,
   cumulativeEntry,
   historyFromServer,
+  latestReport,
   mergeProgressHistory,
   reportedDays,
   type ReportedDayProgress,
   type ServerProgressRow,
   withLatestReports,
+  withoutDay,
 } from '@/lib/supervisor/weekly-activity-progress'
 import type { ScheduleTreeNode, WorkshopPackageNode } from '@/lib/workshop/types'
 import { cn } from '@/lib/utils'
@@ -76,8 +79,8 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState<{ activityId: string; date: string } | null>(null)
   const [draft, setDraft] = useState('')
-  /** Unsaved daily values by `activityId@date`. */
-  const [drafts, setDrafts] = useState<Record<string, number>>({})
+  /** Unsaved cumulative percents by `activityId@date`; null removes that day's report. */
+  const [drafts, setDrafts] = useState<Record<string, number | null>>({})
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -128,17 +131,25 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
   )
   const history = useMemo(() => mergeProgressHistory(serverHistory, localEntries), [serverHistory, localEntries])
 
-  /** Saved history with the drafts applied day by day, and the entries the drafts change. */
-  const { preview, changed } = useMemo(() => {
+  /** Saved history with the drafts applied day by day, the entries they set and the days they remove. */
+  const { preview, changed, removed } = useMemo(() => {
     let working = history
     const out: DailyProgressEntry[] = []
+    const removed: { activityId: string; reportDate: string }[] = []
     for (const [key, value] of Object.entries(drafts).sort(([a], [b]) => a.localeCompare(b))) {
       const at = key.lastIndexOf('@')
-      const entry = cumulativeEntry(key.slice(0, at), working, key.slice(at + 1), value)
+      const activityId = key.slice(0, at)
+      const date = key.slice(at + 1)
+      if (value == null) {
+        working = withoutDay(activityId, working, date)
+        removed.push({ activityId, reportDate: date })
+        continue
+      }
+      const entry = cumulativeEntry(activityId, working, date, value)
       working = upsertDailyEntries(working, [entry])
       out.push(entry)
     }
-    return { preview: working, changed: out }
+    return { preview: working, changed: out, removed }
   }, [history, drafts])
 
   const cellsOf = useCallback(
@@ -164,25 +175,22 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
     return () => window.removeEventListener('beforeunload', warn)
   }, [draftCount])
 
-  /** Required progress of each activity, counted from its first reported progress. */
+  /** Required progress of each activity over its scheduled start–finish. */
   const plannedByActivity = useMemo(() => {
     const out = new Map<string, Map<string, PlannedDay>>()
     for (const row of rows) {
-      if (!row.activityId) continue
-      const first = [...(cellsByActivity.get(row.activityId)?.values() ?? [])].find((c) => c.cumulative > 0)
-      if (first) out.set(row.activityId, plannedProgressFrom(first.date, plannedWorkdays(row.startDate, row.finishDate)))
+      if (!row.activityId || !row.startDate) continue
+      out.set(row.activityId, plannedProgressFrom(row.startDate, plannedWorkdays(row.startDate, row.finishDate)))
     }
     return out
-  }, [rows, cellsByActivity])
+  }, [rows])
 
-  /** From the first day with reported progress to today, the last report or the last required day. */
+  /** From the project's scheduled start to its scheduled finish, widened to cover reports and today. */
   const days = useMemo(() => {
     const reported = preview.filter((e) => e.percentComplete > 0).map((e) => e.reportDate)
-    const planned = [...plannedByActivity.values()].flatMap((m) => [...m.keys()])
-    const dates = [today, ...reported, ...planned].sort()
-    const from = reported.length ? reported.sort()[0]! : today
-    return calendarDays(from, dates[dates.length - 1]!)
-  }, [preview, plannedByActivity, today])
+    const range = ledgerDateRange(rows, [today, ...reported])
+    return range ? calendarDays(range.from, range.to) : []
+  }, [rows, preview, today])
 
   const visibleRows = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -223,7 +231,6 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
     const value = parseDraft(draft)
     if (value == null ? draft.trim() !== '' : value > 100) return
     setEditing(null)
-    if (value == null) return
     const saved = savedCells.get(activityId)?.get(date)?.cumulative ?? null
     setDrafts((prev) => {
       const next = { ...prev }
@@ -234,17 +241,26 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
   }
 
   async function saveAll() {
-    if (!projectId || saving || changed.length === 0) return
+    if (!projectId || saving || draftCount === 0) return
     setSaving(true)
     setError(null)
     setSavedMsg(null)
     try {
       const stored = readProjectDailyProgress(projectId)
-      const nextLocal = upsertDailyEntries(stored.entries, changed)
+      let nextLocal = stored.entries
+      for (const r of removed) nextLocal = withoutDay(r.activityId, nextLocal, r.reportDate)
+      nextLocal = upsertDailyEntries(nextLocal, changed)
       writeProjectDailyProgress(projectId, { ...stored, entries: nextLocal })
       setLocalEntries(nextLocal)
       window.dispatchEvent(new CustomEvent('sitepilot-daily-progress-updated', { detail: { projectId } }))
+      await deleteDailyProgress(projectId, removed)
       const toPost = withLatestReports(changed, preview)
+      for (const activityId of new Set(removed.map((r) => r.activityId))) {
+        const latest = latestReport(activityId, preview)
+        if (latest && !toPost.some((e) => e.activityId === activityId && e.reportDate === latest.reportDate)) {
+          toPost.push({ ...latest, activityId })
+        }
+      }
       await postDailyProgress(projectId, toPost, toPost.map((r) => r.reportDate))
       await loadHistory()
       setSavedMsg(`${faNum(draftCount)} تغییر ذخیره شد.`)
@@ -275,9 +291,11 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
           <h2 className="text-base font-bold text-slate-900">بک‌گراند گزارش‌های روزانه</h2>
           <p className="text-xs leading-5 text-slate-500">
             در هر خانه، عدد بالا درصد پیشرفت تجمعی ثبت‌شده سرپرست تا آن روز است (۰ تا ۱۰۰) و عدد کوچک آبی پایین، پیشرفت
-            اجباری تجمعی برای مقایسه است: از روزی که اولین پیشرفت فعالیت ثبت شده، هر روز کاری (بدون جمعه) ۱۰۰ تقسیم بر
-            روزهای کاری برنامه‌ای فعالیت اضافه می‌شود تا روز آخر که به ۱۰۰ می‌رسد. ستون «تجمعی» آخرین عدد ثبت‌شده را
-            نشان می‌دهد. خانه‌های تغییرکرده زرد می‌شوند؛ عددی که از روز قبلش کمتر باشد قرمز می‌شود. در پایان «ذخیره تغییرات»
+            اجباری تجمعی طبق برنامه زمانبندی است: از تاریخ شروع فعالیت در برنامه، هر روز کاری (بدون جمعه) ۱۰۰ تقسیم بر
+            روزهای کاری فعالیت اضافه می‌شود تا تاریخ پایان آن که به ۱۰۰ می‌رسد. جدول از تاریخ شروع پروژه در برنامه شروع
+            می‌شود و بازهٔ هر فعالیت آبی کم‌رنگ است. ستون «تجمعی» آخرین عدد ثبت‌شده را
+            نشان می‌دهد. خانه‌های تغییرکرده زرد می‌شوند؛ عددی که از روز قبلش کمتر باشد قرمز می‌شود. برای حذف گزارش یک روز،
+            عدد خانه را پاک کنید و Enter بزنید. در پایان «ذخیره تغییرات»
             را بزنید تا همه با هم در برنامه زمانبندی، نمودارها و گزارش‌ها ثبت شوند.
           </p>
         </div>
@@ -407,9 +425,11 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
                         data-act={row.activityId!}
                         data-date={d}
                         title={[
-                          cell
-                            ? `ثبت سرپرست — تجمعی: ${faNum(cell.cumulative)}٪، پیشرفت همان روز: ${cell.daily == null ? '—' : `${faNum(cell.daily)}٪`}`
-                            : 'گزارشی ثبت نشده — برای ثبت درصد تجمعی کلیک کنید',
+                          drafts[key] === null
+                            ? 'گزارش این روز با «ذخیره تغییرات» حذف می‌شود'
+                            : cell
+                              ? `ثبت سرپرست — تجمعی: ${faNum(cell.cumulative)}٪، پیشرفت همان روز: ${cell.daily == null ? '—' : `${faNum(cell.daily)}٪`} (برای حذف، عدد را پاک کنید)`
+                              : 'گزارشی ثبت نشده — برای ثبت درصد تجمعی کلیک کنید',
                           planned != null
                             ? `اجباری طبق برنامه — تجمعی: ${faNum(planned.cumulative)}٪ (روزی ${faNum(planned.daily)}٪)`
                             : null,
@@ -424,7 +444,7 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
                           d === today && 'bg-amber-50',
                           cell && 'font-semibold text-amber-800',
                           cell?.daily != null && cell.daily < 0 && 'text-red-600',
-                          key in drafts && 'bg-amber-200 font-bold text-amber-950 ring-1 ring-inset ring-amber-500',
+                          drafts[key] != null && 'bg-amber-200 font-bold text-amber-950 ring-1 ring-inset ring-amber-500',
                           'hover:outline hover:outline-1 hover:outline-[#1e3a5f]'
                         )}
                       >
@@ -450,7 +470,9 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
                           />
                         ) : (
                           <div className="flex flex-col items-center leading-tight">
-                            <span className="min-h-[14px]">{cell ? faNum(cell.cumulative) : ''}</span>
+                            <span className="min-h-[14px]">
+                              {drafts[key] !== null && cell ? faNum(cell.cumulative) : ''}
+                            </span>
                             {planned != null ? (
                               <span className="text-[9px] font-normal text-sky-700">{faNum(planned.cumulative)}</span>
                             ) : null}
@@ -471,7 +493,7 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
           <span className="font-semibold text-amber-800">۴۵</span> تجمعی ثبت‌شده سرپرست
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="text-sky-700">۵۰</span> پیشرفت اجباری تجمعی از روز اول ثبت
+          <span className="text-sky-700">۵۰</span> پیشرفت اجباری تجمعی طبق برنامه
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="h-3 w-3 rounded-sm border border-slate-200 bg-sky-50" /> بازهٔ برنامه‌ریزی‌شدهٔ فعالیت

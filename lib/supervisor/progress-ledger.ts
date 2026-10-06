@@ -103,8 +103,8 @@ export interface PlannedDay {
 }
 
 /**
- * Required progress counted from the day the activity's first progress was reported: on each of the
- * next `workdays` working days the cumulative rises by 100 / `workdays`, reaching 100 on the last one.
+ * Required progress counted from `firstDate`: on each of the next `workdays` working days the cumulative
+ * rises by 100 / `workdays`, reaching 100 on the last one.
  */
 export function plannedProgressFrom(firstDate: string, workdays: number): Map<string, PlannedDay> {
   const out = new Map<string, PlannedDay>()

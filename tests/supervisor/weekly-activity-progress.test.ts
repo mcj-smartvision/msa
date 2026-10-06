@@ -7,9 +7,11 @@ import {
   cumulativeEntry,
   reportedDays,
   historyFromServer,
+  latestReport,
   mergeProgressHistory,
   siteWeekStart,
   withLatestReports,
+  withoutDay,
 } from '@/lib/supervisor/weekly-activity-progress'
 import type { DailyProgressEntry } from '@/lib/supervisor/daily-report-activities'
 
@@ -143,6 +145,16 @@ describe('cumulativeEntry / withLatestReports', () => {
     })
     expect(cumulativeEntry('a1', entries, '2026-10-04', 130).percentComplete).toBe(100)
     expect(cumulativeEntry('new', entries, '2026-09-21', 30).dailyIncrement).toBe(30)
+  })
+
+  it('withoutDay drops that day under any id form; latestReport is the newest left', () => {
+    const mixed = [e('2026-10-01', 55, 'schedule:t1'), e('2026-10-03', 100, 't1'), e('2026-10-03', 40, 'other')]
+    const left = withoutDay('schedule:t1', mixed, '2026-10-03')
+    expect(left.map((r) => [r.activityId, r.reportDate])).toEqual([
+      ['schedule:t1', '2026-10-01'],
+      ['other', '2026-10-03'],
+    ])
+    expect(latestReport('schedule:t1', left)?.percentComplete).toBe(55)
   })
 
   it('re-sends the latest later report so the schedule ends on it', () => {

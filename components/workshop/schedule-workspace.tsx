@@ -1758,7 +1758,14 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         if (!res.ok) throw new Error(data.error || 'ذخیره پکیج ناموفق بود')
       }
 
-      for (const [taskId, patch] of entries) {
+      // Each date save re-chains its successors, so earlier tasks go first and every edited
+      // date is written after the edits of its predecessors.
+      const startOf = (taskId: string, patch: (typeof entries)[number][1]) =>
+        toIsoDateOnly(patch.startDate) ??
+        toIsoDateOnly(scheduleTaskFlat.find((n) => n.taskId === taskId)?.startDate) ??
+        '9999-12-31'
+      const ordered = [...entries].sort(([a, pa], [b, pb]) => startOf(a, pa).localeCompare(startOf(b, pb)))
+      for (const [taskId, patch] of ordered) {
         if (
           patch.startDate === undefined &&
           patch.finishDate === undefined &&

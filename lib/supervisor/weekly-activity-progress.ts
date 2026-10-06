@@ -152,6 +152,17 @@ export function cumulativeEntry(
   return { activityId, reportDate: date, percentComplete, dailyIncrement: round2(percentComplete - (before?.percentComplete ?? 0)) }
 }
 
+/** `entries` without the reports of `activityId` (under any of its id forms) on `date`. */
+export function withoutDay(activityId: string, entries: DailyProgressEntry[], date: string): DailyProgressEntry[] {
+  const keys = new Set(dailyReportActivityLookupIds(activityId))
+  return entries.filter((e) => e.reportDate !== date || !keys.has(e.activityId))
+}
+
+/** The latest report of an activity, if any. */
+export function latestReport(activityId: string, entries: DailyProgressEntry[]): DailyProgressEntry | null {
+  return activityEntries(activityId, entries).at(-1) ?? null
+}
+
 /**
  * `changed` plus, per activity, its latest report after the changed days (taken from `entries`), so that
  * posting them oldest first leaves the schedule on each activity's latest percent.
