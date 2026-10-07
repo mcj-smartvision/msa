@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
-import { persistParentProgressRollup } from '@/features/schedule/lib/persist-parent-progress'
+import { refreshScheduleAfterProgress } from '@/features/schedule/lib/refresh-after-progress'
 import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
 import { parseDailyReportActivityRef } from '@/features/supervisor/lib/daily-report-activities'
 import { persistSupervisorPhysicalProgress } from '@/features/supervisor/lib/persist-daily-progress'
@@ -169,11 +169,7 @@ export async function DELETE(request: NextRequest) {
       if ((data ?? []).length > 0) await restoreLatestReportedPercent(supabase, projectId, ref)
     }
 
-    try {
-      await persistParentProgressRollup(supabase, projectId)
-    } catch (error) {
-      console.error('[supervisor/daily-progress] heading rollup failed', error)
-    }
+    await refreshScheduleAfterProgress(supabase, projectId)
     return NextResponse.json({ ok: true, deleted })
   } catch (error) {
     if (error instanceof WorkshopError) return workshopErrorResponse(error)

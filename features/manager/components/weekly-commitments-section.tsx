@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { AlertTriangle, CalendarCheck } from 'lucide-react'
+import { AlertTriangle, CalendarCheck, CircleHelp, X } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { faNumber, jalaliDate } from '@/features/manager/lib/format'
 import type { ManagerOverview } from '@/features/manager/lib/overview-types'
@@ -17,6 +17,17 @@ type WeeklyCommitmentsData,
 type WeeklyCommitmentsResult,
 } from '@/features/manager/lib/weekly-commitments'
 import { LoadingRows, SectionCard } from './manager-ui'
+import {
+CommitmentsHelp,
+LocksHelp,
+pct as pctDigits,
+PpcHelp,
+RncHelp,
+SpiHelp,
+SpiTHelp,
+TrendHelp,
+type HelpContext,
+} from './weekly-commitments-help'
 
 const TONE_COLOR: Record<PpcTone, string> = { good: '#12a06b', warn: '#f5a524', bad: '#e5484d' }
 const TONE_CHIP: Record<PpcTone, string> = {
@@ -70,6 +81,7 @@ function useJson<T>(url: string | null, refreshKey: string | null): Load<T> {
 }
 
 const pct = (v: number) => `${faNumber(Math.round(v))}٪`
+const pctUpTo1 = (v: number) => pctDigits(v, 1)
 
 function Chip({ tone, label }: { tone: PpcTone | 'none'; label: string }) {
   return (
@@ -84,11 +96,62 @@ function Chip({ tone, label }: { tone: PpcTone | 'none'; label: string }) {
   )
 }
 
-function CardTop({ title, sub, en, chip }: { title: string; sub?: string; en?: string; chip?: ReactNode }) {
+/** «؟» next to a card title; opens the full explanation of that card with its current numbers. */
+function HelpButton({ title, children }: { title: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={`راهنمای کامل ${title}`}
+        title="توضیح کامل"
+        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-[#1e2a5e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+      >
+        <CircleHelp className="h-4 w-4" aria-hidden />
+      </button>
+      {open ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-3" onClick={() => setOpen(false)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-xl"
+          >
+            <div className="sticky top-0 flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 py-3">
+              <p className="text-base font-bold text-slate-800">{title}</p>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="بستن"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+            <div className="space-y-4 px-5 py-4 text-[13px] leading-7 text-slate-700">{children}</div>
+          </div>
+        </div>
+      ) : null}
+    </>
+  )
+}
+
+function CardTop({ title, sub, en, chip, help }: { title: string; sub?: string; en?: string; chip?: ReactNode; help?: ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-2.5">
       <div className="min-w-0">
-        <p className="text-sm font-bold text-slate-800">{title}</p>
+        <div className="flex items-center gap-1">
+          <p className="text-sm font-bold text-slate-800">{title}</p>
+          {help ? <HelpButton title={title}>{help}</HelpButton> : null}
+        </div>
         {en ? (
           <p className="mt-0.5 text-[10.5px] text-slate-500" dir="ltr" style={{ textAlign: 'right' }}>
             {en}
@@ -289,17 +352,18 @@ function PpcTrend({ data }: { data: WeeklyCommitmentsData }) {
               height={H - PB - y(v)}
               rx={6}
               fill={TONE_COLOR[ppcTone(v, data.target)]}
-              opacity={last ? 1 : 0.72}
+              opacity={w.live ? 0.45 : last ? 1 : 0.72}
               stroke={last ? '#1c1b19' : undefined}
               strokeWidth={last ? 2 : undefined}
+              strokeDasharray={w.live ? '5 3' : undefined}
             >
-              <title>{`هفتهٔ ${faNumber(w.weekNumber)} (${jalaliDate(w.start)}): ${faNumber(w.completed)} از ${faNumber(w.planned)} کار · ${w.ppc == null ? '—' : pct(w.ppc)}`}</title>
+              <title>{`هفتهٔ ${faNumber(w.weekNumber)} (${jalaliDate(w.start)})${w.live ? ' · جاری، تا این لحظه' : ''}: ${faNumber(w.completed)} از ${faNumber(w.planned)} کار · ${w.ppc == null ? '—' : pct(w.ppc)}`}</title>
             </rect>
             <text x={x(i) + bw / 2} y={y(v) - 6} textAnchor="middle" fontSize={last ? 12 : 10} fontWeight={last ? 800 : 600} fill={last ? '#1c1b19' : '#8a867e'}>
               {w.ppc == null ? '—' : faNumber(Math.round(w.ppc))}
             </text>
             <text x={x(i) + bw / 2} y={H - 10} textAnchor="middle" fontSize={9.5} fontWeight={last ? 800 : 400} fill={last ? '#1c1b19' : '#8a867e'}>
-              {`هفتهٔ ${faNumber(w.weekNumber)}`}
+              {w.live ? 'هفتهٔ جاری' : `هفتهٔ ${faNumber(w.weekNumber)}`}
             </text>
           </g>
         )
@@ -406,10 +470,11 @@ function WeeklyCommitmentsBody({
   const bannerParts: string[] = []
   if (ppcData && ppc != null) {
     const gap = ppcData.target - ppc
+    const which = current?.live ? 'هفتهٔ جاری تا این لحظه' : 'آخرین هفتهٔ بسته‌شده'
     bannerParts.push(
       gap > 0
-        ? `PPC آخرین هفتهٔ بسته‌شده ${pct(ppc)} است؛ ${faNumber(Math.round(gap))} واحد زیر هدف.`
-        : `PPC آخرین هفتهٔ بسته‌شده ${pct(ppc)} است و به هدف ${pct(ppcData.target)} رسیده.`
+        ? `PPC ${which} ${pct(ppc)} است؛ ${faNumber(Math.round(gap))} واحد زیر هدف.`
+        : `PPC ${which} ${pct(ppc)} است و به هدف ${pct(ppcData.target)} رسیده.`
     )
     const top = ppcData.rnc.causes[0]
     if (top) bannerParts.push(`علت ریشه‌ای اصلی در ${faNumber(ppcData.rnc.weeks)} هفتهٔ اخیر «${top.label}» بوده (${pct(top.share)}).`)
@@ -426,6 +491,17 @@ function WeeklyCommitmentsBody({
   const pvPct = snapshot?.pv.value ?? null
   const ppcTn = ppc != null && ppcData ? ppcTone(ppc, ppcData.target) : null
   const delta = ppc != null && ppcData?.previousPpc != null ? ppc - ppcData.previousPpc : null
+  const helpCtx: HelpContext = {
+    ppcData,
+    ppcMissing,
+    spi: spi?.value ?? null,
+    spiT: spiT?.value ?? null,
+    evPct,
+    pvPct,
+    es,
+    at,
+    unitFa,
+  }
 
   return (
     <div className="space-y-3.5">
@@ -455,6 +531,7 @@ function WeeklyCommitmentsBody({
           <CardTop
             title="شاخص تعهدات هفتگی (PPC)"
             en="Percent Plan Complete"
+            help={<PpcHelp ctx={helpCtx} />}
             chip={ppcTn ? <Chip tone={ppcTn} label={PPC_LABEL[ppcTn]} /> : <Chip tone="none" label="بدون داده" />}
           />
           {wwp.state === 'loading' ? (
@@ -467,13 +544,16 @@ function WeeklyCommitmentsBody({
                 {pct(ppc)}
               </p>
               <p className="min-h-[42px] text-[11.5px] leading-7 text-slate-500">
+                {current.live ? <span className="me-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10.5px] font-bold text-sky-700">تا این لحظه</span> : null}{' '}
                 <b className="text-slate-800">
                   {faNumber(current.completed)} از {faNumber(current.planned)}
                 </b>{' '}
-                کار تعهدشدهٔ هفتهٔ {faNumber(current.weekNumber)} ({jalaliDate(current.start)} تا {jalaliDate(current.end)}) کامل شد
+                {ppcData.source === 'schedule'
+                  ? `فعالیت برنامهٔ هفتهٔ ${faNumber(current.weekNumber)} (${jalaliDate(current.start)} تا ${jalaliDate(current.end)}) به درصد برنامه رسید`
+                  : `کار تعهدشدهٔ هفتهٔ ${faNumber(current.weekNumber)} (${jalaliDate(current.start)} تا ${jalaliDate(current.end)}) کامل شد`}
                 <br />
                 {delta != null ? `${delta < 0 ? '▼' : '▲'} ${faNumber(Math.abs(Math.round(delta)))} واحد درصد نسبت به هفتهٔ قبل` : 'هفتهٔ قبلی برای مقایسه نیست'}
-                {ppcData.average4 != null ? ` · میانگین ${faNumber(ppcData.rnc.weeks)} هفته ${pct(ppcData.average4)}` : ''}
+                {ppcData.average4 != null ? ` · میانگین ${faNumber(ppcData.rnc.weeks)} هفتهٔ بسته‌شده ${pct(ppcData.average4)}` : ''}
               </p>
             </>
           ) : (
@@ -487,6 +567,7 @@ function WeeklyCommitmentsBody({
           <CardTop
             title="شاخص عملکرد زمانی (SPI)"
             en="Schedule Performance Index"
+            help={<SpiHelp ctx={helpCtx} />}
             chip={spi?.value != null ? <Chip tone={indexTone(spi.value)} label={INDEX_LABEL[indexTone(spi.value)]} /> : <Chip tone="none" label="بدون داده" />}
           />
           {controls.state === 'loading' ? (
@@ -518,6 +599,7 @@ function WeeklyCommitmentsBody({
           <CardTop
             title="شاخص عملکرد زمانی (SPI(t))"
             en="Time-based SPI · Earned Schedule"
+            help={<SpiTHelp ctx={helpCtx} />}
             chip={spiT?.value != null ? <Chip tone={indexTone(spiT.value)} label={INDEX_LABEL[indexTone(spiT.value)]} /> : <Chip tone="none" label="بدون داده" />}
           />
           {controls.state === 'loading' ? (
@@ -549,7 +631,7 @@ function WeeklyCommitmentsBody({
         </div>
 
         <div className={cn(CARD, 'border-rose-200 bg-rose-50/60')}>
-          <CardTop title="قفل‌های هفتهٔ آینده" sub="کارهایی که به‌خاطر یک محدودیت هنوز آمادهٔ اجرا نیستند" />
+          <CardTop title="قفل‌های هفتهٔ آینده" sub="کارهایی که به‌خاطر یک محدودیت هنوز آمادهٔ اجرا نیستند" help={<LocksHelp />} />
           <div className="mt-2.5 flex items-center gap-3">
             <span className="grid h-[46px] w-[46px] shrink-0 place-items-center rounded-full border-[1.5px] border-rose-300 bg-rose-100">
               <AlertTriangle className="h-6 w-6 text-rose-500" aria-hidden />
@@ -562,7 +644,15 @@ function WeeklyCommitmentsBody({
 
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[1.2fr_1fr]">
         <div className={CARD}>
-          <CardTop title="روند هفتگی PPC" sub={ppcData ? `${faNumber(ppcData.weeks.length)} هفتهٔ بسته‌شدهٔ اخیر در برابر هدف` : 'هفته‌های بسته‌شدهٔ اخیر در برابر هدف'} />
+          <CardTop
+            title="روند هفتگی PPC"
+            help={<TrendHelp ctx={helpCtx} />}
+            sub={
+              ppcData
+                ? `${faNumber(ppcData.weeks.filter((w) => !w.live).length)} هفتهٔ بسته‌شدهٔ اخیر${ppcData.weeks.some((w) => w.live) ? ' و هفتهٔ جاری (خط‌چین)' : ''} در برابر هدف`
+                : 'هفته‌های بسته‌شدهٔ اخیر در برابر هدف'
+            }
+          />
           {ppcData && ppcData.weeks.length ? (
             <PpcTrend data={ppcData} />
           ) : (
@@ -573,8 +663,17 @@ function WeeklyCommitmentsBody({
         </div>
         <div className={CARD}>
           <CardTop
-            title={current ? `کارهای تعهدشدهٔ هفتهٔ ${faNumber(current.weekNumber)}` : 'کارهای تعهدشدهٔ آخرین هفته'}
-            sub="هر کادر یک کار است؛ ناتمام‌ها اول آمده‌اند"
+            title={
+              current
+                ? `${ppcData?.source === 'schedule' ? 'فعالیت‌های برنامهٔ' : 'کارهای تعهدشدهٔ'} ${current.live ? 'هفتهٔ جاری' : `هفتهٔ ${faNumber(current.weekNumber)}`}`
+                : 'کارهای تعهدشدهٔ آخرین هفته'
+            }
+            help={<CommitmentsHelp ctx={helpCtx} />}
+            sub={
+              ppcData?.source === 'schedule'
+                ? 'هر کادر یک فعالیت است: درصد ثبت‌شده در برابر درصدی که برنامه تا پایان پنج‌شنبه می‌خواهد؛ عقب‌مانده‌ها اول آمده‌اند'
+                : 'هر کادر یک کار است؛ ناتمام‌ها اول آمده‌اند'
+            }
           />
           {current && current.commitments.length ? (
             <>
@@ -586,7 +685,11 @@ function WeeklyCommitmentsBody({
                       <b className="flex-1 truncate font-semibold" title={c.description}>
                         {c.description}
                       </b>
-                      <em className="text-[11px] font-extrabold not-italic">{pct(100)}</em>
+                      <em className="text-[11px] font-extrabold not-italic">
+                        {c.targetPercent != null && c.actualPercent != null
+                          ? `${pctUpTo1(c.actualPercent)} / ${pctUpTo1(c.targetPercent)}`
+                          : pct(100)}
+                      </em>
                     </div>
                   ) : (
                     <div key={i} className="min-w-0 rounded-[11px] border-[1.5px] border-rose-200 bg-rose-50 px-2.5 py-2 text-[11.5px] leading-6">
@@ -600,7 +703,11 @@ function WeeklyCommitmentsBody({
                       ) : null}
                       <div className="mt-1 flex items-center justify-between gap-1.5 text-[10.5px]">
                         <span className="text-[13px] font-extrabold text-rose-600">
-                          {c.progressPercent != null ? `${pct(c.progressPercent)} پیشرفت` : 'انجام نشد'}
+                          {c.targetPercent != null && c.actualPercent != null
+                            ? `${pctUpTo1(c.actualPercent)} از ${pctUpTo1(c.targetPercent)} برنامه`
+                            : c.progressPercent != null
+                              ? `${pct(c.progressPercent)} پیشرفت`
+                              : 'انجام نشد'}
                         </span>
                         {c.rootCause ? (
                           <span className="font-bold" style={{ color: CAUSE_COLOR[c.rootCause] }} title={c.rootCauseNote ?? undefined}>
@@ -613,7 +720,9 @@ function WeeklyCommitmentsBody({
                 )}
               </div>
               <p className="mt-3 rounded-[10px] border border-slate-200 bg-[#faf9f7] px-3 py-2 text-xs leading-6 text-slate-500">
-                کار نیمه‌تمام در PPC صفر حساب می‌شود؛ حتی کاری که بخشی از آن پیش رفته هنوز «انجام‌نشده» است.
+                {ppcData?.source === 'schedule'
+                  ? 'فعالیتی نمره می‌گیرد که درصد ثبت‌شده‌اش تا پایان پنج‌شنبه به درصد برنامه برسد یا از آن بیشتر شود؛ حتی کمی کمتر یعنی «انجام‌نشده».'
+                  : 'کار نیمه‌تمام در PPC صفر حساب می‌شود؛ حتی کاری که بخشی از آن پیش رفته هنوز «انجام‌نشده» است.'}
               </p>
             </>
           ) : (
@@ -628,6 +737,7 @@ function WeeklyCommitmentsBody({
         <div className={CARD}>
           <CardTop
             title="علل ریشه‌ای عدم تحقق (RNC)"
+            help={<RncHelp />}
             sub={`Reasons for Non-Completion · سهم هر علت در ${faNumber(ppcData?.rnc.weeks || 4)} هفتهٔ اخیر`}
           />
           {ppcData && ppcData.rnc.total > 0 ? (
@@ -646,13 +756,25 @@ function WeeklyCommitmentsBody({
               ) : null}
             </>
           ) : (
-            <Ghost reason={ppcData ? 'در این هفته‌ها همهٔ تعهدات انجام شده و علتی ثبت نشده است.' : ppcMissing ?? 'داده‌ای نیست'}>
+            <Ghost
+              reason={
+                ppcData?.source === 'schedule'
+                  ? 'ثبت علت عدم تحقق برای هر تعهد، همراه با ورود برنامهٔ تعهدات هفتگی در فاز بعد اضافه می‌شود.'
+                  : ppcData
+                    ? 'در این هفته‌ها همهٔ تعهدات انجام شده و علتی ثبت نشده است.'
+                    : ppcMissing ?? 'داده‌ای نیست'
+              }
+            >
               <GhostDonut />
             </Ghost>
           )}
         </div>
         <div className={CARD}>
-          <CardTop title="قفل‌های هفته‌های آینده" sub="تعداد کارهایی که به‌علت هر قفل (محدودیت) هنوز آماده اجرا نیستند" />
+          <CardTop
+            title="قفل‌های هفته‌های آینده"
+            sub="تعداد کارهایی که به‌علت هر قفل (محدودیت) هنوز آماده اجرا نیستند"
+            help={<LocksHelp />}
+          />
           <Ghost reason={LOCKS_MISSING}>
             <GhostLockBars />
           </Ghost>
@@ -663,7 +785,7 @@ function WeeklyCommitmentsBody({
         <summary className="cursor-pointer py-1 text-sm font-bold text-slate-800">این شاخص‌ها یعنی چه؟ (توضیح کامل)</summary>
         <div className="mt-3 grid grid-cols-1 gap-3 text-xs leading-7 text-slate-700 md:grid-cols-2">
           {[
-            ['PPC · شاخص تعهدات هفتگی', `هر هفته سرپرست‌ها متعهد می‌شوند چند کار را انجام دهند. PPC یعنی از این تعهدها چند درصد کامل شد. کار نیمه‌تمام صفر حساب می‌شود. هدف رایج ${pct(ppcData?.target ?? 80)} است. فقط هفته‌هایی که بسته و ارزیابی شده‌اند حساب می‌شوند.`],
+            ['PPC · شاخص تعهدات هفتگی', `فعلاً تعهدات هر هفته همان برنامهٔ زمان‌بندی است: هر فعالیتی که بازهٔ برنامه‌ای‌اش با هفته (شنبه تا پنج‌شنبه) هم‌پوشانی دارد، یک تعهد است. درصد لازم هر فعالیت تا پایان پنج‌شنبه، سهم روزهای گذشته از کل روزهای برنامه‌ای آن است (روز تقویمی، مثل منحنی S). اگر درصد ثبت‌شدهٔ سرپرست تا پایان پنج‌شنبه برابر یا بیشتر از آن باشد، فعالیت نمره می‌گیرد. PPC = فعالیت‌های نمره‌گرفته ÷ کل فعالیت‌های هفته؛ هدف رایج ${pct(ppcData?.target ?? 80)}. هفتهٔ جاری تا پنج‌شنبه با پیشرفت تا این لحظه نشان داده می‌شود. در فاز بعد، تعهدات هفتگی جداگانه وارد می‌شوند.`],
             ['RNC · علل ریشه‌ای عدم تحقق', 'برای هر کار ناتمام یک علت ثبت می‌شود (مصالح، اکیپ، نقشه…). جمع این علت‌ها نشان می‌دهد کدام مشکل بیشترین کار را عقب انداخته؛ همان را اول حل کن.'],
             ['قفل‌ها (محدودیت‌ها) و آمادگی کار', '«قفل» هر چیزی است که جلوی شروع یک کار را می‌گیرد: مصالح، نقشه، اکیپ، تجهیزات یا مجوز. کاری «آماده» است که همهٔ قفل‌هایش باز شده باشد.'],
             ['SPI · شاخص عملکرد زمانی', 'SPI = EV ÷ PV؛ پیشرفت کسب‌شده تقسیم بر پیشرفتی که طبق برنامهٔ مبنا تا امروز باید انجام می‌شد. نزدیک پایان پروژه همیشه به ۱ میل می‌کند، حتی اگر پروژه دیر تمام شود.'],
@@ -679,7 +801,7 @@ function WeeklyCommitmentsBody({
       </details>
 
       <p className="text-[11px] text-slate-500">
-        PPC = کارهای کاملاً انجام‌شده ÷ کل کارهای تعهدشدهٔ هفتهٔ بسته‌شده (هدف {pct(ppcData?.target ?? 80)}، زیر {pct(PPC_LOW)} پایین). مرز رنگ SPI و
+        PPC = فعالیت‌هایی که تا پایان پنج‌شنبه به درصد برنامه رسیده‌اند ÷ کل فعالیت‌های برنامهٔ آن هفته (هدف {pct(ppcData?.target ?? 80)}، زیر {pct(PPC_LOW)} پایین). مرز رنگ SPI و
         SPI(t): ≥۱ سبز، ۰٫۹ تا ۱ زرد، زیر ۰٫۹ قرمز. روند SPI و SPI(t) از نقاط ثبت‌شدهٔ منحنی S تا امروز است.
       </p>
     </div>
@@ -707,7 +829,7 @@ export function WeeklyCommitmentsSection({
       className={cn('border-2 border-[#1e2a5e] bg-[#eef4fb]', className)}
       title="شاخص تعهدات هفتگی (PPC)"
       icon={<CalendarCheck className="h-4 w-4" aria-hidden />}
-      hint="PPC از هفته‌های بسته‌شدهٔ برنامهٔ هفتگی متعهد (WWP)، SPI و SPI(t) از موتور کنترل پروژه با واحد هفته محاسبه می‌شوند."
+      hint="PPC از برنامهٔ زمان‌بندی و درصدهای گزارش روزانه (تعهد هر هفته = کار برنامه‌شدهٔ آن هفته)، SPI و SPI(t) از موتور کنترل پروژه با واحد هفته محاسبه می‌شوند."
     >
       {!overview ? (
         loading ? <LoadingRows rows={6} /> : <Missing text="داده هنوز بارگذاری نشده است" />

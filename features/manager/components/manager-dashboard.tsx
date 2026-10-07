@@ -31,6 +31,7 @@ import { cn } from '@/shared/lib/utils'
 import { EmptyState } from '@/features/admin/components/shared'
 import { BrandLogo } from '@/shared/components/brand/brand-logo'
 import { HeaderUserMenu } from '@/features/account/components/header-user-menu'
+import { PersianCalendar } from '@/shared/components/layout/PersianCalendar'
 import { useSyncedProjectId } from '@/shared/hooks/use-synced-project-id'
 import { writeProjectCookie } from '@/shared/lib/project/project-cookie'
 import type { ManagerNavGroup, ManagerNavIcon, ManagerNavModel } from '@/features/manager/lib/manager-nav'
@@ -793,6 +794,8 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                   {data ? `همگام‌سازی ${relativeTimeFa(data.generatedAt)}` : loading ? 'در حال بارگذاری…' : 'همگام‌سازی'}
                 </span>
               </button>
+
+              <PersianCalendar className="hidden sm:block" />
 
               <NotificationsMenu overview={data} critical={criticalAlerts} inboxHref={hrefs.inbox} />
 

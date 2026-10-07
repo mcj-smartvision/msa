@@ -53,8 +53,8 @@ function resolveDurationDays(task: {
   if (task.duration_days != null && Number.isFinite(Number(task.duration_days))) {
     return Math.max(0, Number(task.duration_days))
   }
-  const start = toIsoDateOnly(task.start_current ?? task.start_planned)
-  const finish = toIsoDateOnly(task.finish_current ?? task.finish_planned)
+  const start = toIsoDateOnly(task.start_planned ?? task.start_current)
+  const finish = toIsoDateOnly(task.finish_planned ?? task.finish_current)
   if (start && finish) {
     return Math.max(0, diffDaysIso(start, finish))
   }

@@ -8,6 +8,8 @@ import { useScheduleCalendar } from '@/features/schedule/hooks/use-schedule-cale
 import { formatScheduleDate } from '@/features/schedule/lib/dates'
 import { applyWeightedParentRollup } from '@/features/schedule/lib/parent-progress-rollup'
 import { useScheduleViewSync } from '@/features/schedule/lib/schedule-view-sync'
+import { useHolidays } from '@/features/holidays/hooks/use-holidays'
+import { holidaysOn, siteWorkCalendar } from '@/features/holidays/lib/work-calendar'
 import {
 buildDailyReportActivitiesFromTree,
 type DailyProgressEntry,
@@ -20,11 +22,18 @@ writeProjectDailyProgress,
 import { deleteDailyProgress, postDailyProgress } from '@/features/supervisor/lib/daily-progress-sync'
 import {
 buildProgressLedgerRows,
+forecastShift,
 ledgerDateRange,
-plannedProgressFrom,
-plannedWorkdays,
+segmentedPlannedProgress,
+startDelay,
 type PlannedDay,
 } from '@/features/supervisor/lib/progress-ledger'
+import {
+groupWindows,
+windowSegments,
+type ActivityWindows,
+type WindowChange,
+} from '@/features/schedule/lib/week-commitment-windows'
 import {
 calendarDays,
 cumulativeEntry,
@@ -73,6 +82,7 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
   const { calendar } = useScheduleCalendar()
   const today = todayIso()
   const [tree, setTree] = useState<Tree | null>(null)
+  const [forecastWindows, setForecastWindows] = useState<ActivityWindows>(new Map())
   const [serverHistory, setServerHistory] = useState<DailyProgressEntry[]>([])
   const [localEntries, setLocalEntries] = useState<DailyProgressEntry[]>([])
   const [loading, setLoading] = useState(false)
@@ -104,12 +114,15 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
     setLoading(true)
     setError(null)
     try {
-      const [treeRes] = await Promise.all([
+      const [treeRes, windowsRes] = await Promise.all([
         fetch(`/api/workshop/schedule-tree?projectId=${encodeURIComponent(projectId)}`, { cache: 'no-store' }),
+        fetch(`/api/schedule/week-commitments?projectId=${encodeURIComponent(projectId)}`, { cache: 'no-store' }),
         loadHistory(),
       ])
       const data = await treeRes.json()
       if (!treeRes.ok) throw new Error(data.error || 'خطا در بارگذاری برنامه زمانبندی')
+      const windowsData = (await windowsRes.json().catch(() => ({}))) as { windows?: WindowChange[] }
+      setForecastWindows(groupWindows(windowsRes.ok ? windowsData.windows ?? [] : []))
       setTree({ nodes: data.nodes ?? [], orphanPackages: data.orphanPackages ?? [] })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'خطا در بارگذاری')
@@ -176,15 +189,22 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
     return () => window.removeEventListener('beforeunload', warn)
   }, [draftCount])
 
-  /** Required progress of each activity over its scheduled start–finish. */
+  const { holidays } = useHolidays()
+  const isWorkday = useMemo(() => siteWorkCalendar(holidays), [holidays])
+
+  /**
+   * Required progress of each activity on working days (Friday and registered holidays off): each day
+   * follows that day's forecast window, and the approved plan before the forecast windows begin.
+   */
   const plannedByActivity = useMemo(() => {
     const out = new Map<string, Map<string, PlannedDay>>()
     for (const row of rows) {
-      if (!row.activityId || !row.startDate) continue
-      out.set(row.activityId, plannedProgressFrom(row.startDate, plannedWorkdays(row.startDate, row.finishDate)))
+      if (!row.activityId) continue
+      const approved = { start: row.approvedStartDate, finish: row.approvedFinishDate }
+      out.set(row.activityId, segmentedPlannedProgress(windowSegments(forecastWindows, row.activityId, approved), isWorkday))
     }
     return out
-  }, [rows])
+  }, [rows, forecastWindows, isWorkday])
 
   /** From the project's scheduled start to its scheduled finish, widened to cover reports and today. */
   const days = useMemo(() => {
@@ -314,7 +334,7 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
           <h2 className="text-base font-bold text-slate-900">بک‌گراند گزارش‌های روزانه</h2>
           <p className="text-xs leading-5 text-slate-500">
             در هر خانه، عدد بالا درصد پیشرفت تجمعی ثبت‌شده سرپرست تا آن روز است (۰ تا ۱۰۰) و عدد کوچک آبی پایین، پیشرفت
-            اجباری تجمعی طبق برنامه زمانبندی است: از تاریخ شروع فعالیت در برنامه، هر روز کاری (بدون جمعه) ۱۰۰ تقسیم بر
+            اجباری تجمعی طبق برنامه زمانبندی است: از تاریخ شروع فعالیت در برنامه، هر روز کاری (بدون جمعه و تعطیلات ثبت‌شده) ۱۰۰ تقسیم بر
             روزهای کاری فعالیت اضافه می‌شود تا تاریخ پایان آن که به ۱۰۰ می‌رسد. جدول از تاریخ شروع پروژه در برنامه شروع
             می‌شود و بازهٔ هر فعالیت آبی کم‌رنگ است. ستون «تجمعی» آخرین عدد ثبت‌شده را
             نشان می‌دهد. خانه‌های تغییرکرده زرد می‌شوند؛ عددی که از روز قبلش کمتر باشد قرمز می‌شود. برای حذف گزارش یک روز،
@@ -376,17 +396,22 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
               {days.map((d) => {
                 const wd = siteWeekday(d)
                 const label = formatScheduleDate(d, calendar).split(/[/-]/)
+                const holidayTitles = holidaysOn(holidays, d).map((h) => h.title)
                 return (
                   <th
                     key={d}
                     data-today={d === today ? '' : undefined}
                     className={cn(
                       'min-w-[44px] border-b border-l border-slate-200 px-0.5 py-1 text-center font-normal tabular-nums',
-                      wd === 6 ? 'bg-slate-200/80 text-slate-500' : 'bg-slate-50 text-slate-600',
+                      holidayTitles.length
+                        ? 'bg-red-100 text-red-700'
+                        : wd === 6
+                          ? 'bg-slate-200/80 text-slate-500'
+                          : 'bg-slate-50 text-slate-600',
                       wd === 0 && 'border-r-2 border-r-slate-300',
                       d === today && 'bg-amber-100 font-bold text-amber-900'
                     )}
-                    title={formatScheduleDate(d, calendar)}
+                    title={[formatScheduleDate(d, calendar), ...holidayTitles].join(' — ')}
                   >
                     <div>{WEEKDAY_SHORT[wd]}</div>
                     <div dir="ltr">{label.length === 3 ? `${label[1]}/${label[2]}` : label.join('/')}</div>
@@ -403,6 +428,15 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
                 ? cumulativeOf(row.activityId)
                 : headingPercents.get(row.key) ?? row.schedulePercent
               const plannedByDate = row.activityId ? plannedByActivity.get(row.activityId) : undefined
+              const shift = total != null && total >= 100 ? null : forecastShift(row, today)
+              const firstReported = cells ? [...cells.values()].find((c) => c.cumulative > 0)?.date ?? null : null
+              const delay = editable ? startDelay(row, firstReported) : null
+              const delayText = delay
+                ? delay.started
+                  ? `فعالیت ${faNum(delay.days)} روز دیرتر از برنامهٔ مصوب شروع شد (اولین گزارش: ${formatScheduleDate(firstReported!, calendar)})`
+                  : `فعالیت هنوز شروع نشده؛ طبق پیش‌بینی ${faNum(delay.days)} روز دیرتر از برنامهٔ مصوب شروع می‌شود`
+                : null
+              const dateOf = (iso: string | null) => (iso ? formatScheduleDate(iso, calendar) : '—')
               return (
                 <tr key={row.key} className="group">
                   <td
@@ -411,13 +445,27 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
                       editable ? 'bg-white group-hover:bg-sky-50' : 'bg-slate-50 font-semibold text-slate-800'
                     )}
                     style={{ minWidth: NAME_COL, maxWidth: NAME_COL, paddingRight: 8 + row.depth * 14 }}
-                    title={row.name}
+                    title={[
+                      row.name,
+                      `برنامهٔ مصوب: ${dateOf(row.approvedStartDate)} تا ${dateOf(row.approvedFinishDate)}`,
+                      `پیش‌بینی با پیشرفت ثبت‌شده: ${dateOf(row.startDate)} تا ${dateOf(row.finishDate)}`,
+                    ].join('\n')}
                   >
                     <div className="flex items-center gap-1.5 truncate">
                       {row.wbs && !nameHasWbs(row.name, row.wbs) ? (
                         <span className="shrink-0 font-mono text-[10px] text-slate-500">{row.wbs}</span>
                       ) : null}
                       <span className="truncate">{row.name}</span>
+                      {shift ? (
+                        <span
+                          className={cn(
+                            'mr-auto shrink-0 rounded px-1 text-[9px] font-semibold tabular-nums',
+                            shift.days > 0 ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'
+                          )}
+                        >
+                          {shift.of === 'start' ? 'شروع' : 'پایان'} {faNum(Math.abs(shift.days))} روز {shift.days > 0 ? 'دیرتر' : 'زودتر'}
+                        </span>
+                      ) : null}
                     </div>
                   </td>
                   <td
@@ -444,6 +492,7 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
                     const isEditing = editing?.activityId === row.activityId && editing.date === d
                     const key = `${row.activityId}@${d}`
                     const planned = plannedByDate?.get(d) ?? null
+                    const delayHere = delay && d === row.approvedStartDate
                     return (
                       <td
                         key={d}
@@ -458,14 +507,15 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
                           planned != null
                             ? `اجباری طبق برنامه — تجمعی: ${faNum(planned.cumulative)}٪ (روزی ${faNum(planned.daily)}٪)`
                             : null,
+                          delayHere ? `شروع طبق برنامهٔ مصوب: همین روز — ${delayText}` : null,
                         ]
                           .filter(Boolean)
                           .join('\n')}
                         className={cn(
                           'h-10 cursor-pointer border-b border-l border-slate-100 p-0 text-center align-middle tabular-nums',
                           wd === 0 && 'border-r-2 border-r-slate-300',
-                          wd === 6 && 'bg-slate-100/70',
-                          inWindow && wd !== 6 && 'bg-sky-50/70',
+                          !isWorkday(d) && (wd === 6 ? 'bg-slate-100/70' : 'bg-red-50/70'),
+                          inWindow && isWorkday(d) && 'bg-sky-50/70',
                           d === today && 'bg-amber-50',
                           cell && 'font-semibold text-amber-800',
                           cell?.daily != null && cell.daily < 0 && 'text-red-600',
@@ -498,7 +548,11 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
                             <span className="min-h-[14px]">
                               {drafts[key] !== null && cell ? faNum(cell.cumulative) : ''}
                             </span>
-                            {planned != null ? (
+                            {delayHere && delay ? (
+                              <span className="whitespace-nowrap rounded bg-red-50 px-0.5 text-[9px] font-semibold text-red-700">
+                                {faNum(delay.days)} روز دیر
+                              </span>
+                            ) : planned != null ? (
                               <span className="text-[9px] font-normal text-sky-700">{faNum(planned.cumulative)}</span>
                             ) : null}
                           </div>
@@ -518,16 +572,25 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
           <span className="font-semibold text-amber-800">۴۵</span> تجمعی ثبت‌شده سرپرست
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="text-sky-700">۵۰</span> پیشرفت اجباری تجمعی طبق برنامه
+          <span className="text-sky-700">۵۰</span> پیشرفت اجباری تجمعی — طبق آخرین پیش‌بینی (گزارش فعالیت‌های قبلی همان لحظه اثر می‌کند)
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-3 w-3 rounded-sm border border-slate-200 bg-sky-50" /> بازهٔ برنامه‌ریزی‌شدهٔ فعالیت
+          <span className="h-3 w-3 rounded-sm border border-slate-200 bg-sky-50" /> بازهٔ پیش‌بینی‌شدهٔ فعالیت (آخرین برنامه)
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="rounded bg-red-50 px-1 font-semibold text-red-700">شروع ۲ روز دیرتر</span> جابه‌جایی پیش‌بینی نسبت به برنامهٔ مصوب
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="rounded bg-red-50 px-0.5 font-semibold text-red-700">۴ روز دیر</span> در روز شروع برنامهٔ مصوب: فعالیت چند روز دیرتر شروع شد
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="h-3 w-3 rounded-sm border border-slate-200 bg-amber-50" /> امروز
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="h-3 w-3 rounded-sm border border-slate-200 bg-slate-100" /> جمعه
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-3 w-3 rounded-sm border border-red-200 bg-red-100" /> تعطیل ثبت‌شده
         </span>
         <span>ردیف‌های خاکستری سرشاخه‌اند و درصدشان از زیرشاخه‌ها حساب می‌شود.</span>
       </div>

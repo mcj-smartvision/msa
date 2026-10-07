@@ -7,6 +7,8 @@ DailyReportInput,
 } from '@/features/supervisor/lib/types'
 import type { SiteDailyReport } from '@/shared/types/schedule'
 import { generateAiActionText, generateDailyReportSummary } from '@/features/supervisor/lib/ai-generator'
+import { seedActualStart } from '@/features/schedule/lib/progress-pace'
+import { refreshScheduleAfterProgress } from '@/features/schedule/lib/refresh-after-progress'
 
 export async function fetchSupervisorAiDrafts(
   supabase: SupabaseClient,
@@ -287,10 +289,7 @@ export async function submitQuickReport(
         a.actualProgressPercent < 100 &&
         !existingTask?.actual_start
       ) {
-        taskPatch.actual_start =
-          existingTask?.start_current ??
-          existingTask?.start_planned ??
-          input.date
+        taskPatch.actual_start = seedActualStart(existingTask ?? {}, input.date)
       }
 
       await supabase
@@ -299,6 +298,8 @@ export async function submitQuickReport(
         .eq('id', a.scheduleActivityId)
         .eq('project_id', input.siteId)
     }
+
+    await refreshScheduleAfterProgress(supabase, input.siteId)
 
     try {
       const { persistProjectProgressPace } = await import('@/features/schedule/lib/persist-progress-pace')

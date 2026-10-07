@@ -49,7 +49,17 @@ export function resolvePaceActualStart(input: {
   if (!Number.isFinite(physical) || physical >= 100) return null
   if (physical <= 0 && !input.allowZeroProgress) return null
 
-  return toIsoDateOnly(input.startCurrent) ?? toIsoDateOnly(input.startPlanned)
+  // The approved plan, not the progress forecast kept in *_current.
+  return toIsoDateOnly(input.startPlanned) ?? toIsoDateOnly(input.startCurrent)
+}
+
+/**
+ * actual_start written on the first reported progress: the scheduled start when it has passed,
+ * else the report day (work reported early started then, not on its later scheduled start).
+ */
+export function seedActualStart(task: { start_planned?: string | null; start_current?: string | null }, reportDate: string): string {
+  const scheduled = task.start_planned ?? task.start_current ?? null
+  return scheduled && scheduled.slice(0, 10) <= reportDate ? scheduled : reportDate
 }
 
 export function resolvePaceDurationDays(input: {
@@ -66,8 +76,8 @@ export function resolvePaceDurationDays(input: {
   ) {
     return Number(input.durationDays)
   }
-  const start = toIsoDateOnly(input.startCurrent ?? input.startPlanned)
-  const finish = toIsoDateOnly(input.finishCurrent ?? input.finishPlanned)
+  const start = toIsoDateOnly(input.startPlanned ?? input.startCurrent)
+  const finish = toIsoDateOnly(input.finishPlanned ?? input.finishCurrent)
   if (start && finish) {
     // Inclusive span so 1-day tasks still have duration > 0 for pace
     return Math.max(1, diffDaysIso(start, finish) || 1)

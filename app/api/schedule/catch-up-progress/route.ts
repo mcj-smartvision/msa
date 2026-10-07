@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { isSystemAdmin } from '@/features/admin/lib/access'
-import { persistParentProgressRollup } from '@/features/schedule/lib/persist-parent-progress'
+import { seedActualStart } from '@/features/schedule/lib/progress-pace'
+import { refreshScheduleAfterProgress } from '@/features/schedule/lib/refresh-after-progress'
+import { todayTehranIso } from '@/shared/lib/time/tehran'
 import { persistProjectProgressPace } from '@/features/schedule/lib/persist-progress-pace'
 
 /**
@@ -67,8 +69,7 @@ export async function POST(request: NextRequest) {
         updated_at: now,
       }
       if (pct > 0 && pct < 100 && !existing?.actual_start) {
-        patch.actual_start =
-          existing?.start_current ?? existing?.start_planned ?? now.slice(0, 10)
+        patch.actual_start = seedActualStart(existing ?? {}, todayTehranIso())
       }
 
       const { error } = await supabase
@@ -92,11 +93,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    try {
-      await persistParentProgressRollup(supabase, projectId)
-    } catch (error) {
-      console.error('[catch-up-progress] heading rollup failed', error)
-    }
+    await refreshScheduleAfterProgress(supabase, projectId)
 
     try {
       await persistProjectProgressPace(supabase, projectId)

@@ -32,6 +32,8 @@ export interface WwpCommitmentRow {
 
 export interface PpcWeek extends Omit<WwpWeekRow, 'wwpId'> {
   ppc: number | null
+  /** The running week, scored with today's progress until its Thursday ends. */
+  live?: boolean
 }
 
 export interface WeekCommitment {
@@ -43,6 +45,9 @@ export interface WeekCommitment {
   rootCauseNote: string | null
   /** actual ÷ planned output, only when both were recorded. */
   progressPercent: number | null
+  /** Schedule-based commitments: required cumulative percent by Thursday and the reported cumulative. */
+  targetPercent?: number
+  actualPercent?: number
 }
 
 export interface RncCause {
@@ -53,6 +58,8 @@ export interface RncCause {
 }
 
 export interface WeeklyCommitmentsData {
+  /** `schedule`: commitments are the schedule's planned work; `wwp`: committed weekly work plans. */
+  source: 'schedule' | 'wwp'
   target: number
   /** Closed weeks, oldest first (at most PPC_HISTORY_WEEKS). */
   weeks: PpcWeek[]
@@ -65,7 +72,7 @@ export interface WeeklyCommitmentsData {
 
 export type WeeklyCommitmentsResult = { status: 'ok'; data: WeeklyCommitmentsData } | { status: 'missing'; reason_fa: string }
 
-const ppcOf = (planned: number, completed: number) => (planned > 0 ? (completed / planned) * 100 : null)
+export const ppcOf = (planned: number, completed: number) => (planned > 0 ? (completed / planned) * 100 : null)
 
 function asRootCause(value: string | null): RootCauseCategory | null {
   return value && (ROOT_CAUSE_CATEGORIES as readonly string[]).includes(value) ? (value as RootCauseCategory) : null
@@ -122,6 +129,7 @@ export function buildWeeklyCommitments(weekRows: WwpWeekRow[], commitmentRows: W
   const top3 = causes.slice(0, 3).reduce((s, c) => s + c.count, 0)
 
   return {
+    source: 'wwp',
     target: PPC_TARGET,
     weeks,
     current,

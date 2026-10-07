@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { persistParentProgressRollup } from '@/features/schedule/lib/persist-parent-progress'
+import { seedActualStart } from '@/features/schedule/lib/progress-pace'
+import { refreshScheduleAfterProgress } from '@/features/schedule/lib/refresh-after-progress'
 import { WorkshopError } from '@/features/workshop/lib/domain'
 import { parseDailyReportActivityRef } from '@/features/supervisor/lib/daily-report-activities'
 
@@ -38,8 +39,7 @@ async function updateProjectTask(
     updated_at: now,
   }
   if (pct > 0 && pct < 100 && !task.actual_start) {
-    patch.actual_start =
-      task.start_current ?? task.start_planned ?? reportDate ?? now.slice(0, 10)
+    patch.actual_start = seedActualStart(task, reportDate ?? now.slice(0, 10))
   }
   if (pct >= 100) {
     patch.actual_finish = reportDate ?? now.slice(0, 10)
@@ -180,13 +180,7 @@ export async function persistSupervisorPhysicalProgress(
     )
   }
 
-  if (updatedTasks > 0) {
-    try {
-      await persistParentProgressRollup(supabase, projectId)
-    } catch (error) {
-      console.error('[persist-daily-progress] heading rollup failed', error)
-    }
-  }
+  await refreshScheduleAfterProgress(supabase, projectId)
 
   try {
     const { persistProjectProgressPace } = await import('@/features/schedule/lib/persist-progress-pace')

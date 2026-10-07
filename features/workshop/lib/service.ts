@@ -403,7 +403,11 @@ export async function getScheduleTree(supabase: SupabaseClient, projectId: strin
   const user = await requireUser(supabase)
   await assertProjectAccess(supabase, user.id, projectId)
   const capabilities = await getWorkshopCapabilities(supabase, projectId)
+  return { ...(await loadScheduleTree(supabase, projectId)), capabilities }
+}
 
+/** Schedule tree without the user/access checks (service-role jobs and scripts). */
+export async function loadScheduleTree(supabase: SupabaseClient, projectId: string) {
   const tasks = await fetchAllProjectTasks(supabase, projectId)
   const [{ data: packages, error }, { data: calcs }, predecessorDisplay] = await Promise.all([
     supabase
@@ -476,7 +480,6 @@ export async function getScheduleTree(supabase: SupabaseClient, projectId: strin
     packageCount: packages?.length ?? 0,
     dependencyLinkCount,
     tasksWithPredecessors: Object.keys(predecessorLabels).length,
-    capabilities,
   }
 }
 

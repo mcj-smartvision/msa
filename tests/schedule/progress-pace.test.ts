@@ -103,12 +103,12 @@ describe('computeProgressPace', () => {
     expect(classifyPaceRatio(0.74, t)).toBe('bad')
   })
 
-  it('uses schedule start when actual_start missing but percent edited', () => {
+  it('uses the approved planned start when actual_start missing but percent edited', () => {
     const start = resolvePaceActualStart({
       actualStart: null,
       physicalPercentComplete: 40,
-      startCurrent: '2026-01-01',
-      startPlanned: '2025-12-01',
+      startCurrent: '2026-02-01',
+      startPlanned: '2026-01-01',
     })
     expect(start).toBe('2026-01-01')
 

@@ -8,6 +8,7 @@ import { PageHeader, LoadingBlock, ErrorBlock, EmptyState } from '@/features/adm
 import { SupervisorDrawingsZoningPanel } from '@/features/supervisor/components/supervisor-drawings-zoning-panel'
 import { DailyReportPanel } from '@/features/supervisor/components/daily-report-panel'
 import { DailyReportBackgroundPanel } from '@/features/supervisor/components/daily-report-background-panel'
+import { HolidaysPanel } from '@/features/holidays/components/holidays-panel'
 import { ScheduleDateInput } from '@/features/schedule/components/schedule-date-input'
 import { SupervisorOverviewPanel } from '@/features/supervisor/components/supervisor-overview-panel'
 import { TodayActivitiesTable } from '@/features/supervisor/components/today-activities-table'
@@ -293,6 +294,11 @@ export function SiteSupervisorDashboard({
             hint: 'همه درصدهای ثبت‌شده به تفکیک روز — مشاهده و ویرایش',
           },
           {
+            id: 'holidays',
+            label: 'تعطیلات',
+            hint: 'تعطیلات هفتگی، رسمی و سازمانی — در تقویم و پیش‌بینی برنامه اثر دارد',
+          },
+          {
             id: 'safety',
             label: 'ایمنی و اخطارها',
             hint: 'اعلان‌های تأییدشده برای اقدام میدانی',
@@ -419,6 +425,8 @@ export function SiteSupervisorDashboard({
         ) : null}
 
         {activeSection === 'report-background' ? <DailyReportBackgroundPanel projectId={projectId} /> : null}
+
+        {activeSection === 'holidays' ? <HolidaysPanel /> : null}
 
         {activeSection === 'today' ? (
             <TodayActivitiesTable

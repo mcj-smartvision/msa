@@ -16,6 +16,12 @@ export type DailyReportActivity = {
   /** Frozen baseline window that drives planned progress; the planned dates above drive today's work list. */
   baselineStartDate?: string | null
   baselineFinishDate?: string | null
+  /**
+   * Approved plan (start_planned / finish_planned). The planned dates above are the latest schedule,
+   * which the progress forecast moves; days before the forecast windows begin use this window.
+   */
+  approvedStartDate?: string | null
+  approvedFinishDate?: string | null
   /** Weight for project progress (percent points — MSP وزن or package share) */
   progressWeight: number
   /** Legacy quantity/duration helper (not used for % rollup) */
@@ -99,6 +105,14 @@ function nodeBaselineWindow(node: ScheduleTreeNode): { start: string | null; fin
   return { start: isoDay(node.startDate), finish: isoDay(node.finishDate) }
 }
 
+/** The approved plan of an activity, before the progress forecast moved its current dates. */
+function nodeApprovedWindow(node: ScheduleTreeNode): { start: string | null; finish: string | null } {
+  return {
+    start: isoDay(node.task?.start_planned) ?? isoDay(node.startDate),
+    finish: isoDay(node.task?.finish_planned) ?? isoDay(node.finishDate),
+  }
+}
+
 function hasReportableLeafPackages(packages: WorkshopPackageNode[]): boolean {
   for (const pkg of packages) {
     if (!packageReportable(pkg)) continue
@@ -153,7 +167,8 @@ function walkPackages(
   out: DailyReportActivity[],
   parentBaselinePercent = 0,
   parentBaseline: { start: string | null; finish: string | null } = { start: parentStart, finish: parentFinish },
-  weightIssues: WeightIssue[] = []
+  weightIssues: WeightIssue[] = [],
+  parentApproved: { start: string | null; finish: string | null } = { start: parentStart, finish: parentFinish }
 ) {
   const reportable = packages.filter(packageReportable)
   const { weights, issue } = resolveSiblingWeights(
@@ -178,7 +193,8 @@ function walkPackages(
         out,
         parentBaselinePercent,
         parentBaseline,
-        weightIssues
+        weightIssues,
+        parentApproved
       )
       return
     }
@@ -194,6 +210,8 @@ function walkPackages(
       plannedFinishDate: finish,
       baselineStartDate: isoDay(parentBaseline.start),
       baselineFinishDate: isoDay(parentBaseline.finish),
+      approvedStartDate: isoDay(parentApproved.start),
+      approvedFinishDate: isoDay(parentApproved.finish),
       progressWeight,
       plannedDurationDays: quantity,
       quantity,
@@ -260,13 +278,15 @@ export function buildDailyReportActivitiesFromTree(
         out,
         clampPercent(node.percentComplete ?? 0),
         nodeBaselineWindow(node),
-        weightIssues
+        weightIssues,
+        nodeApprovedWindow(node)
       )
     }
 
     if (shouldAddScheduleFallback(node, nodes)) {
       const progressWeight = normalizeScheduleWeightPercent(node.scheduleWeight) || 1
       const baseline = nodeBaselineWindow(node)
+      const approved = nodeApprovedWindow(node)
       out.push({
         id: `schedule:${node.taskId}`,
         name: node.name,
@@ -276,6 +296,8 @@ export function buildDailyReportActivitiesFromTree(
         plannedFinishDate: isoDay(node.finishDate),
         baselineStartDate: baseline.start,
         baselineFinishDate: baseline.finish,
+        approvedStartDate: approved.start,
+        approvedFinishDate: approved.finish,
         progressWeight,
         plannedDurationDays: scheduleTaskWeight(node),
         parentTaskName: node.name,
