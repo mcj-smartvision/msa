@@ -7,7 +7,6 @@ DailyReportInput,
 } from '@/features/supervisor/lib/types'
 import type { SiteDailyReport } from '@/shared/types/schedule'
 import { generateAiActionText, generateDailyReportSummary } from '@/features/supervisor/lib/ai-generator'
-import { seedActualStart } from '@/features/schedule/lib/progress-pace'
 import { refreshScheduleAfterProgress } from '@/features/schedule/lib/refresh-after-progress'
 
 export async function fetchSupervisorAiDrafts(
@@ -271,30 +270,14 @@ export async function submitQuickReport(
         created_by: input.supervisorId,
       })
 
-      // Keep schedule task % in sync with quick report; seed actual_start on first progress
-      const { data: existingTask } = await supabase
-        .from('project_tasks')
-        .select('actual_start, start_current, start_planned')
-        .eq('id', a.scheduleActivityId)
-        .eq('project_id', input.siteId)
-        .maybeSingle()
-
-      const taskPatch: Record<string, unknown> = {
-        percent_complete: a.actualProgressPercent,
-        physical_percent_complete: a.actualProgressPercent,
-        updated_at: new Date().toISOString(),
-      }
-      if (
-        a.actualProgressPercent > 0 &&
-        a.actualProgressPercent < 100 &&
-        !existingTask?.actual_start
-      ) {
-        taskPatch.actual_start = seedActualStart(existingTask ?? {}, input.date)
-      }
-
+      // Keep schedule task % in sync with quick report; actual dates follow from the report history
       await supabase
         .from('project_tasks')
-        .update(taskPatch)
+        .update({
+          percent_complete: a.actualProgressPercent,
+          physical_percent_complete: a.actualProgressPercent,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', a.scheduleActivityId)
         .eq('project_id', input.siteId)
     }

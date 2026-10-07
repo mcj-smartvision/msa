@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { isSystemAdmin } from '@/features/admin/lib/access'
-import { seedActualStart } from '@/features/schedule/lib/progress-pace'
 import { refreshScheduleAfterProgress } from '@/features/schedule/lib/refresh-after-progress'
-import { todayTehranIso } from '@/shared/lib/time/tehran'
 import { persistProjectProgressPace } from '@/features/schedule/lib/persist-progress-pace'
 
 /**
@@ -58,23 +56,15 @@ export async function POST(request: NextRequest) {
 
       const { data: existing } = await supabase
         .from('project_tasks')
-        .select('actual_start, start_current, start_planned, percent_complete')
+        .select('percent_complete')
         .eq('id', taskId)
         .eq('project_id', projectId)
         .maybeSingle()
 
-      const patch: Record<string, unknown> = {
-        percent_complete: pct,
-        physical_percent_complete: pct,
-        updated_at: now,
-      }
-      if (pct > 0 && pct < 100 && !existing?.actual_start) {
-        patch.actual_start = seedActualStart(existing ?? {}, todayTehranIso())
-      }
-
+      // Actual dates follow from the progress history in refreshScheduleAfterProgress.
       const { error } = await supabase
         .from('project_tasks')
-        .update(patch)
+        .update({ percent_complete: pct, physical_percent_complete: pct, updated_at: now })
         .eq('id', taskId)
         .eq('project_id', projectId)
 

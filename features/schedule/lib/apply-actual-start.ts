@@ -196,6 +196,8 @@ export async function applyActualStartToSchedule(
     const { error: updateError } = await supabase
       .from('project_tasks')
       .update({
+        baseline_start: dates.start,
+        baseline_finish: dates.finish,
         start_planned: dates.start,
         finish_planned: dates.finish,
         start_current: dates.start,
@@ -214,8 +216,9 @@ export async function applyActualStartToSchedule(
     if (pct < 100 && finishIso && finishIso < today) tasksDelayed++
   }
 
+  // The confirmed start rebaselines the project: the baseline moves with the plan.
   const projectUpdate: Record<string, unknown> = {
-    schedule_baseline_start: baselineStart,
+    schedule_baseline_start: actualStart,
     schedule_actual_start: actualStart,
     schedule_start_aligned: alignedWithBaseline,
     start_date: actualStart,
@@ -235,6 +238,13 @@ export async function applyActualStartToSchedule(
     await persistPlannedWeights(supabase, projectId)
   } catch {
     /* planned weights follow the shifted schedule dates */
+  }
+
+  try {
+    const { persistProgressForecast } = await import('@/features/schedule/lib/persist-progress-forecast')
+    await persistProgressForecast(supabase, projectId)
+  } catch (err) {
+    console.error('[apply-actual-start] forecast refresh failed', err)
   }
 
   const { data: updatedTasks, error: refetchError } = await supabase

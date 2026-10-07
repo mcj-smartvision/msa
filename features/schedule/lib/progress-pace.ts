@@ -53,15 +53,6 @@ export function resolvePaceActualStart(input: {
   return toIsoDateOnly(input.startPlanned) ?? toIsoDateOnly(input.startCurrent)
 }
 
-/**
- * actual_start written on the first reported progress: the scheduled start when it has passed,
- * else the report day (work reported early started then, not on its later scheduled start).
- */
-export function seedActualStart(task: { start_planned?: string | null; start_current?: string | null }, reportDate: string): string {
-  const scheduled = task.start_planned ?? task.start_current ?? null
-  return scheduled && scheduled.slice(0, 10) <= reportDate ? scheduled : reportDate
-}
-
 export function resolvePaceDurationDays(input: {
   durationDays?: number | null
   startCurrent?: string | null

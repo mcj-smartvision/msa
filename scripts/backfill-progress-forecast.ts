@@ -1,5 +1,6 @@
 /**
- * Re-forecast start_current / finish_current from the reported progress, for one project or all.
+ * Re-forecast start_current / finish_current and sync percent and actual dates from the daily reports, then
+ * roll the heading percents up, for one project or all.
  * `--dry` writes nothing; `--trace=<id part>` lists the day-by-day commitment windows of matching activities.
  * Usage: npx tsx scripts/backfill-progress-forecast.ts [--dry] [--trace=…] [projectId]
  */
@@ -23,6 +24,7 @@ function loadEnvLocal() {
 loadEnvLocal()
 
 import { createServiceClient } from '../shared/lib/supabase/service'
+import { persistParentProgressRollup } from '../features/schedule/lib/persist-parent-progress'
 import { persistProgressForecast } from '../features/schedule/lib/persist-progress-forecast'
 import { computeCommitmentWindows } from '../features/schedule/lib/week-commitments'
 
@@ -39,7 +41,12 @@ async function main() {
 
   for (const project of projects ?? []) {
     const changes = await persistProgressForecast(supabase, project.id, { dryRun })
-    console.log(`${project.name}: ${changes.length} task(s) re-forecast`)
+    console.log(`${project.name}: ${changes.length} change(s)`)
+    for (const c of changes) {
+      const span = c.field === 'percent' ? `${c.from} -> ${c.to}` : `${c.from.start}..${c.from.finish} -> ${c.to.start}..${c.to.finish}`
+      console.log(`  ${c.wbs ?? c.id} ${c.field}: ${span}`)
+    }
+    if (!dryRun) await persistParentProgressRollup(supabase, project.id)
     if (trace) {
       const windows = await computeCommitmentWindows(supabase, project.id)
       for (const w of windows.filter((x) => x.activityId.includes(trace))) {

@@ -37,29 +37,35 @@ function reportedBefore(history: DailyProgressEntry[], date: string): Reported {
 
 /**
  * A task nobody ever reported: still at 0 today means it never started; otherwise (progress imported
- * from MSP or catch-up, timing unknown) it is taken as having followed its plan, moved by its predecessors.
+ * from MSP or catch-up, timing unknown) it is taken as having followed its plan, moved by its predecessors,
+ * with any unfinished part still left after the status date. Its stored actual dates are not used.
  */
 function unreported(task: ForecastTask): Reported {
-  return { percent: 0, start: null, finish: null, followsPlan: task.percent > 0 }
+  return task.percent > 0
+    ? { percent: task.percent, start: null, finish: null, followsPlan: true }
+    : { percent: 0, start: null, finish: null }
+}
+
+export interface ReportedProgressInput {
+  /** Schedule tasks with today's stored percent. */
+  tasks: ForecastTask[]
+  activities: ReplayActivity[]
+  entries: DailyProgressEntry[]
+}
+
+/** A reported task's progress, start and finish as its daily reports stood up to the end of a date. */
+export interface ReportedTaskState {
+  percent: number
+  start: string | null
+  finish: string | null
 }
 
 /**
- * Each activity's window on each date: the forecast run with every other task's progress as reported up
- * to the end of that day (work left after a same-day report starts the next day) and the task's own
- * progress as reported before that day, so its target does not bend to its own report while its
- * predecessors' reports move it at once. A task with daily-report activities takes
- * their weighted percent; its start is the first reported day and its finish the day all reached 100.
+ * Task progress as the daily reports stood on a date. A task with daily-report activities takes their
+ * weighted percent; its start is the first reported day above 0 and its finish the day all reached 100.
  * Until its first report such a task counts as not started (see `unreported` for tasks never reported).
- * `tasks` carry today's stored percent.
  */
-export function replayWindows(input: {
-  tasks: ForecastTask[]
-  links: ForecastLink[]
-  activities: ReplayActivity[]
-  entries: DailyProgressEntry[]
-  dates: string[]
-  isWorkday?: IsWorkday
-}): WindowChange[] {
+function reportedProgress(input: ReportedProgressInput) {
   const historyOf = new Map<string, DailyProgressEntry[]>()
   for (const e of input.entries) historyOf.set(e.activityId, [...(historyOf.get(e.activityId) ?? []), e])
   for (const list of historyOf.values()) list.sort((a, b) => a.reportDate.localeCompare(b.reportDate))
@@ -102,8 +108,11 @@ export function replayWindows(input: {
     workFrom,
   })
 
-  const rows: WindowChange[] = []
-  for (const date of input.dates) {
+  /**
+   * Every task as reported up to the end of `date` (work left after a same-day report starts the next
+   * day), each task as it stood that morning, and the tasks reported on `date`.
+   */
+  const onDate = (date: string) => {
     const nextDay = addDaysIso(date, 1)
     const morning = new Map<string, ForecastTask>()
     const changed = new Set<string>()
@@ -114,6 +123,46 @@ export function replayWindows(input: {
       changed.add(t.id)
       return withState(t, stateAt(t, nextDay), nextDay)
     })
+    return { evening, morning, changed }
+  }
+
+  const isReported = (task: ForecastTask) => (activitiesOf.get(task.id) ?? []).some((a) => historyOf.has(a.id))
+
+  return { onDate, stateAt, isReported }
+}
+
+/**
+ * The forecast with every report up to the end of `date` (what the schedule's latest forecast shows),
+ * and the reported start, finish and percent of each task that has daily reports. Tasks never reported
+ * follow their plan when their stored percent says they progressed (their stored dates are not used).
+ */
+export function liveForecast(
+  input: ReportedProgressInput & { links: ForecastLink[]; date: string; isWorkday?: IsWorkday }
+): { forecast: Map<string, ForecastDates>; reported: Map<string, ReportedTaskState> } {
+  const progress = reportedProgress(input)
+  const { evening } = progress.onDate(input.date)
+  const reported = new Map<string, ReportedTaskState>()
+  for (const t of evening) {
+    if (t.isSummary || !progress.isReported(t)) continue
+    reported.set(t.id, { percent: t.percent, start: t.actualStart, finish: t.actualFinish })
+  }
+  const forecast = forecastSchedule({ tasks: evening, links: input.links, statusDate: input.date, isWorkday: input.isWorkday })
+  return { forecast, reported }
+}
+
+/**
+ * Each activity's window on each date: the forecast run with every other task's progress as reported up
+ * to the end of that day (work left after a same-day report starts the next day) and the task's own
+ * progress as reported before that day, so its target does not bend to its own report while its
+ * predecessors' reports move it at once (see `reportedProgress` for how reports set a task's state).
+ */
+export function replayWindows(
+  input: ReportedProgressInput & { links: ForecastLink[]; dates: string[]; isWorkday?: IsWorkday }
+): WindowChange[] {
+  const progress = reportedProgress(input)
+  const rows: WindowChange[] = []
+  for (const date of input.dates) {
+    const { evening, morning, changed } = progress.onDate(date)
     const forecastWith = (tasks: ForecastTask[]) => forecastSchedule({ tasks, links: input.links, statusDate: date, isWorkday: input.isWorkday })
     const live = forecastWith(evening)
     const own = new Map<string, Map<string, ForecastDates>>()

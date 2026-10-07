@@ -24,7 +24,7 @@ findPackageInTree,
 findPackagePath,
 findScheduleNode,
 flattenWorkshopSchedule,
-nextChildWbs,
+nextFreeChildWbs,
 scheduleExpandableIds,
 } from '@/features/workshop/lib/wbs-numbering'
 import { PageHeader } from '@/features/admin/components/shared'
@@ -1038,7 +1038,10 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         parentId: node.taskId,
         parentName: node.name,
         depth: visualScheduleDepth(node.id) + 1,
-        previewWbs: nextChildWbs(node.wbs, node.packages.length),
+        previewWbs: nextFreeChildWbs(node.wbs, [
+          ...node.children.map((c) => c.wbs),
+          ...node.packages.map((p) => p.wbs),
+        ]),
         name: '',
         quantity:
           firstChild && parentQty != null && Number(parentQty) > 0 ? String(parentQty) : '',
@@ -1077,7 +1080,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       parentId: pkg.id,
       parentName: pkg.name,
       depth: packageDepth(pkg.id),
-      previewWbs: nextChildWbs(pkg.wbs, pkg.children.length),
+      previewWbs: nextFreeChildWbs(pkg.wbs, pkg.children.map((c) => c.wbs)),
       name: '',
       quantity: firstChild && Number(pkg.quantity) > 0 ? String(pkg.quantity) : '',
       quantityCertainty: firstChild ? pkg.quantityCertainty : 'حدودی',

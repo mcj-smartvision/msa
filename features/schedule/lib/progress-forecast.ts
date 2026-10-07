@@ -187,7 +187,13 @@ export function forecastSchedule(input: {
           start = planLink ? addWorkdays(plan.start, diffWorkdays(planLink, forecastLink, isWorkday), isWorkday) : forecastLink
         }
         if (!t.followsPlan && start < statusDate) start = nextWorkday(statusDate, isWorkday)
-        value = { start, finish: start === plan.start ? plan.finish : finishFrom(start, duration, isWorkday) }
+        let finish = start === plan.start ? plan.finish : finishFrom(start, duration, isWorkday)
+        if (t.followsPlan && t.percent > 0 && t.percent < 100) {
+          // Unfinished work of unknown timing cannot have finished before the status date.
+          const remaining = Math.max(1, Math.ceil(Math.max(duration, 1) * (1 - t.percent / 100) - 1e-9))
+          finish = maxIso(finish, finishFrom(statusDate, remaining, isWorkday))
+        }
+        value = { start, finish }
       }
     }
 

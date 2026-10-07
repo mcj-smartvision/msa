@@ -8,24 +8,44 @@ export function nextChildWbs(parentWbs: string | null, siblingCount: number): st
   return `${parentWbs}.${seg}`
 }
 
-/** Assign hierarchical codes like 2.1.1 under parent schedule WBS 2.1 */
+/**
+ * The code after the highest direct child of `parentWbs` already taken (sub-tasks and packages alike),
+ * e.g. 4.5 under 4 when 4.1–4.4 exist, so a package never repeats a sibling's code.
+ */
+export function nextFreeChildWbs(
+  parentWbs: string | null,
+  taken: Iterable<string | null | undefined>
+): string {
+  const prefix = parentWbs?.trim() ? `${parentWbs.trim()}.` : ''
+  let max = 0
+  for (const code of taken) {
+    const rest = code?.trim().startsWith(prefix) ? code.trim().slice(prefix.length) : null
+    if (rest && /^\d+$/.test(rest)) max = Math.max(max, Number(rest))
+  }
+  return `${prefix}${max + 1}`
+}
+
+/** Assign hierarchical codes like 2.1.1 under parent schedule WBS 2.1, after the codes in `taken`. */
 export function assignWbsToPackages(
   parentWbs: string | null,
-  packages: WorkshopPackageNode[]
+  packages: WorkshopPackageNode[],
+  taken: (string | null)[] = []
 ): void {
-  packages.forEach((pkg, i) => {
+  const codes = [...taken, ...packages.map((pkg) => pkg.wbs)]
+  for (const pkg of packages) {
     if (!pkg.wbs) {
-      pkg.wbs = nextChildWbs(parentWbs, i)
+      pkg.wbs = nextFreeChildWbs(parentWbs, codes)
+      codes.push(pkg.wbs)
     }
     if (pkg.children.length > 0) {
       assignWbsToPackages(pkg.wbs, pkg.children)
     }
-  })
+  }
 }
 
 export function enrichScheduleTreeWithWbs(nodes: ScheduleTreeNode[]): ScheduleTreeNode[] {
   for (const node of nodes) {
-    assignWbsToPackages(node.wbs, node.packages)
+    assignWbsToPackages(node.wbs, node.packages, node.children.map((c) => c.wbs))
     if (node.children.length > 0) enrichScheduleTreeWithWbs(node.children)
   }
   return nodes

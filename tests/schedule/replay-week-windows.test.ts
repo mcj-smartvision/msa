@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ForecastTask } from '@/features/schedule/lib/progress-forecast'
-import { replayWindows } from '@/features/schedule/lib/replay-week-windows'
+import { liveForecast, replayWindows } from '@/features/schedule/lib/replay-week-windows'
 import { startDelay } from '@/features/supervisor/lib/progress-ledger'
 
 const task = (id: string, plannedStart: string, plannedFinish: string): ForecastTask => ({
@@ -84,6 +84,30 @@ describe('replayWindows', () => {
     const entries = [report('schedule:slab', '2026-07-24', 20), report('schedule:slab', '2026-08-09', 100)]
     const rows = replayWindows({ tasks: mixed, links, activities, entries, dates: ['2026-08-15'] })
     expect(rows.find((r) => r.activityId === 'schedule:wall')).toMatchObject({ start: '2026-08-12', finish: '2026-08-21' })
+  })
+
+  it('keeps the unfinished part of such a task after the status date', () => {
+    // Wall: 50 % imported, planned to end 08-13; on 08-20 its 5 days left run to 08-24.
+    const imported = [{ ...tasks[0]!, percent: 100 }, { ...tasks[1]!, percent: 50 }]
+    const rows = replayWindows({ tasks: imported, links, activities, entries: [], dates: ['2026-08-20'] })
+    expect(rows.find((r) => r.activityId === 'schedule:wall')).toMatchObject({ start: '2026-08-04', finish: '2026-08-24' })
+  })
+})
+
+describe('liveForecast', () => {
+  it('takes actual dates from the reports and ignores stored dates of never-reported tasks', () => {
+    // Stored actuals disagree with the reports: slab "started" 07-20, wall "finished" 09-30.
+    const stored = [
+      { ...tasks[0]!, actualStart: '2026-07-20', percent: 100 },
+      { ...tasks[1]!, actualStart: '2026-08-04', actualFinish: '2026-09-30', percent: 100 },
+    ]
+    const entries = [report('schedule:slab', '2026-07-23', 0), report('schedule:slab', '2026-07-24', 20), report('schedule:slab', '2026-07-31', 100)]
+    const { forecast, reported } = liveForecast({ tasks: stored, links, activities: activities.slice(0, 1), entries, date: '2026-08-20' })
+    expect(reported.get('slab')).toEqual({ percent: 100, start: '2026-07-24', finish: '2026-07-31' })
+    expect(reported.has('wall')).toBe(false)
+    expect(forecast.get('slab')).toEqual({ start: '2026-07-24', finish: '2026-07-31' })
+    // Wall follows its plan from the slab's finish (FS +2 → 08-03), not its stored 09-30 finish.
+    expect(forecast.get('wall')).toEqual({ start: '2026-08-03', finish: '2026-08-12' })
   })
 })
 

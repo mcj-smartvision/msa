@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ProjectTask } from '@/shared/types/schedule'
 import { fetchProjectTasksSummary } from '@/features/schedule/lib/msp-import'
 import { compareWbs } from '@/features/schedule/lib/wbs-utils'
-import { nextChildWbs } from '@/features/workshop/lib/wbs-numbering'
+import { nextFreeChildWbs } from '@/features/workshop/lib/wbs-numbering'
 import {
 readPackageQuantityCertainty,
 readPackageUnitPrice,
@@ -67,9 +67,9 @@ function resolvePackageWbsCodes(
     kids
       .slice()
       .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
-      .forEach((kid, index) => {
+      .forEach((kid) => {
         if (!resolved.has(kid.id)) {
-          resolved.set(kid.id, nextChildWbs(parentWbs, index))
+          resolved.set(kid.id, nextFreeChildWbs(parentWbs, [...taskWbsById.values(), ...resolved.values()]))
         }
         const nested = childrenOfPackage.get(kid.id) ?? []
         if (nested.length) assignUnder(resolved.get(kid.id) ?? null, nested)

@@ -44,6 +44,7 @@ import {
 buildScheduleHierarchy,
 enrichScheduleTreeWithWbs,
 nextChildWbs,
+nextFreeChildWbs,
 } from './wbs-numbering'
 import { fetchTaskPredecessorDisplay, fetchTaskPredecessorLabels } from '@/features/schedule/lib/predecessor-labels'
 import { seedNewPackageProgressFields } from '@/features/workshop/lib/header-rules'
@@ -609,27 +610,43 @@ async function resolvePackageWbsCode(
   return null
 }
 
+/** Codes already used directly under a package or a schedule row (its sub-tasks and packages). */
+async function takenChildWbsCodes(
+  supabase: SupabaseClient,
+  projectId: string,
+  parentWbs: string | null,
+  parent: { packageId: string } | { taskId: string }
+): Promise<string[]> {
+  let pkgQuery = supabase.from('workshop_packages').select('wbs_code').eq('project_id', projectId)
+  pkgQuery =
+    'packageId' in parent
+      ? pkgQuery.eq('parent_package_id', parent.packageId)
+      : pkgQuery.eq('project_task_id', parent.taskId).is('parent_package_id', null)
+  const [pkgRes, taskRes] = await Promise.all([
+    pkgQuery,
+    'taskId' in parent && parentWbs
+      ? supabase.from('project_tasks').select('wbs_code').eq('project_id', projectId).like('wbs_code', `${parentWbs}.%`)
+      : Promise.resolve({ data: [] as { wbs_code: string | null }[], error: null }),
+  ])
+  if (pkgRes.error) throw new WorkshopError('VALIDATION', pkgRes.error.message)
+  if (taskRes.error) throw new WorkshopError('VALIDATION', taskRes.error.message)
+  return [...(pkgRes.data ?? []), ...(taskRes.data ?? [])]
+    .map((r) => (r.wbs_code as string | null)?.trim() ?? '')
+    .filter(Boolean)
+}
+
 async function computePackageWbsCode(
   supabase: SupabaseClient,
   projectId: string,
   input: CreatePackageInput
 ): Promise<string> {
-  const clientWbs = input.wbsCode?.trim()
-  if (clientWbs) return clientWbs
-
+  let parentWbs: string | null
+  let taken: string[]
   if (input.parentPackageId) {
-    const parentWbs = await resolvePackageWbsCode(supabase, input.parentPackageId)
+    parentWbs = await resolvePackageWbsCode(supabase, input.parentPackageId)
     if (!parentWbs) throw new WorkshopError('VALIDATION', 'کد WBS والد مشخص نیست')
-    const siblingCount = await countPackageSiblings(
-      supabase,
-      projectId,
-      input.parentPackageId,
-      null
-    )
-    return nextChildWbs(parentWbs, siblingCount)
-  }
-
-  if (input.parentScheduleNodeId) {
+    taken = await takenChildWbsCodes(supabase, projectId, parentWbs, { packageId: input.parentPackageId })
+  } else if (input.parentScheduleNodeId) {
     const { data: task } = await supabase
       .from('project_tasks')
       .select('wbs_code')
@@ -637,16 +654,15 @@ async function computePackageWbsCode(
       .eq('project_id', projectId)
       .maybeSingle()
     if (!task) throw new WorkshopError('NOT_FOUND', 'ردیف برنامه پیدا نشد')
-    const siblingCount = await countPackageSiblings(
-      supabase,
-      projectId,
-      null,
-      input.parentScheduleNodeId
-    )
-    return nextChildWbs(task.wbs_code ?? null, siblingCount)
+    parentWbs = (task.wbs_code as string | null)?.trim() || null
+    taken = await takenChildWbsCodes(supabase, projectId, parentWbs, { taskId: input.parentScheduleNodeId })
+  } else {
+    throw new WorkshopError('VALIDATION', 'والد نامعتبر است')
   }
 
-  throw new WorkshopError('VALIDATION', 'والد نامعتبر است')
+  const clientWbs = input.wbsCode?.trim()
+  if (clientWbs && !taken.includes(clientWbs)) return clientWbs
+  return nextFreeChildWbs(parentWbs, taken)
 }
 
 export async function createPackage(supabase: SupabaseClient, input: CreatePackageInput) {

@@ -1,5 +1,4 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { seedActualStart } from '@/features/schedule/lib/progress-pace'
 import { refreshScheduleAfterProgress } from '@/features/schedule/lib/refresh-after-progress'
 import { WorkshopError } from '@/features/workshop/lib/domain'
 import { parseDailyReportActivityRef } from '@/features/supervisor/lib/daily-report-activities'
@@ -24,30 +23,10 @@ async function updateProjectTask(
   reportDate: string | undefined,
   now: string
 ): Promise<boolean> {
-  const { data: task } = await supabase
-    .from('project_tasks')
-    .select('id, actual_start, start_current, start_planned')
-    .eq('id', taskId)
-    .eq('project_id', projectId)
-    .maybeSingle()
-
-  if (!task) return false
-
-  const patch: Record<string, unknown> = {
-    percent_complete: pct,
-    physical_percent_complete: pct,
-    updated_at: now,
-  }
-  if (pct > 0 && pct < 100 && !task.actual_start) {
-    patch.actual_start = seedActualStart(task, reportDate ?? now.slice(0, 10))
-  }
-  if (pct >= 100) {
-    patch.actual_finish = reportDate ?? now.slice(0, 10)
-  }
-
+  // Actual start / finish are derived from the report history afterwards (persistProgressForecast).
   const { data: updated, error } = await supabase
     .from('project_tasks')
-    .update(patch)
+    .update({ percent_complete: pct, physical_percent_complete: pct, updated_at: now })
     .eq('id', taskId)
     .eq('project_id', projectId)
     .select('id')
