@@ -15,10 +15,13 @@ const EN = {
     'Each month’s overhead split across activities by earned weight, with the recorded cost beside the performed total.',
   liveCostsTab: 'Cost to date',
   liveCostsDescription:
-    'Live workshop cost now: closed overhead months, a prorated current month, and contractor progress.',
+    'Live workshop cost now: closed overhead months, a prorated current month, contractor progress and employer purchases; with a cost-over-time chart and the cost of each schedule item.',
   contractorCostsTab: 'Contractor workshop costs',
   contractorCostsDescription:
     'Executed workshop costs by contractor and Jalali month, from quantity × unit price × physical progress.',
+  employerPurchasesTab: 'Employer purchases',
+  employerPurchasesDescription:
+    'Goods bought by the employer, each shared among one or more schedule activities by percent.',
   progressInvoiceList: 'Progress invoices',
   progressCurrent: 'Current',
   progressFinal: 'Final',
@@ -109,10 +112,13 @@ const FA = {
     'هزینه بالاسری هر ماه به نسبت وزن کسب‌شدهٔ فعالیت‌ها، با دو جمع: هزینهٔ واقعی ثبت‌شده و جمع کار انجام‌شده.',
   liveCostsTab: 'هزینه تا این لحظه',
   liveCostsDescription:
-    'کل هزینه کارگاه تا امروز: بالاسری ماه‌های بسته، برآورد این ماه، و کارکرد پیمانکاران.',
+    'کل هزینه کارگاه تا امروز: بالاسری ماه‌های بسته، برآورد این ماه، کارکرد پیمانکاران و خرید کارفرمایی؛ با نمودار هزینه نسبت به زمان و هزینهٔ هر آیتم برنامه.',
   contractorCostsTab: 'هزینه پیمانکاران کارگاه',
   contractorCostsDescription:
     'هزینه‌های انجام‌شده کارگاه به تفکیک پیمانکار و ماه جلالی، از مقدار × قیمت واحد × پیشرفت فیزیکی.',
+  employerPurchasesTab: 'خرید کارفرمایی',
+  employerPurchasesDescription:
+    'کالاهایی که کارفرما خریده، هر کدام با سهم درصدی به یک یا چند آیتم برنامهٔ زمان‌بندی.',
   progressInvoiceList: 'فهرست صورت‌وضعیت‌ها',
   progressCurrent: 'جاری',
   progressFinal: 'قطعی',

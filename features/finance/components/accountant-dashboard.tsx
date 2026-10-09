@@ -7,6 +7,7 @@ import { OverheadCostsMatrix } from '@/features/finance/components/overhead-cost
 import { OverheadPerCapitaTable } from '@/features/finance/components/overhead-per-capita-table'
 import { ContractorWorkshopCosts } from '@/features/finance/components/contractor-workshop-costs'
 import { LiveWorkshopCosts } from '@/features/finance/components/live-workshop-costs'
+import { EmployerPurchases } from '@/features/finance/components/employer-purchases'
 import { getAccountantMessages } from '@/shared/lib/i18n/accountant'
 import { cn } from '@/shared/lib/utils'
 import type { DashboardUserContext } from '@/shared/types/dashboard'
@@ -19,7 +20,7 @@ interface AccountantDashboardProps {
   canEdit?: boolean
 }
 
-type AccountantTab = 'live-costs' | 'overhead' | 'contractor-costs' | 'overhead-per-capita'
+type AccountantTab = 'live-costs' | 'overhead' | 'contractor-costs' | 'overhead-per-capita' | 'employer-purchases'
 
 export function AccountantDashboard({
   projectOptions,
@@ -47,7 +48,9 @@ export function AccountantDashboard({
               ? t.contractorCostsDescription
               : tab === 'overhead-per-capita'
                 ? t.overheadPerCapitaDescription
-                : t.overheadDescription
+                : tab === 'employer-purchases'
+                  ? t.employerPurchasesDescription
+                  : t.overheadDescription
         }
       />
 
@@ -67,6 +70,9 @@ export function AccountantDashboard({
         >
           {t.overheadPerCapitaTab}
         </TabButton>
+        <TabButton active={tab === 'employer-purchases'} onClick={() => setTab('employer-purchases')}>
+          {t.employerPurchasesTab}
+        </TabButton>
       </nav>
 
       <div className={tab === 'live-costs' ? undefined : 'hidden'}>
@@ -82,6 +88,9 @@ export function AccountantDashboard({
       </div>
       <div className={tab === 'contractor-costs' ? undefined : 'hidden'}>
         <ContractorWorkshopCosts fa={fa} projectId={projectId} />
+      </div>
+      <div className={tab === 'employer-purchases' ? undefined : 'hidden'}>
+        <EmployerPurchases projectId={projectId} />
       </div>
     </div>
   )

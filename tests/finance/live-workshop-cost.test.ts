@@ -65,4 +65,21 @@ describe('live workshop cost', () => {
     const sum = model.breakdown.reduce((total, row) => total + row.amount, 0)
     expect(Math.round(sum)).toBe(Math.round(model.total))
   })
+
+  it('adds employer purchases bought by today in full', () => {
+    const model = buildLiveWorkshopCostModel({
+      overheadMonths: months,
+      activities: [],
+      purchases: [
+        { date: '2026-04-01', amount: 3_000_000 },
+        { date: '2026-04-30', amount: 9_000_000 },
+      ],
+      todayIso: '2026-04-20',
+    })
+    expect(model.employerPurchases).toBe(3_000_000)
+    expect(model.total).toBe(model.overhead + 3_000_000)
+    const row = model.breakdown.find((r) => r.kind === 'employer-purchase')
+    expect(row?.amount).toBe(3_000_000)
+    expect(row?.note).toContain('1 خرید')
+  })
 })

@@ -20,9 +20,15 @@ export type ContractorActivityCost = {
   progressHistory: Array<{ date: string; percent: number }>
 }
 
+/** Employer purchases count in full on their purchase date. */
+export type DatedAmount = {
+  date: string
+  amount: number
+}
+
 export type LiveCostBreakdownRow = {
   id: string
-  kind: 'overhead-exact' | 'overhead-estimate' | 'contractor'
+  kind: 'overhead-exact' | 'overhead-estimate' | 'contractor' | 'employer-purchase'
   title: string
   source: string
   amount: number
@@ -35,6 +41,7 @@ export type LiveWorkshopCostModel = {
   overheadEstimated: number
   overhead: number
   contractor: number
+  employerPurchases: number
   total: number
   breakdown: LiveCostBreakdownRow[]
 }
@@ -48,7 +55,7 @@ function roundMoney(value: number): number {
   return Math.round(value * 100) / 100
 }
 
-function jalaliMonthStartIso(todayIso: string): string | null {
+export function jalaliMonthStartIso(todayIso: string): string | null {
   const day = toIsoDateOnly(todayIso)
   if (!day) return null
   const [y, m, d] = day.split('-').map(Number)
@@ -71,7 +78,7 @@ function jalaliMonthEndIso(todayIso: string): string | null {
 }
 
 /** Overhead months that ended before the current Jalali month began, oldest first. */
-function closedOverheadMonths(
+export function closedOverheadMonths(
   months: OverheadMonthAmount[],
   todayIso: string
 ): OverheadMonthAmount[] {
@@ -192,11 +199,24 @@ export function contractorExecutedAsOf(
   )
 }
 
+/** Employer purchases bought on or before a date, in toman. */
+export function purchasesAsOf(purchases: DatedAmount[], asOfIso: string): number {
+  const asOf = toIsoDateOnly(asOfIso)
+  if (!asOf) return 0
+  return roundMoney(
+    purchases.reduce((sum, p) => {
+      const date = toIsoDateOnly(p.date)
+      return date && date <= asOf && Number.isFinite(p.amount) ? sum + p.amount : sum
+    }, 0)
+  )
+}
+
 export function buildLiveCostBreakdown(
   months: OverheadMonthAmount[],
   todayIso: string,
   contractor: number,
-  activityCount: number
+  activityCount: number,
+  employerPurchases: { amount: number; count: number } = { amount: 0, count: 0 }
 ): LiveCostBreakdownRow[] {
   const today = toIsoDateOnly(todayIso) ?? todayIso
   const accrued = accrueOverheadAsOf(months, today, today)
@@ -237,31 +257,44 @@ export function buildLiveCostBreakdown(
         ? `${activityCount} فعالیت برگ — از گزارش پیشرفت سرپرست`
         : 'فعالیت قیمت‌دار ثبت نشده است',
   })
+  rows.push({
+    id: 'employer-purchases',
+    kind: 'employer-purchase',
+    title: 'خرید کارفرمایی',
+    source: 'تب خرید کارفرمایی',
+    amount: employerPurchases.amount,
+    note:
+      employerPurchases.count > 0
+        ? `${employerPurchases.count} خرید — کامل در تاریخ خرید`
+        : 'خرید کارفرمایی ثبت نشده است',
+  })
   return rows
 }
 
-/** Today's live workshop cost = accrued overhead (exact + estimated) + executed contractor work. */
+/** Today's live workshop cost = accrued overhead (exact + estimated) + executed contractor work + employer purchases. */
 export function buildLiveWorkshopCostModel(input: {
   overheadMonths: OverheadMonthAmount[]
   activities: ContractorActivityCost[]
+  purchases?: DatedAmount[]
   todayIso: string
 }): LiveWorkshopCostModel {
   const todayIso = toIsoDateOnly(input.todayIso) ?? input.todayIso
   const overhead = accrueOverheadAsOf(input.overheadMonths, todayIso, todayIso)
   const contractor = contractorExecutedAsOf(input.activities, todayIso, todayIso)
-  const total = roundMoney(overhead.exact + overhead.estimated + contractor)
+  const purchases = input.purchases ?? []
+  const employerPurchases = purchasesAsOf(purchases, todayIso)
+  const total = roundMoney(overhead.exact + overhead.estimated + contractor + employerPurchases)
   return {
     asOfIso: todayIso,
     overheadExact: overhead.exact,
     overheadEstimated: overhead.estimated,
     overhead: roundMoney(overhead.exact + overhead.estimated),
     contractor,
+    employerPurchases,
     total,
-    breakdown: buildLiveCostBreakdown(
-      input.overheadMonths,
-      todayIso,
-      contractor,
-      input.activities.length
-    ),
+    breakdown: buildLiveCostBreakdown(input.overheadMonths, todayIso, contractor, input.activities.length, {
+      amount: employerPurchases,
+      count: purchases.filter((p) => (toIsoDateOnly(p.date) ?? '') <= todayIso).length,
+    }),
   }
 }

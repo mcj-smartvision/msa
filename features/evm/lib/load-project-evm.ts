@@ -174,7 +174,7 @@ export function resolvePackageWeights(
   return { weights, issues }
 }
 
-function buildActivities(
+export function buildActivities(
   tasks: Row[],
   packages: Row[],
   projectBudget: number | null

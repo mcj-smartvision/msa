@@ -13,6 +13,7 @@ deductedMonthFromLabel,
 overheadCostForScheduleMonths,
 scheduleMonthsFromTree,
 } from '@/features/finance/lib/overhead-schedule-months'
+import { TOMAN_SCALE } from '@/features/finance/lib/live-workshop-cost'
 import { allocateOverhead } from '@/features/schedule/lib/month-progress-overhead'
 import { earnedWeightsFromDailyReports } from '@/features/schedule/lib/earned-month-weight'
 import { applyParentWeightSum } from '@/features/schedule/lib/parent-weight-rollup'
@@ -35,11 +36,18 @@ type ActivityRow = {
   earned: Array<number | null>
 }
 
-function formatMoney(value: number, fa: boolean, blankZero = false): string {
-  if (!Number.isFinite(value) || (blankZero && Math.abs(value) < 0.0001)) return '—'
-  return value.toLocaleString(fa ? 'fa-IR' : 'en-US', {
-    maximumFractionDigits: 2,
-  })
+/** Overhead amounts are stored in million toman (see the overhead matrix); shown in whole toman like the other tabs. */
+function formatToman(million: number, blankZero = false): string {
+  const toman = Math.round(million * TOMAN_SCALE)
+  if (!Number.isFinite(toman) || (blankZero && toman === 0)) return '—'
+  return toman.toLocaleString('en-US', { maximumFractionDigits: 0 })
+}
+
+/** Typed amount → million toman, with the overhead matrix's rule: 1000 and up is whole toman. */
+function parseTomanInput(raw: string): number | null {
+  const n = Number(raw.trim().replace(/,/g, ''))
+  if (!Number.isFinite(n) || n < 0) return null
+  return n >= 1000 ? n / TOMAN_SCALE : n
 }
 
 function reportsForActivity(activityId: string, entries: DailyProgressEntry[]): DailyProgressEntry[] {
@@ -256,8 +264,8 @@ export function OverheadPerCapitaTable({
     <div className="space-y-3" dir="rtl">
       <p className="text-xs leading-relaxed text-slate-600">
         {fa
-          ? 'با + کنار هر ماه، ستون قبل یا بعد اضافه کنید و نام ماه را بنویسید. مبلغ همان ماه را در ردیف مشکی پایین وارد کنید. سهم هر فعالیت = این مبلغ × (وزن کسب‌شده ÷ جمع وزن کسب‌شده).'
-          : 'Use + beside a month to insert a column and type its name. Enter that month’s amount in the dark footer. Each activity gets that amount × its earned-weight share.'}
+          ? 'با + کنار هر ماه، ستون قبل یا بعد اضافه کنید و نام ماه را بنویسید. مبلغ همان ماه را به تومان در ردیف مشکی پایین وارد کنید (همهٔ عددها به تومان است). سهم هر فعالیت = این مبلغ × (وزن کسب‌شده ÷ جمع وزن کسب‌شده).'
+          : 'Use + beside a month to insert a column and type its name. Enter that month’s amount in toman in the dark footer (all figures are in toman). Each activity gets that amount × its earned-weight share.'}
       </p>
       <div className="max-h-[min(75vh,820px)] overflow-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-max border-separate border-spacing-0 text-[11px]">
@@ -331,7 +339,7 @@ export function OverheadPerCapitaTable({
                     key={`${row.id}-${model.months[index]?.key ?? index}`}
                     className="whitespace-nowrap border-b border-e border-slate-200 px-2 py-1 text-center tabular-nums"
                   >
-                    {value == null ? '—' : formatMoney(value, fa, true)}
+                    {value == null ? '—' : formatToman(value, true)}
                   </td>
                 ))}
               </tr>
@@ -349,7 +357,7 @@ export function OverheadPerCapitaTable({
                     key={`done-${model.months[index]?.key ?? index}`}
                     className="border-e border-t border-slate-300 px-2 py-2 text-center tabular-nums"
                   >
-                    {formatMoney(value, fa)}
+                    {formatToman(value)}
                   </td>
                 ))}
               </tr>
@@ -366,11 +374,14 @@ export function OverheadPerCapitaTable({
                     <input
                       key={`${model.months[index]?.label ?? index}:${value}`}
                       dir="ltr"
-                      defaultValue={String(value)}
-                      aria-label={fa ? `مبلغ ${model.months[index]?.label ?? ''}` : 'Month amount'}
+                      defaultValue={formatToman(value)}
+                      aria-label={fa ? `مبلغ ${model.months[index]?.label ?? ''} (تومان)` : 'Month amount (toman)'}
                       onBlur={(event) => {
-                        const next = Number(event.target.value)
-                        if (!Number.isFinite(next) || next === value) return
+                        const next = parseTomanInput(event.target.value)
+                        if (next == null || Math.round(next * TOMAN_SCALE) === Math.round(value * TOMAN_SCALE)) {
+                          event.target.value = formatToman(value)
+                          return
+                        }
                         editColumns({ type: 'total', index, total: next })
                       }}
                       className="w-full rounded border border-slate-600 bg-slate-800 px-1 py-1 text-center text-[11px] font-semibold text-white outline-none focus:border-orange-300"

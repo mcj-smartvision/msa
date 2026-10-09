@@ -3,27 +3,33 @@ import { createClient } from '@/shared/lib/supabase/server'
 import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
 import { WorkshopError } from '@/features/workshop/lib/domain'
 import { workshopErrorResponse } from '@/features/workshop/lib/service'
-import { readPackageUnitPrice } from '@/features/workshop/lib/package-commercial'
-import {
-packageSchedulePhysicalPercent,
-schedulePhysicalPercent,
-} from '@/features/schedule/lib/physical-progress'
+import { schedulePhysicalPercent } from '@/features/schedule/lib/physical-progress'
 import { toIsoDateOnly } from '@/features/schedule/lib/dates'
 import {
 enumerateProjectJalaliMonths,
 projectDateSpan,
 } from '@/features/schedule/lib/monthly-deducted-weight'
-import {
-buildLiveWorkshopCostModel,
-type ContractorActivityCost,
-} from '@/features/finance/lib/live-workshop-cost'
+import { buildLiveWorkshopCostModel } from '@/features/finance/lib/live-workshop-cost'
+import { buildCostCurve, buildItemCosts, type CostActivity } from '@/features/finance/lib/workshop-cost-curve'
+import { listEmployerPurchases } from '@/features/finance/lib/employer-purchases-service'
+import type { EmployerPurchase } from '@/features/finance/lib/employer-purchases'
 import { loadOverheadMonths } from '@/features/finance/lib/overhead-months'
-import {
-isLeafPackage,
-isLeafTask,
-taskCurrentDates as taskDates,
-} from '@/features/schedule/lib/leaf-activities'
+import { buildActivities as buildEvmActivities } from '@/features/evm/lib/load-project-evm'
+import { compareWbs } from '@/features/schedule/lib/wbs-utils'
+import { taskCurrentDates as taskDates } from '@/features/schedule/lib/leaf-activities'
 import { todayTehranIso } from '@/shared/lib/time/tehran'
+
+async function loadPurchases(
+  supabase: ReturnType<typeof createClient>,
+  projectId: string
+): Promise<EmployerPurchase[]> {
+  try {
+    return await listEmployerPurchases(supabase, projectId)
+  } catch (error) {
+    if (error instanceof Error && /employer_purchase|schema cache|does not exist/i.test(error.message)) return []
+    throw error
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,6 +46,8 @@ export async function GET(request: NextRequest) {
       { data: tasks, error: taskError },
       { data: packages, error: packageError },
       progressRes,
+      project,
+      purchases,
     ] = await Promise.all([
       loadOverheadMonths(supabase, projectId),
       supabase.from('project_tasks').select('*').eq('project_id', projectId),
@@ -49,6 +57,8 @@ export async function GET(request: NextRequest) {
         .select('task_id, progress_date, percent_complete')
         .eq('project_id', projectId)
         .order('progress_date', { ascending: true }),
+      supabase.from('projects').select('budget').eq('id', projectId).maybeSingle(),
+      loadPurchases(supabase, projectId),
     ])
 
     if (taskError) throw new WorkshopError('VALIDATION', taskError.message)
@@ -72,67 +82,83 @@ export async function GET(request: NextRequest) {
 
     const taskRows = (tasks ?? []) as Array<Record<string, unknown>>
     const packageRows = (packages ?? []) as Array<Record<string, unknown>>
-    const activities: ContractorActivityCost[] = []
-    const dateSpanItems: Array<{ startDate: string | null; finishDate: string | null }> = []
+    const tasksById = new Map(taskRows.map((row) => [String(row.id), row]))
+    const packagesById = new Map(packageRows.map((row) => [String(row.id), row]))
+    const projectBudget = project.data?.budget != null ? Number(project.data.budget) : null
+    const evm = buildEvmActivities(taskRows, packageRows, projectBudget)
 
-    for (const row of taskRows) {
-      if (!isLeafTask(row, taskRows, packageRows)) continue
+    const leafActivities: CostActivity[] = evm.activities.map((a) => {
+      const pkg = a.kind === 'package' ? packagesById.get(a.id) : undefined
+      const dates = pkg
+        ? {
+            start: toIsoDateOnly((pkg.start_date as string) ?? null),
+            finish: toIsoDateOnly((pkg.finish_date as string) ?? null),
+          }
+        : taskDates(tasksById.get(a.id) ?? {})
+      return {
+        ...a,
+        contractValue: a.quantity * a.unitPrice,
+        currentPercent: a.physicalPercent,
+        start: dates.start,
+        finish: dates.finish,
+        progressHistory: historyById.get(a.id) ?? [],
+      }
+    })
+
+    // Purchases may be shared to an activity whose packages are the leaves; it carries no contract value or weight of its own.
+    const activities = [...leafActivities]
+    const known = new Set(activities.map((a) => a.id))
+    for (const taskId of new Set(purchases.flatMap((p) => p.allocations.map((al) => al.taskId)))) {
+      const row = taskId && !known.has(taskId) ? tasksById.get(taskId) : undefined
+      if (!row) continue
       const dates = taskDates(row)
-      dateSpanItems.push({ startDate: dates.start, finishDate: dates.finish })
+      known.add(taskId!)
       activities.push({
-        id: String(row.id),
-        contractValue: (Number(row.quantity) || 0) * (Number(row.unit_price) || 0),
+        id: taskId!,
+        name: String(row.name ?? ''),
+        wbs: row.wbs_code ? String(row.wbs_code) : null,
+        budget: 0,
+        weight: 0,
+        baselineStart: null,
+        baselineFinish: null,
+        physicalPercent: schedulePhysicalPercent(row) ?? 0,
+        contractValue: 0,
         currentPercent: schedulePhysicalPercent(row) ?? 0,
         start: dates.start,
         finish: dates.finish,
-        progressHistory: historyById.get(String(row.id)) ?? [],
+        progressHistory: historyById.get(taskId!) ?? [],
       })
     }
 
-    for (const row of packageRows) {
-      if (!isLeafPackage(row, packageRows)) continue
-      const fields =
-        row.schedule_fields && typeof row.schedule_fields === 'object'
-          ? (row.schedule_fields as Record<string, unknown>)
-          : {}
-      const dates = {
-        start: toIsoDateOnly((row.start_date as string) ?? null),
-        finish: toIsoDateOnly((row.finish_date as string) ?? null),
-      }
-      dateSpanItems.push({ startDate: dates.start, finishDate: dates.finish })
-      activities.push({
-        id: String(row.id),
-        contractValue: (Number(row.quantity) || 0) * readPackageUnitPrice(row),
-        currentPercent: packageSchedulePhysicalPercent(fields) ?? 0,
-        start: dates.start,
-        finish: dates.finish,
-        progressHistory: historyById.get(String(row.id)) ?? [],
-      })
-    }
-
-    const span = projectDateSpan(dateSpanItems)
+    const span = projectDateSpan(leafActivities.map((a) => ({ startDate: a.start, finishDate: a.finish })))
     const start = span.start ?? overheadMonths[0]?.startIso ?? todayIso
-    const months = enumerateProjectJalaliMonths(start, todayIso)
+    const months =
+      overheadMonths.length > 0
+        ? overheadMonths
+        : enumerateProjectJalaliMonths(start, todayIso).map((month) => ({
+            startIso: month.startIso,
+            endIso: month.endIso,
+            label: month.label,
+            amountToman: 0,
+          }))
+    const datedPurchases = purchases.map((p) => ({ date: p.purchaseDate, amount: p.amount }))
     const model = buildLiveWorkshopCostModel({
-      overheadMonths:
-        overheadMonths.length > 0
-          ? overheadMonths
-          : months.map((month) => ({
-              startIso: month.startIso,
-              endIso: month.endIso,
-              label: month.label,
-              amountToman: 0,
-            })),
-      activities,
+      overheadMonths: months,
+      activities: leafActivities,
+      purchases: datedPurchases,
       todayIso,
     })
+    const items = buildItemCosts({ overheadMonths: months, activities, purchases, todayIso })
 
     return NextResponse.json(
       {
         ...model,
-        activityCount: activities.length,
+        activityCount: leafActivities.length,
         monthLabels: overheadMonths.map((month) => month.label),
         monthAmounts: overheadMonths.map((month) => month.amountToman),
+        budgetBasis: evm.basis,
+        curve: buildCostCurve({ overheadMonths: months, activities, purchases: datedPurchases, todayIso }),
+        items: { ...items, rows: items.rows.sort((a, b) => compareWbs(a.wbs, b.wbs)) },
       },
       { headers: { 'Cache-Control': 'no-store, max-age=0' } }
     )

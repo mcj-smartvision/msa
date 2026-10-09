@@ -11,6 +11,9 @@ buildLiveWorkshopCostModel,
 type LiveCostBreakdownRow,
 type OverheadMonthAmount,
 } from '@/features/finance/lib/live-workshop-cost'
+import type { CostCurvePoint, ItemCostModel } from '@/features/finance/lib/workshop-cost-curve'
+import { WorkshopCostChart } from '@/features/finance/components/workshop-cost-chart'
+import type { EvmBudgetBasis } from '@/features/evm/lib/metrics'
 import { cn } from '@/shared/lib/utils'
 
 type Payload = {
@@ -19,11 +22,15 @@ type Payload = {
   overheadEstimated: number
   overhead: number
   contractor: number
+  employerPurchases: number
   total: number
   breakdown?: LiveCostBreakdownRow[]
   activityCount: number
   monthLabels?: string[]
   monthAmounts?: number[]
+  curve?: CostCurvePoint[]
+  items?: ItemCostModel
+  budgetBasis?: EvmBudgetBasis
 }
 
 function groupComma(value: number): string {
@@ -106,14 +113,20 @@ export function LiveWorkshopCosts({
         activities: [],
         todayIso,
       })
+      const purchaseRow = data.breakdown?.find((row) => row.kind === 'employer-purchase')
       return {
         ...data,
         overheadExact: model.overheadExact,
         overheadEstimated: model.overheadEstimated,
         overhead: model.overhead,
         contractor: data.contractor,
-        total: model.overhead + data.contractor,
-        breakdown: buildLiveCostBreakdown(local, todayIso, data.contractor, data.activityCount),
+        total: model.overhead + data.contractor + data.employerPurchases,
+        breakdown: [
+          ...buildLiveCostBreakdown(local, todayIso, data.contractor, data.activityCount).filter(
+            (row) => row.kind !== 'employer-purchase'
+          ),
+          ...(purchaseRow ? [purchaseRow] : []),
+        ],
       }
     }
     return data
@@ -142,7 +155,8 @@ export function LiveWorkshopCosts({
 
   if (!merged) return null
 
-  const shareContractor = merged.total > 0 ? merged.contractor / merged.total : 0
+  const shareOf = (amount: number) =>
+    `${merged.total > 0 ? Math.round((amount / merged.total) * 100) : 0}${fa ? '٪' : '%'}`
 
   return (
     <div className="space-y-5">
@@ -154,7 +168,7 @@ export function LiveWorkshopCosts({
           </p>
         </div>
         <p className="mt-3 text-4xl font-bold tabular-nums tracking-tight">{toman(merged.total, fa)}</p>
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl bg-white/10 p-3">
             <p className="text-[11px] text-slate-300">{fa ? 'بالاسری دقیق ماه‌های بسته' : 'Closed overhead'}</p>
             <p className="mt-1 text-lg font-semibold tabular-nums">{toman(merged.overheadExact, fa)}</p>
@@ -169,12 +183,26 @@ export function LiveWorkshopCosts({
           <div className="rounded-2xl bg-white/10 p-3">
             <p className="text-[11px] text-teal-200">{fa ? 'سهم پیمانکاران' : 'Contractor share'}</p>
             <p className="mt-1 text-lg font-semibold tabular-nums">{toman(merged.contractor, fa)}</p>
-            <p className="mt-1 text-[11px] text-slate-300">
-              {fa ? `${Math.round(shareContractor * 100)}٪` : `${Math.round(shareContractor * 100)}%`}
-            </p>
+            <p className="mt-1 text-[11px] text-slate-300">{shareOf(merged.contractor)}</p>
+          </div>
+          <div className="rounded-2xl bg-white/10 p-3">
+            <p className="text-[11px] text-indigo-200">{fa ? 'خرید کارفرمایی' : 'Employer purchases'}</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums">{toman(merged.employerPurchases ?? 0, fa)}</p>
+            <p className="mt-1 text-[11px] text-slate-300">{shareOf(merged.employerPurchases ?? 0)}</p>
           </div>
         </div>
       </section>
+
+      {merged.curve ? (
+        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+          <div className="border-b bg-slate-50 px-5 py-4">
+            <h3 className="text-base font-semibold text-slate-900">
+              {fa ? 'نمودار هزینهٔ کارگاه نسبت به زمان' : 'Workshop cost over time'}
+            </h3>
+          </div>
+          <WorkshopCostChart points={merged.curve} budgetBasis={merged.budgetBasis} />
+        </section>
+      ) : null}
 
       <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
         <div className="border-b bg-slate-50 px-5 py-4">
@@ -204,7 +232,8 @@ export function LiveWorkshopCosts({
                   className={cn(
                     'border-t border-slate-100',
                     row.kind === 'overhead-estimate' && 'bg-amber-50/70',
-                    row.kind === 'contractor' && 'bg-teal-50/50'
+                    row.kind === 'contractor' && 'bg-teal-50/50',
+                    row.kind === 'employer-purchase' && 'bg-indigo-50/50'
                   )}
                 >
                   <td className="px-4 py-3 font-medium text-slate-900">{row.title}</td>
@@ -229,6 +258,111 @@ export function LiveWorkshopCosts({
           </table>
         </div>
       </section>
+
+      {merged.items ? <ItemCostTable items={merged.items} fa={fa} /> : null}
     </div>
+  )
+}
+
+function ItemCostTable({ items, fa }: { items: ItemCostModel; fa: boolean }) {
+  const sum = (pick: (row: ItemCostModel['rows'][number]) => number) =>
+    items.rows.reduce((total, row) => total + pick(row), 0)
+  const itemsTotal = sum((row) => row.total)
+  const extras = [
+    {
+      id: 'unallocated',
+      title: fa ? 'بالاسری ماه‌هایی که هیچ آیتمی پیشرفت نداشت' : 'Overhead of months without progress',
+      amount: items.unallocatedOverhead,
+    },
+    {
+      id: 'on-site',
+      title: fa ? 'مصالح پای کار (خریده‌شده، هنوز مصرف‌نشده)' : 'Materials on site (bought, not yet built in)',
+      amount: items.materialsOnSite,
+    },
+  ].filter((row) => Math.round(row.amount) !== 0)
+
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+      <div className="border-b bg-slate-50 px-5 py-4">
+        <h3 className="text-base font-semibold text-slate-900">
+          {fa ? 'هزینهٔ هر آیتم برنامه تا این لحظه' : 'Cost of each schedule item to date'}
+        </h3>
+        <p className="mt-1 text-[12px] leading-6 text-slate-500">
+          {fa
+            ? 'پیمانکار = مبلغ قرارداد × پیشرفت · سهم بالاسری = بالاسری هر ماه × (وزن کسب‌شدهٔ آیتم در آن ماه ÷ وزن کسب‌شدهٔ همهٔ آیتم‌ها) · خرید کارفرمایی مصرف‌شده = مبلغ × سهم آیتم × پیشرفت آیتم.'
+            : 'Contractor = contract value × progress · overhead = monthly overhead × earned-weight share · purchases built in = amount × share × progress.'}
+        </p>
+      </div>
+      <div className="overflow-auto">
+        <table className="min-w-full text-[13px]">
+          <thead>
+            <tr className="bg-slate-100 text-slate-600">
+              <th className="px-3 py-2.5 text-start font-semibold">{fa ? 'آیتم برنامه' : 'Item'}</th>
+              <th className="px-3 py-2.5 text-end font-semibold">{fa ? 'پیشرفت' : 'Progress'}</th>
+              <th className="px-3 py-2.5 text-end font-semibold">{fa ? 'پیمانکار' : 'Contractor'}</th>
+              <th className="px-3 py-2.5 text-end font-semibold">{fa ? 'سهم بالاسری' : 'Overhead'}</th>
+              <th className="px-3 py-2.5 text-end font-semibold">{fa ? 'خرید کارفرمایی (کل)' : 'Purchases (all)'}</th>
+              <th className="px-3 py-2.5 text-end font-semibold">{fa ? 'خرید مصرف‌شده' : 'Purchases built in'}</th>
+              <th className="px-3 py-2.5 text-end font-semibold">{fa ? 'هزینهٔ آیتم' : 'Item cost'}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.rows.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
+                  {fa ? 'هنوز هزینه‌ای به آیتم‌ها نرسیده است.' : 'No item cost yet.'}
+                </td>
+              </tr>
+            ) : (
+              items.rows.map((row) => (
+                <tr key={row.id} className="border-t border-slate-100">
+                  <td className="px-3 py-2.5 text-slate-900">
+                    {row.wbs ? <span className="me-1 tabular-nums text-slate-500">{row.wbs}</span> : null}
+                    {row.name}
+                  </td>
+                  <td className="px-3 py-2.5 text-end tabular-nums text-slate-600">
+                    {Math.round(row.percent * 10) / 10}
+                    {fa ? '٪' : '%'}
+                  </td>
+                  <td className="px-3 py-2.5 text-end tabular-nums">{groupComma(row.contractor)}</td>
+                  <td className="px-3 py-2.5 text-end tabular-nums">{groupComma(row.overhead)}</td>
+                  <td className="px-3 py-2.5 text-end tabular-nums text-slate-500">{groupComma(row.purchaseAllocated)}</td>
+                  <td className="px-3 py-2.5 text-end tabular-nums">{groupComma(row.purchaseConsumed)}</td>
+                  <td className="px-3 py-2.5 text-end font-semibold tabular-nums text-slate-900">{groupComma(row.total)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-slate-300 bg-slate-50 font-semibold">
+              <td className="px-3 py-2.5" colSpan={2}>
+                {fa ? 'جمع آیتم‌ها' : 'Items total'}
+              </td>
+              <td className="px-3 py-2.5 text-end tabular-nums">{groupComma(sum((r) => r.contractor))}</td>
+              <td className="px-3 py-2.5 text-end tabular-nums">{groupComma(sum((r) => r.overhead))}</td>
+              <td className="px-3 py-2.5 text-end tabular-nums text-slate-500">{groupComma(sum((r) => r.purchaseAllocated))}</td>
+              <td className="px-3 py-2.5 text-end tabular-nums">{groupComma(sum((r) => r.purchaseConsumed))}</td>
+              <td className="px-3 py-2.5 text-end tabular-nums">{groupComma(itemsTotal)}</td>
+            </tr>
+            {extras.map((row) => (
+              <tr key={row.id} className="border-t border-slate-100 text-slate-600">
+                <td className="px-3 py-2" colSpan={6}>
+                  + {row.title}
+                </td>
+                <td className="px-3 py-2 text-end tabular-nums">{groupComma(row.amount)}</td>
+              </tr>
+            ))}
+            <tr className="border-t border-slate-800 bg-slate-900 text-white">
+              <td className="px-3 py-3 font-semibold" colSpan={6}>
+                {fa ? 'برابر با جمع هزینه تا این لحظه' : 'Equals total incurred to date'}
+              </td>
+              <td className="px-3 py-3 text-end font-bold tabular-nums">
+                {groupComma(itemsTotal + extras.reduce((s, row) => s + row.amount, 0))}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
   )
 }
