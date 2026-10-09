@@ -8,11 +8,13 @@ import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Textarea } from '@/shared/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
+import { Skeleton } from '@/shared/components/ui/skeleton'
 import { JalaliDatePicker } from '@/features/holidays/components/jalali-date-picker'
 import { useHolidays } from '@/features/holidays/hooks/use-holidays'
+import { END_BEFORE_START_ERROR, isEndBeforeStart, withDefaultEnd } from '@/features/holidays/lib/holiday-form'
 import { HOLIDAY_TYPE_LABELS, type Holiday, type HolidayInput, type HolidayType } from '@/features/holidays/lib/types'
 import { persianWeekday } from '@/features/holidays/lib/work-calendar'
-import { formatJalaliShort, PERSIAN_WEEKDAYS, toPersianDigits } from '@/shared/lib/time/jalali-month'
+import { formatJalaliShort, PERSIAN_WEEKDAYS, latinDigits } from '@/shared/lib/time/jalali-month'
 import { cn } from '@/shared/lib/utils'
 
 const EMPTY: HolidayInput = { type: 'official', startDate: '', endDate: null, title: '', description: null, isActive: true }
@@ -26,7 +28,7 @@ function whenLabel(h: Holiday): string {
     return `هر ${day} از ${formatJalaliShort(h.startDate)}${h.endDate ? ` تا ${formatJalaliShort(h.endDate)}` : ''}`
   }
   if (!h.endDate || h.endDate === h.startDate) return formatJalaliShort(h.startDate)
-  return `${formatJalaliShort(h.startDate)} تا ${formatJalaliShort(h.endDate)} (${toPersianDigits(dayCount(h))} روز)`
+  return `${formatJalaliShort(h.startDate)} تا ${formatJalaliShort(h.endDate)} (${latinDigits(dayCount(h))} روز)`
 }
 
 async function send(url: string, method: string, body?: unknown) {
@@ -81,6 +83,7 @@ export function HolidaysPanel() {
   }
 
   const weekly = form.type === 'weekly'
+  const endBeforeStart = isEndBeforeStart(form)
 
   return (
     <div className="space-y-4" dir="rtl">
@@ -104,7 +107,7 @@ export function HolidaysPanel() {
             >
               <div className="space-y-1.5">
                 <Label htmlFor="holiday-type">نوع تعطیلی</Label>
-                <Select value={form.type} onValueChange={(v) => set('type', v as HolidayType)}>
+                <Select value={form.type} onValueChange={(v) => setForm((f) => withDefaultEnd({ ...f, type: v as HolidayType }))}>
                   <SelectTrigger id="holiday-type" className="h-9">
                     <SelectValue />
                   </SelectTrigger>
@@ -119,7 +122,12 @@ export function HolidaysPanel() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="holiday-start">{weekly ? 'از تاریخ (روز هفتهٔ آن تکرار می‌شود)' : 'تاریخ'}</Label>
-                <JalaliDatePicker id="holiday-start" value={form.startDate} onChange={(iso) => set('startDate', iso)} holidays={holidays} />
+                <JalaliDatePicker
+                  id="holiday-start"
+                  value={form.startDate}
+                  onChange={(iso) => setForm((f) => withDefaultEnd({ ...f, startDate: iso }))}
+                  holidays={holidays}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="holiday-end">{weekly ? 'تا تاریخ (اختیاری)' : 'تاریخ پایان (برای چندروزه)'}</Label>
@@ -129,8 +137,14 @@ export function HolidaysPanel() {
                   onChange={(iso) => set('endDate', iso || null)}
                   holidays={holidays}
                   placeholder={weekly ? 'بدون پایان' : 'یک‌روزه'}
+                  min={form.startDate || undefined}
                   clearable
                 />
+                {endBeforeStart ? (
+                  <p className="text-xs text-red-600" role="alert">
+                    {END_BEFORE_START_ERROR}
+                  </p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="holiday-title">عنوان / مناسبت</Label>
@@ -146,7 +160,7 @@ export function HolidaysPanel() {
                 />
               </div>
               <div className="flex items-end gap-2">
-                <Button type="submit" size="sm" disabled={busy === 'form' || !form.startDate || !form.title.trim()}>
+                <Button type="submit" size="sm" disabled={busy === 'form' || !form.startDate || !form.title.trim() || endBeforeStart}>
                   {busy === 'form' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
                   {editingId ? 'ذخیرهٔ تغییرات' : 'ثبت تعطیلی'}
                 </Button>
@@ -174,7 +188,11 @@ export function HolidaysPanel() {
         </CardHeader>
         <CardContent className="overflow-x-auto">
           {!loaded ? (
-            <Loader2 className="h-5 w-5 animate-spin text-slate-400" aria-label="بارگذاری" />
+            <div className="space-y-2" role="status" aria-label="در حال بارگذاری">
+              {Array.from({ length: 4 }, (_, i) => (
+                <Skeleton key={i} className="h-9 w-full" />
+              ))}
+            </div>
           ) : sorted.length === 0 ? (
             <p className="text-sm text-slate-500">هنوز تعطیلی ثبت نشده است.</p>
           ) : (
@@ -192,7 +210,7 @@ export function HolidaysPanel() {
               <tbody>
                 {sorted.map((h) => (
                   <tr key={h.id} className={cn('border-b last:border-0', !h.isActive && 'text-slate-400')}>
-                    <td className="py-2 font-medium">{h.title}</td>
+                    <td className="py-2 font-medium">{h.title.trim() || '—'}</td>
                     <td className="py-2">{HOLIDAY_TYPE_LABELS[h.type]}</td>
                     <td className="py-2">{whenLabel(h)}</td>
                     <td className="max-w-[220px] truncate py-2" title={h.description ?? undefined}>
@@ -222,15 +240,16 @@ export function HolidaysPanel() {
                     {canManage ? (
                       <td className="py-2">
                         <div className="flex justify-end gap-1">
-                          <Button type="button" size="sm" variant="ghost" onClick={() => startEdit(h)} aria-label="ویرایش">
+                          <Button type="button" size="icon" variant="ghost" onClick={() => startEdit(h)} title="ویرایش" aria-label="ویرایش">
                             <Pencil className="h-4 w-4" aria-hidden />
                           </Button>
                           <Button
                             type="button"
-                            size="sm"
+                            size="icon"
                             variant="ghost"
                             className="text-red-600 hover:text-red-700"
                             disabled={busy === `delete:${h.id}`}
+                            title="حذف"
                             aria-label="حذف"
                             onClick={() => {
                               if (!window.confirm(`تعطیلی «${h.title}» حذف شود؟`)) return

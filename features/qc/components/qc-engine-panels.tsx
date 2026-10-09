@@ -301,7 +301,7 @@ function formatInspectorTime(value: string | null | undefined, locale: string) {
   if (!value) return '—'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleTimeString(locale.startsWith('fa') ? 'fa-IR' : undefined, {
+  return date.toLocaleTimeString(locale.startsWith('fa') ? 'fa-IR-u-nu-latn' : undefined, {
     hour: '2-digit',
     minute: '2-digit',
   })

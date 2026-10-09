@@ -97,4 +97,19 @@ describe('resolveGanttBarTone', () => {
   it('maps critical float to red tone', () => {
     expect(resolveGanttBarTone({ isCritical: true, totalFloat: 0 })).toBe('critical')
   })
+
+  it('marks finished work completed even when critical or alerted', () => {
+    expect(
+      resolveGanttBarTone({
+        isCritical: true,
+        totalFloat: -3,
+        alertSeverity: 'negative',
+        alertQuadrant: 'urgent',
+        percentComplete: 100,
+      })
+    ).toBe('completed')
+    expect(resolveGanttBarTone({ isCritical: true, totalFloat: 0, percentComplete: 99.5 })).toBe(
+      'critical'
+    )
+  })
 })

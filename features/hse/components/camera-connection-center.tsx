@@ -368,7 +368,7 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
               {activeBinding ? (
                 <p className="rounded border border-sky-200 bg-sky-50 px-2.5 py-2 text-xs text-sky-900">
                   جایگاه به <strong>{activeBinding.label}</strong> متصل است ·{' '}
-                  {new Date(activeBinding.boundAt).toLocaleString('fa-IR')}
+                  {new Date(activeBinding.boundAt).toLocaleString('fa-IR-u-nu-latn')}
                 </p>
               ) : null}
 
@@ -437,7 +437,7 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
                     className="h-8"
                     value={ipForm.code}
                     onChange={(e) => setIpForm((f) => ({ ...f, code: e.target.value }))}
-                    placeholder="دوربین-۰۹"
+                    placeholder="دوربین-09"
                   />
                 </label>
                 <label className="space-y-1 text-xs">
@@ -473,7 +473,7 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
                     className="h-8"
                     value={ipForm.location}
                     onChange={(e) => setIpForm((f) => ({ ...f, location: e.target.value }))}
-                    placeholder="طبقه ۲ — لبه شرقی"
+                    placeholder="طبقه 2 — لبه شرقی"
                   />
                 </label>
                 <label className="space-y-1 text-xs">

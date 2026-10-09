@@ -156,7 +156,7 @@ export function CostsDashboard({
   }
 
   const formatMoney = (n: number) =>
-    new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 0 }).format(n)
+    new Intl.NumberFormat('fa-IR-u-nu-latn', { maximumFractionDigits: 0 }).format(n)
 
   return (
     <div className="space-y-8">

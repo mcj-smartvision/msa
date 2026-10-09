@@ -61,7 +61,7 @@ export function computeOutsideMs(
 }
 
 export function formatDurationFa(ms: number): string {
-  if (ms <= 0) return '۰ دقیقه'
+  if (ms <= 0) return '0 دقیقه'
   const totalMin = Math.floor(ms / 60000)
   const h = Math.floor(totalMin / 60)
   const m = totalMin % 60

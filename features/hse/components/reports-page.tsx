@@ -102,8 +102,8 @@ export function ReportsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="today">امروز</SelectItem>
-                <SelectItem value="7d">۷ روز اخیر</SelectItem>
-                <SelectItem value="30d">۳۰ روز اخیر</SelectItem>
+                <SelectItem value="7d">7 روز اخیر</SelectItem>
+                <SelectItem value="30d">30 روز اخیر</SelectItem>
               </SelectContent>
             </Select>
             <Button size="sm" onClick={exportCsv} disabled={filtered.length === 0}>
@@ -126,7 +126,7 @@ export function ReportsPage() {
         description={
           period === 'today'
             ? 'تشخیص‌شده از ابتدای روز نمایشی (ساعت آزمایشی)'
-            : `فیلتر بر اساس زمان تشخیص نسبت به نقطه مرجع نمایشی (${period === '7d' ? '۷ روز' : '۳۰ روز'})`
+            : `فیلتر بر اساس زمان تشخیص نسبت به نقطه مرجع نمایشی (${period === '7d' ? '7 روز' : '30 روز'})`
         }
       >
         {filtered.length === 0 ? (

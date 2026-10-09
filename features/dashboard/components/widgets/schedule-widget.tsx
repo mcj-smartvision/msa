@@ -4,10 +4,10 @@ import type { WidgetRenderContext } from '@/shared/types/dashboard'
 import { WidgetShell } from '@/features/dashboard/components/widgets/widget-shell'
 
 const MILESTONES = [
-  { name: 'اتمام فونداسیون', date: '۱۲ فروردین', status: 'done' },
-  { name: 'بتن‌ریزی سقف طبقه ۳', date: '۱۳ اردیبهشت', status: 'active' },
-  { name: 'شروع زیرسازی تأسیسات', date: '۷ خرداد', status: 'upcoming' },
-  { name: 'بستن نما', date: '۲۴ تیر', status: 'upcoming' },
+  { name: 'اتمام فونداسیون', date: '12 فروردین', status: 'done' },
+  { name: 'بتن‌ریزی سقف طبقه 3', date: '13 اردیبهشت', status: 'active' },
+  { name: 'شروع زیرسازی تأسیسات', date: '7 خرداد', status: 'upcoming' },
+  { name: 'بستن نما', date: '24 تیر', status: 'upcoming' },
 ]
 
 export function ScheduleWidget({ context }: { context: WidgetRenderContext }) {

@@ -10,7 +10,7 @@ function formatSiteLoginAt(value: string, fa: boolean, calendar: 'jalali' | 'gre
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return '—'
   if (fa) {
-    return d.toLocaleString('fa-IR', {
+    return d.toLocaleString('fa-IR-u-nu-latn', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

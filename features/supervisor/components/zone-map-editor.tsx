@@ -488,7 +488,7 @@ export function ZoneMapEditor({
                     active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
                   )}
                 >
-                  {count.toLocaleString('fa-IR')}
+                  {count.toLocaleString('fa-IR-u-nu-latn')}
                 </span>
               </button>
             )

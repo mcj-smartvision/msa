@@ -242,7 +242,7 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
                   )}
                   {selected.approved_at && (
                     <p className="text-[11px] text-slate-500">
-                      زمان تأیید: {new Date(selected.approved_at).toLocaleString('fa-IR')}
+                      زمان تأیید: {new Date(selected.approved_at).toLocaleString('fa-IR-u-nu-latn')}
                     </p>
                   )}
                 </div>
@@ -263,7 +263,7 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
                         <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500">
                           <span>{c.author_name || 'کاربر'}</span>
                           <span>
-                            {new Date(c.created_at).toLocaleString('fa-IR')}
+                            {new Date(c.created_at).toLocaleString('fa-IR-u-nu-latn')}
                             {c.edited_at ? ' · ویرایش‌شده' : ''}
                           </span>
                         </div>

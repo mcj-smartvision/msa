@@ -10,6 +10,7 @@ export type GanttBarTone =
   | 'progress_watch'
   | 'progress_soft'
   | 'progress_ok'
+  | 'completed'
   | 'normal'
 
 const SEVERITY_RANK: Record<ScheduleAlertSeverity, number> = {
@@ -42,7 +43,10 @@ export function resolveGanttBarTone(input: {
   alertSeverity?: ScheduleAlertSeverity | null
   alertQuadrant?: AlertQuadrant | null
   nearCriticalDays?: number | null
+  percentComplete?: number | null
 }): GanttBarTone {
+  // Finished work can no longer slip, so float/critical/alert warnings no longer apply.
+  if (input.percentComplete != null && Number(input.percentComplete) >= 100) return 'completed'
   if (input.alertSeverity === 'negative') return 'negative'
 
   const q = input.alertQuadrant
@@ -80,13 +84,38 @@ export function ganttBarClassName(tone: GanttBarTone): string {
       return 'bg-sky-400 border-sky-600'
     case 'progress_ok':
       return 'bg-emerald-400 border-emerald-600'
+    case 'completed':
+      return 'bg-emerald-500 border-emerald-700'
     default:
       return 'bg-slate-400 border-slate-500'
   }
 }
 
+/** Darker shade of the bar tone for the percent-complete fill. */
+export function ganttBarFillClassName(tone: GanttBarTone): string {
+  switch (tone) {
+    case 'negative':
+    case 'critical':
+    case 'progress_urgent':
+      return 'bg-rose-800/70'
+    case 'near_critical':
+      return 'bg-amber-700/60'
+    case 'fast_consumption':
+    case 'progress_soft':
+      return 'bg-orange-700/60'
+    case 'progress_watch':
+      return 'bg-sky-800/60'
+    case 'progress_ok':
+    case 'completed':
+      return 'bg-emerald-800/70'
+    default:
+      return 'bg-slate-700/70'
+  }
+}
+
 export function ganttBarShowsFloat(tone: GanttBarTone, totalFloat: number | null | undefined): boolean {
   if (
+    tone === 'completed' ||
     tone === 'critical' ||
     tone === 'negative' ||
     tone === 'progress_urgent'

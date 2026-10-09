@@ -23,7 +23,7 @@ function dayDiff(a: string, b: string): number {
 }
 
 const fa = (value: number, digits = 0) =>
-  value.toLocaleString('fa-IR', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+  value.toLocaleString('fa-IR-u-nu-latn', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 
 /** A CPM activity of `project_tasks` (summary rows are not scheduled by CPM). */
 export interface CriticalFrontTask {

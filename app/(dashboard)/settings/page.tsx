@@ -31,7 +31,7 @@ export default function SettingsPage() {
     }
 
     if (newPassword.length < 6) {
-      setError('رمز عبور باید حداقل ۶ کاراکتر باشد.')
+      setError('رمز عبور باید حداقل 6 کاراکتر باشد.')
       return
     }
 

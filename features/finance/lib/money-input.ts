@@ -51,7 +51,7 @@ export function formatMoneyInput(raw: string, locale: FormLocale = 'fa'): string
   const n = Number(digits)
   if (!Number.isFinite(n)) return ''
   const usePersian = locale === 'fa' || locale === 'ar'
-  return new Intl.NumberFormat(usePersian ? 'fa-IR' : 'en-US', {
+  return new Intl.NumberFormat(usePersian ? 'fa-IR-u-nu-latn' : 'en-US', {
     maximumFractionDigits: 0,
     useGrouping: true,
   }).format(n)

@@ -120,8 +120,8 @@ export function validateProjectAlertSettingsPatch(
   const w = patch.paceWarningThreshold
   const n = patch.nearCriticalDays
   const f = patch.fastConsumptionThreshold
-  if (g != null && (g <= 0 || g > 1)) return 'آستانه «خوب» باید بین ۰ و ۱ باشد'
-  if (w != null && (w <= 0 || w > 1)) return 'آستانه «هشدار» باید بین ۰ و ۱ باشد'
+  if (g != null && (g <= 0 || g > 1)) return 'آستانه «خوب» باید بین 0 و 1 باشد'
+  if (w != null && (w <= 0 || w > 1)) return 'آستانه «هشدار» باید بین 0 و 1 باشد'
   if (g != null && w != null && w >= g) {
     return 'آستانه هشدار باید کمتر از آستانه خوب باشد'
   }

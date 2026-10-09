@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       continue
     }
     if (file.size > DRAWING_MAX_BYTES) {
-      errors.push(`${file.name}: حجم نباید بیش از ۲۵ مگابایت باشد.`)
+      errors.push(`${file.name}: حجم نباید بیش از 25 مگابایت باشد.`)
       continue
     }
 

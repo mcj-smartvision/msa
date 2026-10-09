@@ -4,6 +4,7 @@ import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
 import { toIsoDateOnly } from '@/features/schedule/lib/dates'
 import {
 buildDependencyNetwork,
+isCriticalTask,
 type DependencyNetworkLink,
 type DependencyNetworkTask,
 } from '@/features/schedule/lib/dependency-network'
@@ -35,11 +36,15 @@ export async function GET(request: NextRequest) {
     const user = await requireUser(supabase)
     await assertProjectAccess(supabase, user.id, projectId)
 
-    const [{ data: tasks, error: tasksError }, { data: deps, error: depsError }] = await Promise.all([
+    const [
+      { data: tasks, error: tasksError },
+      { data: deps, error: depsError },
+      { data: calcs, error: calcsError },
+    ] = await Promise.all([
       supabase
         .from('project_tasks')
         .select(
-          'id, name, wbs_code, is_summary, start_planned, finish_planned, start_current, finish_current'
+          'id, name, wbs_code, is_summary, is_critical, start_planned, finish_planned, start_current, finish_current'
         )
         .eq('project_id', projectId)
         .order('wbs_code', { ascending: true }),
@@ -47,12 +52,21 @@ export async function GET(request: NextRequest) {
         .from('task_dependencies')
         .select('predecessor_task_id, successor_task_id, relation_type, lag_duration')
         .eq('project_id', projectId),
+      supabase
+        .from('schedule_calculations')
+        .select('task_id, total_float, is_critical')
+        .eq('project_id', projectId),
     ])
 
     if (tasksError) throw new WorkshopError('VALIDATION', tasksError.message)
     if (depsError && depsError.code !== '42P01') {
       throw new WorkshopError('VALIDATION', depsError.message)
     }
+
+    // Critical marking is an overlay: a missing/unreadable CPM table just leaves it off.
+    const calcByTask = new Map(
+      (calcsError ? [] : calcs ?? []).map((calc) => [String(calc.task_id), calc])
+    )
 
     const networkTasks: DependencyNetworkTask[] = (tasks ?? []).map((row) => {
       const dates = taskDates(row as Record<string, unknown>)
@@ -63,6 +77,7 @@ export async function GET(request: NextRequest) {
         start: dates.start,
         finish: dates.finish,
         isSummary: Boolean(row.is_summary),
+        critical: isCriticalTask(calcByTask.get(String(row.id)), Boolean(row.is_critical)),
       }
     })
 

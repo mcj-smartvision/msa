@@ -46,7 +46,7 @@ function fmt(value: number, digits = 2): string {
 }
 
 function faNum(value: number, digits = 2): string {
-  return round(value, digits).toLocaleString('fa-IR', { maximumFractionDigits: digits })
+  return round(value, digits).toLocaleString('fa-IR-u-nu-latn', { maximumFractionDigits: digits })
 }
 
 function dateOnly(value: Date | string, field: string): string {

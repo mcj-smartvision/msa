@@ -38,7 +38,7 @@ import { CumulativeProgressSheet } from './cumulative-progress-sheet'
 import {
 compactToman,
 compactTomanParts,
-faDigits,
+latinDigits,
 faNumber,
 faPercent,
 jalaliDate,
@@ -1372,7 +1372,7 @@ export function AlertCard({
         {alert.impact}
       </p>
       {alert.items.length === 0 ? (
-        <p className="mt-1 text-xs leading-relaxed text-slate-500">{faDigits(alert.cause)}</p>
+        <p className="mt-1 text-xs leading-relaxed text-slate-500">{latinDigits(alert.cause)}</p>
       ) : null}
       {preview.length ? (
         <p className="mt-1 text-xs leading-relaxed text-slate-500">

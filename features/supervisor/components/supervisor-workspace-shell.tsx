@@ -24,6 +24,8 @@ export type SupervisorNavItem = {
   hint?: string
   badge?: number
   badgeTone?: 'danger' | 'neutral'
+  /** Tooltip and accessible name of the badge. */
+  badgeTitle?: string
 }
 
 export function SupervisorWorkspaceShell({
@@ -85,7 +87,8 @@ export function SupervisorWorkspaceShell({
                               ? 'bg-white/20 text-white'
                               : 'bg-slate-200 text-slate-700'
                         )}
-                        aria-label={`${item.badge} اعلان`}
+                        title={item.badgeTitle}
+                        aria-label={item.badgeTitle ?? `${item.badge} اعلان`}
                       >
                         {item.badge}
                       </span>

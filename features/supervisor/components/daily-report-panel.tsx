@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { CalendarDays, ClipboardList, Loader2 } from 'lucide-react'
+import { AlertTriangle, CalendarDays, ClipboardList, Loader2 } from 'lucide-react'
 import { useScheduleCalendar } from '@/features/schedule/hooks/use-schedule-calendar'
 import { formatScheduleDate } from '@/features/schedule/lib/dates'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
+import { Skeleton } from '@/shared/components/ui/skeleton'
 import { Textarea } from '@/shared/components/ui/textarea'
 import { FormattedDate } from '@/features/schedule/components/formatted-date'
 import { UomStack } from '@/features/workshop/components/uom-display'
@@ -30,12 +31,16 @@ type DailyReportActivity,
 } from '@/features/supervisor/lib/daily-report-activities'
 import {
 buildActivityProgressTimeline,
+checkPercentEntry,
 cumulativeBefore,
 cumulativeEntry,
 entryOn,
 historyFromServer,
+isSuspiciousWeeklyGain,
 mergeProgressHistory,
+progressAxis,
 SITE_WEEK_DAY_LABELS,
+type PercentEntryCheck,
 type ActivityProgressWeek,
 type ActivityWeekProgress,
 type ServerProgressRow,
@@ -49,7 +54,7 @@ import { postDailyProgress } from '@/features/supervisor/lib/daily-progress-sync
 import { cn } from '@/shared/lib/utils'
 
 function faNum(n: number): string {
-  return n.toLocaleString('fa-IR')
+  return n.toLocaleString('fa-IR-u-nu-latn')
 }
 
 function todayIso(): string {
@@ -92,7 +97,7 @@ function formatTodayHeading(calendar: 'jalali' | 'gregorian'): string {
   const iso = todayIso()
   const d = new Date(`${iso}T12:00:00`)
   if (calendar === 'jalali') {
-    return d.toLocaleDateString('fa-IR', {
+    return d.toLocaleDateString('fa-IR-u-nu-latn', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -132,6 +137,38 @@ function ProgressBar({
 
 const SHORT_DAY_LABELS = ['شنبه', 'یک', 'دو', 'سه', 'چهار', 'پنج']
 
+const PERCENT_ERROR_TEXT = { max: 'حداکثر 100٪', min: 'حداقل 0٪' } as const
+const DECREASE_WARNING = 'پیشرفت نمی‌تواند کاهش پیدا کند — اگر عدد قبلی اشتباه بوده، این اصلاح ثبت می‌شود'
+const WEEKLY_GAIN_WARNING = 'افزایش بیش از 30٪ در یک هفته — احتمال خطای ورود داده'
+
+function PercentEntryMessage({ check }: { check: PercentEntryCheck | null }) {
+  if (check?.error) {
+    return (
+      <p role="alert" className="text-[10px] font-semibold text-red-600">
+        {PERCENT_ERROR_TEXT[check.error]}
+      </p>
+    )
+  }
+  if (check?.decrease) {
+    return (
+      <p role="alert" className="flex items-start gap-1 text-[10px] font-semibold leading-4 text-red-600">
+        <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+        {DECREASE_WARNING}
+      </p>
+    )
+  }
+  return null
+}
+
+function WeeklyGainFlag({ gain }: { gain: number | null }) {
+  if (!isSuspiciousWeeklyGain(gain)) return null
+  return (
+    <span title={WEEKLY_GAIN_WARNING} aria-label={WEEKLY_GAIN_WARNING} className="inline-flex align-middle">
+      <AlertTriangle className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
+    </span>
+  )
+}
+
 function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
   const [hover, setHover] = useState<number | null>(null)
   const [boxW, setBoxW] = useState(300)
@@ -159,8 +196,11 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
   const bottom = H - 28
   const colW = Math.max(40, (boxW - axisW - pad * 2) / days.length)
   const W = Math.round(colW * days.length + pad * 2)
-  const ticks = [0, 20, 40, 60, 80, 100]
-  const yOf = (v: number) => top + ((100 - v) / 100) * (bottom - top)
+  const axis = progressAxis(
+    days.filter((d) => !d.future && d.cumulative != null).map((d) => d.cumulative!)
+  )
+  const ticks = axis.ticks
+  const yOf = (v: number) => top + ((axis.max - v) / (axis.max - axis.min)) * (bottom - top)
   const points = days.map((d, i) => ({
     ...d,
     x: pad + colW * (i + 0.5),
@@ -169,7 +209,7 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
   const drawn = points.filter((p): p is typeof p & { y: number } => p.y != null)
   const area =
     drawn.length > 0
-      ? `M${drawn[0]!.x},${yOf(0)} ` + drawn.map((p) => `L${p.x},${p.y}`).join(' ') + ` L${drawn.at(-1)!.x},${yOf(0)} Z`
+      ? `M${drawn[0]!.x},${yOf(axis.min)} ` + drawn.map((p) => `L${p.x},${p.y}`).join(' ') + ` L${drawn.at(-1)!.x},${yOf(axis.min)} Z`
       : null
   const hovered = hover == null ? null : points[hover]!
   const current = weeks[weeks.length - 1]!
@@ -188,7 +228,7 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
         <svg width={axisW} height={H} className="block shrink-0" aria-hidden>
           {ticks.map((t) => (
             <text key={t} x={axisW - 5} y={yOf(t) + 4} fontSize={11} fill="#475569" textAnchor="end" direction="ltr">
-              {faNum(t)}٪
+              {t.toLocaleString('en-US')}٪
             </text>
           ))}
           <line x1={axisW - 0.5} x2={axisW - 0.5} y1={top - 4} y2={bottom} stroke="#94a3b8" />
@@ -220,7 +260,7 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
               })}
 
               {ticks.map((t) => (
-                <line key={t} x1={0} x2={W} y1={yOf(t)} y2={yOf(t)} stroke={t === 0 ? '#94a3b8' : '#e2e8f0'} strokeDasharray={t === 0 ? undefined : '3 3'} />
+                <line key={t} x1={0} x2={W} y1={yOf(t)} y2={yOf(t)} stroke={t === axis.min ? '#94a3b8' : '#e2e8f0'} strokeDasharray={t === axis.min ? undefined : '3 3'} />
               ))}
 
               {hovered ? (
@@ -322,7 +362,8 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
               <p className="mt-0.5 flex items-center justify-between gap-2 tabular-nums">
                 <span className="text-slate-600">
                   پیشرفت هفته:{' '}
-                  <span className="font-bold text-amber-700">{w.gain == null ? 'ثبت نشده' : `${faNum(w.gain)}٪`}</span>
+                  <span className="font-bold text-amber-700">{w.gain == null ? 'ثبت نشده' : `${faNum(w.gain)}٪`}</span>{' '}
+                  <WeeklyGainFlag gain={w.gain} />
                 </span>
                 <span className="text-slate-600">
                   تجمعی:{' '}
@@ -418,6 +459,13 @@ function ActivityProgressRow({
   const reportedToday = todayEntry != null
   const todayIncrement = todayIncrementOf(todayEntry, previous.percent)
   const base = previous.percent ?? 0
+  /** What is typed in the main input while it differs from the accepted `value`. */
+  const [rawInput, setRawInput] = useState<string | null>(null)
+  useEffect(() => {
+    setRawInput((raw) => (raw != null && Number(raw) !== value ? null : raw))
+  }, [value])
+  const typed = rawInput == null || rawInput.trim() === '' ? value : Number(rawInput)
+  const inputCheck = typed == null || Number.isNaN(typed) ? null : checkPercentEntry(typed, previous.percent)
   const cumulativeAfter = Math.min(100, Math.max(0, value ?? todayEntry?.percentComplete ?? base))
   const gainToday = Math.round((cumulativeAfter - base) * 100) / 100
   const timeline = useMemo(
@@ -512,25 +560,33 @@ function ActivityProgressRow({
                 type="number"
                 min={0}
                 max={100}
-                value={value ?? ''}
+                value={rawInput ?? value ?? ''}
                 onChange={(e) => {
                   const raw = e.target.value
-                  if (raw === '') return
-                  const n = Math.min(100, Math.max(0, Number(raw)))
-                  if (!Number.isNaN(n)) onChange(n)
+                  setRawInput(raw)
+                  if (raw.trim() === '') return
+                  const n = Number(raw)
+                  if (!Number.isNaN(n) && checkPercentEntry(n, null).error == null) onChange(n)
                 }}
-                className="h-9 w-20 text-center text-base font-bold tabular-nums shrink-0"
+                aria-invalid={inputCheck?.error != null}
+                className={cn(
+                  'h-9 w-20 text-center text-base font-bold tabular-nums shrink-0',
+                  inputCheck?.error && 'border-red-400 focus-visible:ring-red-300'
+                )}
                 dir="ltr"
               />
               <Button
                 type="button"
                 size="sm"
-                className="h-9 bg-[#1e3a5f] hover:bg-[#152a45] shrink-0"
-                disabled={saving || value === undefined}
+                className="h-9 shrink-0"
+                disabled={saving || value === undefined || inputCheck?.error != null}
                 onClick={() => void onSave()}
               >
                 {saving ? '…' : 'ثبت'}
               </Button>
+            </div>
+            <div className="mt-1">
+              <PercentEntryMessage check={inputCheck} />
             </div>
           </div>
 
@@ -577,6 +633,7 @@ function ActivityProgressRow({
               initial={todayEntry?.percentComplete ?? cumulativeAfter}
               min={0}
               max={100}
+              previous={previous.percent}
               hint={(v) => `پیشرفت امروز: ${faNum(Math.round((v - base) * 100) / 100)}٪`}
               saving={saving}
               onSave={(v) => onSaveDay(reportDate, v)}
@@ -608,6 +665,7 @@ function BoxEditor({
   initial,
   min,
   max,
+  previous,
   hint,
   saving,
   onSave,
@@ -616,6 +674,8 @@ function BoxEditor({
   initial: number
   min: number
   max: number
+  /** Cumulative before that day; a lower value is warned about but still saved. */
+  previous?: number | null
   hint?: (value: number) => ReactNode
   saving: boolean
   onSave: (value: number) => Promise<void>
@@ -623,6 +683,7 @@ function BoxEditor({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const parsed = parseDraft(draft)
+  const check = parsed == null ? null : checkPercentEntry(parsed, previous)
   const valid = parsed != null && parsed >= min && parsed <= max
 
   async function save() {
@@ -674,7 +735,7 @@ function BoxEditor({
         <Button
           type="button"
           size="sm"
-          className="h-8 bg-[#1e3a5f] hover:bg-[#152a45]"
+          className="h-8"
           disabled={saving || !valid}
           onClick={() => void save()}
         >
@@ -684,13 +745,14 @@ function BoxEditor({
           انصراف
         </Button>
       </div>
-      {parsed != null && valid ? (
-        hint ? <p className="text-[10px] text-slate-500">{hint(parsed)}</p> : null
-      ) : (
-        <p className="text-[10px] text-red-600">
+      {parsed == null ? (
+        <p role="alert" className="text-[10px] text-red-600">
           عددی بین {faNum(min)} و {faNum(max)} وارد کنید
         </p>
-      )}
+      ) : check?.error || check?.decrease ? (
+        <PercentEntryMessage check={check} />
+      ) : null}
+      {parsed != null && valid && hint ? <p className="text-[10px] text-slate-500">{hint(parsed)}</p> : null}
     </div>
   )
 }
@@ -702,7 +764,7 @@ function parseDraft(raw: string): number | null {
     .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
     .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
     .replace(/[٫,]/g, '.')
-  if (ascii === '' || !/^\d+(\.\d+)?$/.test(ascii)) return null
+  if (ascii === '' || !/^-?\d+(\.\d+)?$/.test(ascii)) return null
   return Number(ascii)
 }
 
@@ -759,7 +821,8 @@ function PastDaysEditor({
             const editing = editingDate === d.date
             const start = d.before ?? 0
             const parsed = parseDraft(draft)
-            const valid = parsed != null && parsed <= 100
+            const check = parsed == null ? null : checkPercentEntry(parsed, d.before)
+            const valid = parsed != null && check?.error == null
             const save = async () => {
               if (parsed == null || !valid || saving) return
               await onSaveDay(d.date, parsed)
@@ -775,7 +838,7 @@ function PastDaysEditor({
                   <FormattedDate value={d.date} />
                 </div>
                 {editing ? (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <Input
                       type="text"
                       inputMode="decimal"
@@ -797,12 +860,14 @@ function PastDaysEditor({
                     <span className={cn('text-[10px]', valid ? 'text-slate-500' : 'text-red-600')}>
                       {parsed != null && valid
                         ? `پیشرفت آن روز: ${faNum(Math.round((parsed - start) * 100) / 100)}٪`
-                        : '۰ تا ۱۰۰'}
+                        : check?.error
+                          ? null
+                          : '0 تا 100'}
                     </span>
                     <Button
                       type="button"
                       size="sm"
-                      className="h-8 bg-[#1e3a5f] hover:bg-[#152a45]"
+                      className="h-8"
                       disabled={saving || !valid}
                       onClick={() => void save()}
                     >
@@ -818,6 +883,9 @@ function PastDaysEditor({
                     >
                       انصراف
                     </Button>
+                    <div className="basis-full">
+                      <PercentEntryMessage check={check} />
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
@@ -998,7 +1066,7 @@ export function DailyReportPanel({
           {
             timing: 'past' as const,
             title: 'کارهای قبلی (عقب‌افتاده)',
-            description: 'فعالیت‌های قبلی که هنوز ۱۰۰٪ نشده‌اند (گزارش کارگاه یا برنامه).',
+            description: 'فعالیت‌های قبلی که هنوز 100٪ نشده‌اند (گزارش کارگاه یا برنامه).',
             shellClass: 'border-amber-200 bg-amber-50/40',
             titleClass: 'text-amber-900',
           },
@@ -1227,9 +1295,12 @@ export function DailyReportPanel({
 
   if (!hydrated || activitiesLoading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-600">
-        <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-        در حال بارگذاری برنامه و گزارش‌ها…
+      <div className="space-y-4" dir="rtl" aria-busy="true" aria-label="در حال بارگذاری برنامه و گزارش‌ها…">
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-16 w-full rounded-xl" />
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-48 w-full rounded-xl" />
+        ))}
       </div>
     )
   }
@@ -1263,8 +1334,8 @@ export function DailyReportPanel({
           </p>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-slate-600">
-          همه <strong>فعالیت‌های ایام جاری</strong> و کارهای قبلی که هنوز ۱۰۰٪ نشده‌اند اینجا می‌آیند.
-          اگر فعالیت قبلی ۱۰۰٪ شود، فعالیت بعدی حتی قبل از تاریخ شروع برنامه‌ای هم برای ثبت درصد می‌آید.
+          همه <strong>فعالیت‌های ایام جاری</strong> و کارهای قبلی که هنوز 100٪ نشده‌اند اینجا می‌آیند.
+          اگر فعالیت قبلی 100٪ شود، فعالیت بعدی حتی قبل از تاریخ شروع برنامه‌ای هم برای ثبت درصد می‌آید.
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
           <button
@@ -1310,7 +1381,7 @@ export function DailyReportPanel({
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="جستجو با WBS یا نام فعالیت (مثلاً ۱.۴ یا فونداسیون)"
+            placeholder="جستجو با WBS یا نام فعالیت (مثلاً 1.4 یا فونداسیون)"
             className="h-9 bg-white text-sm"
           />
         </div>
@@ -1439,7 +1510,6 @@ export function DailyReportPanel({
           <div className="flex flex-wrap items-center gap-3">
             <Button
               type="button"
-              className="bg-[#1e3a5f] hover:bg-[#152a45]"
               disabled={submitting}
               onClick={handleSubmit}
             >
@@ -1526,7 +1596,7 @@ export function DailyReportPanel({
 
       <Button
         type="button"
-        className="w-full bg-orange-500 hover:bg-orange-600 text-white shadow-sm"
+        className="w-full shadow-sm"
         asChild
       >
         <Link

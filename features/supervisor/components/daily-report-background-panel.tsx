@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } fr
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
+import { Skeleton } from '@/shared/components/ui/skeleton'
 import { useScheduleCalendar } from '@/features/schedule/hooks/use-schedule-calendar'
 import { formatScheduleDate } from '@/features/schedule/lib/dates'
 import { applyWeightedParentRollup } from '@/features/schedule/lib/parent-progress-rollup'
@@ -36,6 +37,8 @@ type WindowChange,
 } from '@/features/schedule/lib/week-commitment-windows'
 import {
 calendarDays,
+checkPercentEntry,
+cumulativeBefore,
 cumulativeEntry,
 historyFromServer,
 latestReport,
@@ -53,7 +56,7 @@ const WEEKDAY_SHORT = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج']
 const NAME_COL = 280
 const TOTAL_COL = 64
 
-const faNum = (n: number) => n.toLocaleString('fa-IR')
+const faNum = (n: number) => n.toLocaleString('fa-IR-u-nu-latn')
 const todayIso = () => new Date().toISOString().slice(0, 10)
 /** 0 = Saturday … 6 = Friday. */
 const siteWeekday = (iso: string) => (new Date(`${iso}T00:00:00Z`).getUTCDay() + 1) % 7
@@ -64,7 +67,7 @@ function parseDraft(raw: string): number | null {
     .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
     .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
     .replace(/[٫,]/g, '.')
-  if (ascii === '' || !/^\d+(\.\d+)?$/.test(ascii)) return null
+  if (ascii === '' || !/^-?\d+(\.\d+)?$/.test(ascii)) return null
   return Number(ascii)
 }
 
@@ -272,7 +275,7 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
     const { activityId, date } = editing
     const key = `${activityId}@${date}`
     const value = parseDraft(draft)
-    if (value == null ? draft.trim() !== '' : value > 100) return
+    if (value == null ? draft.trim() !== '' : checkPercentEntry(value, null).error != null) return
     setEditing(null)
     const saved = savedCells.get(activityId)?.get(date)?.cumulative ?? null
     setDrafts((prev) => {
@@ -318,24 +321,46 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
   if (!projectId) return <p className="text-sm text-muted-foreground">ابتدا یک پروژه انتخاب کنید.</p>
   if (!tree) {
     return (
-      <div className="flex items-center gap-2 py-10 text-sm text-slate-500">
-        <Loader2 className="h-4 w-4 animate-spin" /> در حال بارگذاری برنامه و گزارش‌ها…
-        {error ? <span className="text-red-600">{error}</span> : null}
+      <div className="space-y-3" aria-busy="true" aria-label="در حال بارگذاری برنامه و گزارش‌ها…">
+        {error ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p> : null}
+        <Skeleton className="h-16 w-full" />
+        {Array.from({ length: 8 }, (_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
       </div>
     )
   }
 
   const draftValue = parseDraft(draft)
-  const draftInvalid = editing != null && draft.trim() !== '' && (draftValue == null || draftValue > 100)
+  const draftCheck =
+    editing == null || draftValue == null
+      ? null
+      : checkPercentEntry(
+          draftValue,
+          cumulativeBefore(editing.activityId, preview, editing.date, baselineOf.get(editing.activityId) ?? 0)
+        )
+  const draftInvalid = editing != null && draft.trim() !== '' && (draftValue == null || draftCheck?.error != null)
+  const draftMessage =
+    editing == null || draft.trim() === ''
+      ? null
+      : draftValue == null
+        ? 'عدد معتبر وارد کنید'
+        : draftCheck?.error === 'max'
+          ? 'حداکثر 100٪'
+          : draftCheck?.error === 'min'
+            ? 'حداقل 0٪'
+            : draftCheck?.decrease
+              ? 'پیشرفت نمی‌تواند کاهش پیدا کند — اگر عدد قبلی اشتباه بوده، این اصلاح ثبت می‌شود'
+              : null
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
           <h2 className="text-base font-bold text-slate-900">بک‌گراند گزارش‌های روزانه</h2>
           <p className="text-xs leading-5 text-slate-500">
-            در هر خانه، عدد بالا درصد پیشرفت تجمعی ثبت‌شده سرپرست تا آن روز است (۰ تا ۱۰۰) و عدد کوچک آبی پایین، پیشرفت
-            اجباری تجمعی طبق برنامه زمانبندی است: از تاریخ شروع فعالیت در برنامه، هر روز کاری (بدون جمعه و تعطیلات ثبت‌شده) ۱۰۰ تقسیم بر
-            روزهای کاری فعالیت اضافه می‌شود تا تاریخ پایان آن که به ۱۰۰ می‌رسد. جدول از تاریخ شروع پروژه در برنامه شروع
+            در هر خانه، عدد بالا درصد پیشرفت تجمعی ثبت‌شده سرپرست تا آن روز است (0 تا 100) و عدد کوچک آبی پایین، پیشرفت
+            اجباری تجمعی طبق برنامه زمانبندی است: از تاریخ شروع فعالیت در برنامه، هر روز کاری (بدون جمعه و تعطیلات ثبت‌شده) 100 تقسیم بر
+            روزهای کاری فعالیت اضافه می‌شود تا تاریخ پایان آن که به 100 می‌رسد. جدول از تاریخ شروع پروژه در برنامه شروع
             می‌شود و بازهٔ هر فعالیت آبی کم‌رنگ است. ستون «تجمعی» آخرین عدد ثبت‌شده را
             نشان می‌دهد. خانه‌های تغییرکرده زرد می‌شوند؛ عددی که از روز قبلش کمتر باشد قرمز می‌شود. برای حذف گزارش یک روز،
             عدد خانه را پاک کنید و Enter بزنید. در پایان «ذخیره تغییرات»
@@ -363,7 +388,7 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
           <Button
             type="button"
             size="sm"
-            className="h-9 bg-[#1e3a5f] hover:bg-[#152a45]"
+            className="h-9"
             disabled={saving || draftCount === 0}
             onClick={() => void saveAll()}
           >
@@ -474,6 +499,11 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
                       editable ? 'bg-white text-[#1e3a5f] group-hover:bg-sky-50' : 'bg-slate-50 text-slate-500'
                     )}
                     style={{ right: NAME_COL, minWidth: TOTAL_COL }}
+                    title={
+                      !editable && headingPercents.has(row.key)
+                        ? `وزن ${row.scheduleWeight == null ? '—' : row.scheduleWeight.toLocaleString('en-US', { maximumFractionDigits: 2 })} · پیشرفت وزنی ${headingPercents.get(row.key)!.toLocaleString('en-US', { maximumFractionDigits: 1 })}٪`
+                        : undefined
+                    }
                   >
                     {total == null ? '' : `${faNum(Math.round(total * 100) / 100)}٪`}
                   </td>
@@ -524,25 +554,37 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
                         )}
                       >
                         {isEditing ? (
-                          <input
-                            autoFocus
-                            dir="ltr"
-                            inputMode="decimal"
-                            value={draft}
-                            disabled={saving}
-                            onFocus={(e) => e.target.select()}
-                            onChange={(e) => setDraft(e.target.value)}
-                            onBlur={commitCell}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') commitCell()
-                              if (e.key === 'Escape') setEditing(null)
-                            }}
-                            className={cn(
-                              'h-7 w-11 rounded border text-center text-[11px] font-bold outline-none',
-                              draftInvalid ? 'border-red-500 bg-red-50' : 'border-[#1e3a5f] bg-white'
-                            )}
-                            title="درصد تجمعی تا این روز (۰ تا ۱۰۰)"
-                          />
+                          <div className="relative flex justify-center">
+                            <input
+                              autoFocus
+                              dir="ltr"
+                              inputMode="decimal"
+                              value={draft}
+                              disabled={saving}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => setDraft(e.target.value)}
+                              onBlur={commitCell}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') commitCell()
+                                if (e.key === 'Escape') setEditing(null)
+                              }}
+                              className={cn(
+                                'h-7 w-11 rounded border text-center text-[11px] font-bold outline-none',
+                                draftInvalid ? 'border-red-500 bg-red-50' : 'border-[#1e3a5f] bg-white'
+                              )}
+                              title="درصد تجمعی تا این روز (0 تا 100)"
+                              aria-invalid={draftInvalid}
+                            />
+                            {draftMessage ? (
+                              <p
+                                role="alert"
+                                dir="rtl"
+                                className="absolute top-full z-40 mt-1 w-56 whitespace-normal rounded border border-red-200 bg-white px-2 py-1 text-right text-[10px] font-semibold leading-4 text-red-600 shadow-md"
+                              >
+                                {draftMessage}
+                              </p>
+                            ) : null}
+                          </div>
                         ) : (
                           <div className="flex flex-col items-center leading-tight">
                             <span className="min-h-[14px]">
@@ -569,19 +611,19 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
 
       <div className="flex flex-wrap gap-3 text-[10px] text-slate-500">
         <span className="inline-flex items-center gap-1">
-          <span className="font-semibold text-amber-800">۴۵</span> تجمعی ثبت‌شده سرپرست
+          <span className="font-semibold text-amber-800">45</span> تجمعی ثبت‌شده سرپرست
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="text-sky-700">۵۰</span> پیشرفت اجباری تجمعی — طبق آخرین پیش‌بینی (گزارش فعالیت‌های قبلی همان لحظه اثر می‌کند)
+          <span className="text-sky-700">50</span> پیشرفت اجباری تجمعی — طبق آخرین پیش‌بینی (گزارش فعالیت‌های قبلی همان لحظه اثر می‌کند)
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="h-3 w-3 rounded-sm border border-slate-200 bg-sky-50" /> بازهٔ پیش‌بینی‌شدهٔ فعالیت (آخرین برنامه)
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="rounded bg-red-50 px-1 font-semibold text-red-700">شروع ۲ روز دیرتر</span> جابه‌جایی پیش‌بینی نسبت به برنامهٔ مصوب
+          <span className="rounded bg-red-50 px-1 font-semibold text-red-700">شروع 2 روز دیرتر</span> جابه‌جایی پیش‌بینی نسبت به برنامهٔ مصوب
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="rounded bg-red-50 px-0.5 font-semibold text-red-700">۴ روز دیر</span> در روز شروع برنامهٔ مصوب: فعالیت چند روز دیرتر شروع شد
+          <span className="rounded bg-red-50 px-0.5 font-semibold text-red-700">4 روز دیر</span> در روز شروع برنامهٔ مصوب: فعالیت چند روز دیرتر شروع شد
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="h-3 w-3 rounded-sm border border-slate-200 bg-amber-50" /> امروز

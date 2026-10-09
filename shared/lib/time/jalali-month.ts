@@ -20,8 +20,13 @@ export const PERSIAN_WEEKDAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'س
 
 const GREGORIAN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
 
-export function toPersianDigits(value: string | number): string {
-  return String(value).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]!)
+/** The UI shows English digits everywhere; Persian or Arabic digits (and their separators) become Latin. */
+export function latinDigits(value: string | number): string {
+  return String(value)
+    .replace(/([0-9۰-۹٠-٩])٫(?=[0-9۰-۹٠-٩])/g, '$1.')
+    .replace(/([0-9۰-۹٠-٩])٬(?=[0-9۰-۹٠-٩])/g, '$1,')
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -36,16 +41,16 @@ export function isoToJalali(iso: string): { jy: number; jm: number; jd: number }
   return toJalaali(gy!, gm!, gd!)
 }
 
-/** «۱۵ مهر ۱۴۰۵» */
+/** «15 مهر 1405» */
 export function formatJalaliLong(iso: string): string {
   const { jy, jm, jd } = isoToJalali(iso)
-  return `${toPersianDigits(jd)} ${PERSIAN_MONTHS[jm - 1]} ${toPersianDigits(jy)}`
+  return `${jd} ${PERSIAN_MONTHS[jm - 1]} ${jy}`
 }
 
-/** «۱۴۰۵/۰۷/۱۵» */
+/** «1405/07/15» */
 export function formatJalaliShort(iso: string): string {
   const { jy, jm, jd } = isoToJalali(iso)
-  return toPersianDigits(`${jy}/${pad2(jm)}/${pad2(jd)}`)
+  return `${jy}/${pad2(jm)}/${pad2(jd)}`
 }
 
 export function shiftJalaliMonth(jy: number, jm: number, by: number): { jy: number; jm: number } {

@@ -1,5 +1,5 @@
 /**
- * MSP import pre-validation + summary report (بخش ۲ — مرحله ۱ و ۴).
+ * MSP import pre-validation + summary report (بخش 2 — مرحله 1 و 4).
  * Cycle detection reuses the system CPM graph (never trust file float).
  */
 
@@ -208,7 +208,7 @@ export function validateMspImport(
     issues.push({
       code: 'WEIGHT_LEAF_TOTAL',
       severity: 'warning',
-      message: `جمع وزن فعالیت‌های leaf در کل پروژه ${roundedLeaf} است؛ باید ۱۰۰ باشد (اختلاف ${Math.round((100 - roundedLeaf) * 100) / 100})`,
+      message: `جمع وزن فعالیت‌های leaf در کل پروژه ${roundedLeaf} است؛ باید 100 باشد (اختلاف ${Math.round((100 - roundedLeaf) * 100) / 100})`,
       detail: { leafWeightSum: roundedLeaf },
     })
   }

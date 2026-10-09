@@ -681,7 +681,7 @@ export function OverheadCostsMatrix({
     const totalLabel =
       monthLabels.length === 6
         ? fa
-          ? 'جمع ۶ ماهه'
+          ? 'جمع 6 ماهه'
           : '6-mo total'
         : fa
           ? `جمع ${monthLabels.length} ماهه`
@@ -801,7 +801,7 @@ export function OverheadCostsMatrix({
             </h3>
             <p className="mt-0.5 text-[10px] text-slate-500">
               {fa
-                ? `نمایش به تومان با رقم انگلیسی و کاما · در سلول عدد کوتاه بنویسید؛ ۲۲ یعنی 22,000,000 تومان`
+                ? `نمایش به تومان با رقم انگلیسی و کاما · در سلول عدد کوتاه بنویسید؛ 22 یعنی 22,000,000 تومان`
                 : `Shown in Toman with English digits. Type 22 in a cell for 22,000,000 Toman`}
             </p>
             {message ? (
@@ -809,7 +809,7 @@ export function OverheadCostsMatrix({
             ) : savedAt && !dirty ? (
               <p className="mt-1 text-[10px] text-slate-500">
                 {fa ? 'آخرین ثبت:' : 'Last submit:'}{' '}
-                {new Date(savedAt).toLocaleString(fa ? 'fa-IR' : 'en-US')}
+                {new Date(savedAt).toLocaleString(fa ? 'fa-IR-u-nu-latn' : 'en-US')}
               </p>
             ) : dirty ? (
               <p className="mt-1 text-[10px] text-amber-700">

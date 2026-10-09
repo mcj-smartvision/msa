@@ -487,7 +487,7 @@ export function FaceEnrollWizardPage({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageHeader
           title="ثبت بیومتریک افراد"
-          description={`${projectName} — اسکن ۳۰ ثانیه‌ای خودکار؛ سر را آزادانه بچرخان`}
+          description={`${projectName} — اسکن 30 ثانیه‌ای خودکار؛ سر را آزادانه بچرخان`}
         />
         <Button asChild variant="outline">
           <Link href="/dashboard/security">
@@ -505,7 +505,7 @@ export function FaceEnrollWizardPage({
 
       <SectionCard
         title="ثبت فرد جدید"
-        description="نام را انتخاب کن و شروع را بزن. حدود ۳۰ ثانیه مستقیم نگاه کن و سر را بالا/پایین/چپ/راست بچرخان — سیستم خودش نمونه‌های متنوع را برمی‌دارد."
+        description="نام را انتخاب کن و شروع را بزن. حدود 30 ثانیه مستقیم نگاه کن و سر را بالا/پایین/چپ/راست بچرخان — سیستم خودش نمونه‌های متنوع را برمی‌دارد."
       >
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -578,7 +578,7 @@ export function FaceEnrollWizardPage({
                 onClick={() => void runFreeScan()}
               >
                 <Play className="h-4 w-4 ml-1" />
-                شروع اسکن ۳۰ ثانیه‌ای
+                شروع اسکن 30 ثانیه‌ای
               </Button>
             ) : null}
             {phase === 'retry' ? (
@@ -664,7 +664,7 @@ export function FaceEnrollWizardPage({
             {phase === 'setup' && !previewOn ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/70 text-sm px-6 text-center">
                 <Camera className="h-8 w-8" />
-                <span>نام را انتخاب کن و «شروع اسکن ۳۰ ثانیه‌ای» را بزن</span>
+                <span>نام را انتخاب کن و «شروع اسکن 30 ثانیه‌ای» را بزن</span>
               </div>
             ) : null}
 

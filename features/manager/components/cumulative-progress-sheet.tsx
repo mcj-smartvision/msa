@@ -118,7 +118,7 @@ function Body({ data, card }: { data: ExplainedCumulativeProgress; card: { plann
             </p>
           </div>
         ))}
-        <p className="text-[11px] text-slate-500">وزن‌ها نرمال شده‌اند (Wᵢ ÷ ΣW)، پس مخرج ۱٫۰۰ است. ΣW واقعی = {faNumber(data.total_weight, 2)}.</p>
+        <p className="text-[11px] text-slate-500">وزن‌ها نرمال شده‌اند (Wᵢ ÷ ΣW)، پس مخرج 1.00 است. ΣW واقعی = {faNumber(data.total_weight, 2)}.</p>
       </section>
 
       <section className="grid grid-cols-2 gap-2 sm:grid-cols-3">

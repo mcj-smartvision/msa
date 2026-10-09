@@ -27,7 +27,7 @@ export default function ResetPasswordPage() {
     }
 
     if (password.length < 6) {
-      setError('رمز عبور باید حداقل ۶ کاراکتر باشد.')
+      setError('رمز عبور باید حداقل 6 کاراکتر باشد.')
       return
     }
 

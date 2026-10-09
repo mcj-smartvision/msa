@@ -118,7 +118,7 @@ export const ADMIN_MEMBER: Record<'en' | 'fa' | 'fr' | 'de', AdminMemberMessages
     phoneOptional: 'تلفن (اختیاری)',
     activeMember: 'عضو فعال',
     selectRoleError: 'یک نقش انتخاب کنید.',
-    passwordMinError: 'رمز باید حداقل ۶ کاراکتر باشد.',
+    passwordMinError: 'رمز باید حداقل 6 کاراکتر باشد.',
     saveMember: 'افزودن عضو',
     saving: 'در حال ذخیره...',
     editProfile: 'ویرایش پروفایل',

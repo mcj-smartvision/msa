@@ -15,7 +15,11 @@ import { TodayActivitiesTable } from '@/features/supervisor/components/today-act
 import { LookaheadPanel } from '@/features/supervisor/components/lookahead-panel'
 import { ResourcesPanel } from '@/features/supervisor/components/resources-panel'
 import { IssuesAlertsPanel } from '@/features/supervisor/components/issues-alerts-panel'
-import { SafetyAlertsPage, countOpenSafetyAlertMocks } from '@/features/hse/components/safety-alerts-page'
+import {
+SafetyAlertsPage,
+countOpenSafetyAlertMocks,
+openSafetyAlertsTitle,
+} from '@/features/hse/components/safety-alerts-page'
 import {
 SupervisorWorkspaceShell,
 type SupervisorNavId,
@@ -136,7 +140,7 @@ export function SiteSupervisorDashboard({
   const [hseDesc, setHseDesc] = useState('')
   const [instructionText, setInstructionText] = useState('')
   const [activeSection, setActiveSection] = useState<SupervisorNavId>(initialSection)
-  const [safetyBadge, setSafetyBadge] = useState(0)
+  const [safetyBadge, setSafetyBadge] = useState(countOpenSafetyAlertMocks)
   const qcMessages = getQcMessages(locale)
   const inspectionDrawingsHref = `/dashboard/qc/drawings?returnTo=${encodeURIComponent('/dashboard/site-supervisor?section=inspection')}`
 
@@ -152,10 +156,6 @@ export function SiteSupervisorDashboard({
     else url.searchParams.set('section', id)
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
   }
-
-  useEffect(() => {
-    setSafetyBadge(countOpenSafetyAlertMocks())
-  }, [])
 
   const loadData = useCallback(async () => {
     if (!projectId) {
@@ -304,6 +304,7 @@ export function SiteSupervisorDashboard({
             hint: 'اعلان‌های تأییدشده برای اقدام میدانی',
             badge: safetyBadge,
             badgeTone: 'danger',
+            badgeTitle: openSafetyAlertsTitle(safetyBadge),
           },
           {
             id: 'overview',

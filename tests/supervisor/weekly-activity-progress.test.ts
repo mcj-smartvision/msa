@@ -3,7 +3,11 @@ import {
 buildActivityProgressTimeline,
 buildActivityWeekProgress,
 calendarDays,
+checkPercentEntry,
 cumulativeBefore,
+isSuspiciousWeeklyGain,
+progressAxis,
+SUSPICIOUS_WEEKLY_GAIN,
 cumulativeEntry,
 reportedDays,
 historyFromServer,
@@ -165,5 +169,43 @@ describe('cumulativeEntry / withLatestReports', () => {
     ])
     const latest = [cumulativeEntry('a1', entries, '2026-10-03', 70)]
     expect(withLatestReports(latest, entries)).toHaveLength(1)
+  })
+})
+
+describe('weekly gain warning', () => {
+  it('flags only gains above the threshold', () => {
+    expect(SUSPICIOUS_WEEKLY_GAIN).toBe(30)
+    expect(isSuspiciousWeeklyGain(30)).toBe(false)
+    expect(isSuspiciousWeeklyGain(30.5)).toBe(true)
+    expect(isSuspiciousWeeklyGain(null)).toBe(false)
+    expect(isSuspiciousWeeklyGain(-40)).toBe(false)
+  })
+})
+
+describe('percent entry check', () => {
+  it('rejects out-of-range values and warns on decreases', () => {
+    expect(checkPercentEntry(101, 20)).toEqual({ error: 'max', decrease: false })
+    expect(checkPercentEntry(-1, 20)).toEqual({ error: 'min', decrease: false })
+    expect(checkPercentEntry(10, 20)).toEqual({ error: null, decrease: true })
+    expect(checkPercentEntry(20, 20)).toEqual({ error: null, decrease: false })
+    expect(checkPercentEntry(5, null)).toEqual({ error: null, decrease: false })
+  })
+})
+
+describe('progress axis', () => {
+  it('keeps 0-100 without data', () => {
+    expect(progressAxis([])).toEqual({ min: 0, max: 100, ticks: [0, 20, 40, 60, 80, 100] })
+  })
+
+  it('zooms to the data range with 4-6 round ticks', () => {
+    expect(progressAxis([10, 12])).toEqual({ min: 5, max: 20, ticks: [5, 10, 15, 20] })
+    expect(progressAxis([0, 43])).toEqual({ min: 0, max: 50, ticks: [0, 10, 20, 30, 40, 50] })
+    expect(progressAxis([30, 70])).toEqual({ min: 20, max: 80, ticks: [20, 40, 60, 80] })
+  })
+
+  it('pads equal values and stays within 0-100', () => {
+    expect(progressAxis([50, 50])).toEqual({ min: 45, max: 60, ticks: [45, 50, 55, 60] })
+    expect(progressAxis([100])).toEqual({ min: 85, max: 100, ticks: [85, 90, 95, 100] })
+    expect(progressAxis([0])).toEqual({ min: 0, max: 15, ticks: [0, 5, 10, 15] })
   })
 })

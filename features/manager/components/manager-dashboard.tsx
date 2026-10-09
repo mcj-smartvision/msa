@@ -307,7 +307,7 @@ function SidebarContent({
               <span className="text-[13px] font-bold text-slate-800">راهنما و تور سیستم</span>
               <span className="rounded-full bg-primary/10 px-1.5 py-px text-[10px] font-bold text-primary">تعاملی</span>
             </span>
-            <span className="block truncate text-[11px] text-slate-500">تور ۵ مرحله‌ای، اصطلاحات و میانبرها</span>
+            <span className="block truncate text-[11px] text-slate-500">تور 5 مرحله‌ای، اصطلاحات و میانبرها</span>
           </span>
         </button>
         {isAdmin ? (
@@ -371,7 +371,7 @@ function NotificationsMenu({
         <Bell className="h-[18px] w-[18px]" aria-hidden />
         {count > 0 ? (
           <span className="absolute -left-0.5 -top-0.5 min-w-[18px] rounded-full bg-rose-600 px-1 text-center text-[10px] font-bold leading-[18px] text-white">
-            {count > 99 ? '۹۹+' : faNumber(count)}
+            {count > 99 ? '99+' : faNumber(count)}
           </span>
         ) : null}
       </button>
@@ -740,7 +740,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
               <button
                 type="button"
                 onClick={startTour}
-                title="یک تور کوتاه ۵ مرحله‌ای از بخش‌های اصلی"
+                title="یک تور کوتاه 5 مرحله‌ای از بخش‌های اصلی"
                 className={cn(
                   'inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-1',
                   showIntro && !tourOpen && 'ring-2 ring-primary/30 ring-offset-1'

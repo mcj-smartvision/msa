@@ -10,6 +10,7 @@ import type { TaskRelationType } from '@/shared/types/schedule'
 import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
 import { getWorkshopCapabilities } from '@/features/workshop/lib/service'
 import { WorkshopError } from '@/features/workshop/lib/domain'
+import { checkProjectWeightTotal } from '@/features/schedule/lib/weight-consistency'
 
 /**
  * Update schedule task dates, total_float, schedule_weight, and/or predecessor label
@@ -32,6 +33,8 @@ export async function updateScheduleTaskFields(
   totalFloat: number | null
   scheduleWeight: number | null
   predecessorLabel?: string
+  /** Present only when a weight was saved; null when the project leaf total is 100. */
+  weightWarning?: string | null
 }> {
   const user = await requireUser(supabase)
   await assertProjectAccess(supabase, user.id, input.projectId)
@@ -51,6 +54,7 @@ export async function updateScheduleTaskFields(
       ? null
       : Number(input.scheduleWeight)
   let predecessorLabel: string | undefined
+  let weightWarning: string | null | undefined
 
   const wantsDates = input.startDate != null || input.finishDate != null
   if (wantsDates) {
@@ -212,6 +216,8 @@ export async function updateScheduleTaskFields(
       }
       throw new WorkshopError('VALIDATION', `ذخیره وزن ناموفق: ${weightError.message}`)
     }
+
+    weightWarning = await projectLeafWeightWarning(supabase, input.projectId)
   }
 
   if (input.predecessorLabel !== undefined) {
@@ -227,5 +233,33 @@ export async function updateScheduleTaskFields(
     predecessorLabel = result.label
   }
 
-  return { updated, totalFloat, scheduleWeight, predecessorLabel }
+  return {
+    updated,
+    totalFloat,
+    scheduleWeight,
+    predecessorLabel,
+    ...(weightWarning !== undefined ? { weightWarning } : {}),
+  }
+}
+
+/** Never blocks the save: a failed read just yields no warning. */
+async function projectLeafWeightWarning(
+  supabase: SupabaseClient,
+  projectId: string
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('project_tasks')
+    .select('id, parent_id, is_summary, schedule_weight')
+    .eq('project_id', projectId)
+  if (error || !data) return null
+  const parentIds = new Set(
+    data.map((task) => task.parent_id as string | null).filter((id): id is string => Boolean(id))
+  )
+  const leafWeights = data
+    .filter((task) => !task.is_summary && !parentIds.has(task.id as string))
+    .map((task) => Number(task.schedule_weight) || 0)
+  const issue = checkProjectWeightTotal(leafWeights)
+  return issue
+    ? `جمع وزن فعالیت‌های برگ پروژه ${issue.actual.toLocaleString('en-US')} است و باید ${issue.expected.toLocaleString('en-US')} باشد. ذخیره انجام شد؛ وزن‌ها را اصلاح کنید.`
+    : null
 }

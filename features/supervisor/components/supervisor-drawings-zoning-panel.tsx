@@ -43,7 +43,7 @@ function formatDrawingDate(iso: string): string {
   if (!iso) return '—'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString('fa-IR', { dateStyle: 'short' })
+  return d.toLocaleDateString('fa-IR-u-nu-latn', { dateStyle: 'short' })
 }
 
 function DrawingList({
@@ -161,7 +161,7 @@ function ZoneListRow({
               </>
             ) : null}
             <span className="mx-2 text-emerald-300">·</span>
-            <span>{zone.activityCount.toLocaleString('fa-IR')} فعالیت متصل</span>
+            <span>{zone.activityCount.toLocaleString('fa-IR-u-nu-latn')} فعالیت متصل</span>
           </p>
           {zone.description?.trim() ? (
             <p className="mt-2 border-t border-emerald-100 pt-2 text-sm leading-relaxed text-slate-800 sm:text-[15px]">
@@ -385,7 +385,7 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
                     selected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
                   )}
                 >
-                  {count.toLocaleString('fa-IR')}
+                  {count.toLocaleString('fa-IR-u-nu-latn')}
                 </span>
               </button>
             )
@@ -417,7 +417,7 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm font-semibold text-slate-900">
-              زون‌های تعریف‌شده ({definedZones.length.toLocaleString('fa-IR')})
+              زون‌های تعریف‌شده ({definedZones.length.toLocaleString('fa-IR-u-nu-latn')})
             </p>
             <Button
               type="button"

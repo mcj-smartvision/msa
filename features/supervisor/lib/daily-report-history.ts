@@ -33,6 +33,15 @@ export function buildDayReports(
     .sort((a, b) => b.reportDate.localeCompare(a.reportDate))
 }
 
+export const HISTORY_PAGE_SIZE = 30
+
+/** «+X٪ نسبت به گزارش قبلی» with English digits; the change since the previous report, not strictly a day. */
+export function progressDeltaLabel(previousPct: number, currentPct: number): string {
+  const delta = Math.round((currentPct - previousPct) * 100) / 100
+  const sign = delta > 0 ? '+' : delta < 0 ? '-' : ''
+  return `${sign}${Math.abs(delta).toLocaleString('en-US', { maximumFractionDigits: 2 })}٪ نسبت به گزارش قبلی`
+}
+
 export function formatReportSavedTimestamp(
   reportDate: string,
   savedAt: string | null,
@@ -42,7 +51,7 @@ export function formatReportSavedTimestamp(
   if (!savedAt) return { dateLabel, timeLabel: null }
   const d = new Date(savedAt)
   if (Number.isNaN(d.getTime())) return { dateLabel, timeLabel: null }
-  const timeLabel = d.toLocaleTimeString('fa-IR', {
+  const timeLabel = d.toLocaleTimeString('fa-IR-u-nu-latn', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -57,7 +66,7 @@ export function formatReportTitle(
   const d = new Date(`${reportDate}T12:00:00`)
   if (Number.isNaN(d.getTime())) return formatScheduleDate(reportDate, calendar)
   if (calendar === 'jalali') {
-    const label = d.toLocaleDateString('fa-IR', {
+    const label = d.toLocaleDateString('fa-IR-u-nu-latn', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',

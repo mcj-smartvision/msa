@@ -44,9 +44,9 @@ Return ONLY JSON:
 
 Rules — single vs multiple items (IMPORTANT):
 - ONE spoken request → ONE item, even if a future activity is mentioned only as deadline/context.
-  Example: "بازرسی آرماتور سقف طبقه سوم قبل از بتن‌ریزی؛ بتن‌ریزی در تاریخ ۱۷ شهریور" → ONE item only (activityType: rebar, topic about rebar inspection before pour). Do NOT add a second item for بتن‌ریزی.
+  Example: "بازرسی آرماتور سقف طبقه سوم قبل از بتن‌ریزی؛ بتن‌ریزی در تاریخ 17 شهریور" → ONE item only (activityType: rebar, topic about rebar inspection before pour). Do NOT add a second item for بتن‌ریزی.
 - Split into multiple items ONLY when the speaker clearly asks for separate inspections:
-  • numbered list (۱) ... ۲) ...)
+  • numbered list (1) ... 2) ...)
   • explicit separators: همچنین، مورد بعدی، درخواست دیگر
   • genuinely different work at different floors WITHOUT a range (e.g. آرماتور طبقه سوم و قالب‌بندی طبقه پنجم)
 - "طبقه سوم و چهارم" with the SAME subject → one item per floor (two items), not one merged item.

@@ -52,7 +52,7 @@ export function analyzeActivityRisk(
       reasons.push('شناوری کل فعالیت صفر است.')
     } else if (tf <= 5 * config.minutesPerDay) {
       score += w.float * 0.75
-      reasons.push('شناوری کل کمتر از ۵ روز کاری است.')
+      reasons.push('شناوری کل کمتر از 5 روز کاری است.')
     } else if (tf <= nearMin) {
       score += w.float * 0.45
       reasons.push('شناوری کل در محدوده نزدیک به بحرانی است.')
@@ -64,10 +64,10 @@ export function analyzeActivityRisk(
     const pct = percentileRank(allLeafDurations, task.durationMinutes)
     if (pct >= 90) {
       score += w.duration
-      reasons.push('مدت فعالیت در صدک ۹۰ یا بالاتر قرار دارد.')
+      reasons.push('مدت فعالیت در صدک 90 یا بالاتر قرار دارد.')
     } else if (pct >= 75) {
       score += w.duration * 0.6
-      reasons.push('مدت فعالیت در صدک ۷۵ یا بالاتر قرار دارد.')
+      reasons.push('مدت فعالیت در صدک 75 یا بالاتر قرار دارد.')
     }
   }
 

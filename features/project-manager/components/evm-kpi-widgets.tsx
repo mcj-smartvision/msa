@@ -86,7 +86,7 @@ export function EvmKpiWidgets({
           value={metrics.cpi == null ? '—' : metrics.cpi.toFixed(2)}
           valueClassName={indexTone(metrics.cpi)}
           caption={metrics.cpi == null ? 'هزینهٔ واقعی ثبت نشده است' : 'EV ریالی (Σ بودجه × پیشرفت) ÷ AC'}
-          help="نسبت ارزش کسب‌شده به هزینهٔ واقعی؛ کمتر از ۱ یعنی بیش از بودجه خرج شده."
+          help="نسبت ارزش کسب‌شده به هزینهٔ واقعی؛ کمتر از 1 یعنی بیش از بودجه خرج شده."
         />
         <KpiCard
           title="پیشرفت واقعی (کسب‌شده)"

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { SiteOpsError } from '@/features/site-ops/domain/errors'
+import { END_BEFORE_START_ERROR } from '@/features/holidays/lib/holiday-form'
 import { loadHolidays } from '@/features/holidays/lib/load-holidays'
 import { holidayFromRow, HOLIDAY_TYPE_LABELS, type Holiday, type HolidayInput, type HolidayType } from '@/features/holidays/lib/types'
 import { persistProgressForecast } from '@/features/schedule/lib/persist-progress-forecast'
@@ -27,7 +28,7 @@ export function parseHolidayInput(body: unknown): HolidayInput {
   if (!ISO_DATE.test(startDate)) throw new SiteOpsError('VALIDATION', 'تاریخ شروع لازم است')
   const endDate = typeof b.endDate === 'string' && b.endDate ? b.endDate : null
   if (endDate && (!ISO_DATE.test(endDate) || endDate < startDate)) {
-    throw new SiteOpsError('VALIDATION', 'تاریخ پایان نباید پیش از تاریخ شروع باشد')
+    throw new SiteOpsError('VALIDATION', END_BEFORE_START_ERROR)
   }
   const title = typeof b.title === 'string' ? b.title.trim() : ''
   if (!title) throw new SiteOpsError('VALIDATION', 'عنوان تعطیلی لازم است')

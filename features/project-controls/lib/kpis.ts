@@ -127,8 +127,8 @@ function indexStatus(value: number): KpiStatus {
   return 'red'
 }
 
-const faInt = (x: number) => Math.round(x).toLocaleString('fa-IR')
-const faIndex = (x: number) => x.toLocaleString('fa-IR', { maximumFractionDigits: 2 })
+const faInt = (x: number) => Math.round(x).toLocaleString('fa-IR-u-nu-latn')
+const faIndex = (x: number) => x.toLocaleString('fa-IR-u-nu-latn', { maximumFractionDigits: 2 })
 const THRESHOLDS_FA = `آستانه‌ها: سبز از ${faIndex(DEFAULT_RAG_THRESHOLDS.onTrack)} به بالا، زرد تا ${faIndex(DEFAULT_RAG_THRESHOLDS.critical)}، قرمز کمتر از ${faIndex(DEFAULT_RAG_THRESHOLDS.critical)}`
 
 const BASIS_FA: Record<ControlsSnapshot['progressBasis'], string> = {
@@ -180,7 +180,7 @@ export function buildEvmKpis(snapshot: ControlsSnapshot): Record<EvmKpiKey, Expl
     inputLabels: { ev: 'ارزش کسب‌شده (EV٪)', pv: 'ارزش برنامه‌ای (PV٪)' },
     compute: (v) => {
       if (!(v.pv > 0)) {
-        return { value: null, substitution: `SPI = ${pct(v.ev)} ÷ ${pct(v.pv)}`, interpretation_fa: '', status: 'gray', invalid_reason_fa: 'تا تاریخ وضعیت هنوز کاری طبق برنامه شروع نشده (PV٪ = ۰)' }
+        return { value: null, substitution: `SPI = ${pct(v.ev)} ÷ ${pct(v.pv)}`, interpretation_fa: '', status: 'gray', invalid_reason_fa: 'تا تاریخ وضعیت هنوز کاری طبق برنامه شروع نشده (PV٪ = 0)' }
       }
       const value = v.ev / v.pv
       return {
@@ -189,7 +189,7 @@ export function buildEvmKpis(snapshot: ControlsSnapshot): Record<EvmKpiKey, Expl
         interpretation_fa:
           value >= 1
             ? 'پروژه هم‌پای برنامه یا جلوتر از آن است.'
-            : `به ازای هر ۱۰۰ واحد کار برنامه‌ریزی‌شده، ${faInt(value * 100)} واحد انجام شده است.`,
+            : `به ازای هر 100 واحد کار برنامه‌ریزی‌شده، ${faInt(value * 100)} واحد انجام شده است.`,
         status: indexStatus(value),
         assumptions: [basis, THRESHOLDS_FA],
       }
@@ -204,14 +204,23 @@ export function buildEvmKpis(snapshot: ControlsSnapshot): Record<EvmKpiKey, Expl
     inputs: { evCost: snapshot.evCost, ac: snapshot.ac },
     inputLabels: { evCost: 'ارزش کسب‌شدهٔ ریالی', ac: 'هزینهٔ واقعی (AC)' },
     compute: (v) => {
-      const value = v.evCost / v.ac
+      const value = v.ac > 0 ? v.evCost / v.ac : Number.NaN
+      if (!Number.isFinite(value)) {
+        return {
+          value: null,
+          substitution: `CPI = ${Math.round(v.evCost || 0).toLocaleString('en-US')} ÷ ${Math.round(v.ac || 0).toLocaleString('en-US')}`,
+          interpretation_fa: '',
+          status: 'gray',
+          invalid_reason_fa: 'هنوز هزینهٔ واقعی (AC) ثبت نشده یا ورودی‌ها نامعتبر است',
+        }
+      }
       return {
         value: Math.round(value * 1000) / 1000,
         substitution: `CPI = ${Math.round(v.evCost).toLocaleString('en-US')} ÷ ${Math.round(v.ac).toLocaleString('en-US')} = ${value.toFixed(3)}`,
         interpretation_fa:
           value >= 1
             ? 'به ازای هر واحد هزینه، دست‌کم یک واحد ارزش کسب شده است.'
-            : `به ازای هر ۱۰۰ واحد هزینه، ${faInt(value * 100)} واحد ارزش کسب شده؛ هزینه بیش از بودجه است.`,
+            : `به ازای هر 100 واحد هزینه، ${faInt(value * 100)} واحد ارزش کسب شده؛ هزینه بیش از بودجه است.`,
         status: indexStatus(value),
         assumptions: [THRESHOLDS_FA],
       }

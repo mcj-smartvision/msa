@@ -7,7 +7,7 @@ Analyze the construction site photo in detail. Respond ONLY with valid JSON (no 
 {
   "activity_type": "short English label e.g. scaffolding, masonry, rebar, concreting",
   "activity_description_fa": "توضیح فارسی: دقیقاً چه کاری در حال انجام است؟",
-  "work_being_performed_fa": "شرح دقیق عملیات جاری به فارسی (۲-۴ جمله)",
+  "work_being_performed_fa": "شرح دقیق عملیات جاری به فارسی (2-4 جمله)",
   "workforce_count": number,
   "worker_roles_json": [{"role": "string", "count": number, "activity_fa": "چه کاری می‌کنند"}],
   "equipment_json": [{"name": "string", "visible": boolean, "usage_fa": "کاربرد"}],
@@ -40,7 +40,7 @@ Analyze the construction site photo in detail. Respond ONLY with valid JSON (no 
     "notes_fa": "توضیح کلی شرایط جوی"
   },
   "risks_observed_fa": ["خطرات یا نکات HSE مشاهده‌شده"],
-  "supervisor_summary_fa": "خلاصه ۳-۵ جمله‌ای برای سرپرست کارگاه به فارسی",
+  "supervisor_summary_fa": "خلاصه 3-5 جمله‌ای برای سرپرست کارگاه به فارسی",
   "confidence_score": number between 0 and 1
 }
 

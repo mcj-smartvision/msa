@@ -78,7 +78,7 @@ const MOCK_SAFETY_ALERTS: SafetyAlertMockItem[] = [
     contractorName: 'پیمان بتن نوین',
     detectedAt: '2026-08-09T14:35:00+03:30',
     description:
-      'کارگر از راه عابر رنگ‌شده وارد آپرون کامیون شد در حالی که میکسر بتن به سمت دروازه الف دنده عقب می‌رفت. فاصله پیش از توقف به زیر ۲ متر رسید.',
+      'کارگر از راه عابر رنگ‌شده وارد آپرون کامیون شد در حالی که میکسر بتن به سمت دروازه الف دنده عقب می‌رفت. فاصله پیش از توقف به زیر 2 متر رسید.',
     minutesAgo: 25,
     hasVideo: true,
     breadcrumb: ['راهروی تعامل خودرو', 'دروازه اسکله بارگیری الف', 'بتن — هاربرفرم'],
@@ -91,7 +91,7 @@ const MOCK_SAFETY_ALERTS: SafetyAlertMockItem[] = [
     severity: 'critical',
     status: 'escalated',
     zoneName: 'محوطه جرثقیل غربی',
-    cameraName: 'دوربین تاور غرب — پایه ۱',
+    cameraName: 'دوربین تاور غرب — پایه 1',
     contractorName: 'سازه سامیت',
     detectedAt: '2026-08-09T11:08:00+03:30',
     description:
@@ -107,15 +107,15 @@ const MOCK_SAFETY_ALERTS: SafetyAlertMockItem[] = [
     title: 'کار در لبه بدون حفاظ قابل‌رؤیت مهار',
     severity: 'high',
     status: 'confirmed',
-    zoneName: 'دال شمال — سطح ۵',
+    zoneName: 'دال شمال — سطح 5',
     cameraName: 'دوربین عرشه موقت شرقی',
     contractorName: 'سازه سامیت',
     detectedAt: '2026-08-04T22:10:00+03:30',
     description:
-      'دو کارگر عرشه موقت را در حدود ۱٫۵ متری لبه دال شمال نصب کردند. برای کارگر پیشرو در بازه ۴۰ ثانیه‌ای مهار یا نقطه لنگر دیده نشد.',
+      'دو کارگر عرشه موقت را در حدود 1.5 متری لبه دال شمال نصب کردند. برای کارگر پیشرو در بازه 40 ثانیه‌ای مهار یا نقطه لنگر دیده نشد.',
     minutesAgo: 185,
     hasVideo: true,
-    breadcrumb: ['دال شمال', 'عرشه موقت شرقی', 'لبه دال — سطح ۵'],
+    breadcrumb: ['دال شمال', 'عرشه موقت شرقی', 'لبه دال — سطح 5'],
     queueBucket: 'needs_review',
   },
   {
@@ -124,7 +124,7 @@ const MOCK_SAFETY_ALERTS: SafetyAlertMockItem[] = [
     title: 'ورود به محدوده جرثقیل بدون مجوز',
     severity: 'high',
     status: 'ai_review',
-    zoneName: 'محوطه جرثقیل تاور ۲',
+    zoneName: 'محوطه جرثقیل تاور 2',
     cameraName: 'دوربین جرثقیل — پایه جنوب',
     contractorName: 'ماشین‌آلات سنگین پارس',
     detectedAt: '2026-08-08T09:15:00+03:30',
@@ -132,7 +132,7 @@ const MOCK_SAFETY_ALERTS: SafetyAlertMockItem[] = [
       'یک نفر بدون کلاه ایمنی و بدون مجوز وارد محدوده عملیات جرثقیل شد. اپراتور جرثقیل هشدار صوتی را فعال کرد و عملیات تا خروج فرد متوقف ماند.',
     minutesAgo: 52,
     hasVideo: false,
-    breadcrumb: ['محوطه جرثقیل تاور ۲', 'پایه جنوب', 'محدوده عملیات'],
+    breadcrumb: ['محوطه جرثقیل تاور 2', 'پایه جنوب', 'محدوده عملیات'],
     queueBucket: 'needs_review',
   },
   {
@@ -161,7 +161,7 @@ const MOCK_SAFETY_ALERTS: SafetyAlertMockItem[] = [
     cameraName: 'دوربین لبه شمال',
     detectedAt: '2026-08-07T10:00:00+03:30',
     description:
-      'نصاب دیوار پرده‌ای کنار بازشدگی پنل لبه کار کرد. مهار پوشیده بود اما بند حدود ۳۵ ثانیه به لنگر وصل نبود.',
+      'نصاب دیوار پرده‌ای کنار بازشدگی پنل لبه کار کرد. مهار پوشیده بود اما بند حدود 35 ثانیه به لنگر وصل نبود.',
     minutesAgo: 2880,
     hasVideo: true,
     breadcrumb: ['دال شمال', 'لبه شمال', 'نرده ناقص'],
@@ -173,14 +173,14 @@ const MOCK_SAFETY_ALERTS: SafetyAlertMockItem[] = [
     title: 'نبود عینک ایمنی هنگام باز کردن قالب',
     severity: 'medium',
     status: 'closed',
-    zoneName: 'طبقه ۳ — قالب‌بندی',
+    zoneName: 'طبقه 3 — قالب‌بندی',
     cameraName: 'دوربین قالب‌بندی',
     detectedAt: '2026-08-08T11:15:00+03:30',
     description:
       'نجار قالب‌بندی بدون حفاظت چشم مهارها را باز می‌کرد در حالی که آوار از عرشه بالا می‌ریخت.',
     minutesAgo: 4320,
     hasVideo: false,
-    breadcrumb: ['طبقه ۳', 'قالب‌بندی'],
+    breadcrumb: ['طبقه 3', 'قالب‌بندی'],
     queueBucket: 'solved',
   },
   {
@@ -216,7 +216,7 @@ const MOCK_SAFETY_ALERTS: SafetyAlertMockItem[] = [
 ]
 
 const MOCK_NAV_ITEMS: Array<{ id: string; label: string; badge?: number }> = [
-  { id: 'safety', label: 'ایمنی و اخطارها', badge: 11 },
+  { id: 'safety', label: 'ایمنی و اخطارها', badge: countOpenSafetyAlertMocks() },
   { id: 'overview', label: 'خلاصه وضعیت' },
   { id: 'workshop', label: 'لیست‌های کارگاه' },
   { id: 'drawings', label: 'نقشه‌ها' },
@@ -255,6 +255,10 @@ type SummaryFilterId = SafetyQueueBucket
 
 export function countOpenSafetyAlertMocks(): number {
   return MOCK_SAFETY_ALERTS.filter((i) => i.queueBucket !== 'solved').length
+}
+
+export function openSafetyAlertsTitle(count: number): string {
+  return `${count.toLocaleString('en-US')} هشدار ایمنی باز`
 }
 
 function countByBucket(bucket: SafetyQueueBucket): number {
@@ -404,7 +408,8 @@ function SectionsSidebarNav({ onItemClick }: { onItemClick?: () => void }) {
             {isActive && item.badge != null ? (
               <span
                 className="absolute -top-1.5 end-0 z-10 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-white"
-                aria-label={`${item.badge} مورد باز`}
+                title={openSafetyAlertsTitle(item.badge)}
+                aria-label={openSafetyAlertsTitle(item.badge)}
               >
                 {item.badge}
               </span>
@@ -445,7 +450,11 @@ function MobileSectionsDrawer() {
           {activeItem ? <span className="text-slate-500">· {activeItem.label}</span> : null}
         </span>
         {activeItem?.badge != null ? (
-          <span className="flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-bold text-white">
+          <span
+            className="flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-rose-600 px-1.5 text-[11px] font-bold text-white"
+            title={openSafetyAlertsTitle(activeItem.badge)}
+            aria-label={openSafetyAlertsTitle(activeItem.badge)}
+          >
             {activeItem.badge}
           </span>
         ) : null}

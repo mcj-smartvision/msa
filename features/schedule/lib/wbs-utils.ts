@@ -43,7 +43,7 @@ function toLatinDigits(value: string): string {
 
 /**
  * Display-only: drop leading WBS numbers from activity names
- * (e.g. "۱. تحویل زمین" / "4.1 آرماتور…") when a WBS column already shows the code.
+ * (e.g. "1. تحویل زمین" / "4.1 آرماتور…") when a WBS column already shows the code.
  */
 export function displayActivityName(
   name: string | null | undefined,

@@ -23,7 +23,7 @@ export default function FirstLoginClient() {
     setError(null)
 
     if (newPassword.length < 6) {
-      setError('رمز عبور باید حداقل ۶ کاراکتر باشد.')
+      setError('رمز عبور باید حداقل 6 کاراکتر باشد.')
       return
     }
     if (newPassword !== confirmPassword) {
@@ -91,7 +91,7 @@ export default function FirstLoginClient() {
                     required
                     minLength={6}
                     className="pl-10 h-11"
-                    placeholder="حداقل ۶ کاراکتر"
+                    placeholder="حداقل 6 کاراکتر"
                   />
                 </div>
               </div>

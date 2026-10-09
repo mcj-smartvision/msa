@@ -16,6 +16,10 @@ resolveGanttBarTone,
 type GanttBarTone,
 } from '@/features/schedule/lib/gantt-tone'
 import type { AlertQuadrant } from '@/features/schedule/lib/progress-alert-quadrant'
+import {
+packageSchedulePhysicalPercent,
+schedulePhysicalPercent,
+} from '@/features/schedule/lib/physical-progress'
 import type { ScheduleAlertSeverity } from '@/features/schedule/lib/float-alerts'
 import { DEFAULT_MSP_MINUTES_PER_DAY } from '@/features/schedule/lib/predecessor-format'
 import type { TaskRelationType } from '@/shared/types/schedule'
@@ -41,12 +45,70 @@ export interface GanttRowDto {
   totalFloat: number | null
   alertSeverity: ScheduleAlertSeverity | null
   tone: GanttBarTone
+  /** Physical percent complete (0–100), null when never recorded. */
+  percentComplete: number | null
   /** workshop package row (appears under MSP parent; not CPM-editable) */
   kind?: 'task' | 'package'
 }
 
 /** Cap float line so one outlier doesn't blow up the whole chart width. */
 export const GANTT_FLOAT_DISPLAY_CAP_DAYS = 21
+
+function clampPercent(value: number | null): number | null {
+  if (value == null || !Number.isFinite(value)) return null
+  return Math.min(100, Math.max(0, value))
+}
+
+/** Percent columns vary by deployment, so failures here only drop the progress fill. */
+async function loadTaskPercents(
+  supabase: SupabaseClient,
+  projectId: string
+): Promise<Map<string, number | null>> {
+  const out = new Map<string, number | null>()
+  for (const columns of [
+    'id, physical_percent_complete, percent_complete',
+    'id, physical_percent_complete',
+  ]) {
+    const { data, error } = await supabase
+      .from('project_tasks')
+      .select(columns)
+      .eq('project_id', projectId)
+    if (error) continue
+    for (const row of (data ?? []) as unknown as Array<Record<string, unknown>>) {
+      out.set(
+        String(row.id),
+        clampPercent(
+          schedulePhysicalPercent({
+            physical_percent_complete: row.physical_percent_complete as number | null | undefined,
+            percent_complete: row.percent_complete as number | null | undefined,
+          })
+        )
+      )
+    }
+    break
+  }
+  return out
+}
+
+async function loadPackagePercents(
+  supabase: SupabaseClient,
+  projectId: string
+): Promise<Map<string, number | null>> {
+  const out = new Map<string, number | null>()
+  const { data, error } = await supabase
+    .from('workshop_packages')
+    .select('id, schedule_fields')
+    .eq('project_id', projectId)
+  if (error) return out
+  for (const row of data ?? []) {
+    const fields =
+      row.schedule_fields && typeof row.schedule_fields === 'object'
+        ? (row.schedule_fields as Record<string, unknown>)
+        : null
+    out.set(String(row.id), clampPercent(packageSchedulePhysicalPercent(fields)))
+  }
+  return out
+}
 
 export async function getProjectGanttRows(
   supabase: SupabaseClient,
@@ -70,6 +132,8 @@ export async function getProjectGanttRows(
     { data: alerts },
     { data: packages },
     { data: deps, error: depsError },
+    taskPercents,
+    packagePercents,
   ] = await Promise.all([
     supabase
       .from('project_tasks')
@@ -96,6 +160,8 @@ export async function getProjectGanttRows(
       .from('task_dependencies')
       .select('predecessor_task_id, successor_task_id, relation_type, lag_duration')
       .eq('project_id', projectId),
+    loadTaskPercents(supabase, projectId),
+    loadPackagePercents(supabase, projectId),
   ])
 
   let tasks = tasksResult.data
@@ -154,6 +220,7 @@ export async function getProjectGanttRows(
         Boolean(t.is_milestone) ||
         (!t.is_summary && Boolean(start) && Boolean(finish) && spanDays === 0)
 
+      const percentComplete = taskPercents.get(t.id as string) ?? null
       const tone = resolveGanttBarTone({
         isCritical,
         totalFloat,
@@ -163,6 +230,7 @@ export async function getProjectGanttRows(
             ? ((t as { alert_quadrant?: AlertQuadrant | null }).alert_quadrant ?? null)
             : null,
         nearCriticalDays,
+        percentComplete,
       })
 
       return {
@@ -180,6 +248,7 @@ export async function getProjectGanttRows(
         totalFloat,
         alertSeverity,
         tone,
+        percentComplete,
         kind: 'task' as const,
       } satisfies GanttRowDto
     })
@@ -272,6 +341,7 @@ export async function getProjectGanttRows(
       toIsoDateOnly(pkg.finish_date as string | null | undefined) ?? parentTask.finishDate
     if (!startDate || !finishDate) continue
     const spanDays = durationDaysFromRange(startDate, finishDate)
+    const percentComplete = packagePercents.get(String(pkg.id)) ?? null
 
     packageRows.push({
       id: `pkg:${String(pkg.id)}`,
@@ -287,7 +357,8 @@ export async function getProjectGanttRows(
       isCritical: false,
       totalFloat: null,
       alertSeverity: null,
-      tone: 'normal',
+      tone: resolveGanttBarTone({ percentComplete }),
+      percentComplete,
       kind: 'package',
     })
   }

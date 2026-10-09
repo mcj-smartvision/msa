@@ -31,7 +31,7 @@ export function ProgressWidget({ context }: { context: WidgetRenderContext }) {
         </div>
         <div className="flex gap-4 text-sm">
           <Metric label="SPI" value={spi.toFixed(2)} tone={spi >= 1 ? 'good' : 'warn'} />
-          <Metric label="تأخیر" value="۸ روز" tone="warn" />
+          <Metric label="تأخیر" value="8 روز" tone="warn" />
           <Metric label="پیش‌بینی" value="Q4 2026" />
         </div>
       </div>

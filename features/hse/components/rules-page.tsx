@@ -155,7 +155,7 @@ export function RulesPage() {
 
               <div className="grid grid-cols-3 gap-2">
                 <label className="space-y-1 text-xs">
-                  <span className="font-medium text-slate-600">اطمینان (۰–۱)</span>
+                  <span className="font-medium text-slate-600">اطمینان (0–1)</span>
                   <Input
                     type="number"
                     step="0.01"

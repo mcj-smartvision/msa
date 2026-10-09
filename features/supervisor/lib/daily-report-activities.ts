@@ -755,7 +755,7 @@ export function latestWorkshopReportDateInRange(
 
 function chartDateLabelFa(iso: string): string {
   const d = new Date(`${iso}T12:00:00`)
-  return d.toLocaleDateString('fa-IR', { month: 'long', day: 'numeric' })
+  return d.toLocaleDateString('fa-IR-u-nu-latn', { month: 'long', day: 'numeric' })
 }
 
 function addDaysIso(iso: string, days: number): string {

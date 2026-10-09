@@ -24,7 +24,7 @@ type ProgressRollupNode,
 import { isDirectChildWbs } from '@/features/schedule/lib/parent-weight-rollup'
 
 /**
- * GET  — سر‌تیترها / مادرها با رنگ ۲×۲ (فرزندان برگ نمایش داده نمی‌شوند)
+ * GET  — سر‌تیترها / مادرها با رنگ 2×2 (فرزندان برگ نمایش داده نمی‌شوند)
  * POST — persist pace columns when migrations applied
  */
 
@@ -271,7 +271,7 @@ export async function GET(request: NextRequest) {
           finishPlanned: t.finish_planned as string | null,
         })
 
-        // physical 100 → pace null در compute؛ برای ۰٪ اگر تاریخ شروع گذشته باشد نرخ می‌آید
+        // physical 100 → pace null در compute؛ برای 0٪ اگر تاریخ شروع گذشته باشد نرخ می‌آید
         const livePhysical = physical >= 100 ? 100 : physical
         const live = computeProgressPace({
           actualStart: effectiveStart,
@@ -284,7 +284,7 @@ export async function GET(request: NextRequest) {
           paceThresholds,
         })
 
-        // برای ۱۰۰٪: بدون نمایش هشدار؛ برای ۰٪ قبل از شروع: بدون دسته تا وقتی نرخ معنا دارد
+        // برای 100٪: بدون نمایش هشدار؛ برای 0٪ قبل از شروع: بدون دسته تا وقتی نرخ معنا دارد
         let alertQuadrant: AlertQuadrant | null = computeAlertQuadrant({
           paceStatus: live.paceStatus,
           isCritical: criticalFlag,
@@ -324,7 +324,7 @@ export async function GET(request: NextRequest) {
         }
       })
 
-    // همهٔ سر‌تیترها / مادرهای برنامه — رنگ از ۲×۲ وقتی نرخ قابل محاسبه باشد
+    // همهٔ سر‌تیترها / مادرهای برنامه — رنگ از 2×2 وقتی نرخ قابل محاسبه باشد
     const displayRows = headerRows
 
     const inProgress = displayRows.filter((r) => r.paceStatus != null)

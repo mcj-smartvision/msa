@@ -5,10 +5,10 @@ import { WidgetShell } from '@/features/dashboard/components/widgets/widget-shel
 import { Button } from '@/shared/components/ui/button'
 
 const SAMPLE_STOCK = [
-  { item: 'میلگرد ۱۶', qty: '۲٫۴ تن', status: 'کم' },
-  { item: 'سیمان پرتلند', qty: '۱۸۰ پاکت', status: 'کافی' },
-  { item: 'پانل قالب', qty: '۴۲ عدد', status: 'کافی' },
-  { item: 'هارنس ایمنی', qty: '۶ عدد', status: 'بحرانی' },
+  { item: 'میلگرد 16', qty: '2.4 تن', status: 'کم' },
+  { item: 'سیمان پرتلند', qty: '180 پاکت', status: 'کافی' },
+  { item: 'پانل قالب', qty: '42 عدد', status: 'کافی' },
+  { item: 'هارنس ایمنی', qty: '6 عدد', status: 'بحرانی' },
 ]
 
 export function InventoryWidget({ context }: { context: WidgetRenderContext }) {

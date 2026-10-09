@@ -20,9 +20,9 @@ import type { EvForecast } from '@/features/project-controls/lib/ev-forecast'
 type ChartRange = '1m' | '6m' | '12m' | 'all'
 
 const RANGES: { id: ChartRange; label: string }[] = [
-  { id: '1m', label: '۱ ماه اخیر' },
-  { id: '6m', label: '۶ ماه' },
-  { id: '12m', label: '۱۲ ماه' },
+  { id: '1m', label: '1 ماه اخیر' },
+  { id: '6m', label: '6 ماه' },
+  { id: '12m', label: '12 ماه' },
   { id: 'all', label: 'کل پروژه' },
 ]
 
@@ -397,7 +397,7 @@ export function ManagerProgressChart({ curve }: { curve: ManagerCurve }) {
           </p>
         ) : null}
         {forecast.status === 'ok' && range === '1m' ? (
-          <p>خط‌چین پیش‌بینی EV تا {jalaliDate(forecast.finishDate)} ادامه دارد؛ برای دیدن کامل آن بازهٔ ۱۲ ماه یا کل پروژه را انتخاب کنید.</p>
+          <p>خط‌چین پیش‌بینی EV تا {jalaliDate(forecast.finishDate)} ادامه دارد؛ برای دیدن کامل آن بازهٔ 12 ماه یا کل پروژه را انتخاب کنید.</p>
         ) : null}
         {sameLine && visible.length < SERIES.length ? (
           <p>بودجهٔ این پروژه به نسبت وزن فعالیت‌ها پخش شده، به همین دلیل پیشرفت واقعی و EV یکسان‌اند و یک خط نمایش داده می‌شود.</p>

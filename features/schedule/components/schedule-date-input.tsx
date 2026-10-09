@@ -107,7 +107,7 @@ export function ScheduleDateInput({
       />
       <p className="text-[10px] text-muted-foreground mt-1">
         {calendarLabel}
-        {fa ? ' — مثال: ۱۴۰۳/۰۷/۱۴' : ' — e.g. 1403/07/14'}
+        {fa ? ' — مثال: 1403/07/14' : ' — e.g. 1403/07/14'}
       </p>
       {invalid ? (
         <p className="text-xs text-destructive mt-1">

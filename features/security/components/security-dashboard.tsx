@@ -47,7 +47,7 @@ type MemberOption = { userId: string; fullName: string; email: string | null }
 function timeFa(iso: string | null | undefined) {
   if (!iso) return '—'
   try {
-    return new Date(iso).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    return new Date(iso).toLocaleTimeString('fa-IR-u-nu-latn', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   } catch {
     return '—'
   }

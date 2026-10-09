@@ -203,7 +203,7 @@ function PositionList({ members, projectId }: { members: ProjectMember[]; projec
                   row.names.length > 0 ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-700'
                 )}
               >
-                {row.names.length > 0 ? `${row.names.length.toLocaleString('fa-IR')} نفر` : 'بدون عضو'}
+                {row.names.length > 0 ? `${row.names.length.toLocaleString('fa-IR-u-nu-latn')} نفر` : 'بدون عضو'}
               </span>
             ) : null}
             <RowArrow />

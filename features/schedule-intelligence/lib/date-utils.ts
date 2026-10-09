@@ -58,9 +58,9 @@ export function minutesToDisplayDays(minutes: number, minutesPerDay: number): nu
 export function formatMinutesAsDays(minutes: number | null, minutesPerDay: number): string {
   if (minutes == null) return '—'
   const days = minutesToDisplayDays(minutes, minutesPerDay)
-  return `${days.toLocaleString('fa-IR')} روز`
+  return `${days.toLocaleString('fa-IR-u-nu-latn')} روز`
 }
 
 export function formatPercentFa(value: number): string {
-  return `${Math.round(value).toLocaleString('fa-IR')}%`
+  return `${Math.round(value).toLocaleString('fa-IR-u-nu-latn')}%`
 }

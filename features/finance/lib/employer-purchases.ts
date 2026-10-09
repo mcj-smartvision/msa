@@ -76,12 +76,12 @@ export function parseEmployerPurchaseInput(body: unknown): EmployerPurchaseInput
     allocations = [{ taskId: rows[0]!.taskId, sharePercent: 100 }]
   } else {
     if (rows.some((a) => a.sharePercent == null || a.sharePercent <= 0 || a.sharePercent > 100)) {
-      throw new PurchaseValidationError('سهم هر آیتم باید بیشتر از صفر و حداکثر ۱۰۰ درصد باشد')
+      throw new PurchaseValidationError('سهم هر آیتم باید بیشتر از صفر و حداکثر 100 درصد باشد')
     }
     allocations = rows.map((a) => ({ taskId: a.taskId, sharePercent: a.sharePercent! }))
     const total = allocations.reduce((s, a) => s + a.sharePercent, 0)
     if (Math.abs(total - 100) > SHARE_TOLERANCE) {
-      throw new PurchaseValidationError(`جمع سهم‌ها باید ۱۰۰ درصد باشد (الان ${Math.round(total * 100) / 100} درصد)`)
+      throw new PurchaseValidationError(`جمع سهم‌ها باید 100 درصد باشد (الان ${Math.round(total * 100) / 100} درصد)`)
     }
   }
 

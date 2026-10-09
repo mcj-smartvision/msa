@@ -49,7 +49,7 @@ const SITE_NAVY = 'text-[#1e3a5f]'
 
 /** اعداد فارسی برای UI mock */
 function faNum(value: number): string {
-  return value.toLocaleString('fa-IR')
+  return value.toLocaleString('fa-IR-u-nu-latn')
 }
 
 type RiskLevel = 'low' | 'medium' | 'high'
@@ -78,7 +78,7 @@ const HEALTH_BANNER: Record<
     icon: 'text-emerald-600',
   },
   at_risk: {
-    message: 'پروژه در ریسک بالا — ۴ روز عقب از برنامه و ۹ فعالیت بحرانی باز',
+    message: 'پروژه در ریسک بالا — 4 روز عقب از برنامه و 9 فعالیت بحرانی باز',
     bar: 'border-rose-200 bg-rose-50/90 text-rose-950',
     icon: 'text-rose-600',
   },
@@ -288,7 +288,7 @@ function ProgressSparkline({ series }: { series: ProjectProgressSeriesPoint[] })
             const idx = items[0]?.dataIndex ?? 0
             const iso = dates[idx]
             if (!iso) return ''
-            return new Date(`${iso}T12:00:00`).toLocaleDateString('fa-IR', {
+            return new Date(`${iso}T12:00:00`).toLocaleDateString('fa-IR-u-nu-latn', {
               year: 'numeric',
               month: 'long',
               day: 'numeric',
@@ -383,7 +383,7 @@ const EMPTY_PROGRESS_SERIES: ProjectProgressSeriesPoint[] = Array.from({ length:
 })
 
 function weekdayLabelFromIso(iso: string): string {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString('fa-IR', { weekday: 'short' })
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('fa-IR-u-nu-latn', { weekday: 'short' })
 }
 
 export function SupervisorOverviewPanel({

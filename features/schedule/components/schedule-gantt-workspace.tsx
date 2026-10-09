@@ -2,14 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Calculator, CheckCircle2, GitBranch, RefreshCw } from 'lucide-react'
+import { Calculator, CheckCircle2, GitBranch, Maximize2, Minus, Plus, RefreshCw } from 'lucide-react'
 import { addDaysIso, diffDaysIso, formatScheduleDate, toIsoDateOnly } from '@/features/schedule/lib/dates'
+import { PERSIAN_MONTHS, isoToJalali } from '@/shared/lib/time/jalali-month'
 import {
 durationDaysFromRange,
 resizeRangeEdge,
 shiftRangeByDays,
 } from '@/features/schedule/lib/gantt-parent-expand'
-import { ganttBarClassName, ganttBarShowsFloat } from '@/features/schedule/lib/gantt-tone'
+import {
+ganttBarClassName,
+ganttBarFillClassName,
+ganttBarShowsFloat,
+} from '@/features/schedule/lib/gantt-tone'
 import {
 GANTT_FLOAT_DISPLAY_CAP_DAYS,
 type GanttRowDto,
@@ -26,6 +31,11 @@ useScheduleViewSync,
 import { cn } from '@/shared/lib/utils'
 
 const DAY_PX = 14
+const FIT_MIN_DAY_PX = 4
+const FIT_MAX_DAY_PX = 28
+const ZOOM_MIN_DAY_PX = 2
+const ZOOM_MAX_DAY_PX = 56
+const ZOOM_STEP = 1.5
 const ROW_H = 32
 const LABEL_W = 280
 const RECALC_TOAST = 'برای اعمال روی مسیر بحرانی، محاسبه‌ی مجدد را اجرا کنید'
@@ -38,6 +48,10 @@ function barSpanDays(start: string, finish: string): number {
   if (diff < 0) return 1
   if (diff === 0) return 0
   return Math.max(1, diff)
+}
+
+function formatPercent(value: number): string {
+  return value.toLocaleString('en-US', { maximumFractionDigits: 1 })
 }
 
 export function ScheduleGanttWorkspace() {
@@ -60,6 +74,9 @@ export function ScheduleGanttWorkspace() {
     x: number
     y: number
   } | null>(null)
+  const [chartViewportW, setChartViewportW] = useState(0)
+  /** null = auto-fit the whole project range to the viewport */
+  const [manualDayPx, setManualDayPx] = useState<number | null>(null)
 
   const labelScrollRef = useRef<HTMLDivElement>(null)
   const chartScrollRef = useRef<HTMLDivElement>(null)
@@ -151,7 +168,18 @@ export function ScheduleGanttWorkspace() {
     return () => window.clearTimeout(t)
   }, [focusTaskId, displayRows])
 
-  const timeline = useMemo(() => {
+  useEffect(() => {
+    const el = chartScrollRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver((entries) => {
+      const width = Math.floor(entries[0]?.contentRect.width ?? 0)
+      setChartViewportW((prev) => (prev === width ? prev : width))
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [projectId])
+
+  const range = useMemo(() => {
     let min: string | null = null
     let max: string | null = null
     for (const r of displayRows) {
@@ -162,19 +190,39 @@ export function ScheduleGanttWorkspace() {
     }
     if (!min || !max) {
       const today = new Date().toISOString().slice(0, 10)
-      return { min: today, max: addDaysIso(today, 30), days: 31, widthPx: 31 * DAY_PX }
+      return { min: today, max: addDaysIso(today, 30), days: 31 }
     }
     // Pad a little; do NOT inflate by total_float (that pushed late bars off-screen).
     min = addDaysIso(min, -3)
     max = addDaysIso(max, 7)
     const days = Math.max(1, diffDaysIso(min, max) + 1)
-    return { min, max, days, widthPx: days * DAY_PX }
+    return { min, max, days }
   }, [displayRows])
+
+  const fitDayPx = useMemo(() => {
+    if (chartViewportW <= 0) return DAY_PX
+    // -1 keeps the fitted width from tipping into a horizontal scrollbar.
+    const raw = (chartViewportW - 1) / range.days
+    return Math.min(FIT_MAX_DAY_PX, Math.max(FIT_MIN_DAY_PX, raw))
+  }, [chartViewportW, range.days])
+
+  const dayPx = manualDayPx ?? fitDayPx
+
+  const timeline = useMemo(
+    () => ({ ...range, widthPx: Math.ceil(range.days * dayPx) }),
+    [range, dayPx]
+  )
+
+  function zoomBy(factor: number) {
+    setManualDayPx(
+      Math.min(ZOOM_MAX_DAY_PX, Math.max(ZOOM_MIN_DAY_PX, dayPx * factor))
+    )
+  }
 
   function dateToX(iso: string | null | undefined): number {
     const d = toIsoDateOnly(iso)
     if (!d) return 0
-    return Math.max(0, diffDaysIso(timeline.min, d) * DAY_PX)
+    return Math.max(0, diffDaysIso(timeline.min, d) * dayPx)
   }
 
   function syncVertical(from: 'label' | 'chart') {
@@ -308,7 +356,7 @@ export function ScheduleGanttWorkspace() {
   function onPointerMove(e: React.PointerEvent) {
     const drag = dragRef.current
     if (!drag) return
-    const deltaDays = Math.round((e.clientX - drag.originX) / DAY_PX)
+    const deltaDays = Math.round((e.clientX - drag.originX) / dayPx)
     let next: { start: string; finish: string } | null = null
     if (drag.mode === 'move') {
       next = shiftRangeByDays(drag.startDate, drag.finishDate, deltaDays)
@@ -346,15 +394,34 @@ export function ScheduleGanttWorkspace() {
     }))
   }
 
-  const headerTicks = useMemo(() => {
-    const ticks: { iso: string; label: string }[] = []
-    const step = timeline.days > 180 ? 14 : 7
-    for (let i = 0; i < timeline.days; i += step) {
-      const iso = addDaysIso(timeline.min, i)
-      ticks.push({ iso, label: formatScheduleDate(iso, 'jalali') })
+  /** Jalali month bands (top row) and Saturday week starts (bottom row), in day offsets. */
+  const axis = useMemo(() => {
+    const months: { key: string; startDay: number; endDay: number; label: string }[] = []
+    const weeks: { iso: string; day: number; label: string; monthStart: boolean }[] = []
+    for (let i = 0; i < range.days; i++) {
+      const iso = addDaysIso(range.min, i)
+      const { jy, jm, jd } = isoToJalali(iso)
+      const key = `${jy}-${jm}`
+      const last = months[months.length - 1]
+      if (!last || last.key !== key) {
+        months.push({
+          key,
+          startDay: i,
+          endDay: i + 1,
+          label: `${PERSIAN_MONTHS[jm - 1]} ${jy.toLocaleString('en-US', { useGrouping: false })}`,
+        })
+      } else {
+        last.endDay = i + 1
+      }
+      // Iranian weeks start on Saturday.
+      if (new Date(`${iso}T12:00:00`).getDay() === 6) {
+        weeks.push({ iso, day: i, label: jd.toLocaleString('en-US'), monthStart: false })
+      }
     }
-    return ticks
-  }, [timeline])
+    const monthStartDays = new Set(months.slice(1).map((m) => m.startDay))
+    for (const w of weeks) w.monthStart = monthStartDays.has(w.day)
+    return { months, weeks, monthStartDays: [...monthStartDays] }
+  }, [range])
 
   const linkDrawings = useMemo(() => {
     const anchors = new Map<string, GanttBarAnchor>()
@@ -366,10 +433,10 @@ export function ScheduleGanttWorkspace() {
       const finish = toIsoDateOnly(row.finishDate)
       if (!start || !finish) return
       const span = barSpanDays(start, finish)
-      const left = Math.max(0, diffDaysIso(timeline.min, start) * DAY_PX)
-      const finishDayX = Math.max(0, diffDaysIso(timeline.min, finish) * DAY_PX)
+      const left = Math.max(0, diffDaysIso(timeline.min, start) * dayPx)
+      const finishDayX = Math.max(0, diffDaysIso(timeline.min, finish) * dayPx)
       const widthPx =
-        span === 0 ? 0 : Math.max(DAY_PX, Math.max(1, span) * DAY_PX)
+        span === 0 ? 0 : Math.max(dayPx, Math.max(1, span) * dayPx)
       const startX = span === 0 ? finishDayX : left
       const finishX = span === 0 ? finishDayX : left + widthPx
       anchors.set(row.id, {
@@ -382,7 +449,7 @@ export function ScheduleGanttWorkspace() {
       })
     })
     return buildAllGanttLinkPaths(links, anchors, taskMeta)
-  }, [displayRows, links, timeline.min])
+  }, [displayRows, links, timeline.min, dayPx])
 
   useEffect(() => {
     if (!showDependencies) setDepTooltip(null)
@@ -465,6 +532,42 @@ export function ScheduleGanttWorkspace() {
             </span>
           ) : null}
         </button>
+        <div className="inline-flex items-center overflow-hidden rounded-lg border border-slate-300 bg-white text-slate-800">
+          <button
+            type="button"
+            onClick={() => zoomBy(1 / ZOOM_STEP)}
+            disabled={dayPx <= ZOOM_MIN_DAY_PX}
+            title="کوچک‌نمایی"
+            aria-label="کوچک‌نمایی"
+            className="px-2 py-1.5 hover:bg-slate-50 disabled:opacity-50"
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setManualDayPx(null)}
+            title="نمایش کل بازه پروژه در عرض صفحه"
+            aria-label="نمایش کل بازه پروژه"
+            aria-pressed={manualDayPx == null}
+            className={cn(
+              'inline-flex items-center gap-1 border-x border-slate-300 px-2 py-1.5 text-xs',
+              manualDayPx == null ? 'bg-orange-50 text-orange-700' : 'hover:bg-slate-50'
+            )}
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+            کل بازه
+          </button>
+          <button
+            type="button"
+            onClick={() => zoomBy(ZOOM_STEP)}
+            disabled={dayPx >= ZOOM_MAX_DAY_PX}
+            title="بزرگ‌نمایی"
+            aria-label="بزرگ‌نمایی"
+            className="px-2 py-1.5 hover:bg-slate-50 disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
         {saving ? <span className="text-xs text-slate-500">در حال ثبت…</span> : null}
         <span className="text-xs text-slate-500">
           {displayRows.length} فعالیت
@@ -509,19 +612,42 @@ export function ScheduleGanttWorkspace() {
           </div>
           <div
             ref={headerScrollRef}
-            className="min-w-0 flex-1 overflow-hidden py-2"
+            className="min-w-0 flex-1 overflow-hidden"
             dir="ltr"
           >
-            <div className="relative h-5" style={{ width: timeline.widthPx }}>
-              {headerTicks.map((t) => (
-                <span
-                  key={t.iso}
-                  className="absolute top-0 whitespace-nowrap text-[10px] text-slate-500"
-                  style={{ left: dateToX(t.iso) }}
-                >
-                  {t.label}
-                </span>
-              ))}
+            <div style={{ width: timeline.widthPx }}>
+              <div className="relative h-6 border-b border-slate-200">
+                {axis.months.map((m) => {
+                  const w = (m.endDay - m.startDay) * dayPx
+                  return (
+                    <div
+                      key={m.key}
+                      className="absolute inset-y-0 overflow-hidden border-l border-slate-300 px-1 text-[11px] font-medium leading-6 text-slate-700"
+                      style={{ left: m.startDay * dayPx, width: w }}
+                      title={m.label}
+                    >
+                      <span className="block truncate" dir="rtl">
+                        {m.label}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="relative h-5">
+                {axis.weeks.map((t) => (
+                  <span
+                    key={t.iso}
+                    className={cn(
+                      'absolute top-0 whitespace-nowrap border-l pl-0.5 text-[10px] leading-5',
+                      t.monthStart ? 'border-slate-300 text-slate-700' : 'border-slate-200 text-slate-500'
+                    )}
+                    style={{ left: t.day * dayPx }}
+                    title={formatScheduleDate(t.iso, 'jalali')}
+                  >
+                    {t.label}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -579,6 +705,24 @@ export function ScheduleGanttWorkspace() {
               <div className="px-4 py-8 text-sm text-slate-500">فعالیتی نیست.</div>
             ) : (
               <div className="relative" style={{ width: timeline.widthPx, height: chartHeight }}>
+                <div className="pointer-events-none absolute inset-0" aria-hidden>
+                  {axis.weeks.map((t) =>
+                    t.monthStart ? null : (
+                      <div
+                        key={`g-${t.iso}`}
+                        className="absolute inset-y-0 border-l border-slate-100"
+                        style={{ left: t.day * dayPx }}
+                      />
+                    )
+                  )}
+                  {axis.monthStartDays.map((day) => (
+                    <div
+                      key={`gm-${day}`}
+                      className="absolute inset-y-0 border-l border-slate-300"
+                      style={{ left: day * dayPx }}
+                    />
+                  ))}
+                </div>
                 {/* MSP-style dependency arrows */}
                 {showDependencies && linkDrawings.length > 0 ? (
                   <svg
@@ -647,7 +791,7 @@ export function ScheduleGanttWorkspace() {
                   const left = hasDates ? dateToX(start) : 0
                   // Inclusive visual width: at least 1 day for normal bars
                   const widthPx = hasDates
-                    ? Math.max(DAY_PX, (span === 0 ? 0 : Math.max(1, span)) * DAY_PX)
+                    ? Math.max(dayPx, (span === 0 ? 0 : Math.max(1, span)) * dayPx)
                     : 0
                   const rawFloat = Number(row.totalFloat) || 0
                   const showFloat =
@@ -655,9 +799,11 @@ export function ScheduleGanttWorkspace() {
                   const floatDays = showFloat
                     ? Math.min(rawFloat, GANTT_FLOAT_DISPLAY_CAP_DAYS)
                     : 0
-                  const floatW = floatDays * DAY_PX
+                  const floatW = floatDays * dayPx
                   const editable = !readOnly && !row.isSummary && hasDates && row.kind !== 'package'
                   const asMilestone = Boolean(row.isMilestone || span === 0)
+                  const percent = row.percentComplete ?? 0
+                  const percentLabel = `پیشرفت ${formatPercent(percent)}%`
 
                   return (
                     <div
@@ -668,14 +814,6 @@ export function ScheduleGanttWorkspace() {
                       )}
                       style={{ height: ROW_H, width: timeline.widthPx }}
                     >
-                      {headerTicks.map((t) => (
-                        <div
-                          key={`g-${row.id}-${t.iso}`}
-                          className="absolute top-0 bottom-0 border-l border-slate-100"
-                          style={{ left: dateToX(t.iso) }}
-                        />
-                      ))}
-
                       {!hasDates ? (
                         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">
                           بدون تاریخ
@@ -688,7 +826,9 @@ export function ScheduleGanttWorkspace() {
                           disabled={!editable}
                           className={cn(
                             'absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 text-base leading-none',
-                            row.tone === 'critical' || row.tone === 'negative'
+                            row.tone === 'completed'
+                              ? 'text-emerald-600'
+                              : row.tone === 'critical' || row.tone === 'negative'
                               ? 'text-rose-600'
                               : row.tone === 'near_critical'
                                 ? 'text-amber-500'
@@ -698,7 +838,7 @@ export function ScheduleGanttWorkspace() {
                             editable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
                           )}
                           style={{ left: dateToX(finish) }}
-                          title={`${row.name} · مایلستون · ${formatScheduleDate(finish, 'jalali')}`}
+                          title={`${row.name} · مایلستون · ${formatScheduleDate(finish, 'jalali')} · ${percentLabel}`}
                           onPointerDown={(e) =>
                             onPointerDown(e, { ...row, startDate: start!, finishDate: finish! }, 'move')
                           }
@@ -720,11 +860,19 @@ export function ScheduleGanttWorkspace() {
                               editable && 'cursor-grab active:cursor-grabbing'
                             )}
                             style={{ width: widthPx }}
-                            title={`${row.name}\n${formatScheduleDate(start, 'jalali')} → ${formatScheduleDate(finish, 'jalali')}\n${row.durationDays} روز`}
+                            title={`${row.name}\n${formatScheduleDate(start, 'jalali')} → ${formatScheduleDate(finish, 'jalali')}\n${row.durationDays} روز · ${percentLabel}`}
+                            aria-label={`${row.name} · ${percentLabel}`}
                             onPointerDown={(e) =>
                               onPointerDown(e, { ...row, startDate: start!, finishDate: finish! }, 'move')
                             }
                           >
+                            <span
+                              className={cn(
+                                'pointer-events-none absolute inset-y-0 left-0 rounded-[1px]',
+                                ganttBarFillClassName(row.tone)
+                              )}
+                              style={{ width: percent > 0 ? `${percent}%` : 2 }}
+                            />
                             {editable ? (
                               <>
                                 <span
@@ -782,7 +930,16 @@ export function ScheduleGanttWorkspace() {
           <span className="h-2.5 w-4 rounded bg-sky-400" /> پایش پیشرفت (بحرانی + نرخ خوب)
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-4 rounded bg-slate-400" /> عادی / بدون نمایش
+          <span className="h-2.5 w-4 rounded bg-slate-400" /> غیربحرانی (عادی)
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2.5 w-4 rounded border border-emerald-700 bg-emerald-500" /> تکمیل‌شده (100%)
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="relative h-2.5 w-6 overflow-hidden rounded border border-slate-500 bg-slate-400" dir="ltr">
+            <span className="absolute inset-y-0 left-0 w-1/2 bg-slate-700/70" />
+          </span>
+          بخش تیره = درصد پیشرفت
         </span>
         <span className="inline-flex items-center gap-1">
           <svg width="18" height="8" aria-hidden>

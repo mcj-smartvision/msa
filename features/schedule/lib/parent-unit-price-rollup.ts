@@ -104,7 +104,7 @@ export function applyParentUnitPriceSum(nodes: UnitPriceRollupNode[]): {
       parentName: node.name,
       sum,
       children: childLines,
-      text: `${parentLabel} = ${labeled || '۰'} = ${sum}`,
+      text: `${parentLabel} = ${labeled || '0'} = ${sum}`,
     })
   }
 

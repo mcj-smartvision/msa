@@ -21,7 +21,7 @@ interface MoneyInputProps {
 }
 
 /**
- * Amount field with live thousand separators (e.g. ۲٬۰۰۰٬۰۰۰ / 2,000,000)
+ * Amount field with live thousand separators (e.g. 2,000,000 / 2,000,000)
  * so zeros are easier to count while typing.
  */
 export function MoneyInput({
@@ -43,7 +43,7 @@ export function MoneyInput({
       autoComplete="off"
       required={required}
       disabled={disabled}
-      placeholder={placeholder ?? (locale === 'en' ? '0' : '۰')}
+      placeholder={placeholder ?? (locale === 'en' ? '0' : '0')}
       dir="ltr"
       className={cn('font-mono tabular-nums text-start', className)}
       value={value}

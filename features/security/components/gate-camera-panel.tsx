@@ -418,7 +418,7 @@ export function GateCameraPanel({
   return (
     <SectionCard
       title="دوربین گیت — شناسایی بیومتریک"
-      description="ثبت چندنمونه‌ای FaceNet، تطبیق ۱:N با آستانه و حاشیه ابهام — بدون حدس LLM"
+      description="ثبت چندنمونه‌ای FaceNet، تطبیق 1:N با آستانه و حاشیه ابهام — بدون حدس LLM"
     >
       <div className="space-y-4">
         {emailHint ? (

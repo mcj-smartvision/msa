@@ -161,7 +161,7 @@ export function computePpc(plannedInput: number, completedInput: number): Action
   }
 
   if (completed > planned) {
-    warnings.push('تعداد تکمیل‌شده بیشتر از تعداد متعهد بود؛ PPC روی ۱۰۰٪ محدود شد.')
+    warnings.push('تعداد تکمیل‌شده بیشتر از تعداد متعهد بود؛ PPC روی 100٪ محدود شد.')
   }
   const raw = (completed / planned) * 100
   const ppc = Math.min(100, Math.max(0, raw))

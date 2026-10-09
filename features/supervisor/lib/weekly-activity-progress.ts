@@ -37,6 +37,54 @@ function addDays(iso: string, days: number): string {
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
+/** A week's gain above this many percentage points is flagged as a likely data-entry error. */
+export const SUSPICIOUS_WEEKLY_GAIN = 30
+
+export function isSuspiciousWeeklyGain(gain: number | null | undefined): boolean {
+  return gain != null && gain > SUSPICIOUS_WEEKLY_GAIN
+}
+
+export interface PercentEntryCheck {
+  /** The value is out of 0–100 and must not be saved. */
+  error: 'max' | 'min' | null
+  /** Lower than the previous cumulative: still saved, as a correction. */
+  decrease: boolean
+}
+
+export function checkPercentEntry(value: number, previous: number | null | undefined): PercentEntryCheck {
+  const error = value > 100 ? 'max' : value < 0 ? 'min' : null
+  return { error, decrease: error == null && previous != null && value < previous }
+}
+
+export interface ProgressAxis {
+  min: number
+  max: number
+  ticks: number[]
+}
+
+/**
+ * Y axis zoomed to the data (padded by 5 points, within 0–100) with 4–6 ticks on multiples of 5 or 10+.
+ * Without data the full 0–100 scale.
+ */
+export function progressAxis(values: number[]): ProgressAxis {
+  const rawMin = values.length ? Math.max(0, Math.floor(Math.min(...values) - 5)) : 0
+  const rawMax = values.length ? Math.min(100, Math.ceil(Math.max(...values) + 5)) : 100
+  let best: ProgressAxis | null = null
+  for (const step of [5, 10, 20, 25, 50]) {
+    let lo = Math.floor(rawMin / step) * step
+    let hi = Math.min(100, Math.ceil(rawMax / step) * step)
+    while ((hi - lo) / step + 1 < 4 && (hi < 100 || lo > 0)) {
+      if (hi < 100) hi += step
+      else lo -= step
+    }
+    const count = (hi - lo) / step + 1
+    if (count > 6) continue
+    best = { min: lo, max: hi, ticks: Array.from({ length: count }, (_, i) => lo + i * step) }
+    break
+  }
+  return best ?? { min: 0, max: 100, ticks: [0, 20, 40, 60, 80, 100] }
+}
+
 /** Saturday that starts the week containing `iso`. */
 export function siteWeekStart(iso: string): string {
   const dow = new Date(`${iso}T00:00:00Z`).getUTCDay()

@@ -125,7 +125,7 @@ export async function PATCH(request: NextRequest) {
           numberValue != null &&
           (!Number.isInteger(numberValue) || numberValue < 0 || numberValue > 1000)
         ) {
-          throw new WorkshopError('VALIDATION', 'اولویت باید عدد صحیح بین صفر و ۱۰۰۰ باشد')
+          throw new WorkshopError('VALIDATION', 'اولویت باید عدد صحیح بین صفر و 1000 باشد')
         }
         value = numberValue
       } else if (DATE_FIELDS.has(field)) {

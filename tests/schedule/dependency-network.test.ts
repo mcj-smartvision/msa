@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDependencyNetwork } from '@/features/schedule/lib/dependency-network'
+import { buildDependencyNetwork, isCriticalTask } from '@/features/schedule/lib/dependency-network'
 
 describe('buildDependencyNetwork', () => {
   it('keeps only leaves and marks activities with no links as isolated', () => {
@@ -37,5 +37,29 @@ describe('buildDependencyNetwork', () => {
     expect(layer.b).toBe(1)
     expect(layer.c).toBeGreaterThan(layer.b)
     expect(layer.d).toBeGreaterThan(layer.b)
+  })
+
+  it('carries critical marking onto nodes', () => {
+    const network = buildDependencyNetwork(
+      [
+        { id: 'a', wbs: '1', name: 'شروع', start: null, finish: null, critical: true },
+        { id: 'b', wbs: '2', name: 'پایان', start: null, finish: null },
+      ],
+      [{ fromId: 'a', toId: 'b', relation: 'FS', lagDays: 0 }]
+    )
+    expect(network.nodes.find((node) => node.id === 'a')?.critical).toBe(true)
+    expect(network.nodes.find((node) => node.id === 'b')?.critical).toBe(false)
+  })
+})
+
+describe('isCriticalTask', () => {
+  it('uses CPM flag or non-positive float, falling back to the imported flag', () => {
+    expect(isCriticalTask({ is_critical: true, total_float: 5 })).toBe(true)
+    expect(isCriticalTask({ is_critical: false, total_float: 0 })).toBe(true)
+    expect(isCriticalTask({ is_critical: false, total_float: -2 })).toBe(true)
+    expect(isCriticalTask({ is_critical: false, total_float: 3 }, true)).toBe(false)
+    expect(isCriticalTask({ is_critical: false, total_float: null })).toBe(false)
+    expect(isCriticalTask(undefined, true)).toBe(true)
+    expect(isCriticalTask(null)).toBe(false)
   })
 })

@@ -215,7 +215,7 @@ export async function runProjectCpmCalculation(
     milestoneTaskIds,
   })
 
-  // Progress Pace (هشدار هوشمند پیشرفت — بخش ۱)
+  // Progress Pace (هشدار هوشمند پیشرفت — بخش 1)
   let paceUpdated = 0
   try {
     const pace = await persistProjectProgressPace(supabase, projectId, {

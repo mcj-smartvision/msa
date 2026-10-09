@@ -25,7 +25,7 @@ export type DefinedZone = {
   supervisor?: string
   /** پیمانکار مسئول (اختیاری) */
   contractor?: string
-  /** تراز‌های زون — مثلاً طبقه ۱، طبقه ۲ */
+  /** تراز‌های زون — مثلاً طبقه 1، طبقه 2 */
   levels?: string[]
   /** توضیحات تکمیلی (اختیاری) */
   description?: string

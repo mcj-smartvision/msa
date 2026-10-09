@@ -592,7 +592,7 @@ export const fa: FormDictionary = {
     regulatoryRegionRequired: 'انتخاب منطقه مقرراتی الزامی است.',
     constructionTypeRequired: 'انتخاب نوع ساخت الزامی است.',
     customStandardCodeRequired: 'کد استاندارد الزامی است.',
-    customStandardNameRequired: 'نام استاندارد باید حداقل ۲ کاراکتر باشد.',
+    customStandardNameRequired: 'نام استاندارد باید حداقل 2 کاراکتر باشد.',
     customStandardDuplicate: 'این کد یا نام استاندارد قبلاً اضافه شده است.',
     safetyStandardRequired: 'استاندارد ایمنی الزامی است.',
     currencyRequired: 'واحد پول الزامی است.',

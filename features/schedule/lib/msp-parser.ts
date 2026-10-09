@@ -1,5 +1,5 @@
 /**
- * MSP XML import parser (بخش ۲).
+ * MSP XML import parser (بخش 2).
  *
  * Uses fast-xml-parser (structured XML library) — not hand-edited XML strings.
  * .MPP binary: convert via Project «Save As → XML» (MPXJ bridge can plug in later).

@@ -9,19 +9,19 @@ const STATUS_STYLE: Record<RagStatus, { label: string; chip: string; dot: string
     label: 'سبز — در مسیر',
     chip: 'border-emerald-200 bg-emerald-50 text-emerald-800',
     dot: 'bg-emerald-500',
-    hint: 'SPI و CPI حداقل ۰٫۹۵ و شناوری مسیر بحرانی نامنفی است.',
+    hint: 'SPI و CPI حداقل 0.95 و شناوری مسیر بحرانی نامنفی است.',
   },
   AMBER: {
     label: 'زرد — نیازمند توجه',
     chip: 'border-amber-200 bg-amber-50 text-amber-900',
     dot: 'bg-amber-500',
-    hint: 'یکی از شاخص‌ها بین ۰٫۸۵ و ۰٫۹۵ است یا بیش از ۷۵٪ شناوری مصرف شده.',
+    hint: 'یکی از شاخص‌ها بین 0.85 و 0.95 است یا بیش از 75٪ شناوری مصرف شده.',
   },
   RED: {
     label: 'قرمز — بحرانی',
     chip: 'border-red-200 bg-red-50 text-red-800',
     dot: 'bg-red-600',
-    hint: 'SPI یا CPI کمتر از ۰٫۸۵ است یا مسیر بحرانی شناوری منفی دارد.',
+    hint: 'SPI یا CPI کمتر از 0.85 است یا مسیر بحرانی شناوری منفی دارد.',
   },
 }
 

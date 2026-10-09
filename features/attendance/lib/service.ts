@@ -325,7 +325,7 @@ export async function enrollPerson(supabase: SupabaseClient, input: EnrollPerson
 
   if (guidedSamples.length > 0) {
     if (guidedSamples.length < 3) {
-      throw new AttendanceError('VALIDATION', 'حداقل ۳ زاویه از چهره لازم است')
+      throw new AttendanceError('VALIDATION', 'حداقل 3 زاویه از چهره لازم است')
     }
     for (const sample of guidedSamples) {
       if (!isValidEmbedding(sample.faceEmbedding)) {
@@ -833,7 +833,7 @@ async function notifyTransit(
 ) {
   const dirLabel = transit.direction === 'IN' ? 'ورود' : 'خروج'
   const statusAfter = transit.direction === 'IN' ? 'داخل کارگاه' : 'خارج از کارگاه'
-  const when = new Date(transit.occurredAt).toLocaleString('fa-IR')
+  const when = new Date(transit.occurredAt).toLocaleString('fa-IR-u-nu-latn')
   const subject = `ثبت ${dirLabel} — ${recipient.fullName}`
   const text = [
     `سلام ${recipient.fullName}،`,

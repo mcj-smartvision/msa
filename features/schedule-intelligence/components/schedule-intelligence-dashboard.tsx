@@ -87,7 +87,7 @@ function ActivitiesTable({
         <p className="text-xs text-muted-foreground">
           مدت کل پروژه (CPM):{' '}
           <span className="font-semibold tabular-nums">
-            {projectDurationDays.toLocaleString('fa-IR')} روز
+            {projectDurationDays.toLocaleString('fa-IR-u-nu-latn')} روز
           </span>
           — ستون «سهم از کل» = مدت هر فعالیت ÷ مدت کل پروژه
         </p>
@@ -129,16 +129,16 @@ function ActivitiesTable({
               >
                 <td className="p-2 max-w-[200px] truncate">{t.name}</td>
                 <td className="p-2">{t.wbs ?? '—'}</td>
-                <td className="p-2 tabular-nums">{durationDays.toLocaleString('fa-IR')}</td>
+                <td className="p-2 tabular-nums">{durationDays.toLocaleString('fa-IR-u-nu-latn')}</td>
                 {share != null ? (
                   <td className="p-2 tabular-nums font-medium text-primary">
-                    {share.toLocaleString('fa-IR')}٪
+                    {share.toLocaleString('fa-IR-u-nu-latn')}٪
                   </td>
                 ) : null}
-                <td className="p-2 tabular-nums">{t.percentComplete.toLocaleString('fa-IR')}٪</td>
+                <td className="p-2 tabular-nums">{t.percentComplete.toLocaleString('fa-IR-u-nu-latn')}٪</td>
                 <td className="p-2">
                   {t.totalFloatMinutes != null
-                    ? (t.totalFloatMinutes / minutesPerDay).toLocaleString('fa-IR')
+                    ? (t.totalFloatMinutes / minutesPerDay).toLocaleString('fa-IR-u-nu-latn')
                     : '—'}
                 </td>
                 <td className="p-2">
@@ -156,7 +156,7 @@ function ActivitiesTable({
         </table>
       </div>
       {rows.length > 200 ? (
-        <p className="text-xs text-muted-foreground">نمایش ۲۰۰ از {rows.length.toLocaleString('fa-IR')} فعالیت</p>
+        <p className="text-xs text-muted-foreground">نمایش 200 از {rows.length.toLocaleString('fa-IR-u-nu-latn')} فعالیت</p>
       ) : null}
     </div>
   )
@@ -184,11 +184,11 @@ function ActivityDrawer({
           <div><dt className="text-muted-foreground">UID</dt><dd>{task.uid}</dd></div>
           <div><dt className="text-muted-foreground">WBS</dt><dd>{task.wbs ?? '—'}</dd></div>
           <div><dt className="text-muted-foreground">مدت (روز)</dt>
-            <dd>{effectiveTaskDurationDays(task, 480).toLocaleString('fa-IR')}</dd>
+            <dd>{effectiveTaskDurationDays(task, 480).toLocaleString('fa-IR-u-nu-latn')}</dd>
           </div>
           <div><dt className="text-muted-foreground">وضعیت</dt><dd>{STATUS_LABELS[task.status]}</dd></div>
           <div><dt className="text-muted-foreground">شناوری کل (روز)</dt>
-            <dd>{task.totalFloatMinutes != null ? (task.totalFloatMinutes / 480).toLocaleString('fa-IR') : '—'}</dd>
+            <dd>{task.totalFloatMinutes != null ? (task.totalFloatMinutes / 480).toLocaleString('fa-IR-u-nu-latn') : '—'}</dd>
           </div>
           <div><dt className="text-muted-foreground">امتیاز ریسک</dt><dd>{task.riskScore ?? '—'}</dd></div>
           {task.riskReasons.length > 0 ? (
@@ -359,10 +359,10 @@ export function ScheduleIntelligenceDashboard() {
               </SectionCard>
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <KpiCard label="فعالیت‌های اجرایی" value={result.kpis.totalLeafTasks.toLocaleString('fa-IR')} icon={<Network className="h-4 w-4 text-muted-foreground" />} />
-                <KpiCard label="مدت شبکه (روز)" value={result.kpis.calculatedProjectDurationDays.toLocaleString('fa-IR')} icon={<Calendar className="h-4 w-4 text-muted-foreground" />} />
-                <KpiCard label="بحرانی" value={result.kpis.criticalCount.toLocaleString('fa-IR')} icon={<AlertTriangle className="h-4 w-4 text-amber-500" />} />
-                <KpiCard label="میانگین پیشرفت %" value={result.kpis.averagePercentComplete.toLocaleString('fa-IR')} icon={<Gauge className="h-4 w-4 text-muted-foreground" />} />
+                <KpiCard label="فعالیت‌های اجرایی" value={result.kpis.totalLeafTasks.toLocaleString('fa-IR-u-nu-latn')} icon={<Network className="h-4 w-4 text-muted-foreground" />} />
+                <KpiCard label="مدت شبکه (روز)" value={result.kpis.calculatedProjectDurationDays.toLocaleString('fa-IR-u-nu-latn')} icon={<Calendar className="h-4 w-4 text-muted-foreground" />} />
+                <KpiCard label="بحرانی" value={result.kpis.criticalCount.toLocaleString('fa-IR-u-nu-latn')} icon={<AlertTriangle className="h-4 w-4 text-amber-500" />} />
+                <KpiCard label="میانگین پیشرفت %" value={result.kpis.averagePercentComplete.toLocaleString('fa-IR-u-nu-latn')} icon={<Gauge className="h-4 w-4 text-muted-foreground" />} />
               </div>
 
               {chartData ? (
@@ -438,8 +438,8 @@ export function ScheduleIntelligenceDashboard() {
               </SectionCard>
               <SectionCard title="مسیر بحرانی">
                 <p className="text-sm text-muted-foreground mb-2">
-                  {result.cpm.criticalUids.length.toLocaleString('fa-IR')} فعالیت بحرانی —{' '}
-                  {result.cpm.criticalChains.length.toLocaleString('fa-IR')} زنجیره
+                  {result.cpm.criticalUids.length.toLocaleString('fa-IR-u-nu-latn')} فعالیت بحرانی —{' '}
+                  {result.cpm.criticalChains.length.toLocaleString('fa-IR-u-nu-latn')} زنجیره
                 </p>
                 <ul className="text-sm space-y-1">
                   {result.cpm.criticalChains.map((chain, i) => (
@@ -457,8 +457,8 @@ export function ScheduleIntelligenceDashboard() {
           {tab === 'validation' ? (
             <SectionCard title="هشدارها و خطاها">
               <p className="text-sm mb-4">
-                خطا: {result.kpis.validationErrorCount.toLocaleString('fa-IR')} — هشدار:{' '}
-                {result.kpis.validationWarningCount.toLocaleString('fa-IR')}
+                خطا: {result.kpis.validationErrorCount.toLocaleString('fa-IR-u-nu-latn')} — هشدار:{' '}
+                {result.kpis.validationWarningCount.toLocaleString('fa-IR-u-nu-latn')}
               </p>
               <ul className="space-y-2 text-sm max-h-[400px] overflow-y-auto">
                 {result.schedule.warnings.map((w, i) => (

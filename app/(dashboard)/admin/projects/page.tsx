@@ -220,7 +220,7 @@ export default function AdminProjectsPage() {
           hint={`${kpis.onSiteNow} حاضر در سایت همین حالا`}
           icon={Radio}
           tone="info"
-          help="ورود موفق به سامانه در ۳۰ دقیقه اخیر. اگر ورود اخیر نباشد، تعداد حاضر در گیت نمایش داده می‌شود. نشست وب‌سوکت جداگانه‌ای در سیستم نیست."
+          help="ورود موفق به سامانه در 30 دقیقه اخیر. اگر ورود اخیر نباشد، تعداد حاضر در گیت نمایش داده می‌شود. نشست وب‌سوکت جداگانه‌ای در سیستم نیست."
         />
         <ControlKpiCard
           label="کاربران غیرفعال"
@@ -248,10 +248,10 @@ export default function AdminProjectsPage() {
         <ControlKpiCard
           label="خطاها و Job ناموفق"
           value={kpis.failedJobs24h}
-          hint="۲۴ ساعت اخیر"
+          hint="24 ساعت اخیر"
           icon={ServerCrash}
           tone={kpis.failedJobs24h > 0 ? 'warning' : 'neutral'}
-          help="جمع واردات زمان‌بندی ناموفق، ایمیل گیت ناموفق، و تحلیل تصویر ناموفق در ۲۴ ساعت گذشته. عدد ساختگی نیست."
+          help="جمع واردات زمان‌بندی ناموفق، ایمیل گیت ناموفق، و تحلیل تصویر ناموفق در 24 ساعت گذشته. عدد ساختگی نیست."
         />
         <ControlKpiCard
           label="مصرف منابع پلن"
@@ -264,7 +264,7 @@ export default function AdminProjectsPage() {
         <ControlKpiCard
           label="رویدادهای امنیتی"
           value={kpis.securityEvents24h}
-          hint="شناسایی ناموفق گیت و لاگ ممیزی، ۲۴ ساعت"
+          hint="شناسایی ناموفق گیت و لاگ ممیزی، 24 ساعت"
           icon={ShieldAlert}
           tone={kpis.securityEvents24h > 0 ? 'warning' : 'neutral'}
           help="ورود ناموفق حساب کاربری در این نسخه جداگانه ذخیره نمی‌شود. رویدادها از شناسایی ناموفق گیت و جدول ممیزی (اگر داده داشته باشد) می‌آیند."

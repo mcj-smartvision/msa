@@ -28,17 +28,33 @@ schedulePhysicalPercent,
 import { readProjectDailyProgress } from '@/features/supervisor/lib/daily-progress-storage'
 import { type DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
 import { cn } from '@/shared/lib/utils'
+import { todayTehranIso } from '@/shared/lib/time/tehran'
 
 function shownNumber(value: number): string {
   return String(Math.round(value * 100) / 100)
+}
+
+function earnedTone(earned: number | null | undefined, planned: number): string {
+  if (earned == null) return 'text-slate-300'
+  if (!(planned > 0)) return 'text-slate-700'
+  return earned >= planned - 0.0001 ? 'text-emerald-700' : 'text-rose-600'
 }
 
 function plannedOriginText(
   row: RowMeta,
   month: DeductedWeightMonth,
   months: DeductedWeightMonth[],
-  shown: number
+  shown: number,
+  childParts: Array<{ name: string; value: number }>
 ): string {
+  if (row.isParent) {
+    const parts = childParts.filter((part) => part.value !== 0)
+    if (parts.length === 0) {
+      return `Planned ${month.label} جمع Planned زیرشاخه‌هاست و برابر ${shownNumber(shown)} است.`
+    }
+    const expr = parts.map((part) => `${part.name} ${shownNumber(part.value)}`).join(' + ')
+    return `جمع Planned زیرشاخه‌ها در ${month.label}: ${expr} = ${shownNumber(shown)}`
+  }
   const weight = row.physicalWeight ?? row.weight ?? 0
   const slices = plannedMonthlyWeights(
     weight,
@@ -60,7 +76,8 @@ function earnedOriginText(
   monthIndex: number,
   plannedByMonth: number[],
   earned: number,
-  childParts: Array<{ name: string; value: number }>
+  childParts: Array<{ name: string; value: number }>,
+  currentMonthIndex: number
 ): string {
   if (row.isParent) {
     const parts = childParts.filter((part) => part.value !== 0)
@@ -75,12 +92,13 @@ function earnedOriginText(
   if (percent == null) return 'برای این فعالیت پیشرفت فیزیکی ثبت نشده.'
   const product = Math.round(((weight * percent) / 100) * 100) / 100
   const plannedHere = plannedByMonth[monthIndex] ?? 0
-  const plannedSum = plannedByMonth.reduce((sum, value) => sum + (value || 0), 0)
-  const monthCount = plannedByMonth.filter((value) => value > 0).length
+  const plannedUpToNow = plannedByMonth.slice(0, currentMonthIndex + 1)
+  const plannedSum = plannedUpToNow.reduce((sum, value) => sum + (value || 0), 0)
+  const monthCount = plannedUpToNow.filter((value) => value > 0).length
   if (monthCount <= 1) {
     return `وزن ${shownNumber(weight)} × پیشرفت فیزیکی ${shownNumber(percent)}٪ = ${shownNumber(earned)}`
   }
-  return `وزن ${shownNumber(weight)} × پیشرفت فیزیکی ${shownNumber(percent)}٪ = ${shownNumber(product)}. این حاصل به نسبت Planned ماه‌های ${row.name} پخش شده. Planned ${month.label} برابر ${shownNumber(plannedHere)} از ${shownNumber(plannedSum)} است، پس Earned این ماه = ${shownNumber(earned)}`
+  return `وزن ${shownNumber(weight)} × پیشرفت فیزیکی ${shownNumber(percent)}٪ = ${shownNumber(product)}. این حاصل به نسبت Planned ماه‌های ${row.name} تا ماه جاری پخش شده. Planned ${month.label} برابر ${shownNumber(plannedHere)} از ${shownNumber(plannedSum)} است، پس Earned این ماه = ${shownNumber(earned)}`
 }
 
 function expandAllSchedule(nodes: ScheduleTreeNode[]): Record<string, boolean> {
@@ -370,8 +388,16 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
     return enumerateProjectJalaliMonths(span.start, span.finish)
   }, [allRowsMeta, progressSnapshots, progressEntries])
 
+  const currentMonthIndex = useMemo(() => {
+    const today = todayTehranIso()
+    if (months.length === 0 || today < months[0]!.startIso) return -1
+    const index = months.findIndex((month) => today >= month.startIso && today <= month.endIso)
+    return index >= 0 ? index : months.length - 1
+  }, [months])
+
   const monthlyById = useMemo(() => {
     const map = new Map<string, number[]>()
+    const leaves = allRowsMeta.filter((row) => !weightRollup.parentIds.has(row.id))
     for (const row of allRowsMeta) {
       map.set(
         row.id,
@@ -383,21 +409,37 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
         )
       )
     }
+    for (const row of allRowsMeta) {
+      if (!weightRollup.parentIds.has(row.id)) continue
+      const prefix = row.wbs && row.wbs !== '—' ? `${row.wbs}.` : null
+      const kids = prefix ? leaves.filter((leaf) => leaf.wbs.startsWith(prefix)) : []
+      if (kids.length === 0) continue
+      map.set(
+        row.id,
+        months.map((_, index) => {
+          let sum = 0
+          for (const kid of kids) sum += map.get(kid.id)?.[index] ?? 0
+          return Math.round(sum * 10000) / 10000
+        })
+      )
+    }
     return map
-  }, [allRowsMeta, months])
+  }, [allRowsMeta, months, weightRollup])
 
   const earnedById = useMemo(() => {
     const map = new Map<string, Array<number | null>>()
     const leaves = allRowsMeta.filter((row) => !weightRollup.parentIds.has(row.id))
     for (const row of leaves) {
-      map.set(
-        row.id,
-        earnedWeightsFromPhysicalProgress(
-          row.weight,
-          row.physicalPercent,
-          monthlyById.get(row.id) ?? []
-        )
-      )
+      const earned =
+        currentMonthIndex < 0
+          ? months.map(() => null)
+          : earnedWeightsFromPhysicalProgress(
+              row.weight,
+              row.physicalPercent,
+              monthlyById.get(row.id) ?? [],
+              currentMonthIndex
+            )
+      map.set(row.id, earned)
     }
     for (const row of allRowsMeta) {
       if (!weightRollup.parentIds.has(row.id)) continue
@@ -419,7 +461,7 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
       )
     }
     return map
-  }, [allRowsMeta, months, monthlyById, weightRollup])
+  }, [allRowsMeta, months, monthlyById, weightRollup, currentMonthIndex])
 
   const visibleRows = useMemo(() => {
     const rows: Array<RowMeta & { monthly: number[]; earned: Array<number | null> }> = []
@@ -509,7 +551,7 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
         <div className="space-y-1">
           <h2 className="text-base font-semibold text-slate-900">وزن کسر شده ماهانه</h2>
           <p className="text-xs leading-relaxed text-slate-600">
-            درصد پیشرفت فیزیکی همان عدد ویرایش برنامه است. Earned هر فعالیت برابر وزن ضربدر همان درصد است و به نسبت Planned روی ماه‌های همان فعالیت پخش می‌شود.
+            درصد پیشرفت فیزیکی همان عدد ویرایش برنامه است. Earned هر فعالیت برابر وزن ضربدر همان درصد است و به نسبت Planned روی ماه‌های همان فعالیت تا ماه جاری پخش می‌شود؛ ماه‌های آینده «—» نشان داده می‌شوند.
           </p>
         </div>
       )}
@@ -699,19 +741,22 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
                     const monthKey = month?.key ?? i
                     const plannedText = formatDeductedWeight(planned)
                     const earnedText = earned == null ? '—' : String(Math.round(earned * 100) / 100)
-                    const earnedChildren = row.isParent
-                      ? allRowsMeta
-                          .filter(
-                            (item) =>
-                              !item.isParent &&
-                              row.wbs !== '—' &&
-                              item.wbs.startsWith(`${row.wbs}.`)
-                          )
-                          .flatMap((item) => {
-                            const value = earnedById.get(item.id)?.[i]
-                            return value == null ? [] : [{ name: item.name, value }]
-                          })
+                    const childLeaves = row.isParent
+                      ? allRowsMeta.filter(
+                          (item) =>
+                            !item.isParent &&
+                            row.wbs !== '—' &&
+                            item.wbs.startsWith(`${row.wbs}.`)
+                        )
                       : []
+                    const earnedChildren = childLeaves.flatMap((item) => {
+                      const value = earnedById.get(item.id)?.[i]
+                      return value == null ? [] : [{ name: item.name, value }]
+                    })
+                    const plannedChildren = childLeaves.map((item) => ({
+                      name: item.name,
+                      value: monthlyById.get(item.id)?.[i] ?? 0,
+                    }))
                     return [
                       <td
                         key={`${row.id}-${monthKey}-planned`}
@@ -732,7 +777,7 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
                                 openOrigin(
                                   event,
                                   `${row.id}-planned-${monthKey}`,
-                                  plannedOriginText(row, month, months, planned)
+                                  plannedOriginText(row, month, months, planned, plannedChildren)
                                 )
                               }
                             >
@@ -746,7 +791,7 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
                         className={cn(
                           'w-px whitespace-nowrap border-b border-e border-slate-400 px-1 py-1 text-center text-[10px] tabular-nums',
                           cellBg,
-                          earned != null && earned !== 0 ? 'text-emerald-700' : 'text-slate-300'
+                          earnedTone(earned, planned)
                         )}
                       >
                         <span className="inline-flex items-center justify-center gap-0.5">
@@ -766,7 +811,8 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
                                     i,
                                     monthlyById.get(row.id) ?? [],
                                     earned,
-                                    earnedChildren
+                                    earnedChildren,
+                                    currentMonthIndex
                                   )
                                 )
                               }
@@ -831,7 +877,10 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
                     </td>,
                     <td
                       key={`total-${monthKey}-earned`}
-                      className="w-px whitespace-nowrap border-e border-t border-slate-400 bg-slate-100 px-1 py-1.5 text-center text-[10px] tabular-nums text-emerald-800"
+                      className={cn(
+                        'w-px whitespace-nowrap border-e border-t border-slate-400 bg-slate-100 px-1 py-1.5 text-center text-[10px] tabular-nums',
+                        earnedTone(earned, planned)
+                      )}
                     >
                       <span className="inline-flex items-center justify-center gap-0.5">
                         <span>{earnedText}</span>

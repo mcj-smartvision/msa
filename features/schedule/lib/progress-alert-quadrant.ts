@@ -25,7 +25,7 @@ function paceIsSlow(paceStatus: PaceStatus | null): boolean {
 }
 
 /**
- * ۲×۲: اهمیت (شناوری) × نرخ پیشروی — فقط وقتی paceStatus معنا دارد (در حال اجرا).
+ * 2×2: اهمیت (شناوری) × نرخ پیشروی — فقط وقتی paceStatus معنا دارد (در حال اجرا).
  */
 export function computeAlertQuadrant(input: AlertQuadrantInput): AlertQuadrant | null {
   const { paceStatus, nearCriticalDays } = input

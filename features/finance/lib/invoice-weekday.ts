@@ -23,7 +23,7 @@ export function getInvoiceWeekday(
 }
 
 export function formatInvoiceNumber(value: number, locale: 'fa' | 'en' = 'fa'): string {
-  return new Intl.NumberFormat(locale === 'fa' ? 'fa-IR' : 'en-US', {
+  return new Intl.NumberFormat(locale === 'fa' ? 'fa-IR-u-nu-latn' : 'en-US', {
     maximumFractionDigits: 0,
   }).format(Number.isFinite(value) ? value : 0)
 }

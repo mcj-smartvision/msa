@@ -7,6 +7,7 @@ export type DependencyNetworkTask = {
   start: string | null
   finish: string | null
   isSummary?: boolean
+  critical?: boolean
 }
 
 export type DependencyNetworkLink = {
@@ -17,6 +18,7 @@ export type DependencyNetworkLink = {
 }
 
 export type DependencyNetworkNode = DependencyNetworkTask & {
+  critical: boolean
   isolated: boolean
   predCount: number
   succCount: number
@@ -111,6 +113,7 @@ export function buildDependencyNetwork(
     if (isolated) isolatedIds.push(task.id)
     return {
       ...task,
+      critical: Boolean(task.critical),
       isolated,
       predCount: preds,
       succCount: succs,
@@ -119,4 +122,15 @@ export function buildDependencyNetwork(
   })
 
   return { nodes, links: edges, isolatedIds }
+}
+
+/** CPM result wins over the imported flag; zero or negative float counts as critical. */
+export function isCriticalTask(
+  calc: { total_float?: unknown; is_critical?: unknown } | null | undefined,
+  importedCritical?: boolean | null
+): boolean {
+  if (!calc) return Boolean(importedCritical)
+  if (calc.is_critical === true) return true
+  const tf = calc.total_float
+  return tf != null && Number.isFinite(Number(tf)) && Number(tf) <= 0
 }

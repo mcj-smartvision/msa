@@ -246,7 +246,7 @@ function CostPerformanceBody({ evm, costHref }: { evm: ManagerEvmSummary; costHr
       ? 'بودجهٔ مصوب تمام شده در حالی که هنوز کار باقی مانده است؛ تکمیل در سقف بودجه ممکن نیست.'
       : ready.tcpi <= TCPI_ZONES.reachable
         ? 'با همین سطح کارایی هم به بودجه می‌رسیم.'
-        : `برای رسیدن به بودجه، از امروز باید به‌ازای هر ۱۰۰ واحد هزینه، ${faNumber(Math.round(ready.tcpi * 100))} واحد کار انجام شود. تا امروز ${faNumber(Math.round(ready.cpi * 100))} بوده است.`
+        : `برای رسیدن به بودجه، از امروز باید به‌ازای هر 100 واحد هزینه، ${faNumber(Math.round(ready.tcpi * 100))} واحد کار انجام شود. تا امروز ${faNumber(Math.round(ready.cpi * 100))} بوده است.`
 
   return (
     <div className="space-y-3.5">
@@ -282,7 +282,7 @@ function CostPerformanceBody({ evm, costHref }: { evm: ManagerEvmSummary; costHr
           bigColor={cpiValue == null ? COLOR.mute : COLOR.ac}
           sentence={
             ready
-              ? `به‌ازای هر ۱۰۰ واحد هزینه، ${faNumber(Math.round(ready.cpi * 100))} واحد کار انجام شده است.`
+              ? `به‌ازای هر 100 واحد هزینه، ${faNumber(Math.round(ready.cpi * 100))} واحد کار انجام شده است.`
               : 'با ثبت هزینهٔ واقعی، کارایی هزینه نمایش داده می‌شود.'
           }
           formula={ready ? `CPI = EV ÷ AC = ${n(ready.ev)} ÷ ${n(ready.ac)}` : 'CPI = EV ÷ AC'}

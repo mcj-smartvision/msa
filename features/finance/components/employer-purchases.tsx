@@ -203,8 +203,8 @@ export function EmployerPurchases({ projectId }: { projectId: string | null }) {
   return (
     <div className="space-y-4" dir="rtl">
       <p className="text-xs leading-relaxed text-slate-600">
-        هر خرید کارفرمایی به یک یا چند آیتم برنامهٔ زمان‌بندی تخصیص داده می‌شود. اگر فقط یک آیتم باشد سهمش ۱۰۰٪ است؛ با چند آیتم، سهم
-        هر کدام را به درصد بنویسید (جمع باید ۱۰۰٪ شود). همهٔ مبالغ به تومان است.
+        هر خرید کارفرمایی به یک یا چند آیتم برنامهٔ زمان‌بندی تخصیص داده می‌شود. اگر فقط یک آیتم باشد سهمش 100٪ است؛ با چند آیتم، سهم
+        هر کدام را به درصد بنویسید (جمع باید 100٪ شود). همهٔ مبالغ به تومان است.
       </p>
 
       <Card>
@@ -226,7 +226,7 @@ export function EmployerPurchases({ projectId }: { projectId: string | null }) {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ep-item">نام کالا</Label>
-                <Input id="ep-item" className="h-9" value={form.itemName} onChange={(e) => set('itemName', e.target.value)} placeholder="مثلاً میلگرد ۱۶" />
+                <Input id="ep-item" className="h-9" value={form.itemName} onChange={(e) => set('itemName', e.target.value)} placeholder="مثلاً میلگرد 16" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="ep-supplier">فروشنده</Label>
@@ -322,7 +322,7 @@ export function EmployerPurchases({ projectId }: { projectId: string | null }) {
                 </div>
               ))}
               <p className={cn('text-xs font-medium', sharesValid ? 'text-emerald-700' : 'text-red-600')}>
-                جمع سهم‌ها: {Math.round(shareTotal * 100) / 100}٪{sharesValid ? '' : ' — باید ۱۰۰٪ شود'}
+                جمع سهم‌ها: {Math.round(shareTotal * 100) / 100}٪{sharesValid ? '' : ' — باید 100٪ شود'}
               </p>
             </div>
 

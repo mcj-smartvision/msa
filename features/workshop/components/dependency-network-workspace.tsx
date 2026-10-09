@@ -70,6 +70,10 @@ export function DependencyNetworkWorkspace() {
     }
     return ids
   }, [network, selectedId])
+  const criticalIds = useMemo(
+    () => new Set((network?.nodes ?? []).filter((node) => node.critical).map((node) => node.id)),
+    [network]
+  )
 
   if (!projectId) {
     return (
@@ -123,6 +127,21 @@ export function DependencyNetworkWorkspace() {
           {selected.predCount} پیش‌نیاز · {selected.succCount} پس‌نیاز
         </div>
       ) : null}
+
+      <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600">
+        <span className="inline-flex items-center gap-1">
+          <span className="h-3 w-5 rounded border-2 border-rose-600 bg-rose-50" /> بحرانی
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-3 w-5 rounded border border-slate-300 bg-white" /> عادی
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-3 w-5 rounded border border-amber-500 bg-amber-50" /> بدون وابستگی
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-0.5 w-5 bg-rose-600" /> پیوند روی مسیر بحرانی
+        </span>
+      </div>
 
       <div className="overflow-auto rounded-xl border border-slate-200 bg-white">
         {loading && !layout ? (
@@ -183,20 +202,21 @@ export function DependencyNetworkWorkspace() {
 
               {layout.edges.map((edge) => {
                 const dim = Boolean(selectedId) && !related.has(edge.fromId) && !related.has(edge.toId)
+                const criticalEdge = criticalIds.has(edge.fromId) && criticalIds.has(edge.toId)
                 return (
                   <g key={edge.key} opacity={dim ? 0.12 : 1}>
                     <path
                       d={edge.d}
                       fill="none"
-                      stroke="#334155"
-                      strokeWidth={1.6}
-                      markerEnd="url(#dep-arrow)"
+                      stroke={criticalEdge ? '#e11d48' : '#334155'}
+                      strokeWidth={criticalEdge ? 2.2 : 1.6}
+                      markerEnd={criticalEdge ? 'url(#dep-arrow-critical)' : 'url(#dep-arrow)'}
                     />
                     <text
                       x={edge.labelX}
                       y={edge.labelY}
                       textAnchor="middle"
-                      className="fill-slate-600"
+                      className={criticalEdge ? 'fill-rose-700' : 'fill-slate-600'}
                       style={{ fontSize: 10 }}
                     >
                       {edge.label}
@@ -217,11 +237,24 @@ export function DependencyNetworkWorkspace() {
                 >
                   <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155" />
                 </marker>
+                <marker
+                  id="dep-arrow-critical"
+                  viewBox="0 0 10 10"
+                  refX="9"
+                  refY="5"
+                  markerWidth="7"
+                  markerHeight="7"
+                  orient="auto"
+                >
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#e11d48" />
+                </marker>
               </defs>
 
               {layout.boxes.map((box) => {
                 const dim = Boolean(selectedId) && !related.has(box.id)
                 const activeBox = selectedId === box.id
+                const critical = box.node.critical
+                const fullName = `${box.node.wbs ? `${box.node.wbs} — ` : ''}${box.node.name}${critical ? ' (بحرانی)' : ''}`
                 return (
                   <g
                     key={box.id}
@@ -231,16 +264,26 @@ export function DependencyNetworkWorkspace() {
                       setSelectedId(box.id)
                     }}
                     className="cursor-pointer"
+                    aria-label={fullName}
                   >
+                    <title>{fullName}</title>
                     <rect
                       x={box.x}
                       y={box.y}
                       width={box.w}
                       height={box.h}
                       rx={10}
-                      fill={box.node.isolated ? '#fffbeb' : '#ffffff'}
-                      stroke={activeBox ? '#0f172a' : box.node.isolated ? '#f59e0b' : '#cbd5e1'}
-                      strokeWidth={activeBox ? 2 : 1}
+                      fill={critical ? '#fff1f2' : box.node.isolated ? '#fffbeb' : '#ffffff'}
+                      stroke={
+                        activeBox
+                          ? '#0f172a'
+                          : critical
+                            ? '#e11d48'
+                            : box.node.isolated
+                              ? '#f59e0b'
+                              : '#cbd5e1'
+                      }
+                      strokeWidth={activeBox ? 2.5 : critical ? 2 : 1}
                     />
                     <text
                       x={box.x + box.w - 10}

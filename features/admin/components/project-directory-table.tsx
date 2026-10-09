@@ -9,7 +9,7 @@ export function formatProjectStamp(iso?: string | null, fa = true): string {
   if (!iso) return fa ? 'ثبت نشده' : 'None'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return fa ? 'ثبت نشده' : 'None'
-  return d.toLocaleString(fa ? 'fa-IR' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' })
+  return d.toLocaleString(fa ? 'fa-IR-u-nu-latn' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' })
 }
 
 export function sortProjectsRecent(projects: AdminProject[]): AdminProject[] {

@@ -67,7 +67,7 @@ function signed(text: string, value: number): string {
 function tehranDateTime(iso: string, options: Intl.DateTimeFormatOptions): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return '—'
-  return new Intl.DateTimeFormat('fa-IR-u-ca-persian', { timeZone: 'Asia/Tehran', ...options }).format(date)
+  return new Intl.DateTimeFormat('fa-IR-u-ca-persian-nu-latn', { timeZone: 'Asia/Tehran', ...options }).format(date)
 }
 
 function usePeriodComparison(projectId: string | null, period: ManagerPeriod, refreshKey: string | null) {

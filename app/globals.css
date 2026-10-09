@@ -71,6 +71,17 @@
   textarea {
     font-family: inherit;
   }
+
+  /* Zero specificity so any outline/ring utility on the element wins; skips elements that already draw a focus ring. */
+  :where(
+      :is(a, button, input, select, textarea, [role='button'], [tabindex]):focus-visible:not(
+          [class*='focus-visible:ring'],
+          [class*='focus:ring']
+        )
+    ) {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
 }
 
 @layer components {

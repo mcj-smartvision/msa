@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (String(password).length < 6) {
-      return NextResponse.json({ error: 'رمز عبور باید حداقل ۶ کاراکتر باشد' }, { status: 400 })
+      return NextResponse.json({ error: 'رمز عبور باید حداقل 6 کاراکتر باشد' }, { status: 400 })
     }
 
     // Prefer real email as auth login; fall back to username@site.local

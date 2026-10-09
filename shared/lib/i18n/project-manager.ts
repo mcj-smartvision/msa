@@ -25,7 +25,7 @@ const FA: ProjectManagerMessages = {
   refresh: 'بروزرسانی',
   loading: 'در حال محاسبهٔ شاخص‌های EVM…',
   asOf: (isoDate) =>
-    `تا تاریخ ${new Date(`${isoDate}T12:00:00Z`).toLocaleDateString('fa-IR-u-ca-persian')}`,
+    `تا تاریخ ${new Date(`${isoDate}T12:00:00Z`).toLocaleDateString('fa-IR-u-ca-persian-nu-latn')}`,
 }
 
 export function getProjectManagerMessages(locale: FormLocale): ProjectManagerMessages {

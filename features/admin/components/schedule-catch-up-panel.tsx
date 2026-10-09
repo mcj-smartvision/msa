@@ -295,7 +295,7 @@ export function ScheduleCatchUpPanel({
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
               {fa
-                ? `${editorRows.length} فعالیت — داخل کادر اسکرول کنید تا انتهای برنامه. ردیف‌های نارنجی: تاریخ پایان گذشته ولی هنوز ۱۰۰٪ نشده‌اند.`
+                ? `${editorRows.length} فعالیت — داخل کادر اسکرول کنید تا انتهای برنامه. ردیف‌های نارنجی: تاریخ پایان گذشته ولی هنوز 100٪ نشده‌اند.`
                 : `${editorRows.length} activities — scroll inside the list. Orange rows: finish date passed but still incomplete.`}
             </p>
           <div className="overflow-y-scroll overflow-x-auto rounded-xl border max-h-[min(62vh,560px)] [scrollbar-gutter:stable]">
@@ -476,7 +476,7 @@ export function ScheduleCatchUpPanel({
                                   type="button"
                                   className="text-[10px] text-emerald-700 hover:underline"
                                   onClick={() => markRowDone(row)}
-                                  title={fa ? '۱۰۰٪' : '100%'}
+                                  title={fa ? '100٪' : '100%'}
                                 >
                                   <CheckCircle2 className="h-3 w-3 inline" />
                                 </button>
@@ -484,7 +484,7 @@ export function ScheduleCatchUpPanel({
                                   type="button"
                                   className="text-[10px] text-amber-700 hover:underline"
                                   onClick={() => markRowZero(row)}
-                                  title={fa ? '۰٪' : '0%'}
+                                  title={fa ? '0٪' : '0%'}
                                 >
                                   <CircleDashed className="h-3 w-3 inline" />
                                 </button>

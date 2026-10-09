@@ -7,7 +7,7 @@ export function validateImageFile(file: File): string | null {
     return 'فرمت فایل باید JPEG، PNG یا WebP باشد.'
   }
   if (file.size > 10 * 1024 * 1024) {
-    return 'حجم فایل نباید بیشتر از ۱۰ مگابایت باشد.'
+    return 'حجم فایل نباید بیشتر از 10 مگابایت باشد.'
   }
   return null
 }

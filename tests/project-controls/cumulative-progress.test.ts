@@ -52,7 +52,7 @@ describe('explained cumulative progress — Noor 2026-10-03', () => {
   it('interpretation states the gap and the EV lag in Toman', () => {
     expect(result.interpretation_fa).toContain('عقب‌تر از')
     expect(result.interpretation_fa).toContain('EV Lag')
-    expect(result.interpretation_fa).toContain(Math.round(3300 - 3300 * 0.7405).toLocaleString('fa-IR'))
+    expect(result.interpretation_fa).toContain(Math.round(3300 - 3300 * 0.7405).toLocaleString('en-US'))
   })
 })
 

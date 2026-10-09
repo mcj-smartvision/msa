@@ -311,6 +311,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
   /** Package id currently in row-edit mode (inputs visible after «ویرایش»). */
   const [editingPackageId, setEditingPackageId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [serverWeightWarning, setServerWeightWarning] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [readOnly, setReadOnly] = useState(forceSupervisorView)
@@ -1287,6 +1288,9 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'ذخیره فعالیت ناموفق بود')
+    if (data.weightWarning !== undefined) {
+      setServerWeightWarning(typeof data.weightWarning === 'string' ? data.weightWarning : null)
+    }
   }
 
   async function savePackagePredFloat(
@@ -1966,11 +1970,11 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
           <span className="font-mono" dir="ltr">
             1.2FS
           </span>{' '}
-          یعنی بعد از پایان ۱.۲ شروع می‌شود؛{' '}
+          یعنی بعد از پایان 1.2 شروع می‌شود؛{' '}
           <span className="font-mono" dir="ltr">
             SS+2d
           </span>{' '}
-          یعنی هم‌زمان با شروع پیش‌نیاز + ۲ روز).
+          یعنی هم‌زمان با شروع پیش‌نیاز + 2 روز).
         </div>
       ) : projectId && !loading ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950">
@@ -1989,7 +1993,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
               <span>
                 خطای وزن‌دهی: جمع وزن سرتیترها و فعالیت‌های بدون‌فرزند سطح پروژه{' '}
                 <strong className="tabular-nums">{projectWeightCheck.sum}</strong> است؛ باید{' '}
-                <strong>۱۰۰</strong> باشد
+                <strong>100</strong> باشد
                 {projectWeightCheck.gap !== 0 ? (
                   <>
                     {' '}
@@ -2003,6 +2007,14 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                 ) : null}
                 .
               </span>
+            </div>
+          ) : serverWeightWarning ? (
+            <div
+              className="flex items-start gap-1.5 border-b border-red-200 bg-red-50 px-3 py-2 text-[11px] leading-snug text-red-800"
+              role="alert"
+            >
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>{serverWeightWarning}</span>
             </div>
           ) : null}
 
@@ -2153,28 +2165,32 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                     const open = Boolean(expanded[n.id])
                     const canExpand = expandableIds.has(n.id)
                     const indentPx = 8 + row.depth * 22
+                    const rowBg = isSel
+                      ? 'bg-amber-50'
+                      : canExpand
+                        ? 'bg-slate-100 hover:bg-slate-200/70'
+                        : 'bg-white hover:bg-slate-50'
+                    const stickyBg = isSel
+                      ? 'bg-amber-50 group-hover:bg-amber-50'
+                      : canExpand
+                        ? 'bg-slate-100 group-hover:bg-slate-200'
+                        : 'bg-white group-hover:bg-slate-50'
                     return (
                       <FragmentRows key={`s-${n.id}`}>
                         <tr
                           onClick={() => {
                             setSelected({ kind: 'schedule', id: n.id, name: n.name, wbs: n.wbs })
                           }}
-                          className={`group cursor-pointer border-b border-slate-300 hover:bg-slate-50 ${groupFrameClass} ${
-                            isSel ? 'bg-amber-50' : 'bg-white'
-                          }`}
+                          className={`group cursor-pointer border-b border-slate-300 ${groupFrameClass} ${rowBg}`}
                         >
                           <td
-                            className={`${SCHEDULE_STICKY_WBS_CELL} font-mono text-[11px] tabular-nums text-slate-600 text-center group-hover:bg-slate-50 ${
-                              isSel ? 'bg-amber-50 group-hover:bg-amber-50' : 'bg-white'
-                            }`}
+                            className={`${SCHEDULE_STICKY_WBS_CELL} font-mono text-[11px] tabular-nums text-slate-600 text-center ${stickyBg}`}
                             style={{ right: STICKY_WBS_RIGHT }}
                           >
                             {row.wbs}
                           </td>
                           <td
-                            className={`${SCHEDULE_STICKY_NAME_CELL} group-hover:bg-slate-50 ${
-                              isSel ? 'bg-amber-50 group-hover:bg-amber-50' : 'bg-white'
-                            }`}
+                            className={`${SCHEDULE_STICKY_NAME_CELL} ${stickyBg}`}
                             style={{
                               right: STICKY_NAME_RIGHT,
                               boxShadow: STICKY_NAME_EDGE_SHADOW,
@@ -2522,7 +2538,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                   title={
                                     !projectWeightCheck.ok &&
                                     projectWeightCheck.contributorIds.has(n.taskId)
-                                      ? `این وزن در جمع سطح پروژه (${projectWeightCheck.sum}) شرکت دارد — باید مجموع ۱۰۰ شود`
+                                      ? `این وزن در جمع سطح پروژه (${projectWeightCheck.sum}) شرکت دارد — باید مجموع 100 شود`
                                       : weightRollup.parentIds.has(n.taskId)
                                         ? 'وزن سرشاخه = جمع فرزندان (زنده؛ قابل ویرایش دستی)'
                                         : 'وزن فعالیت'
@@ -2654,7 +2670,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                           : 'از گزارش روزانه سرپرست کارگاه'
                                       }
                                     >
-                                      {value == null ? '0' : `${value}`}
+                                      {value == null ? '—' : `${value}`}
                                     </span>
                                     {isProgressParent && progressHelp ? (
                                       <button
@@ -3358,7 +3374,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 >
                                   {field.key === 'percent_complete'
                                     ? value == null
-                                      ? '0'
+                                      ? '—'
                                       : String(value)
                                     : 'خودکار'}
                                 </span>
@@ -3900,11 +3916,13 @@ function CompactJalaliDateRange({
   const [startText, setStartText] = useState(() => isoToCalendarInput(startIso, calendar))
   const [finishText, setFinishText] = useState(() => isoToCalendarInput(finishIso, calendar))
   const [invalid, setInvalid] = useState(false)
+  const [orderError, setOrderError] = useState(false)
 
   useEffect(() => {
     setStartText(isoToCalendarInput(startIso, calendar))
     setFinishText(isoToCalendarInput(finishIso, calendar))
     setInvalid(false)
+    setOrderError(false)
   }, [startIso, finishIso, calendar])
 
   function commit() {
@@ -3912,62 +3930,75 @@ function CompactJalaliDateRange({
     const finish = parseScheduleDateInput(finishText, calendar)
     if (!start || !finish) {
       setInvalid(true)
+      setOrderError(false)
       setStartText(isoToCalendarInput(startIso, calendar))
       setFinishText(isoToCalendarInput(finishIso, calendar))
       return
     }
     setInvalid(false)
-    const s = start <= finish ? start : finish
-    const f = start <= finish ? finish : start
-    if (s === (startIso ?? '') && f === (finishIso ?? '')) {
-      setStartText(isoToCalendarInput(s, calendar))
-      setFinishText(isoToCalendarInput(f, calendar))
+    if (finish < start) {
+      setOrderError(true)
       return
     }
-    onCommit(s, f)
+    setOrderError(false)
+    if (start === (startIso ?? '') && finish === (finishIso ?? '')) {
+      setStartText(isoToCalendarInput(start, calendar))
+      setFinishText(isoToCalendarInput(finish, calendar))
+      return
+    }
+    onCommit(start, finish)
   }
 
   const placeholder = calendar === 'jalali' ? '1403/01/15' : '2026-04-21'
+  const orderErrorText = 'تاریخ پایان نباید قبل از تاریخ شروع باشد'
 
   return (
-    <div
-      className="flex items-center justify-center gap-0.5 min-w-0 w-full"
-      onClick={(e) => e.stopPropagation()}
-      title={calendar === 'jalali' ? 'تاریخ شمسی — مثال 1403/01/15' : 'تاریخ میلادی'}
-    >
-      <input
-        type="text"
-        inputMode="numeric"
-        dir="ltr"
-        disabled={disabled}
-        placeholder={placeholder}
-        className={`min-w-0 flex-1 rounded border bg-white px-0.5 py-0 text-[9px] h-6 leading-none tabular-nums text-center ${
-          invalid ? 'border-rose-400' : 'border-slate-200'
-        }`}
-        value={startText}
-        onChange={(e) => setStartText(e.target.value)}
-        onBlur={() => commit()}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') commit()
-        }}
-      />
-      <span className="shrink-0 text-[9px] text-slate-400">–</span>
-      <input
-        type="text"
-        inputMode="numeric"
-        dir="ltr"
-        disabled={disabled}
-        placeholder={placeholder}
-        className={`min-w-0 flex-1 rounded border bg-white px-0.5 py-0 text-[9px] h-6 leading-none tabular-nums text-center ${
-          invalid ? 'border-rose-400' : 'border-slate-200'
-        }`}
-        value={finishText}
-        onChange={(e) => setFinishText(e.target.value)}
-        onBlur={() => commit()}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') commit()
-        }}
-      />
+    <div className="flex w-full min-w-0 flex-col items-stretch" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="flex items-center justify-center gap-0.5 min-w-0 w-full"
+        title={calendar === 'jalali' ? 'تاریخ شمسی — مثال 1403/01/15' : 'تاریخ میلادی'}
+      >
+        <input
+          type="text"
+          inputMode="numeric"
+          dir="ltr"
+          disabled={disabled}
+          placeholder={placeholder}
+          className={`min-w-0 flex-1 rounded border bg-white px-0.5 py-0 text-[9px] h-6 leading-none tabular-nums text-center ${
+            invalid ? 'border-rose-400' : 'border-slate-200'
+          }`}
+          value={startText}
+          onChange={(e) => setStartText(e.target.value)}
+          onBlur={() => commit()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit()
+          }}
+        />
+        <span className="shrink-0 text-[9px] text-slate-400">–</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          dir="ltr"
+          disabled={disabled}
+          placeholder={placeholder}
+          className={`min-w-0 flex-1 rounded border bg-white px-0.5 py-0 text-[9px] h-6 leading-none tabular-nums text-center ${
+            invalid ? 'border-rose-400' : orderError ? 'border-red-500' : 'border-slate-200'
+          }`}
+          aria-invalid={orderError || undefined}
+          aria-label={orderError ? orderErrorText : undefined}
+          value={finishText}
+          onChange={(e) => setFinishText(e.target.value)}
+          onBlur={() => commit()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit()
+          }}
+        />
+      </div>
+      {orderError ? (
+        <p className="mt-0.5 whitespace-normal text-center text-[9px] leading-tight text-red-600" role="alert">
+          {orderErrorText}
+        </p>
+      ) : null}
     </div>
   )
 }

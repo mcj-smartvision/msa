@@ -203,7 +203,7 @@ export const SCHEDULE_PREVIEW_COLUMNS: SchedulePreviewColumn[] = [
   {
     key: 'is_critical',
     label: 'بحرانی',
-    help: 'روی مسیر بحرانی است (شناوری کل ≈ ۰) — توسط موتور CPM سیستم محاسبه می‌شود.',
+    help: 'روی مسیر بحرانی است (شناوری کل ≈ 0) — توسط موتور CPM سیستم محاسبه می‌شود.',
     defaultWidth: 52,
     minWidth: 40,
     priority: 17,
@@ -432,7 +432,7 @@ export const SCHEDULE_PREVIEW_COLUMNS: SchedulePreviewColumn[] = [
   {
     key: 'priority',
     label: 'اولویت',
-    help: 'اولویت فعالیت در MSP (معمولاً ۰ تا ۱۰۰۰؛ پیش‌فرض ۵۰۰).',
+    help: 'اولویت فعالیت در MSP (معمولاً 0 تا 1000؛ پیش‌فرض 500).',
     defaultWidth: 44,
     minWidth: 32,
     priority: 92,

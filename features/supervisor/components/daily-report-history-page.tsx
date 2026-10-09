@@ -6,21 +6,24 @@ import { useSearchParams } from 'next/navigation'
 import { useSyncedProjectId } from '@/shared/hooks/use-synced-project-id'
 import { useSupabase } from '@/shared/hooks/use-supabase'
 import {
+AlertTriangle,
 ArrowRight,
 CalendarCheck,
 Filter,
-Loader2,
 MessageSquareText,
 Search,
 } from 'lucide-react'
 import { useScheduleCalendar } from '@/features/schedule/hooks/use-schedule-calendar'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
+import { Skeleton } from '@/shared/components/ui/skeleton'
 import {
 buildDayReports,
 extractAiHighlightNote,
 formatReportSavedTimestamp,
 formatReportTitle,
+HISTORY_PAGE_SIZE,
+progressDeltaLabel,
 REPORT_PROGRESS_BAR_COLORS,
 } from '@/features/supervisor/lib/daily-report-history'
 import { readProjectDailyProgress } from '@/features/supervisor/lib/daily-progress-storage'
@@ -34,7 +37,7 @@ import type { ScheduleTreeNode, WorkshopPackageNode } from '@/features/workshop/
 import { cn } from '@/shared/lib/utils'
 
 function faNum(n: number): string {
-  return n.toLocaleString('fa-IR')
+  return n.toLocaleString('fa-IR-u-nu-latn')
 }
 
 function activityLabel(act: DailyReportActivity | undefined, fallbackId: string): string {
@@ -46,10 +49,12 @@ function prevPercentBeforeDay(
   activityId: string,
   reportDate: string,
   allEntries: DailyProgressEntry[]
-): number {
+): number | null {
   const prev = getLatestProgressForActivity(activityId, allEntries, reportDate)
-  return prev?.percentComplete ?? 0
+  return prev?.percentComplete ?? null
 }
+
+const DROP_TITLE = 'کاهش پیشرفت نسبت به گزارش قبلی'
 
 function ReportProgressRow({
   name,
@@ -58,25 +63,38 @@ function ReportProgressRow({
   barColor,
 }: {
   name: string
-  previousPct: number
+  /** null for the activity's first report. */
+  previousPct: number | null
   currentPct: number
   barColor: string
 }) {
+  const shownPrevious = previousPct ?? 0
+  const dropped = previousPct != null && currentPct < previousPct
   return (
     <div className="py-3.5 border-b border-slate-100 last:border-0">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
         <p className="text-sm font-medium text-slate-800 leading-snug">{name}</p>
         <div className="flex items-center gap-1.5 text-sm tabular-nums shrink-0">
-          <span className="font-bold text-slate-900">{faNum(currentPct)}٪</span>
-          {previousPct !== currentPct ? (
+          {dropped ? (
+            <span title={DROP_TITLE} aria-label={DROP_TITLE} className="inline-flex">
+              <AlertTriangle className="h-4 w-4 text-red-600" aria-hidden="true" />
+            </span>
+          ) : null}
+          <span className={cn('font-bold', dropped ? 'text-red-600' : 'text-slate-900')}>{faNum(currentPct)}٪</span>
+          {shownPrevious !== currentPct ? (
             <>
               <span className="text-slate-300" aria-hidden="true">←</span>
-              <span className="text-slate-400">{faNum(previousPct)}٪</span>
+              <span className="text-slate-400">{faNum(shownPrevious)}٪</span>
             </>
           ) : null}
         </div>
       </div>
-      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+      {previousPct != null ? (
+        <p className={cn('mb-1.5 text-[11px] tabular-nums', dropped ? 'text-red-600' : 'text-slate-500')} dir="rtl">
+          {progressDeltaLabel(previousPct, currentPct)}
+        </p>
+      ) : null}
+      <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{ width: `${Math.min(100, currentPct)}%`, backgroundColor: barColor }}
@@ -99,8 +117,19 @@ export function DailyReportHistoryPage() {
   const [loading, setLoading] = useState(true)
   const [entries, setEntries] = useState<DailyProgressEntry[]>([])
   const [notesByDate, setNotesByDate] = useState<Record<string, string>>({})
+  const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [monthFilter, setMonthFilter] = useState('')
+  const [visibleCount, setVisibleCount] = useState(HISTORY_PAGE_SIZE)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearch(searchInput), 300)
+    return () => window.clearTimeout(timer)
+  }, [searchInput])
+
+  useEffect(() => {
+    setVisibleCount(HISTORY_PAGE_SIZE)
+  }, [search, monthFilter, projectId])
 
   useEffect(() => {
     if (!projectId) {
@@ -225,8 +254,8 @@ export function DailyReportHistoryPage() {
                 aria-hidden="true"
               />
               <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="جستجوی فعالیت…"
                 className="pr-9 bg-white border-slate-200"
               />
@@ -259,10 +288,23 @@ export function DailyReportHistoryPage() {
             پروژه مشخص نیست — از داشبورد سرپرست وارد شوید.
           </p>
         ) : loading ? (
-          <div className="flex items-center justify-center gap-2 py-20 text-sm text-slate-600">
-            <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-            در حال بارگذاری…
-          </div>
+          <ul className="space-y-4" aria-busy="true" aria-label="در حال بارگذاری…">
+            {[0, 1, 2].map((i) => (
+              <li key={i} className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm space-y-3">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-11 w-11 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-1.5 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-1.5 w-full" />
+              </li>
+            ))}
+          </ul>
         ) : filteredReports.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-600">
             {dayReports.length === 0
@@ -270,8 +312,9 @@ export function DailyReportHistoryPage() {
               : 'گزارشی با این جستجو یا فیلتر پیدا نشد.'}
           </p>
         ) : (
+          <>
           <ul className="space-y-4">
-            {filteredReports.map((day) => {
+            {filteredReports.slice(0, visibleCount).map((day) => {
               const { timeLabel } = formatReportSavedTimestamp(
                 day.reportDate,
                 day.savedAt,
@@ -349,6 +392,22 @@ export function DailyReportHistoryPage() {
               )
             })}
           </ul>
+          {filteredReports.length > visibleCount ? (
+            <div className="flex flex-col items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 bg-white"
+                onClick={() => setVisibleCount((n) => n + HISTORY_PAGE_SIZE)}
+              >
+                نمایش بیشتر
+              </Button>
+              <p className="text-xs text-slate-500 tabular-nums">
+                {`${visibleCount.toLocaleString('en-US')} از ${filteredReports.length.toLocaleString('en-US')} گزارش`}
+              </p>
+            </div>
+          ) : null}
+          </>
         )}
       </div>
     </div>

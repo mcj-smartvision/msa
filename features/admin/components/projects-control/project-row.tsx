@@ -35,7 +35,7 @@ function formatCreated(iso?: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
   if (!Number.isFinite(d.getTime())) return '—'
-  return d.toLocaleDateString('fa-IR')
+  return d.toLocaleDateString('fa-IR-u-nu-latn')
 }
 
 export function ProjectRow({

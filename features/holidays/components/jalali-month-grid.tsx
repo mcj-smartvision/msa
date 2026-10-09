@@ -9,7 +9,7 @@ import {
   PERSIAN_MONTHS,
   PERSIAN_WEEKDAYS,
   shiftJalaliMonth,
-  toPersianDigits,
+  latinDigits,
 } from '@/shared/lib/time/jalali-month'
 import { cn } from '@/shared/lib/utils'
 
@@ -24,10 +24,12 @@ interface JalaliMonthGridProps {
   /** Highlighted with a ring (a picked date); today is always filled blue. */
   selectedIso?: string | null
   onSelect?: (iso: string) => void
+  /** Gregorian YYYY-MM-DD; earlier days can't be picked. */
+  minIso?: string | null
 }
 
 /** A Jalali month, Saturday first, with the Gregorian day under each number; Fridays and holidays in red. */
-export function JalaliMonthGrid({ year, month, onMonthChange, todayIso, holidays, selectedIso, onSelect }: JalaliMonthGridProps) {
+export function JalaliMonthGrid({ year, month, onMonthChange, todayIso, holidays, selectedIso, onSelect, minIso }: JalaliMonthGridProps) {
   const weeks = jalaliMonthWeeks(year, month)
 
   return (
@@ -44,7 +46,7 @@ export function JalaliMonthGrid({ year, month, onMonthChange, todayIso, holidays
         </button>
         <div className="text-center leading-tight">
           <div className="text-sm font-bold text-slate-800">
-            {PERSIAN_MONTHS[month - 1]} {toPersianDigits(year)}
+            {PERSIAN_MONTHS[month - 1]} {latinDigits(year)}
           </div>
           <div className="text-[10px] text-slate-400" dir="ltr">
             {gregorianSpanLabel(year, month)}
@@ -86,16 +88,19 @@ export function JalaliMonthGrid({ year, month, onMonthChange, todayIso, holidays
                 const isToday = day.iso === todayIso
                 const isSelected = selectedIso === day.iso
                 const title = dayHolidays.map((h) => h.title).join('، ') || undefined
+                const beforeMin = !!minIso && day.iso < minIso
+                const selectable = !!onSelect && !beforeMin
                 return (
                   <td key={i} className="p-0.5">
                     <button
                       type="button"
                       title={title}
-                      disabled={!onSelect}
+                      disabled={!selectable}
                       onClick={() => onSelect?.(day.iso)}
                       className={cn(
                         'flex h-10 w-full flex-col items-center justify-center rounded-lg leading-none transition-colors',
-                        onSelect ? 'cursor-pointer hover:bg-slate-100' : 'cursor-default',
+                        selectable ? 'cursor-pointer hover:bg-slate-100' : 'cursor-default',
+                        beforeMin && 'cursor-not-allowed opacity-40',
                         isHoliday && !isToday && 'bg-red-500 text-white hover:bg-red-600',
                         !isHoliday && isFriday && !isToday && 'text-red-500',
                         !isHoliday && !isFriday && !isToday && 'text-slate-700',
@@ -104,7 +109,7 @@ export function JalaliMonthGrid({ year, month, onMonthChange, todayIso, holidays
                         isSelected && !isToday && 'ring-2 ring-sky-600 ring-offset-1'
                       )}
                     >
-                      <span className="text-sm font-semibold">{toPersianDigits(day.jd)}</span>
+                      <span className="text-sm font-semibold">{latinDigits(day.jd)}</span>
                       <span
                         className={cn(
                           'mt-0.5 text-[9px]',

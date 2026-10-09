@@ -33,7 +33,7 @@ function formatExactFa(iso: string | null | undefined): string {
   if (!iso) return '—'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' })
+  return d.toLocaleString('fa-IR-u-nu-latn', { dateStyle: 'short', timeStyle: 'short' })
 }
 
 function inProject(name?: string | null): string {

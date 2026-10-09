@@ -69,14 +69,28 @@ export function VoiceToTextButton({
         if (e.data.size > 0) chunksRef.current.push(e.data)
       }
       recorder.onstop = () => {
-        void transcribe(new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' }))
         stream.getTracks().forEach((t) => t.stop())
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' })
+        if (blob.size === 0) {
+          setError(fa ? 'صدایی ضبط نشد. دوباره تلاش کنید.' : 'No audio was recorded. Please try again.')
+          return
+        }
+        void transcribe(blob)
+      }
+      recorder.onerror = () => {
+        stream.getTracks().forEach((t) => t.stop())
+        setRecording(false)
+        setError(fa ? 'ضبط صدا با خطا متوقف شد.' : 'Recording failed.')
       }
       mediaRef.current = recorder
       recorder.start()
       setRecording(true)
     } catch {
-      setError(fa ? 'دسترسی به میکروفون ممکن نشد.' : 'Microphone access denied.')
+      setError(
+        fa
+          ? 'دسترسی به میکروفون ممکن نشد. اجازه میکروفون مرورگر را بررسی کنید.'
+          : 'Microphone access denied. Check the browser microphone permission.'
+      )
     }
   }
 
@@ -94,16 +108,26 @@ export function VoiceToTextButton({
       form.append('language', fa ? 'fa' : 'en')
       if (prompt?.trim()) form.append('prompt', prompt.trim())
       const res = await fetch('/api/ai/transcribe', { method: 'POST', body: form })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || (fa ? 'ناموفق' : 'Failed'))
+      const data = (await res.json().catch(() => ({}))) as { text?: unknown; error?: string }
+      if (!res.ok) throw new Error(data.error || (fa ? 'تبدیل صدا به متن ناموفق بود.' : 'Transcription failed.'))
       const text = String(data.text ?? '').trim()
+      if (!text) {
+        setError(fa ? 'متنی از صدا تشخیص داده نشد. دوباره تلاش کنید.' : 'No speech was recognized. Please try again.')
+        return
+      }
       if (autoConfirm) {
         onTranscript(text)
         return
       }
       setPendingText(text)
     } catch (err) {
-      setError(err instanceof Error ? err.message : fa ? 'ناموفق' : 'Failed')
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : fa
+            ? 'تبدیل صدا به متن ناموفق بود.'
+            : 'Transcription failed.'
+      )
     } finally {
       setBusy(false)
     }
@@ -136,10 +160,19 @@ export function VoiceToTextButton({
                 : 'Voice input'}
           </Button>
         ) : (
-          <Button type="button" size={size} variant="destructive" onClick={stopRecording}>
-            <Square className="h-3.5 w-3.5 me-1" />
-            {fa ? 'توقف و تبدیل' : 'Stop & convert'}
-          </Button>
+          <>
+            <Button type="button" size={size} variant="destructive" onClick={stopRecording}>
+              <Square className="h-3.5 w-3.5 me-1" />
+              {fa ? 'توقف و تبدیل' : 'Stop & convert'}
+            </Button>
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600" role="status">
+              <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 motion-safe:animate-ping" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-600" />
+              </span>
+              {fa ? 'در حال ضبط…' : 'Recording…'}
+            </span>
+          </>
         )}
         {mode === 'append' ? (
           <span className="text-[10px] text-muted-foreground">
@@ -171,7 +204,11 @@ export function VoiceToTextButton({
         </div>
       ) : null}
 
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700">
+          {error}
+        </p>
+      ) : null}
     </div>
   )
 }

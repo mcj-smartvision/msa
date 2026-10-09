@@ -51,6 +51,15 @@ describe('earnedWeightsFromDailyReports', () => {
     expect(earnedWeightsFromPhysicalProgress(5, null, [5])).toEqual([null])
   })
 
+  it('spreads earned only up to the as-of month and leaves later months empty', () => {
+    expect(earnedWeightsFromPhysicalProgress(10, 50, [2, 3, 5], 1)).toEqual([2, 3, null])
+    expect(earnedWeightsFromPhysicalProgress(10, 50, [2, 3, 5], 2)).toEqual([1, 1.5, 2.5])
+    expect(earnedWeightsFromPhysicalProgress(10, 40, [0, 4, 6], 0)).toEqual([4, null, null])
+    expect(earnedWeightsFromPhysicalProgress(10, 40, [4, 0, 6], 1)).toEqual([4, null, null])
+    expect(earnedWeightsFromPhysicalProgress(10, 40, [4, 6], 99)).toEqual([1.6, 2.4])
+    expect(earnedWeightsFromPhysicalProgress(10, null, [4, 6], 0)).toEqual([null, null])
+  })
+
   it('uses only the latest report inside one month', () => {
     const earned = earnedWeightsFromDailyReports(
       10,

@@ -1,6 +1,6 @@
 import { toGregorian, toJalaali } from 'jalaali-js'
 import { plannedPercentAsOf, safeRatio } from '@/features/evm/lib/metrics'
-import { faDigits, faNumber } from '@/features/manager/lib/format'
+import { latinDigits, faNumber } from '@/features/manager/lib/format'
 import { tehranDateIso, tehranMidnight, tehranParts } from '@/shared/lib/time/tehran'
 import type {
 ComparisonCause,
@@ -48,7 +48,7 @@ function clockLabel(ms: number): string {
   const p = tehranParts(ms)
   const h = Math.floor(p.msOfDay / HOUR_MS)
   const m = Math.floor((p.msOfDay % HOUR_MS) / 60_000)
-  return faDigits(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+  return latinDigits(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
 }
 
 /* ---------------------------------------------------------------- Windows */
@@ -254,7 +254,7 @@ export function progressHistoryStart(activities: ActivityHistory[]): number | nu
 export function jalaliDayLabel(ms: number): string {
   const p = tehranParts(ms)
   const { jy, jm, jd } = toJalaali(p.gy, p.gm, p.gd)
-  return `${faNumber(jd)} ${JALALI_MONTHS[jm - 1]} ${faDigits(String(jy))}`
+  return `${faNumber(jd)} ${JALALI_MONTHS[jm - 1]} ${latinDigits(String(jy))}`
 }
 
 function reportsBetween(activities: ActivityHistory[], from: number, to: number): number {
@@ -466,7 +466,7 @@ export function buildPeriodComparison(input: PeriodComparisonInput): PeriodCompa
   const completed = metric({
     key: 'completed',
     label: 'فعالیت تکمیل‌شده',
-    basis: 'فعالیت‌هایی که پیشرفتشان در این بازه به ۱۰۰٪ رسید',
+    basis: 'فعالیت‌هایی که پیشرفتشان در این بازه به 100٪ رسید',
     unit: 'count',
     higherIsBetter: true,
     scaleMax: activities.length,
@@ -483,7 +483,7 @@ export function buildPeriodComparison(input: PeriodComparisonInput): PeriodCompa
   const overdue = metric({
     key: 'overdue',
     label: 'فعالیت عقب‌افتاده',
-    basis: 'فعالیت‌هایی که پایان مبنایشان گذشته و هنوز به ۱۰۰٪ نرسیده‌اند، در لحظهٔ پایان بازه',
+    basis: 'فعالیت‌هایی که پایان مبنایشان گذشته و هنوز به 100٪ نرسیده‌اند، در لحظهٔ پایان بازه',
     unit: 'count',
     higherIsBetter: false,
     scaleMax: activities.length,
@@ -547,7 +547,7 @@ function inRange(iso: string, range: WindowRange): boolean {
 }
 
 function bucketLabel(period: ManagerPeriod, index: number, start: number): string {
-  if (period === 'today') return faDigits(`${String(index + 1).padStart(2, '0')}:00`)
+  if (period === 'today') return latinDigits(`${String(index + 1).padStart(2, '0')}:00`)
   if (period === 'week') return WEEKDAYS_FROM_SATURDAY[tehranParts(start).weekday]
   return faNumber(index + 1)
 }

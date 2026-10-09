@@ -53,7 +53,7 @@ export function AlertsPage() {
 
   function testAlert() {
     setTestMessage(
-      `هشدار آزمایشی به گفتگوی تلگرام ${telegram.chatIdMasked} و ایمیل ${emailDigest} در صف قرار گرفت. تحویل را ظرف ۳۰ ثانیه در گفتگوی عملیات تأیید کنید.`
+      `هشدار آزمایشی به گفتگوی تلگرام ${telegram.chatIdMasked} و ایمیل ${emailDigest} در صف قرار گرفت. تحویل را ظرف 30 ثانیه در گفتگوی عملیات تأیید کنید.`
     )
   }
 

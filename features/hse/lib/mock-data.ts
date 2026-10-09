@@ -21,7 +21,7 @@ const T = (offsetHours: number, minute = 0): string => {
 
 export const HSE_PROJECT: HseProject = {
   id: 'proj-nht-p2',
-  name: 'برج بندر شمالی — فاز ۲',
+  name: 'برج بندر شمالی — فاز 2',
   code: 'NHT-P2',
   location: 'تورنتو، کنار آب',
 }
@@ -95,7 +95,7 @@ export const HSE_CAMERAS: HseCamera[] = [
     code: 'CAM-TCW-01',
     health: 'online',
     sourceType: 'rtsp',
-    location: 'جرثقیل غرب، نوک طبقه ۱۸',
+    location: 'جرثقیل غرب، نوک طبقه 18',
     lastHeartbeat: T(-0.2, 12),
     zoneIds: ['zone-01', 'zone-02'],
     fps: 15,
@@ -113,7 +113,7 @@ export const HSE_CAMERAS: HseCamera[] = [
     code: 'CAM-LSB-02',
     health: 'online',
     sourceType: 'onvif',
-    location: 'هسته ساختمان، پله ب طبقات ۱۲ تا ۱۴',
+    location: 'هسته ساختمان، پله ب طبقات 12 تا 14',
     lastHeartbeat: T(-0.1, 48),
     zoneIds: ['zone-03'],
     fps: 12,
@@ -131,7 +131,7 @@ export const HSE_CAMERAS: HseCamera[] = [
     code: 'CAM-PHW-03',
     health: 'degraded',
     sourceType: 'nvr',
-    location: 'سکو طبقه ۳، پد جوشکاری خلیج ۴',
+    location: 'سکو طبقه 3، پد جوشکاری خلیج 4',
     lastHeartbeat: T(-0.8, 5),
     zoneIds: ['zone-04'],
     fps: 10,
@@ -167,7 +167,7 @@ export const HSE_CAMERAS: HseCamera[] = [
     code: 'CAM-EDN-05',
     health: 'calibrating',
     sourceType: 'edge_usb',
-    location: 'طبقه ۲۲ لبه شمال، دکل موقت',
+    location: 'طبقه 22 لبه شمال، دکل موقت',
     lastHeartbeat: T(-1.5, 0),
     zoneIds: ['zone-01', 'zone-06'],
     fps: 8,
@@ -185,7 +185,7 @@ export const HSE_CAMERAS: HseCamera[] = [
     code: 'CAM-SES-06',
     health: 'online',
     sourceType: 'onvif',
-    location: 'داربست نمای جنوب طبقات ۸ تا ۱۱',
+    location: 'داربست نمای جنوب طبقات 8 تا 11',
     lastHeartbeat: T(-0.3, 40),
     zoneIds: ['zone-06'],
     fps: 12,
@@ -203,7 +203,7 @@ export const HSE_CAMERAS: HseCamera[] = [
     code: 'CAM-MHP-07',
     health: 'offline',
     sourceType: 'nvr',
-    location: 'بالابر ۲، پاگرد طبقه ۹',
+    location: 'بالابر 2، پاگرد طبقه 9',
     lastHeartbeat: T(-14, 10),
     zoneIds: ['zone-02', 'zone-05'],
     fps: 0,
@@ -243,8 +243,8 @@ export const HSE_ZONES: HseZone[] = [
     risk: 'critical',
     cameraIds: ['cam-01', 'cam-05'],
     ruleIds: ['rule-03', 'rule-05'],
-    notes: 'فعال هنگام بلند کردن فولاد ۰۶:۰۰ تا ۱۸:۰۰. داخل حلقه رنگ‌شده نیاز به ناظر بار است.',
-    areaLabel: 'ردپای برج غرب طبقات ۱۶ تا ۲۰',
+    notes: 'فعال هنگام بلند کردن فولاد 06:00 تا 18:00. داخل حلقه رنگ‌شده نیاز به ناظر بار است.',
+    areaLabel: 'ردپای برج غرب طبقات 16 تا 20',
   },
   {
     id: 'zone-02',
@@ -254,7 +254,7 @@ export const HSE_ZONES: HseZone[] = [
     cameraIds: ['cam-01', 'cam-07'],
     ruleIds: ['rule-04', 'rule-01'],
     notes: 'حفاظ لبه تا نصب پنل دیوار پرده‌ای ناقص است. بررسی بند مهار اجباری است.',
-    areaLabel: 'لبه دال شمال طبقات ۱۸ تا ۲۲',
+    areaLabel: 'لبه دال شمال طبقات 18 تا 22',
   },
   {
     id: 'zone-03',
@@ -273,8 +273,8 @@ export const HSE_ZONES: HseZone[] = [
     risk: 'high',
     cameraIds: ['cam-03'],
     ruleIds: ['rule-06'],
-    notes: 'تابلوی مجوز باید دیده شود. نگهبان آتش ۳۰ دقیقه پس از آخرین جوش انتظار می‌رود.',
-    areaLabel: 'سکو طبقه ۳ خلیج ۴',
+    notes: 'تابلوی مجوز باید دیده شود. نگهبان آتش 30 دقیقه پس از آخرین جوش انتظار می‌رود.',
+    areaLabel: 'سکو طبقه 3 خلیج 4',
   },
   {
     id: 'zone-05',
@@ -294,7 +294,7 @@ export const HSE_ZONES: HseZone[] = [
     cameraIds: ['cam-05', 'cam-06'],
     ruleIds: ['rule-07', 'rule-04'],
     notes: 'بازرسی روزانه برچسب داربست. سکوهای ناقص پیش از ورود تیم پرچم می‌شوند.',
-    areaLabel: 'وجه جنوب طبقات ۸ تا ۱۱',
+    areaLabel: 'وجه جنوب طبقات 8 تا 11',
   },
 ]
 
@@ -349,7 +349,7 @@ export const HSE_RULES: HseRule[] = [
     cooldownSec: 90,
     zoneIds: ['zone-02', 'zone-06'],
     enabled: true,
-    description: 'کارگر در فاصله ۲ متری لبه بدون حفاظ قابل‌رؤیت مهار / بند.',
+    description: 'کارگر در فاصله 2 متری لبه بدون حفاظ قابل‌رؤیت مهار / بند.',
     category: 'حفاظت از سقوط',
   },
   {
@@ -406,7 +406,7 @@ export const HSE_RULES: HseRule[] = [
   },
 ]
 
-const CLIP = 'کلیپ ۱۵ ثانیه‌ای لبه — بافر محلی'
+const CLIP = 'کلیپ 15 ثانیه‌ای لبه — بافر محلی'
 
 export const HSE_INCIDENTS: HseIncident[] = [
   {
@@ -455,7 +455,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
         at: T(-2, 9),
         actor: 'سامانه',
         action: 'ai_verify',
-        note: 'اطمینان مدل ۰٫۹۱؛ تله‌متری بلند کردن فعال بودن را تأیید کرد',
+        note: 'اطمینان مدل 0.91؛ تله‌متری بلند کردن فعال بودن را تأیید کرد',
       },
       {
         id: 'dl-001-2',
@@ -513,7 +513,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
     updatedAt: T(-3, 10),
     assignee: 'جمشید احمدی',
     aiSummary:
-      'دو کارگر عرشه موقت را در حدود ۱٫۵ متری لبه دال شمال نصب کردند. برای کارگر پیشرو در بازه ۴۰ ثانیه‌ای مهار یا نقطه لنگر دیده نشد.',
+      'دو کارگر عرشه موقت را در حدود 1.5 متری لبه دال شمال نصب کردند. برای کارگر پیشرو در بازه 40 ثانیه‌ای مهار یا نقطه لنگر دیده نشد.',
     aiVerdict: 'likely_violation',
     aiConfidence: 0.86,
     evidenceFrames: [
@@ -593,7 +593,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
     updatedAt: T(-0.5, 20),
     assignee: 'مرتضی بل',
     aiSummary:
-      'کارگر از راه عابر رنگ‌شده وارد آپرون کامیون شد در حالی که میکسر بتن به سمت دروازه الف دنده عقب می‌رفت. فاصله پیش از توقف به زیر ۲ متر رسید.',
+      'کارگر از راه عابر رنگ‌شده وارد آپرون کامیون شد در حالی که میکسر بتن به سمت دروازه الف دنده عقب می‌رفت. فاصله پیش از توقف به زیر 2 متر رسید.',
     aiVerdict: 'likely_violation',
     aiConfidence: 0.85,
     evidenceFrames: [
@@ -667,7 +667,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
     updatedAt: T(-16, 0),
     assignee: 'جمشید احمدی',
     aiSummary:
-      'جرقه قوس و فعالیت کلاه جوش در خلیج ۴ تشخیص داده شد. خواندن تابلوی مجوز تاریخ دیروز را نشان می‌دهد؛ نگهبان آتش در ۹۰ ثانیه اول در قاب نبود.',
+      'جرقه قوس و فعالیت کلاه جوش در خلیج 4 تشخیص داده شد. خواندن تابلوی مجوز تاریخ دیروز را نشان می‌دهد؛ نگهبان آتش در 90 ثانیه اول در قاب نبود.',
     aiVerdict: 'uncertain',
     aiConfidence: 0.71,
     evidenceFrames: [
@@ -681,7 +681,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
         id: 'ef-004-b',
         label: 'فریم ب',
         timestamp: T(-18, 31),
-        caption: 'نمای نزدیک تابلوی مجوز — تاریخ ۲۰۲۶-۰۸-۰۸',
+        caption: 'نمای نزدیک تابلوی مجوز — تاریخ 2026-08-08',
       },
       {
         id: 'ef-004-c',
@@ -726,7 +726,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
     updatedAt: T(-0.6, 0),
     assignee: 'مرتضی بل',
     aiSummary:
-      'برق‌کار هنگام چیدن قرقره‌های کابل در پاگرد طبقه ۱۳ کلاه‌ایمنی را برداشت و ۲۲ ثانیه بدون حفاظت سر ماند.',
+      'برق‌کار هنگام چیدن قرقره‌های کابل در پاگرد طبقه 13 کلاه‌ایمنی را برداشت و 22 ثانیه بدون حفاظت سر ماند.',
     aiVerdict: 'likely_violation',
     aiConfidence: 0.92,
     evidenceFrames: [
@@ -818,7 +818,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
   {
     id: 'inc-007',
     code: 'INC-2026-0808-021',
-    title: 'فاصله نرده میانی داربست در نمای جنوب طبقه ۱۰',
+    title: 'فاصله نرده میانی داربست در نمای جنوب طبقه 10',
     projectId: 'proj-nht-p2',
     zoneId: 'zone-06',
     cameraId: 'cam-06',
@@ -831,7 +831,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
     updatedAt: T(-12, 30),
     assignee: 'جمشید احمدی',
     aiSummary:
-      'دهانه داربست طبقه ۱۰ جنوب نرده میانی به طول تقریبی ۲٫۴ متر ندارد. تخته‌های سکو کامل‌اند؛ تخته پا موجود است.',
+      'دهانه داربست طبقه 10 جنوب نرده میانی به طول تقریبی 2.4 متر ندارد. تخته‌های سکو کامل‌اند؛ تخته پا موجود است.',
     aiVerdict: 'likely_violation',
     aiConfidence: 0.84,
     evidenceFrames: [
@@ -839,7 +839,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
         id: 'ef-007-a',
         label: 'فریم الف',
         timestamp: T(-22, 0),
-        caption: 'نمای گسترده داربست جنوب طبقه ۱۰',
+        caption: 'نمای گسترده داربست جنوب طبقه 10',
       },
       {
         id: 'ef-007-b',
@@ -971,7 +971,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
     updatedAt: T(-30, 0),
     assignee: 'جمشید احمدی',
     aiSummary:
-      'نصاب دیوار پرده‌ای کنار بازشدگی پنل لبه کار کرد. مهار پوشیده بود اما بند حدود ۳۵ ثانیه به لنگر وصل نبود.',
+      'نصاب دیوار پرده‌ای کنار بازشدگی پنل لبه کار کرد. مهار پوشیده بود اما بند حدود 35 ثانیه به لنگر وصل نبود.',
     aiVerdict: 'likely_violation',
     aiConfidence: 0.81,
     evidenceFrames: [
@@ -1193,7 +1193,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
     updatedAt: T(-5, 5),
     assignee: 'جمشید احمدی',
     aiSummary:
-      'حدود ۷۰ ثانیه جرقه سنگ‌زنی با تابلوی مجوز معتبر امروز، اما جایگاه نگهبان آتش خالی بود تا کارگر دوم با کپسول برسد.',
+      'حدود 70 ثانیه جرقه سنگ‌زنی با تابلوی مجوز معتبر امروز، اما جایگاه نگهبان آتش خالی بود تا کارگر دوم با کپسول برسد.',
     aiVerdict: 'likely_violation',
     aiConfidence: 0.83,
     evidenceFrames: [
@@ -1243,7 +1243,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
     correctiveActions: [
       {
         id: 'ca-012-1',
-        title: 'به‌روزرسانی چک‌لیست شروع خلیج ۴ — ابتدا نگهبان آتش',
+        title: 'به‌روزرسانی چک‌لیست شروع خلیج 4 — ابتدا نگهبان آتش',
         owner: 'تأسیسات لیک‌ویو',
         dueDate: '2026-08-10',
         status: 'open',
@@ -1314,7 +1314,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
   {
     id: 'inc-014',
     code: 'INC-2026-0809-014',
-    title: 'تخته‌های ناقص سکوی داربست طبقه ۹',
+    title: 'تخته‌های ناقص سکوی داربست طبقه 9',
     projectId: 'proj-nht-p2',
     zoneId: 'zone-06',
     cameraId: 'cam-06',
@@ -1327,7 +1327,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
     updatedAt: T(-0.4, 5),
     assignee: null,
     aiSummary:
-      'دو تخته سکو در دهانه جنوب طبقه ۹ پس از چیدن مصالح غایب است. دهانه به‌اندازه گیر کردن پا بزرگ است؛ فعلاً تیمی روی آن دهانه نیست.',
+      'دو تخته سکو در دهانه جنوب طبقه 9 پس از چیدن مصالح غایب است. دهانه به‌اندازه گیر کردن پا بزرگ است؛ فعلاً تیمی روی آن دهانه نیست.',
     aiVerdict: 'likely_violation',
     aiConfidence: 0.82,
     evidenceFrames: [
@@ -1335,7 +1335,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
         id: 'ef-014-a',
         label: 'فریم الف',
         timestamp: T(-0.4, 5),
-        caption: 'فاصله در تخته‌های سکو طبقه ۹',
+        caption: 'فاصله در تخته‌های سکو طبقه 9',
       },
       {
         id: 'ef-014-b',
@@ -1379,7 +1379,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
     updatedAt: T(-19, 10),
     assignee: 'مرتضی بل',
     aiSummary:
-      'کارگر تأسیسات لوله را از بالابر مصالح ۲ بدون کلاه‌ایمنی تخلیه کرد. حادثه پیش از قطع بعدی کانال ضبط‌کننده شبکه ثبت شد.',
+      'کارگر تأسیسات لوله را از بالابر مصالح 2 بدون کلاه‌ایمنی تخلیه کرد. حادثه پیش از قطع بعدی کانال ضبط‌کننده شبکه ثبت شد.',
     aiVerdict: 'likely_violation',
     aiConfidence: 0.9,
     evidenceFrames: [
@@ -1423,7 +1423,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
         at: T(-22, 0),
         actor: 'جمشید احمدی',
         action: 'confirm',
-        note: 'نقض تجهیزات حفاظت فردی در بالابر ۲ تأیید شد',
+        note: 'نقض تجهیزات حفاظت فردی در بالابر 2 تأیید شد',
       },
       {
         id: 'dl-015-4',
@@ -1452,7 +1452,7 @@ export const HSE_INCIDENTS: HseIncident[] = [
     updatedAt: T(-1, 0),
     assignee: 'پریا نوری',
     aiSummary:
-      'تکنسین در حال تنظیم دکل لبه طبقه ۲۲ داخل ناحیه مورد نظر خطر سقوط دیده شد. دوربین در حال کالیبره است؛ اطمینان هوش مصنوعی به‌خاطر هندسه در حال تغییر کاهش یافته.',
+      'تکنسین در حال تنظیم دکل لبه طبقه 22 داخل ناحیه مورد نظر خطر سقوط دیده شد. دوربین در حال کالیبره است؛ اطمینان هوش مصنوعی به‌خاطر هندسه در حال تغییر کاهش یافته.',
     aiVerdict: 'uncertain',
     aiConfidence: 0.58,
     evidenceFrames: [
@@ -1740,7 +1740,7 @@ export const HSE_ALERT_LOGS: AlertLogEntry[] = [
     target: 'https://hooks.sitepilot.local/hse/incidents',
     incidentCode: 'INC-2026-0809-018',
     result: 'sent',
-    detail: 'بسته وب‌هوک پذیرفته شد (۲۰۲)',
+    detail: 'بسته وب‌هوک پذیرفته شد (202)',
   },
   {
     id: 'al-08',
@@ -1760,7 +1760,7 @@ export const HSE_ALERT_LOGS: AlertLogEntry[] = [
     target: 'https://hooks.sitepilot.local/hse/incidents',
     incidentCode: 'INC-2026-0808-014',
     result: 'failed',
-    detail: 'مهلت پس از ۸ ثانیه — گیرنده در دسترس نبود',
+    detail: 'مهلت پس از 8 ثانیه — گیرنده در دسترس نبود',
   },
   {
     id: 'al-10',

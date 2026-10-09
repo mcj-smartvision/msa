@@ -164,7 +164,7 @@ function ConventionsCard() {
   const items: [string, string][] = [
     ['منبع درصد رسمی', 'درصد پیشرفت فیزیکی ذخیره‌شده در برنامهٔ زمان‌بندی (project_tasks و schedule_fields بسته‌ها).'],
     ['برنامه (PV)', 'همیشه از baseline منجمد؛ اگر baseline خالی باشد تاریخ برنامه‌ریزی‌شده. تاریخ‌های جاری در برنامه دخالت ندارند.'],
-    ['شمارش روز', 'روز تقویمی، هر دو سر بازه شمرده می‌شود: روز اول بازهٔ ۱۰ روزه = ۱۰٪، روز پایان = ۱۰۰٪. قبل از شروع ۰ و بعد از پایان ۱۰۰.'],
+    ['شمارش روز', 'روز تقویمی، هر دو سر بازه شمرده می‌شود: روز اول بازهٔ 10 روزه = 10٪، روز پایان = 100٪. قبل از شروع 0 و بعد از پایان 100.'],
     ['منطقهٔ زمانی', 'Asia/Tehran (UTC+03:30) برای «امروز»، شروع هفته (شنبه) و ماه شمسی.'],
     ['وزن پیشرفت', 'وزن زمان‌بندی (schedule_weight) هر فعالیت برگ؛ جمع وزن‌ها مخرج میانگین است. پیشرفت تجمعی، PV٪، EV٪ و SPI همه روی همین مبنا هستند؛ بودجه فقط برای هزینه (CPI و TCPI).'],
     ['وزن بسته‌ها', 'وزن بسته مطلق است (درصد کل پروژه) و جمع بسته‌های هر والد باید با وزن والد برابر باشد؛ مغایرت به وزن والد مقیاس و در Data Quality ثبت می‌شود.'],
@@ -235,7 +235,7 @@ function CumulativeCard({
             </p>
           ))
         ) : (
-          <p className="text-xs text-emerald-700">اعتبارسنجی وزن‌ها: جمع وزن بسته‌های هر والد با وزن والد و جمع کل برگ‌ها با ۱۰۰ برابر است.</p>
+          <p className="text-xs text-emerald-700">اعتبارسنجی وزن‌ها: جمع وزن بسته‌های هر والد با وزن والد و جمع کل برگ‌ها با 100 برابر است.</p>
         )}
       </div>
     </SectionCard>
@@ -859,7 +859,7 @@ function TcpiPpcCard({ snapshot, projectId }: { snapshot: ProjectEvmSnapshot; pr
 function DailyCard({ overview }: { overview: ManagerOverview }) {
   const d = overview.daily.status === 'ok' ? overview.daily.data : null
   return (
-    <SectionCard title="عملکرد ۲۴ ساعت گذشته" icon={<CalendarClock className="h-4 w-4" aria-hidden />}>
+    <SectionCard title="عملکرد 24 ساعت گذشته" icon={<CalendarClock className="h-4 w-4" aria-hidden />}>
       {d ? (
         <div className="space-y-3">
           <MathBlock>
@@ -884,12 +884,12 @@ function DailyCard({ overview }: { overview: ManagerOverview }) {
               <Op>×</Op>
               <Num>100</Num>
             </MathLine>
-            <p dir="rtl" className="font-sans text-[11px] text-slate-500">Plan = برنامهٔ وزنی تجمعی روی baseline · Δp = پیشرفت ثبت‌شده در ۲۴ ساعت گذشته</p>
+            <p dir="rtl" className="font-sans text-[11px] text-slate-500">Plan = برنامهٔ وزنی تجمعی روی baseline · Δp = پیشرفت ثبت‌شده در 24 ساعت گذشته</p>
           </MathBlock>
           <div className="grid gap-2 sm:grid-cols-4">
             <Result label="شروع پنجره" value={jalaliDateTime(d.windowStart)} />
             <Result label="برنامهٔ مصوب امروز" value={faPercent(d.plannedPercent, 2)} note={d.baselineEnded ? 'دورهٔ برنامهٔ مبنا تمام شده' : undefined} />
-            <Result label="ثبت‌شده در ۲۴ ساعت" value={faPercent(d.actualPercent, 2)} />
+            <Result label="ثبت‌شده در 24 ساعت" value={faPercent(d.actualPercent, 2)} />
             <Result label="درصد تحقق" value={d.fulfillmentPercent == null ? '—' : faPercent(d.fulfillmentPercent, 0)} />
           </div>
           <p className="text-xs text-slate-600">

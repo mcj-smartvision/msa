@@ -12,8 +12,8 @@ describe('riskAnalyzer', () => {
 
   it('executive summary uses computed values only', () => {
     const result = analyzeScheduleFromXml(FIXTURE_A_XML)
-    expect(result.executiveSummary).toContain('۳')
-    expect(result.executiveSummary).toContain('۱۰')
+    expect(result.executiveSummary).toContain('شامل 3 فعالیت')
+    expect(result.executiveSummary).toContain('10 روز')
   })
 })
 

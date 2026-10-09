@@ -25,7 +25,7 @@ export function nextWeekStart(iso: string): string {
   return addDays(iso, (6 - dow + 7) % 7)
 }
 
-const fmt = (x: number, digits = 2) => x.toLocaleString('fa-IR', { maximumFractionDigits: digits })
+const fmt = (x: number, digits = 2) => x.toLocaleString('fa-IR-u-nu-latn', { maximumFractionDigits: digits })
 
 function metricOf(kpi: ExplainedKpi): InboxEvidenceMetric {
   return { key: kpi.key, label_fa: kpi.title_fa, value: kpi.value, unit: kpi.unit, data_quality: kpi.data_quality }
@@ -217,7 +217,7 @@ export function buildPmInboxItems(snapshot: PmInboxSnapshot): InboxItem[] {
       severity: 'warning',
       owner_role: 'Planner',
       due_date: addDays(today, 3),
-      trigger: { rule: 'weightIssues.length > 0', rule_fa: 'جمع وزن‌ها با والد یا ۱۰۰ نمی‌خواند', observed_fa: controls.weightIssues.join(' · ') },
+      trigger: { rule: 'weightIssues.length > 0', rule_fa: 'جمع وزن‌ها با والد یا 100 نمی‌خواند', observed_fa: controls.weightIssues.join(' · ') },
       suggested_actions: [{ label_fa: 'مشاهدهٔ وزن‌ها در بک‌گراند', action_type: 'navigate', payload: { route: 'background', query: { projectId } } }],
       evidence: { metrics: [], sources: [controls.pv.source], asOf },
     })

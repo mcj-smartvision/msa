@@ -84,7 +84,7 @@ export function buildFinancialAlerts(
           ? `${ref}: صورت‌وضعیت تأییدشده — ${daysSince(anchor)} روز بدون تسویه کامل`
           : `${ref}: Approved invoice unpaid for ${daysSince(anchor)} days`,
         detail: isFa
-          ? `مانده ${remaining.toLocaleString('fa-IR')} ریال`
+          ? `مانده ${remaining.toLocaleString('fa-IR-u-nu-latn')} ریال`
           : `Remaining ${remaining.toLocaleString('en-US')} Rial`,
         severity: 'danger',
       })

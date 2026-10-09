@@ -47,7 +47,7 @@ export function accountCopy(fa: boolean) {
     updatePassword: fa ? 'به‌روزرسانی رمز عبور' : 'Update password',
     passwordUpdated: fa ? 'رمز عبور با موفقیت به‌روزرسانی شد.' : 'Password updated.',
     passwordMismatch: fa ? 'رمزهای جدید یکسان نیستند.' : 'New passwords do not match.',
-    passwordShort: fa ? 'رمز عبور باید حداقل ۶ کاراکتر باشد.' : 'Password must be at least 6 characters.',
+    passwordShort: fa ? 'رمز عبور باید حداقل 6 کاراکتر باشد.' : 'Password must be at least 6 characters.',
     wrongPassword: fa ? 'رمز فعلی نادرست است.' : 'Current password is incorrect.',
     mustLogin: fa ? 'باید وارد شده باشید.' : 'You must be signed in.',
     confirmLogout: fa ? 'خروج از حساب' : 'Sign out',

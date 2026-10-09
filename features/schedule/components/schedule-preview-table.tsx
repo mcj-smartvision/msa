@@ -528,7 +528,7 @@ export function SchedulePreviewTable({
           <span>
             خطای وزن‌دهی: جمع وزن سطح پروژه{' '}
             <strong className="tabular-nums">{projectWeightCheck.sum}</strong> باید{' '}
-            <strong>۱۰۰</strong> باشد
+            <strong>100</strong> باشد
             {projectWeightCheck.gap !== 0 ? (
               <>
                 {' '}

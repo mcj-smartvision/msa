@@ -62,7 +62,7 @@ export interface ExplainedCumulativeProgress {
 const clamp = (p: number) => (Number.isFinite(p) ? Math.min(100, Math.max(0, p)) : 0)
 
 const fa = (value: number, digits = 1) =>
-  value.toLocaleString('fa-IR', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+  value.toLocaleString('fa-IR-u-nu-latn', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 
 const latin = (value: number, digits: number) => value.toFixed(digits).replace(/\.?0+$/, '') || '0'
 
@@ -145,7 +145,7 @@ export function buildExplainedCumulativeProgress(
   const ev = hasBudget ? (m.bac * actual) / 100 : null
 
   const gap = actual - planned
-  const toman = (v: number) => `${Math.round(Math.abs(v)).toLocaleString('fa-IR')} تومان`
+  const toman = (v: number) => `${Math.round(Math.abs(v)).toLocaleString('fa-IR-u-nu-latn')} تومان`
   const parts: string[] = []
   if (Math.abs(gap) < 0.05) parts.push(`پیشرفت واقعی تجمعی (${fa(actual, 2)}٪) هم‌پای برنامهٔ مصوب (${fa(planned, 2)}٪) است.`)
   else
@@ -173,7 +173,7 @@ export function buildExplainedCumulativeProgress(
   const warnings = [...weightWarnings]
   if (noRecord.length) {
     warnings.push(
-      `${noRecord.length.toLocaleString('fa-IR')} ردیف تا تاریخ ${jalaliDate(m.asOf)} رکورد پیشرفت تأییدشده ندارد و پیشرفت واقعی آن صفر منظور شده است.`
+      `${noRecord.length.toLocaleString('fa-IR-u-nu-latn')} ردیف تا تاریخ ${jalaliDate(m.asOf)} رکورد پیشرفت تأییدشده ندارد و پیشرفت واقعی آن صفر منظور شده است.`
     )
   }
 

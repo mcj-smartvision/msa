@@ -182,7 +182,7 @@ export async function getPeriodComparison(
   )
   if (incompletePackages.length > 0) {
     warnings.push(
-      `تاریخچهٔ بسته‌های کاری ناقص است: برای ${incompletePackages.length.toLocaleString('fa-IR')} بستهٔ کاری، نقاط پیش از اولین ثبت با درصد فعلی حساب شده‌اند.`
+      `تاریخچهٔ بسته‌های کاری ناقص است: برای ${incompletePackages.length.toLocaleString('fa-IR-u-nu-latn')} بستهٔ کاری، نقاط پیش از اولین ثبت با درصد فعلی حساب شده‌اند.`
     )
   }
 

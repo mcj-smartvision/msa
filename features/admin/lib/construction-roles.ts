@@ -114,12 +114,12 @@ export const ROLE_DASHBOARD_PREVIEWS: RoleDashboardPreview[] = [
     color: 'border-l-amber-600',
     summary: 'پایش ایمنی، حوادث دوربین و انطباق بهداشت و محیط‌زیست',
     metrics: [
-      { label: 'مشاهدات', value: '۱۲ این هفته', trend: 'neutral' },
-      { label: 'انطباق PPE', value: '۹۶٪', trend: 'up' },
-      { label: 'زون‌های پرخطر', value: '۳ فعال', trend: 'warning' },
-      { label: 'حوادث باز', value: '۱', trend: 'warning' },
+      { label: 'مشاهدات', value: '12 این هفته', trend: 'neutral' },
+      { label: 'انطباق PPE', value: '96٪', trend: 'up' },
+      { label: 'زون‌های پرخطر', value: '3 فعال', trend: 'warning' },
+      { label: 'حوادث باز', value: '1', trend: 'warning' },
     ],
-    alerts: ['نقض PPE تأییدنشده — طبقه ۲', 'مجوز کار گرم امروز منقضی می‌شود'],
+    alerts: ['نقض PPE تأییدنشده — طبقه 2', 'مجوز کار گرم امروز منقضی می‌شود'],
   },
   {
     key: 'qa_qc_inspector',

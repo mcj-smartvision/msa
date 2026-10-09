@@ -42,7 +42,7 @@ function formatSize(bytes: number | null) {
 function formatStamp(iso: string, fa: boolean) {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleString(fa ? 'fa-IR' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' })
+  return d.toLocaleString(fa ? 'fa-IR-u-nu-latn' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' })
 }
 
 export function ProjectDrawingsPanel({
@@ -353,7 +353,7 @@ export function ProjectDrawingsPanel({
                       selected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
                     )}
                   >
-                    {count.toLocaleString(fa ? 'fa-IR' : 'en-US')}
+                    {count.toLocaleString(fa ? 'fa-IR-u-nu-latn' : 'en-US')}
                   </span>
                 </button>
               )

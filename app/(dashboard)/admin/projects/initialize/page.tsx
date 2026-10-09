@@ -10,7 +10,7 @@ export default function ProjectInitializePage() {
     <div className="space-y-6">
       <PageHeader
         title="راه‌اندازی پروژه"
-        description="هر ۸ بخش را تکمیل کنید تا پروژه عمرانی جدید راه‌اندازی شود. شناسه‌های سیستمی پنهان هنگام ثبت به‌صورت خودکار اختصاص داده می‌شوند."
+        description="هر 8 بخش را تکمیل کنید تا پروژه عمرانی جدید راه‌اندازی شود. شناسه‌های سیستمی پنهان هنگام ثبت به‌صورت خودکار اختصاص داده می‌شوند."
         actions={
           <Button asChild variant="outline">
             <Link href="/admin/projects">بازگشت به پروژه‌ها</Link>

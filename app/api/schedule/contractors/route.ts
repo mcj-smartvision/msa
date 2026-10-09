@@ -100,7 +100,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'projectId و taskIds لازم است' }, { status: 400 })
     }
     if (taskIds.length > 500) {
-      return NextResponse.json({ error: 'حداکثر ۵۰۰ فعالیت را هم‌زمان انتخاب کنید' }, { status: 400 })
+      return NextResponse.json({ error: 'حداکثر 500 فعالیت را هم‌زمان انتخاب کنید' }, { status: 400 })
     }
 
     const supabase = createClient()

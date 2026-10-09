@@ -18,11 +18,22 @@ interface JalaliDatePickerProps {
   placeholder?: string
   clearable?: boolean
   disabled?: boolean
+  /** Gregorian YYYY-MM-DD; days before it are disabled. */
+  min?: string
 }
 
-export function JalaliDatePicker({ id, value, onChange, holidays = [], placeholder = 'انتخاب تاریخ', clearable, disabled }: JalaliDatePickerProps) {
+export function JalaliDatePicker({
+  id,
+  value,
+  onChange,
+  holidays = [],
+  placeholder = 'انتخاب تاریخ',
+  clearable,
+  disabled,
+  min,
+}: JalaliDatePickerProps) {
   const [open, setOpen] = useState(false)
-  const [view, setView] = useState(() => isoToJalali(value || todayTehranIso()))
+  const [view, setView] = useState(() => isoToJalali(value || min || todayTehranIso()))
   const ref = useRef<HTMLDivElement>(null)
   const close = useCallback(() => setOpen(false), [])
   useDismiss(ref, open, close)
@@ -40,7 +51,7 @@ export function JalaliDatePicker({ id, value, onChange, holidays = [], placehold
           type="button"
           disabled={disabled}
           onClick={() => {
-            if (!open) setView(isoToJalali(value || todayTehranIso()))
+            if (!open) setView(isoToJalali(value || min || todayTehranIso()))
             setOpen((v) => !v)
           }}
           className="flex flex-1 items-center gap-2 text-start"
@@ -65,6 +76,7 @@ export function JalaliDatePicker({ id, value, onChange, holidays = [], placehold
             todayIso={todayTehranIso()}
             holidays={holidays}
             selectedIso={value || null}
+            minIso={min || null}
             onSelect={(iso) => {
               onChange(iso)
               setOpen(false)

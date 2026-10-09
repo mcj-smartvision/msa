@@ -32,7 +32,7 @@ describe('parseEmployerPurchaseInput', () => {
           { taskId: 'b', sharePercent: 30 },
         ],
       })
-    ).toThrow(/۱۰۰ درصد/)
+    ).toThrow(/100 درصد/)
   })
 
   it('rejects a zero share, a repeated activity and a purchase with no activity', () => {
