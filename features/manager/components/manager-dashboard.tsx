@@ -2,14 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react'
 import {
 ArrowRight,
 Bell,
 Calculator,
 CalendarRange,
 ChevronDown,
+ChevronLeft,
+ChevronRight,
 CircleHelp,
+Coins,
 Compass,
 FileSignature,
 FileText,
@@ -59,11 +62,13 @@ import { CostPerformanceSection } from './cost-performance-section'
 import { WeeklyCommitmentsSection } from './weekly-commitments-section'
 import { ManagerPeriodCompare } from './manager-period-compare'
 import { ManagerBackgroundView } from './manager-background'
+import { CostEstimateView } from './cost-estimate-view'
 import { PmInboxCard } from './pm-inbox-card'
 import { BlockersDelaysCard, DailyDeltaCard } from './manager-daily-section'
 import { ManagerHelpPanel, type ManagerHelpLink } from './manager-help-panel'
 import { ManagerTour, markTourSeen, readTourSeen, type ManagerTourStep } from './manager-tour'
 import { managerFont } from './manager-font'
+import { CalcTraceProvider, CalcTraceTrigger } from '@/features/calc-trace/components/calc-trace'
 
 const REFRESH_MS = 5 * 60 * 1000
 
@@ -78,6 +83,7 @@ const NAV_ICONS: Record<ManagerNavIcon, ComponentType<{ className?: string }>> =
   contracts: FileSignature,
   reports: FileText,
   background: Calculator,
+  estimate: Coins,
 }
 
 const TOUR_STEPS: ManagerTourStep[] = [
@@ -192,15 +198,63 @@ function withProject(href: string, projectId: string | null, enabled?: boolean) 
   return enabled && projectId ? `${href}?projectId=${encodeURIComponent(projectId)}` : href
 }
 
+const SIDEBAR_STORAGE_KEY = 'msa-sidebar-collapsed'
+
+/**
+ * Collapsed (icon-only) state of the desktop / tablet sidebar, kept in localStorage. Without a stored
+ * choice, tablets (768–1023px) start collapsed and desktops expanded; `null` until read on the client.
+ */
+function useSidebarCollapsed(): [boolean | null, (next: boolean) => void] {
+  const [collapsed, setCollapsed] = useState<boolean | null>(null)
+  useEffect(() => {
+    let stored: string | null = null
+    try {
+      stored = window.localStorage.getItem(SIDEBAR_STORAGE_KEY)
+    } catch {
+      /* storage unavailable */
+    }
+    setCollapsed(stored === '1' ? true : stored === '0' ? false : window.matchMedia('(max-width: 1023px)').matches)
+  }, [])
+  const set = useCallback((next: boolean) => {
+    setCollapsed(next)
+    try {
+      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? '1' : '0')
+    } catch {
+      /* storage unavailable */
+    }
+  }, [])
+  return [collapsed, set]
+}
+
+/** Label next to a sidebar icon; fades out when the sidebar collapses (the aside clips it). */
+function NavLabel({ collapsed, className, children }: { collapsed: boolean; className?: string; children: ReactNode }) {
+  return (
+    <span
+      aria-hidden={collapsed || undefined}
+      className={cn(
+        'truncate whitespace-nowrap transition-opacity duration-150 motion-reduce:transition-none',
+        collapsed ? 'pointer-events-none opacity-0' : 'opacity-100',
+        className
+      )}
+    >
+      {children}
+    </span>
+  )
+}
+
 function SidebarGroup({
   group,
   projectId,
   pathname,
+  collapsed,
+  onExpand,
   onNavigate,
 }: {
   group: ManagerNavGroup
   projectId: string | null
   pathname: string
+  collapsed: boolean
+  onExpand?: () => void
   onNavigate?: () => void
 }) {
   const Icon = NAV_ICONS[group.icon]
@@ -222,10 +276,12 @@ function SidebarGroup({
           href={withProject(group.href, projectId, group.withProjectParam)}
           onClick={onNavigate}
           aria-current={active ? 'page' : undefined}
+          aria-label={collapsed ? group.label : undefined}
+          title={collapsed ? group.label : undefined}
           className={itemClass(active)}
         >
           <Icon className="h-4 w-4 shrink-0" />
-          {group.label}
+          <NavLabel collapsed={collapsed}>{group.label}</NavLabel>
         </Link>
       </li>
     )
@@ -233,15 +289,35 @@ function SidebarGroup({
 
   return (
     <li>
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className={itemClass(childActive)}>
+      <button
+        type="button"
+        onClick={() => {
+          if (collapsed) {
+            onExpand?.()
+            setOpen(true)
+            return
+          }
+          setOpen((v) => !v)
+        }}
+        aria-expanded={collapsed ? false : open}
+        aria-label={collapsed ? group.label : undefined}
+        title={collapsed ? group.label : undefined}
+        className={itemClass(childActive)}
+      >
         <Icon className="h-4 w-4 shrink-0" />
-        <span className="flex-1 text-right">{group.label}</span>
+        <NavLabel collapsed={collapsed} className="flex-1 text-right">
+          {group.label}
+        </NavLabel>
         <ChevronDown
-          className={cn('h-4 w-4 text-slate-400 transition-transform motion-reduce:transition-none', open && 'rotate-180')}
+          className={cn(
+            'h-4 w-4 shrink-0 text-slate-400 transition-[transform,opacity] duration-150 motion-reduce:transition-none',
+            open && 'rotate-180',
+            collapsed && 'opacity-0'
+          )}
           aria-hidden
         />
       </button>
-      {open ? (
+      {open && !collapsed ? (
         <ul className="mr-5 mt-0.5 space-y-0.5 border-r border-slate-200 pr-2">
           {group.children?.map((child) => {
             const active = pathname.startsWith(child.href)
@@ -271,12 +347,16 @@ function SidebarContent({
   nav,
   projectId,
   isAdmin,
+  collapsed = false,
+  onExpand,
   onNavigate,
   onOpenHelp,
 }: {
   nav: ManagerNavModel
   projectId: string | null
   isAdmin: boolean
+  collapsed?: boolean
+  onExpand?: () => void
   onNavigate?: () => void
   onOpenHelp: () => void
 }) {
@@ -284,15 +364,37 @@ function SidebarContent({
   const footerLink =
     'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60'
   return (
-    <div className="flex h-full flex-col">
-      <nav aria-label="منوی ماژول‌ها" data-tour="nav" className="flex-1 overflow-y-auto p-3">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <nav aria-label="منوی ماژول‌ها" data-tour="nav" className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
         <ul className="space-y-0.5">
           {nav.groups.map((group) => (
-            <SidebarGroup key={group.key} group={group} projectId={projectId} pathname={pathname} onNavigate={onNavigate} />
+            <SidebarGroup
+              key={group.key}
+              group={group}
+              projectId={projectId}
+              pathname={pathname}
+              collapsed={collapsed}
+              onExpand={onExpand}
+              onNavigate={onNavigate}
+            />
           ))}
         </ul>
       </nav>
-      <div className="space-y-0.5 border-t border-slate-100 p-3">
+      <div className="space-y-0.5 border-t border-slate-100 px-2 py-3">
+        {collapsed ? (
+          <button
+            type="button"
+            onClick={onOpenHelp}
+            aria-haspopup="dialog"
+            aria-label="راهنما و تور سیستم"
+            title="راهنما و تور سیستم"
+            className="mb-2 flex w-full items-center rounded-xl px-1.5 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-400 to-primary text-white shadow-sm">
+              <Compass className="h-[18px] w-[18px]" aria-hidden />
+            </span>
+          </button>
+        ) : (
         <button
           type="button"
           onClick={onOpenHelp}
@@ -310,15 +412,28 @@ function SidebarContent({
             <span className="block truncate text-[11px] text-slate-500">تور 5 مرحله‌ای، اصطلاحات و میانبرها</span>
           </span>
         </button>
+        )}
         {isAdmin ? (
-          <Link href="/admin" onClick={onNavigate} className={footerLink}>
+          <Link
+            href="/admin"
+            onClick={onNavigate}
+            aria-label={collapsed ? 'کنترل سنتر' : undefined}
+            title={collapsed ? 'کنترل سنتر' : undefined}
+            className={footerLink}
+          >
             <Building2 className="h-4 w-4 shrink-0" aria-hidden />
-            کنترل سنتر
+            <NavLabel collapsed={collapsed}>کنترل سنتر</NavLabel>
           </Link>
         ) : null}
-        <Link href="/settings" onClick={onNavigate} className={footerLink}>
+        <Link
+          href="/settings"
+          onClick={onNavigate}
+          aria-label={collapsed ? 'تنظیمات' : undefined}
+          title={collapsed ? 'تنظیمات' : undefined}
+          className={footerLink}
+        >
           <Settings className="h-4 w-4 shrink-0" aria-hidden />
-          تنظیمات
+          <NavLabel collapsed={collapsed}>تنظیمات</NavLabel>
         </Link>
       </div>
     </div>
@@ -507,7 +622,7 @@ interface ManagerDashboardProps {
   nav: ManagerNavModel
   projectOptions: { id: string; name: string }[]
   initialProjectId: string | null
-  view: 'home' | 'alerts' | 'background'
+  view: 'home' | 'alerts' | 'background' | 'estimate'
 }
 
 export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, view }: ManagerDashboardProps) {
@@ -520,6 +635,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
   const [tourOpen, setTourOpen] = useState(false)
   const [showIntro, setShowIntro] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed()
   const [, setTick] = useState(0)
 
   useEffect(() => {
@@ -574,6 +690,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
     const candidates: (ManagerHelpLink | null)[] = [
       { label: 'همهٔ هشدارها', description: 'فهرست کامل هشدارها با فیلتر حوزه و سطح', href: '/dashboard/manager/alerts' },
       { label: 'بک‌گراند محاسبات', description: 'فرمول و ریز محاسبهٔ هر عدد داشبورد', href: '/dashboard/manager/background' },
+      { label: 'برآورد و کنترل هزینه', description: 'ارزش قرارداد، BAC، هزینهٔ واقعی و EAC', href: '/dashboard/manager/estimate' },
       hrefs.inbox ? { label: 'کارتابل من', description: 'تصمیم‌ها و تأییدهای در انتظار', href: hrefs.inbox() } : null,
       hrefs.evm ? { label: 'شاخص‌های ارزش کسب‌شده', description: 'جزئیات SPI، CPI و فعالیت‌ها', href: hrefs.evm } : null,
       hrefs.scheduleIntel
@@ -645,6 +762,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
   const activeProjectName = data?.project?.name ?? projectOptions.find((p) => p.id === projectId)?.name ?? ''
 
   return (
+    <CalcTraceProvider traces={data?.traces}>
     <div
       dir="rtl"
       lang="fa"
@@ -654,27 +772,57 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
         'flex min-h-screen bg-slate-50 font-sans text-right text-slate-900 antialiased [font-feature-settings:normal]'
       )}
     >
-      {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-l border-slate-200 bg-white lg:flex">
-        <Link
-          href="/dashboard/manager"
-          className="flex h-16 shrink-0 items-center gap-2 border-b border-slate-100 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60"
-        >
-          <BrandLogo size="sm" withName />
-          <span className="sr-only">داشبورد مدیر پروژه</span>
-        </Link>
-        <SidebarContent nav={nav} projectId={projectId} isAdmin={user.isAdmin} onOpenHelp={() => setHelpOpen(true)} />
+      {/* Desktop / tablet sidebar: 240px, or a 56px icon strip when collapsed */}
+      <aside
+        data-collapsed={sidebarCollapsed ? '' : undefined}
+        className={cn(
+          'sticky top-0 hidden h-screen shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white transition-[width] duration-200 ease-in-out motion-reduce:transition-none md:flex',
+          sidebarCollapsed == null ? 'w-14 lg:w-60' : sidebarCollapsed ? 'w-14' : 'w-60'
+        )}
+      >
+        <div className="flex h-16 shrink-0 items-center gap-1 border-b border-slate-100 px-2">
+          {!sidebarCollapsed ? (
+            <Link
+              href="/dashboard/manager"
+              className="flex min-w-0 flex-1 items-center rounded-md px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+            >
+              <BrandLogo size="sm" withName />
+              <span className="sr-only">داشبورد مدیر پروژه</span>
+            </Link>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            aria-expanded={!sidebarCollapsed}
+            aria-label={sidebarCollapsed ? 'باز کردن منو' : 'جمع کردن منو'}
+            title={sidebarCollapsed ? 'باز کردن منو' : 'جمع کردن منو'}
+            className={cn(
+              'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
+              sidebarCollapsed && 'mx-auto'
+            )}
+          >
+            {sidebarCollapsed ? <ChevronRight className="h-4 w-4" aria-hidden /> : <ChevronLeft className="h-4 w-4" aria-hidden />}
+          </button>
+        </div>
+        <SidebarContent
+          nav={nav}
+          projectId={projectId}
+          isAdmin={user.isAdmin}
+          collapsed={sidebarCollapsed ?? false}
+          onExpand={() => setSidebarCollapsed(false)}
+          onOpenHelp={() => setHelpOpen(true)}
+        />
       </aside>
 
-      {/* Mobile / tablet drawer */}
+      {/* Mobile drawer (slides in from the right) */}
       {mobileNavOpen ? (
-        <div className="fixed inset-0 z-[65] lg:hidden">
+        <div className="fixed inset-0 z-[65] md:hidden">
           <div aria-hidden onClick={() => setMobileNavOpen(false)} className="absolute inset-0 bg-slate-900/40" />
           <aside
             role="dialog"
             aria-modal="true"
             aria-label="منوی ماژول‌ها"
-            className="absolute inset-y-0 right-0 flex w-72 max-w-[85vw] flex-col bg-white shadow-2xl animate-in slide-in-from-right duration-200 motion-reduce:animate-none"
+            className="absolute inset-y-0 right-0 flex w-72 max-w-[85vw] flex-col bg-white shadow-2xl animate-in slide-in-from-right duration-[220ms] ease-out motion-reduce:animate-none"
           >
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 px-4">
               <BrandLogo size="sm" withName />
@@ -709,7 +857,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
               type="button"
               onClick={() => setMobileNavOpen(true)}
               aria-label="باز کردن منوی ماژول‌ها"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 lg:hidden"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 md:hidden"
             >
               <Menu className="h-4 w-4" aria-hidden />
             </button>
@@ -833,6 +981,8 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
             <AllAlertsView overview={data} loading={loading} period={period} hrefs={hrefs} />
           ) : view === 'background' ? (
             <ManagerBackgroundView projectId={projectId} overview={data} loading={loading} />
+          ) : view === 'estimate' ? (
+            <CostEstimateView projectId={projectId} overview={data} loading={loading} />
           ) : (
             <>
               <h1 className="sr-only">اتاق فرمان {activeProjectName}</h1>
@@ -868,6 +1018,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                   className="order-5 lg:order-1 lg:col-span-12"
                   title="منحنی S پیشرفت پروژه"
                   icon={<LineChartIcon className="h-4 w-4" aria-hidden />}
+                  action={<CalcTraceTrigger metrics={['home.pv_curve', 'home.spi_t']} />}
                   hint="خط برنامه (PV)، پیشرفت واقعی ثبت‌شده و ارزش کسب‌شده (EV) به درصد تجمعی، از اولین گزارش ثبت‌شدهٔ پیشرفت تا امروز. نقطهٔ «امروز» دقیقاً همان مقادیر کارت‌های بالای صفحه است."
                 >
                   <SectionBody result={data?.progress} loading={loading} rows={5}>
@@ -954,5 +1105,6 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
       />
       <ManagerTour open={tourOpen} steps={TOUR_STEPS} onClose={closeTour} />
     </div>
+    </CalcTraceProvider>
   )
 }

@@ -175,3 +175,25 @@
 html[data-native-app='accountant'] body {
   background: #0b0e14;
 }
+
+/* Calculation ledger: «چاپ» prints only the open trace. */
+@media print {
+  html.calc-trace-printing body * {
+    visibility: hidden !important;
+  }
+  html.calc-trace-printing [data-calc-print],
+  html.calc-trace-printing [data-calc-print] * {
+    visibility: visible !important;
+  }
+  html.calc-trace-printing [data-calc-print] {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+  html.calc-trace-printing [data-calc-noprint] {
+    display: none !important;
+  }
+}

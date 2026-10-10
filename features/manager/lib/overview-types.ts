@@ -1,6 +1,7 @@
 import type { EvmBudgetBasis } from '@/features/evm/lib/metrics';
 import type { RagResult } from '@/features/evm/lib/rag-status';
 import type { EvForecast } from '@/features/project-controls/lib/ev-forecast';
+import type { CalcTraceMap } from '@/features/calc-trace/lib/types';
 
 /** Each dashboard section loads independently; a missing table never zeroes another section. */
 export type SectionResult<T> =
@@ -454,6 +455,8 @@ export interface ManagerOverview {
   blockers: SectionResult<ManagerBlockers>
   delays: SectionResult<ManagerCriticalDelays>
   upcoming: SectionResult<ManagerUpcomingDeadline[]>
+  /** Calculation ledger («موشن حساب»); present only for system admins. */
+  traces?: CalcTraceMap
 }
 
 /** Nearest forecast finish of an unfinished schedule activity. */

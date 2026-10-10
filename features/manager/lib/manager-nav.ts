@@ -12,6 +12,7 @@ export type ManagerNavIcon =
   | 'contracts'
   | 'reports'
   | 'background'
+  | 'estimate'
 
 export interface ManagerNavLink {
   label: string
@@ -114,6 +115,7 @@ export function buildManagerNav(context: DashboardUserContext): ManagerNavModel 
   const groups: ManagerNavGroup[] = [
     { key: 'home', label: 'خانه', icon: 'home', href: '/dashboard/manager' },
     { key: 'alerts', label: 'همهٔ هشدارها', icon: 'alerts', href: '/dashboard/manager/alerts' },
+    { key: 'estimate', label: 'برآورد و کنترل هزینه', icon: 'estimate', href: '/dashboard/manager/estimate' },
   ]
 
   if (pm) {

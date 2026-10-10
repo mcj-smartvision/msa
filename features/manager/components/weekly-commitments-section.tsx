@@ -17,6 +17,8 @@ type WeeklyCommitmentsData,
 type WeeklyCommitmentsResult,
 } from '@/features/manager/lib/weekly-commitments'
 import { LoadingRows, SectionCard } from './manager-ui'
+import { CalcTraceProvider, CalcTraceTrigger } from '@/features/calc-trace/components/calc-trace'
+import type { CalcTraceMap } from '@/features/calc-trace/lib/types'
 import {
 CommitmentsHelp,
 LocksHelp,
@@ -822,13 +824,19 @@ export function WeeklyCommitmentsSection({
   const refreshKey = overview?.generatedAt ?? null
   const id = projectId ? encodeURIComponent(projectId) : null
   const controls = useJson<ControlsBody>(id ? `/api/manager/controls?projectId=${id}&unit=weeks` : null, refreshKey)
-  const wwp = useJson<WeeklyCommitmentsResult>(id ? `/api/manager/weekly-commitments?projectId=${id}` : null, refreshKey)
+  const wwp = useJson<WeeklyCommitmentsResult & { traces?: CalcTraceMap }>(
+    id ? `/api/manager/weekly-commitments?projectId=${id}` : null,
+    refreshKey
+  )
+  const traces = wwp.state === 'ok' ? { ...overview?.traces, ...wwp.data.traces } : overview?.traces
 
   return (
+    <CalcTraceProvider traces={traces}>
     <SectionCard
       className={cn('border-2 border-[#1e2a5e] bg-[#eef4fb]', className)}
       title="شاخص تعهدات هفتگی (PPC)"
       icon={<CalendarCheck className="h-4 w-4" aria-hidden />}
+      action={<CalcTraceTrigger metrics={['home.ppc', 'home.spi_t']} />}
       hint="PPC از برنامهٔ زمان‌بندی و درصدهای گزارش روزانه (تعهد هر هفته = کار برنامه‌شدهٔ آن هفته)، SPI و SPI(t) از موتور کنترل پروژه با واحد هفته محاسبه می‌شوند."
     >
       {!overview ? (
@@ -837,5 +845,6 @@ export function WeeklyCommitmentsSection({
         <WeeklyCommitmentsBody overview={overview} controls={controls} wwp={wwp} />
       )}
     </SectionCard>
+    </CalcTraceProvider>
   )
 }

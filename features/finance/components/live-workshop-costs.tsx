@@ -15,6 +15,8 @@ import type { CostCurvePoint, ItemCostModel } from '@/features/finance/lib/works
 import { WorkshopCostChart } from '@/features/finance/components/workshop-cost-chart'
 import type { EvmBudgetBasis } from '@/features/evm/lib/metrics'
 import { cn } from '@/shared/lib/utils'
+import { CalcTraceProvider, CalcTraceTrigger } from '@/features/calc-trace/components/calc-trace'
+import type { CalcTraceMap } from '@/features/calc-trace/lib/types'
 
 type Payload = {
   asOfIso: string
@@ -31,6 +33,8 @@ type Payload = {
   curve?: CostCurvePoint[]
   items?: ItemCostModel
   budgetBasis?: EvmBudgetBasis
+  /** Calculation ledger; only system admins receive it. */
+  traces?: CalcTraceMap
 }
 
 function groupComma(value: number): string {
@@ -157,20 +161,43 @@ export function LiveWorkshopCosts({
 
   const shareOf = (amount: number) =>
     `${merged.total > 0 ? Math.round((amount / merged.total) * 100) : 0}${fa ? '٪' : '%'}`
+  const traces =
+    merged.traces && merged !== data
+      ? Object.fromEntries(
+          Object.entries(merged.traces).map(([key, trace]) => [
+            key,
+            {
+              ...trace,
+              warnings: [
+                ...trace.warnings,
+                'بالاسری این صفحه از جدول بالاسری ذخیره‌شده در همین مرورگر خوانده شده و با عدد سرور فرق دارد؛ این محاسبه با عدد سرور است.',
+              ],
+            },
+          ])
+        )
+      : merged.traces
 
   return (
+    <CalcTraceProvider traces={traces}>
     <div className="space-y-5">
-      <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950 p-6 text-white shadow-lg">
+      <section className="group overflow-hidden rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-orange-950 p-6 text-white shadow-lg">
         <div className="flex items-center gap-2 text-orange-200">
           <Sparkles className="h-4 w-4" />
           <p className="text-[12px] font-medium">
             {fa ? 'کل هزینه کارگاه تا این لحظه' : 'Workshop cost incurred to date'}
           </p>
+          <CalcTraceTrigger
+            metrics={['accountant.overhead_cumulative', 'accountant.cost_variance', 'accountant.contractor_share']}
+            className="ms-auto text-orange-200 hover:bg-white/10 hover:text-white"
+          />
         </div>
         <p className="mt-3 text-4xl font-bold tabular-nums tracking-tight">{toman(merged.total, fa)}</p>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl bg-white/10 p-3">
-            <p className="text-[11px] text-slate-300">{fa ? 'بالاسری دقیق ماه‌های بسته' : 'Closed overhead'}</p>
+          <div className="group rounded-2xl bg-white/10 p-3">
+            <div className="flex items-start justify-between gap-1">
+              <p className="text-[11px] text-slate-300">{fa ? 'بالاسری دقیق ماه‌های بسته' : 'Closed overhead'}</p>
+              <CalcTraceTrigger metrics={['accountant.overhead_cumulative']} className="text-slate-300 hover:bg-white/10 hover:text-white" />
+            </div>
             <p className="mt-1 text-lg font-semibold tabular-nums">{toman(merged.overheadExact, fa)}</p>
           </div>
           <div className="rounded-2xl bg-white/10 p-3">
@@ -180,8 +207,11 @@ export function LiveWorkshopCosts({
             </div>
             <p className="mt-1 text-lg font-semibold tabular-nums">{toman(merged.overheadEstimated, fa)}</p>
           </div>
-          <div className="rounded-2xl bg-white/10 p-3">
-            <p className="text-[11px] text-teal-200">{fa ? 'سهم پیمانکاران' : 'Contractor share'}</p>
+          <div className="group rounded-2xl bg-white/10 p-3">
+            <div className="flex items-start justify-between gap-1">
+              <p className="text-[11px] text-teal-200">{fa ? 'سهم پیمانکاران' : 'Contractor share'}</p>
+              <CalcTraceTrigger metrics={['accountant.contractor_share']} className="text-teal-200 hover:bg-white/10 hover:text-white" />
+            </div>
             <p className="mt-1 text-lg font-semibold tabular-nums">{toman(merged.contractor, fa)}</p>
             <p className="mt-1 text-[11px] text-slate-300">{shareOf(merged.contractor)}</p>
           </div>
@@ -194,11 +224,12 @@ export function LiveWorkshopCosts({
       </section>
 
       {merged.curve ? (
-        <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-          <div className="border-b bg-slate-50 px-5 py-4">
+        <section className="group overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between gap-2 border-b bg-slate-50 px-5 py-4">
             <h3 className="text-base font-semibold text-slate-900">
               {fa ? 'نمودار هزینهٔ کارگاه نسبت به زمان' : 'Workshop cost over time'}
             </h3>
+            <CalcTraceTrigger metrics={['accountant.cost_variance']} />
           </div>
           <WorkshopCostChart points={merged.curve} budgetBasis={merged.budgetBasis} />
         </section>
@@ -261,6 +292,7 @@ export function LiveWorkshopCosts({
 
       {merged.items ? <ItemCostTable items={merged.items} fa={fa} /> : null}
     </div>
+    </CalcTraceProvider>
   )
 }
 

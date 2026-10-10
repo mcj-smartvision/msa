@@ -51,6 +51,9 @@ withoutDay,
 } from '@/features/supervisor/lib/weekly-activity-progress'
 import type { ScheduleTreeNode, WorkshopPackageNode } from '@/features/workshop/lib/types'
 import { cn } from '@/shared/lib/utils'
+import { CalcTraceProvider, CalcTraceTrigger } from '@/features/calc-trace/components/calc-trace'
+import type { CalcTraceMap } from '@/features/calc-trace/lib/types'
+import { activityProgressTrace, weightRollupTrace } from '@/features/supervisor/lib/supervisor-traces'
 
 const WEEKDAY_SHORT = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج']
 const NAME_COL = 280
@@ -81,7 +84,7 @@ type Tree = { nodes: ScheduleTreeNode[]; orphanPackages: WorkshopPackageNode[] }
  * Every daily-report percent of the project on one sheet: the latest schedule's rows against each
  * calendar day from the first to the last project day. A cell is that day's progress and can be edited.
  */
-export function DailyReportBackgroundPanel({ projectId }: { projectId: string | null }) {
+export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { projectId: string | null; isAdmin?: boolean }) {
   const { calendar } = useScheduleCalendar()
   const today = todayIso()
   const [tree, setTree] = useState<Tree | null>(null)
@@ -227,7 +230,7 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
    * live cumulative of each reported activity (drafts included), like the schedule editor.
    * The stored percent of a heading is not refreshed when its children are reported.
    */
-  const headingPercents = useMemo(() => {
+  const { headingPercents, headingExplanations } = useMemo(() => {
     const scheduleRows = rows.filter((r) => !r.key.startsWith('package:') && r.wbs)
     const rollup = applyWeightedParentRollup(
       scheduleRows.map((r) => {
@@ -241,8 +244,34 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
     )
     const out = new Map<string, number>()
     for (const key of rollup.parentIds) out.set(key, rollup.percents[key]!)
-    return out
+    return { headingPercents: out, headingExplanations: rollup.explanations }
   }, [rows, cellsByActivity, baselineOf])
+
+  /** «موشن حساب» of each row, built from the data already on screen; only for system admins. */
+  const traces = useMemo<CalcTraceMap | null>(() => {
+    if (!isAdmin) return null
+    const out: CalcTraceMap = {}
+    const draftKeys = Object.keys(drafts)
+    for (const row of rows) {
+      if (row.activityId) {
+        const cells = cellsByActivity.get(row.activityId)
+        const trace = activityProgressTrace({
+          row: { ...row, activityId: row.activityId },
+          days: cells ? [...cells.values()] : [],
+          baseline: baselineOf.get(row.activityId) ?? 0,
+          plannedToday: plannedByActivity.get(row.activityId)?.get(today)?.cumulative ?? null,
+          unsavedDrafts: draftKeys.filter((k) => k.startsWith(`${row.activityId}@`)).length,
+        })
+        out[trace.metric] = trace
+      } else {
+        const explanation = headingExplanations.get(row.key)
+        if (!explanation) continue
+        const trace = weightRollupTrace(row, explanation)
+        out[trace.metric] = trace
+      }
+    }
+    return out
+  }, [isAdmin, rows, cellsByActivity, baselineOf, plannedByActivity, today, drafts, headingExplanations])
 
   useEffect(() => {
     if (scrolledToToday.current || days.length === 0) return
@@ -353,6 +382,7 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
               ? 'پیشرفت نمی‌تواند کاهش پیدا کند — اگر عدد قبلی اشتباه بوده، این اصلاح ثبت می‌شود'
               : null
   return (
+    <CalcTraceProvider traces={traces ?? undefined}>
     <div className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
@@ -505,7 +535,14 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
                         : undefined
                     }
                   >
-                    {total == null ? '' : `${faNum(Math.round(total * 100) / 100)}٪`}
+                    <div className="flex items-center justify-center gap-0.5">
+                      {total == null ? '' : `${faNum(Math.round(total * 100) / 100)}٪`}
+                      {traces ? (
+                        <CalcTraceTrigger
+                          metrics={[row.activityId ? `supervisor.activity:${row.activityId}` : `supervisor.weights:${row.key}`]}
+                        />
+                      ) : null}
+                    </div>
                   </td>
                   {days.map((d) => {
                     const wd = siteWeekday(d)
@@ -637,5 +674,6 @@ export function DailyReportBackgroundPanel({ projectId }: { projectId: string | 
         <span>ردیف‌های خاکستری سرشاخه‌اند و درصدشان از زیرشاخه‌ها حساب می‌شود.</span>
       </div>
     </div>
+    </CalcTraceProvider>
   )
 }

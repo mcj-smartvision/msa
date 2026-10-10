@@ -79,7 +79,7 @@ export function SectionCard({
       data-tour={tourId}
       aria-labelledby={headingId}
       className={cn(
-        'flex flex-col rounded-2xl border border-slate-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md',
+        'group/card flex flex-col rounded-2xl border border-slate-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md',
         className
       )}
     >

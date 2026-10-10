@@ -28,6 +28,8 @@ type DailyScheduleRow,
 } from '@/features/manager/lib/daily-performance'
 import { isLeafTask, taskBaselineDates } from '@/features/schedule/lib/leaf-activities'
 import { normalizeScheduleWeightPercent } from '@/features/schedule/lib/weighted-progress'
+import type { CalcTraceMap } from '@/features/calc-trace/lib/types'
+import { buildHomeTraces, latestRecordByActivity, progressRowsFromSnapshot } from '@/features/manager/lib/manager-traces'
 import type {
 ManagerAlert,
 ManagerBlockers,
@@ -152,7 +154,8 @@ export async function loadManagerOverview(
   supabase: SupabaseClient,
   service: SupabaseClient,
   projectId: string,
-  today: string
+  today: string,
+  options: { withTraces?: boolean } = {}
 ): Promise<ManagerOverview> {
   const now = Date.now()
 
@@ -529,6 +532,7 @@ export async function loadManagerOverview(
   /* ----------------------------------------------------------- Curve */
 
   let progress: SectionResult<ManagerCurve>
+  const records: ProgressRecordRow[] = []
   if (!evmSnapshot || evm.status !== 'ok') {
     progress = evm.status === 'ok' ? { status: 'unavailable', reason: 'شاخص‌های EVM در دسترس نیست.' } : evm
   } else {
@@ -539,7 +543,6 @@ export async function loadManagerOverview(
           snapshotMonth: String(row.snapshot_month).slice(0, 10),
           cumulativePercent: num(row.cumulative_percent) ?? 0,
         }))
-    const records: ProgressRecordRow[] = []
     const pushRecord = (id: unknown, percent: unknown, date: unknown, at: unknown) => {
       const pct = num(percent)
       const created = str(at)
@@ -1086,7 +1089,22 @@ export async function loadManagerOverview(
 
   const project = projectRes.data as Row | null
 
+  let traces: CalcTraceMap | undefined
+  if (options.withTraces && evmSnapshot && evm.status === 'ok') {
+    const latest = latestRecordByActivity(records)
+    traces = buildHomeTraces({
+      evm: evm.data,
+      snapshot: evmSnapshot,
+      curve: progress.status === 'ok' ? progress.data : null,
+      progressRows: progressRowsFromSnapshot(evmSnapshot, (id) => {
+        const r = latest.get(id)
+        return r ? { percent: r.percent, date: r.date } : null
+      }),
+    })
+  }
+
   return {
+    ...(traces ? { traces } : {}),
     project: project
       ? {
           id: String(project.id),

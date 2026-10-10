@@ -425,7 +425,7 @@ export function SiteSupervisorDashboard({
           />
         ) : null}
 
-        {activeSection === 'report-background' ? <DailyReportBackgroundPanel projectId={projectId} /> : null}
+        {activeSection === 'report-background' ? <DailyReportBackgroundPanel projectId={projectId} isAdmin={initialContext.isSystemAdmin} /> : null}
 
         {activeSection === 'holidays' ? <HolidaysPanel /> : null}
 

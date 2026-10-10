@@ -35,6 +35,7 @@ Warehouse,
 import { cn } from '@/shared/lib/utils'
 import { DEFAULT_RAG_THRESHOLDS } from '@/features/evm/lib/rag-status'
 import { CumulativeProgressSheet } from './cumulative-progress-sheet'
+import { CalcTraceTrigger } from '@/features/calc-trace/components/calc-trace'
 import {
 compactToman,
 compactTomanParts,
@@ -894,15 +895,18 @@ export function KpiStrip({
         href={hrefs.evm}
         action={
           evm && projectId ? (
-            <button
-              type="button"
-              onClick={() => setExplainOpen(true)}
-              aria-label="مشاهدهٔ فرآیند محاسبه و فرمول"
-              title="مشاهدهٔ فرآیند محاسبه و فرمول"
-              className="inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-orange-50 hover:text-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
-            >
-              <Calculator className="h-4 w-4" aria-hidden />
-            </button>
+            <span className="inline-flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => setExplainOpen(true)}
+                aria-label="مشاهدهٔ فرآیند محاسبه و فرمول"
+                title="مشاهدهٔ فرآیند محاسبه و فرمول"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-orange-50 hover:text-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
+              >
+                <Calculator className="h-4 w-4" aria-hidden />
+              </button>
+              <CalcTraceTrigger metrics={['home.progress_gap', 'home.pv_curve']} />
+            </span>
           ) : undefined
         }
         hint="پیشرفت فیزیکی تأییدشده (وزنی) در برابر پیشرفت برنامه‌ای تا امروز؛ همان نقطهٔ امروز در نمودار S."
@@ -962,6 +966,7 @@ export function KpiStrip({
       <KpiCard
         title="انحراف زمانی"
         href={hrefs.evm}
+        action={overview?.traces ? <CalcTraceTrigger metrics={['home.spi_t', 'home.sv']} /> : undefined}
         hint="چند روز از برنامه عقب یا جلو هستیم (تاریخی که برنامه به پیشرفت کسب‌شدهٔ امروز می‌رسید) و شاخص SPI. پایان پیش‌بینی = پایان برنامهٔ مبنا به‌علاوهٔ همین انحراف، با این فرض که باقی کار طبق برنامه پیش برود."
         tag={evm?.spi != null ? <StatusTag tone={spiTone} label={`SPI ${faNumber(evm.spi, 2)}`} /> : undefined}
       >
@@ -1027,6 +1032,7 @@ export function KpiStrip({
 
       <KpiCard
         title="انحراف هزینه"
+        action={overview?.traces ? <CalcTraceTrigger metrics={['home.cpi', 'home.cv', 'home.eac', 'home.etc']} /> : undefined}
         hint="CV = EV − AC. منفی یعنی هزینهٔ واقعی بیشتر از ارزش کار انجام‌شده است. EAC = BAC ÷ CPI؛ مصرف بودجه = AC ÷ BAC."
         tag={
           costReady && evm?.cpi != null ? (
