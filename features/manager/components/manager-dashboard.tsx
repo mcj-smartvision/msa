@@ -995,7 +995,10 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
 
               {/* Mobile order: decisions, alerts, pulse first; desktop follows the grid. */}
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:gap-6">
-                <div data-tour="kpis" className="order-4 lg:order-1 lg:col-span-12">
+                <div
+                  data-tour="kpis"
+                  className="order-4 rounded-2xl border-2 border-[#1e2a5e] bg-white p-3 shadow-sm sm:p-4 lg:order-1 lg:col-span-12"
+                >
                   <KpiStrip
                     overview={data}
                     loading={loading}
@@ -1015,7 +1018,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
 
                 <SectionCard
                   tourId="chart"
-                  className="order-5 lg:order-1 lg:col-span-12"
+                  className="order-5 border-2 border-[#1e2a5e] lg:order-1 lg:col-span-12"
                   title="منحنی S پیشرفت پروژه"
                   icon={<LineChartIcon className="h-4 w-4" aria-hidden />}
                   action={<CalcTraceTrigger metrics={['home.pv_curve', 'home.spi_t']} />}
