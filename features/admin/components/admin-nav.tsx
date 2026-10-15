@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useCallback, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
 LayoutDashboard,
 Users,
@@ -13,6 +13,7 @@ AlertCircle,
 ClipboardCheck,
 CalendarRange,
 Briefcase,
+ChevronDown,
 type LucideIcon,
 } from 'lucide-react'
 import { BrandLogo } from '@/shared/components/brand/brand-logo'
@@ -25,6 +26,12 @@ useControlCenterDetailsOptional,
 ControlCenterDataProvider,
 type DetailKey,
 } from '@/features/admin/components/control-center-details-context'
+import {
+groupMembersByRoleDashboard,
+memberWorkspaceHref,
+} from '@/features/admin/lib/role-dashboard-routes'
+import { getPositionLabel } from '@/shared/lib/i18n/position-labels'
+import { isAllProjectsScope, writeProjectCookie } from '@/shared/lib/project/project-cookie'
 
 const NAV_ROW =
   'flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13px] font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -88,9 +95,28 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
   const ctx = useControlCenterDetailsOptional()
   const { locale } = useLocale()
   const fa = locale === 'fa'
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ dashboards: true })
 
   const openDetail = ctx?.openDetail ?? null
   const feeds = ctx?.feeds
+  const allProjects = isAllProjectsScope(ctx?.scope)
+  const scopedMembers = useMemo(() => {
+    const members = ctx?.members ?? []
+    if (allProjects) return members
+    return members.filter((m) => m.project_id === ctx?.scope)
+  }, [allProjects, ctx?.members, ctx?.scope])
+  const scopedProjects = useMemo(() => {
+    const projects = ctx?.projects ?? []
+    if (allProjects) return projects
+    return projects.filter((p) => p.id === ctx?.scope)
+  }, [allProjects, ctx?.projects, ctx?.scope])
+  const projectNames = useMemo(() => new Map((ctx?.projects ?? []).map((p) => [p.id, p.name])), [ctx?.projects])
+  const roleGroups = useMemo(() => groupMembersByRoleDashboard(scopedMembers), [scopedMembers])
+  const multiProject = allProjects && new Set(scopedMembers.map((m) => m.project_id)).size > 1
+
+  const toggleGroup = useCallback((key: string) => {
+    setOpenGroups((current) => ({ ...current, [key]: !current[key] }))
+  }, [])
 
   const selectDetail = useCallback(
     (key: DetailKey) => {
@@ -113,6 +139,9 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
   const linkActive = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname.startsWith(href)
 
+  const dashboardsOpen = openGroups.dashboards ?? pathname.startsWith('/dashboard/')
+  const projectsOpen = openGroups.projects ?? pathname.startsWith('/admin/projects')
+
   return (
     <div className={cn(compact ? 'flex flex-wrap gap-1' : 'space-y-1')}>
       <FlatAction
@@ -127,12 +156,28 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
         icon={Briefcase}
         active={linkActive('/dashboard/manager')}
       />
-      <FlatLink
-        href="/admin/projects"
+      <NavGroup
         label={fa ? 'پروژه‌ها' : 'Projects'}
         icon={FolderKanban}
+        count={scopedProjects.length}
         active={linkActive('/admin/projects')}
-      />
+        open={projectsOpen}
+        onToggle={() => toggleGroup('projects')}
+      >
+        {scopedProjects.map((project) => (
+          <NestedLink
+            key={project.id}
+            href={`/admin/projects/${project.id}`}
+            label={project.name}
+            active={pathname.startsWith(`/admin/projects/${project.id}`)}
+          />
+        ))}
+        <NestedLink
+          href="/admin/projects"
+          label={fa ? 'همه پروژه‌ها' : 'All projects'}
+          active={pathname === '/admin/projects'}
+        />
+      </NavGroup>
       <FlatLink
         href="/dashboard/qc"
         label={fa ? 'کنترل کیفیت' : 'Quality Control'}
@@ -145,13 +190,51 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
         icon={CalendarRange}
         active={linkActive('/dashboard/schedule-intelligence')}
       />
-      <FlatAction
+      <NavGroup
         label={fa ? 'داشبورد اعضا' : 'Member Dashboards'}
         icon={Users}
-        count={ctx?.members.length}
-        active={openDetail === 'dashboards'}
-        onClick={() => selectDetail('dashboards')}
-      />
+        count={scopedMembers.length}
+        active={openDetail === 'dashboards' || roleGroups.some((g) => linkActive(g.href))}
+        open={dashboardsOpen}
+        onToggle={() => toggleGroup('dashboards')}
+      >
+        {roleGroups.map((group) => {
+          const title = getPositionLabel({ key: group.roleKey, title: group.roleKey }, fa ? 'fa' : 'en')
+          const roleActive = linkActive(group.href)
+          return (
+            <div key={group.roleKey} className="space-y-0.5">
+              <NestedLink
+                href={group.href}
+                label={title}
+                active={roleActive}
+                count={group.members.length}
+              />
+              {group.members.map((member) => {
+                const projectName = multiProject ? projectNames.get(member.project_id) : undefined
+                return (
+                  <NestedLink
+                    key={member.id}
+                    href={memberWorkspaceHref(member)}
+                    label={member.full_name || member.email}
+                    hint={projectName}
+                    active={false}
+                    indent
+                    muted={!member.is_active}
+                    onNavigate={() => writeProjectCookie(member.project_id)}
+                  />
+                )
+              })}
+            </div>
+          )
+        })}
+        <button
+          type="button"
+          onClick={() => selectDetail('dashboards')}
+          className={cn(NESTED_ROW, openDetail === 'dashboards' && 'bg-slate-100 font-semibold text-slate-900')}
+        >
+          {fa ? 'فهرست کامل اعضا' : 'Full member list'}
+        </button>
+      </NavGroup>
       <FlatAction
         label={fa ? 'ساپورت و پیام‌ها' : 'Support & Messages'}
         icon={MessageSquare}
@@ -176,6 +259,9 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
     </div>
   )
 }
+
+const NESTED_ROW =
+  'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-[12px] text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900'
 
 function FlatLink({
   href,
@@ -215,21 +301,102 @@ function FlatAction({
     <button type="button" onClick={onClick} className={cn(NAV_ROW, active && NAV_ROW_ACTIVE)}>
       <Icon className="h-4 w-4 shrink-0 opacity-90" />
       <span className="min-w-0 flex-1 truncate text-start">{label}</span>
-      {typeof count === 'number' ? (
-        <span
-          className={cn(
-            'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums',
-            active
-              ? 'bg-white/20 text-inherit'
-              : warn
-                ? 'bg-amber-100 text-amber-800'
-                : 'bg-slate-100 text-slate-700'
-          )}
-        >
-          {count}
-        </span>
-      ) : null}
+      <NavCount count={count} active={active} warn={warn} />
     </button>
+  )
+}
+
+function NavCount({ count, active, warn }: { count?: number; active?: boolean; warn?: boolean }) {
+  if (typeof count !== 'number') return null
+  return (
+    <span
+      className={cn(
+        'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums',
+        active
+          ? 'bg-white/20 text-inherit'
+          : warn
+            ? 'bg-amber-100 text-amber-800'
+            : 'bg-slate-100 text-slate-700'
+      )}
+    >
+      {count.toLocaleString('fa-IR-u-nu-latn')}
+    </span>
+  )
+}
+
+function NavGroup({
+  label,
+  icon: Icon,
+  count,
+  active,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string
+  icon: LucideIcon
+  count?: number
+  active?: boolean
+  open: boolean
+  onToggle: () => void
+  children: ReactNode
+}) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className={cn(NAV_ROW, active && NAV_ROW_ACTIVE)}
+      >
+        <Icon className="h-4 w-4 shrink-0 opacity-90" />
+        <span className="min-w-0 flex-1 truncate text-start">{label}</span>
+        <NavCount count={count} active={active} />
+        <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 opacity-80 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open ? (
+        <div className="ms-3 mt-0.5 space-y-0.5 border-s border-slate-200 ps-2">{children}</div>
+      ) : null}
+    </div>
+  )
+}
+
+function NestedLink({
+  href,
+  label,
+  hint,
+  active,
+  count,
+  indent,
+  muted,
+  onNavigate,
+}: {
+  href: string
+  label: string
+  hint?: string
+  active?: boolean
+  count?: number
+  indent?: boolean
+  muted?: boolean
+  onNavigate?: () => void
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className={cn(
+        NESTED_ROW,
+        indent && 'ps-4 text-[11px]',
+        active && 'bg-slate-100 font-semibold text-slate-900',
+        muted && 'opacity-55'
+      )}
+    >
+      <span className="min-w-0 flex-1 truncate">
+        {label}
+        {hint ? <span className="text-slate-400"> · {hint}</span> : null}
+      </span>
+      <NavCount count={count} />
+    </Link>
   )
 }
 

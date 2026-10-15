@@ -6,24 +6,13 @@ import { Briefcase, ChevronLeft } from 'lucide-react'
 import {
 getRoleDashboardRoute,
 memberWorkspaceHref,
+ROLE_DASHBOARD_ORDER,
 ROLE_DASHBOARD_ROUTES,
 } from '@/features/admin/lib/role-dashboard-routes'
 import { writeProjectCookie } from '@/shared/lib/project/project-cookie'
 import { getPositionLabel } from '@/shared/lib/i18n/position-labels'
 import type { ProjectMember } from '@/shared/types/admin'
 import { cn } from '@/shared/lib/utils'
-
-const ROLE_ORDER = [
-  'project_manager',
-  'site_supervisor',
-  'hse_officer',
-  'technical_office',
-  'security',
-  'storekeeper',
-  'procurement_officer',
-  'qa_qc_inspector',
-  'project_accountant',
-]
 
 type View = 'members' | 'positions'
 
@@ -165,8 +154,8 @@ function PositionList({ members, projectId }: { members: ProjectMember[]; projec
   }
 
   const roles = Object.keys(ROLE_DASHBOARD_ROUTES).sort((a, b) => {
-    const ia = ROLE_ORDER.indexOf(a)
-    const ib = ROLE_ORDER.indexOf(b)
+    const ia = ROLE_DASHBOARD_ORDER.indexOf(a as (typeof ROLE_DASHBOARD_ORDER)[number])
+    const ib = ROLE_DASHBOARD_ORDER.indexOf(b as (typeof ROLE_DASHBOARD_ORDER)[number])
     return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib)
   })
 
