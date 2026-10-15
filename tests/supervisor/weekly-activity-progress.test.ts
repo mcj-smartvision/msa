@@ -141,7 +141,7 @@ describe('reportedDays / calendarDays', () => {
 
   it('hides copied cumulatives and skips stamping a new day with the same percent', () => {
     const days = reportedDays('a1', [e('2026-09-21', 50), e('2026-09-23', 50), e('2026-10-01', 61)])
-    expect(isDistinctProgressPoint({ date: '2026-09-20', daily: 0, cumulative: 0 }, undefined)).toBe(false)
+    expect(isDistinctProgressPoint({ cumulative: 0 }, undefined)).toBe(false)
     expect(isDistinctProgressPoint(days[0]!, undefined)).toBe(true)
     expect(isDistinctProgressPoint(days[1]!, days[0])).toBe(false)
     expect(isDistinctProgressPoint(days[2]!, days[1])).toBe(true)

@@ -57,9 +57,8 @@ export async function upsertDailyReportMeta(
     ai_parsed: aiParsed,
   }
 
-  const { error: insertError } = await supabase.from('daily_reports').insert(
-    weather ? { ...insertBase, weather_json: weather } : insertBase
-  )
+  const insertRow = weather ? { ...insertBase, weather_json: weather } : insertBase
+  const { error: insertError } = await supabase.from('daily_reports').insert(insertRow as never)
 
   if (!insertError) return
 
@@ -100,7 +99,7 @@ async function patchDailyReport(
     ai_parsed: patch.aiParsed,
     ...(patch.weather ? { weather_json: patch.weather } : {}),
   }
-  const { error } = await supabase.from('daily_reports').update(withWeather).eq('id', id)
+  const { error } = await supabase.from('daily_reports').update(withWeather as never).eq('id', id)
   if (!error) return
   if (patch.weather && WEATHER_COLUMN_MISSING.test(error.message)) {
     const { error: fallback } = await supabase
