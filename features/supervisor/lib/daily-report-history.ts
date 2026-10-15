@@ -1,5 +1,6 @@
 import type { DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
 import { formatScheduleDate } from '@/features/schedule/lib/dates'
+import { stripWeatherLine } from '@/features/weather/lib/report-stamp'
 
 export type DayReport = {
   reportDate: string
@@ -82,7 +83,7 @@ export function formatReportTitle(
 }
 
 export function extractAiHighlightNote(note: string): string {
-  const trimmed = note.trim()
+  const trimmed = stripWeatherLine(note)
   if (!trimmed) return ''
 
   const sections = parseOrganizedNote(trimmed)

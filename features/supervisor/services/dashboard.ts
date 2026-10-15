@@ -8,6 +8,8 @@ DailyReportInput,
 import type { SiteDailyReport } from '@/shared/types/schedule'
 import { generateAiActionText, generateDailyReportSummary } from '@/features/supervisor/lib/ai-generator'
 import { refreshScheduleAfterProgress } from '@/features/schedule/lib/refresh-after-progress'
+import { upsertDailyReportMeta } from '@/features/supervisor/lib/persist-daily-report-meta'
+import { ensureWeatherLine, extractWeatherLine } from '@/features/weather/lib/report-stamp'
 
 export async function fetchSupervisorAiDrafts(
   supabase: SupabaseClient,
@@ -140,9 +142,12 @@ export async function submitQuickReport(
     (a) =>
       `Task ${a.scheduleActivityId}: ${a.actualStatus} ${a.actualProgressPercent}% quality=${a.qualityStatus}`
   )
-  const newRawChunk = [input.supervisorNote ?? '', ...activityLines].filter(Boolean).join('\n')
+  const supervisorNote = input.supervisorNote ?? ''
+  const weatherLine = extractWeatherLine(supervisorNote) ?? ''
+  const newRawChunk = [supervisorNote, ...activityLines].filter(Boolean).join('\n')
 
   const summaryText = await generateDailyReportSummary(input, locale)
+  const weatherParsed = input.weather ? { weather: input.weather } : weatherLine ? { weather: weatherLine } : {}
 
   // One report per project + day + supervisor (daily_reports_unique_day)
   const { data: existing, error: existingError } = await supabase
@@ -163,14 +168,16 @@ export async function submitQuickReport(
   if (existing) {
     reusedExisting = true
     const prevRaw = String(existing.raw_text ?? '').trim()
-    const mergedRaw = [prevRaw, newRawChunk].filter(Boolean).join('\n\n')
+    const mergedRaw = weatherLine
+      ? ensureWeatherLine([prevRaw, newRawChunk].filter(Boolean).join('\n\n'), weatherLine)
+      : [prevRaw, newRawChunk].filter(Boolean).join('\n\n')
     const { data: updated, error: updateError } = await supabase
       .from('daily_reports')
       .update({
         raw_text: mergedRaw,
         summary_text: summaryText,
         ai_status: 'draft_by_ai',
-        ai_parsed: { summary: summaryText, tasks: [], issues: [], risks: [], materials: [] },
+        ai_parsed: { summary: summaryText, tasks: [], issues: [], risks: [], materials: [], ...weatherParsed },
       })
       .eq('id', existing.id)
       .select()
@@ -188,7 +195,7 @@ export async function submitQuickReport(
         raw_text: newRawChunk,
         summary_text: summaryText,
         ai_status: 'draft_by_ai',
-        ai_parsed: { summary: summaryText, tasks: [], issues: [], risks: [], materials: [] },
+        ai_parsed: { summary: summaryText, tasks: [], issues: [], risks: [], materials: [], ...weatherParsed },
       })
       .select()
       .single()
@@ -205,14 +212,16 @@ export async function submitQuickReport(
           .maybeSingle()
         if (!raced) throw new Error(reportError.message)
         const prevRaw = String(raced.raw_text ?? '').trim()
-        const mergedRaw = [prevRaw, newRawChunk].filter(Boolean).join('\n\n')
+        const mergedRaw = weatherLine
+          ? ensureWeatherLine([prevRaw, newRawChunk].filter(Boolean).join('\n\n'), weatherLine)
+          : [prevRaw, newRawChunk].filter(Boolean).join('\n\n')
         const { data: updated, error: updateError } = await supabase
           .from('daily_reports')
           .update({
             raw_text: mergedRaw,
             summary_text: summaryText,
             ai_status: 'draft_by_ai',
-            ai_parsed: { summary: summaryText, tasks: [], issues: [], risks: [], materials: [] },
+            ai_parsed: { summary: summaryText, tasks: [], issues: [], risks: [], materials: [], ...weatherParsed },
           })
           .eq('id', raced.id)
           .select()
@@ -225,6 +234,19 @@ export async function submitQuickReport(
       }
     } else {
       report = inserted as SiteDailyReport
+    }
+  }
+
+  if (input.weather) {
+    try {
+      await upsertDailyReportMeta(supabase, {
+        projectId: input.siteId,
+        supervisorId: input.supervisorId,
+        reportDate: input.date,
+        weather: input.weather,
+      })
+    } catch (error) {
+      console.error('[submitQuickReport] weather snapshot', error)
     }
   }
 

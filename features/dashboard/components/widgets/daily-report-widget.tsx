@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useSupabase } from '@/shared/hooks/use-supabase'
 import {
 analyzeReportImage,
@@ -16,11 +16,19 @@ import { Label } from '@/shared/components/ui/label'
 import { Textarea } from '@/shared/components/ui/textarea'
 import { Progress } from '@/shared/components/ui/progress'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
+import { DailyReportWeatherBanner } from '@/features/weather/components/daily-report-weather'
+import { useWeather } from '@/features/weather/hooks/use-weather'
+import {
+  ensureWeatherLine,
+  formatWeatherReportLine,
+  overlayWeatherAir,
+} from '@/features/weather/lib/report-stamp'
 
 export function DailyReportWidget({ context }: { context: WidgetRenderContext }) {
   const supabase = useSupabase()
   const fileRef = useRef<HTMLInputElement>(null)
   const projectId = context.projectId ?? context.user.projects[0]?.project.id ?? ''
+  const { data: weather } = useWeather(projectId || null)
 
   const [step, setStep] = useState<DailyReportStep>('compose')
   const [description, setDescription] = useState('')
@@ -36,6 +44,12 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
   const [progress, setProgress] = useState(0)
   const [message, setMessage] = useState('')
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!weather) return
+    const line = formatWeatherReportLine(weather)
+    setDescription((prev) => ensureWeatherLine(prev, line))
+  }, [weather])
 
   function handleFileChange(file: File | null) {
     setImageFile(file)
@@ -75,7 +89,13 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
 
       setProgress(55)
       setMessage('در حال تحلیل با هوش مصنوعی...')
-      const result = await analyzeReportImage(supabase, uploaded.publicUrl)
+      const result = await analyzeReportImage(supabase, uploaded.publicUrl, projectId)
+      if (weather) {
+        result.extended_analysis_json = {
+          ...result.extended_analysis_json,
+          weather_air: overlayWeatherAir(result.extended_analysis_json?.weather_air, weather),
+        }
+      }
       setAnalysis(result)
       setActivityType(result.activity_type)
       setWorkforceCount(result.workforce_count)
@@ -103,6 +123,9 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
       } = await supabase.auth.getUser()
       if (!user) throw new Error('احراز هویت نشده‌اید')
 
+      const descriptionWithWeather = weather
+        ? ensureWeatherLine(description.trim(), formatWeatherReportLine(weather))
+        : description.trim()
       const finalizedAnalysis: AIAnalysisResponse = {
         ...analysis,
         activity_type: activityType.trim() || analysis.activity_type,
@@ -110,7 +133,10 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
         extended_analysis_json: {
           ...analysis.extended_analysis_json,
           supervisor_summary_fa: supervisorSummary.trim() || analysis.extended_analysis_json?.supervisor_summary_fa,
-          activity_description_fa: description.trim(),
+          activity_description_fa: descriptionWithWeather,
+          weather_air: weather
+            ? overlayWeatherAir(analysis.extended_analysis_json?.weather_air, weather)
+            : analysis.extended_analysis_json?.weather_air,
         },
       }
 
@@ -121,7 +147,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
           image_url: imageUrl,
           image_storage_path: storagePath,
           created_by: user.id,
-          description: description.trim(),
+          description: descriptionWithWeather,
           is_finalized: true,
         })
         .select()
@@ -156,7 +182,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
 
   function resetForm() {
     setStep('compose')
-    setDescription('')
+    setDescription(weather ? formatWeatherReportLine(weather) : '')
     handleFileChange(null)
     setActivityType('')
     setWorkforceCount(0)
@@ -175,6 +201,11 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
       title="گزارش روزانه"
       description="کار سایت را شرح دهید، عکس پیوست کنید، خروجی هوش مصنوعی را بررسی و سپس نهایی کنید"
     >
+      {projectId ? (
+        <div className="mb-4">
+          <DailyReportWeatherBanner projectId={projectId} compact />
+        </div>
+      ) : null}
       {!projectId ? (
         <p className="text-sm text-muted-foreground">برای ثبت گزارش روزانه باید پروژه اختصاص‌یافته داشته باشید.</p>
       ) : step === 'done' ? (
@@ -187,7 +218,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
       ) : step === 'compose' ? (
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="daily-description">شرح گزارش</Label>
+            <Label htmlFor="daily-description">شرح گزارش (وضعیت هوا خودکار درج می‌شود)</Label>
             <Textarea
               id="daily-description"
               value={description}
@@ -233,6 +264,13 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
           <p className="text-sm text-muted-foreground">
             فیلدهای تولیدشده توسط هوش مصنوعی را ویرایش کنید، سپس گزارش را نهایی کنید.
           </p>
+          {analysis?.extended_analysis_json?.weather_air?.notes_fa ||
+          analysis?.extended_analysis_json?.weather_air?.weather_fa ? (
+            <p className="rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+              {analysis.extended_analysis_json.weather_air?.notes_fa ||
+                analysis.extended_analysis_json.weather_air?.weather_fa}
+            </p>
+          ) : null}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="activity-type">نوع فعالیت</Label>

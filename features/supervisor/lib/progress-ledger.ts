@@ -18,6 +18,8 @@ export interface ProgressLedgerRow {
   /** Approved plan (start_planned / finish_planned) the forecast is compared with. */
   approvedStartDate: string | null
   approvedFinishDate: string | null
+  /** False when dates were missing and must not be copied from the parent (that cloned the same % curve). */
+  hasOwnWindow: boolean
 }
 
 const day = (iso: string | null | undefined) => (iso ? iso.slice(0, 10) : null)
@@ -34,13 +36,12 @@ export function buildProgressLedgerRows(
   const reportable = new Set(activities.map((a) => a.id))
   const rows: ProgressLedgerRow[] = []
 
-  type Window = { start: string | null; finish: string | null }
-  const addPackages = (packages: WorkshopPackageNode[], depth: number, current: Window, approved: Window) => {
+  const addPackages = (packages: WorkshopPackageNode[], depth: number) => {
     for (const pkg of packages) {
       const id = `package:${pkg.id}`
-      const own = day(pkg.startDate) != null
-      const pkgCurrent = { start: day(pkg.startDate) ?? current.start, finish: day(pkg.finishDate) ?? current.finish }
-      const pkgApproved = own ? pkgCurrent : approved
+      const ownStart = day(pkg.startDate)
+      const ownFinish = day(pkg.finishDate)
+      const hasOwnWindow = ownStart != null && ownFinish != null
       rows.push({
         key: id,
         wbs: pkg.wbs,
@@ -49,12 +50,13 @@ export function buildProgressLedgerRows(
         activityId: reportable.has(id) ? id : null,
         schedulePercent: null,
         scheduleWeight: null,
-        startDate: pkgCurrent.start,
-        finishDate: pkgCurrent.finish,
-        approvedStartDate: pkgApproved.start,
-        approvedFinishDate: pkgApproved.finish,
+        startDate: ownStart,
+        finishDate: ownFinish,
+        approvedStartDate: ownStart,
+        approvedFinishDate: ownFinish,
+        hasOwnWindow,
       })
-      addPackages(pkg.children ?? [], depth + 1, pkgCurrent, pkgApproved)
+      addPackages(pkg.children ?? [], depth + 1)
     }
   }
 
@@ -77,8 +79,9 @@ export function buildProgressLedgerRows(
       finishDate: current.finish,
       approvedStartDate: approved.start,
       approvedFinishDate: approved.finish,
+      hasOwnWindow: current.start != null && current.finish != null,
     })
-    addPackages(node.packages ?? [], node.depth + 1, current, approved)
+    addPackages(node.packages ?? [], node.depth + 1)
   }
 
   if (orphanPackages.length) {
@@ -94,8 +97,9 @@ export function buildProgressLedgerRows(
       finishDate: null,
       approvedStartDate: null,
       approvedFinishDate: null,
+      hasOwnWindow: false,
     })
-    addPackages(orphanPackages, 1, { start: null, finish: null }, { start: null, finish: null })
+    addPackages(orphanPackages, 1)
   }
   return rows
 }
@@ -214,4 +218,25 @@ export function ledgerDateRange(rows: ProgressLedgerRow[], extraDates: string[])
   ].sort()
   if (dates.length === 0) return null
   return { from: dates[0]!, to: dates[dates.length - 1]! }
+}
+
+const addCalendarDays = (iso: string, days: number) => {
+  const d = new Date(`${iso}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Default sheet: four weeks back and one week forward from today, unless the user asks for the whole plan. */
+export function clipLedgerDays(
+  days: string[],
+  today: string,
+  showAll: boolean,
+  padBack = 28,
+  padForward = 7
+): string[] {
+  if (showAll || days.length === 0) return days
+  const from = addCalendarDays(today, -padBack)
+  const to = addCalendarDays(today, padForward)
+  const clipped = days.filter((d) => d >= from && d <= to)
+  return clipped.length > 0 ? clipped : days
 }

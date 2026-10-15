@@ -9,8 +9,11 @@ isSuspiciousWeeklyGain,
 progressAxis,
 SUSPICIOUS_WEEKLY_GAIN,
 cumulativeEntry,
-reportedDays,
-historyFromServer,
+  reportedDays,
+  isDistinctProgressPoint,
+  isUnchangedProgressStamp,
+  cumulativeOnOrBefore,
+  historyFromServer,
 latestReport,
 mergeProgressHistory,
 siteWeekStart,
@@ -134,6 +137,18 @@ describe('reportedDays / calendarDays', () => {
 
   it('every calendar day of a range', () => {
     expect(calendarDays('2026-09-29', '2026-10-02')).toEqual(['2026-09-29', '2026-09-30', '2026-10-01', '2026-10-02'])
+  })
+
+  it('hides copied cumulatives and skips stamping a new day with the same percent', () => {
+    const days = reportedDays('a1', [e('2026-09-21', 50), e('2026-09-23', 50), e('2026-10-01', 61)])
+    expect(isDistinctProgressPoint({ date: '2026-09-20', daily: 0, cumulative: 0 }, undefined)).toBe(false)
+    expect(isDistinctProgressPoint(days[0]!, undefined)).toBe(true)
+    expect(isDistinctProgressPoint(days[1]!, days[0])).toBe(false)
+    expect(isDistinctProgressPoint(days[2]!, days[1])).toBe(true)
+    expect(isUnchangedProgressStamp('a1', [e('2026-09-21', 100)], '2026-09-23', 100)).toBe(true)
+    expect(isUnchangedProgressStamp('a1', [e('2026-09-21', 100)], '2026-09-21', 100)).toBe(false)
+    expect(isUnchangedProgressStamp('a1', [e('2026-09-21', 90)], '2026-09-23', 100)).toBe(false)
+    expect(cumulativeOnOrBefore('a1', [e('2026-09-21', 50)], '2026-09-22', 0)).toBe(50)
   })
 })
 

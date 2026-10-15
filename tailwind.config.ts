@@ -32,7 +32,7 @@ const config: Config = {
         elevated: '0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.06)',
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'Vazirmatn', 'Tahoma', 'ui-sans-serif', 'sans-serif'],
+        sans: ['var(--font-sans)', 'Tahoma', 'ui-sans-serif', 'sans-serif'],
       },
     },
   },

@@ -22,6 +22,7 @@ CheckCircle2,
 ShieldAlert,
 TrendingUp,
 } from 'lucide-react'
+import { appFontFamily } from '@/app/app-font'
 import { cn } from '@/shared/lib/utils'
 import { readProjectDailyProgress } from '@/features/supervisor/lib/daily-progress-storage'
 import { useStoreProgress } from '@/features/project-store/use-store-progress'
@@ -45,6 +46,7 @@ ChartJS.register(
   Tooltip,
   Legend
 )
+ChartJS.defaults.font.family = appFontFamily
 
 const SITE_NAVY = 'text-[#1e3a5f]'
 
@@ -180,8 +182,8 @@ function ProgressDonut({ percent }: { percent: number }) {
       legend: { display: false },
       tooltip: {
         rtl: true,
-        titleFont: { family: 'Vazirmatn, Tahoma, sans-serif' },
-        bodyFont: { family: 'Vazirmatn, Tahoma, sans-serif' },
+        titleFont: { family: appFontFamily },
+        bodyFont: { family: appFontFamily },
         callbacks: {
           label: (ctx: { label?: string; parsed: number }) =>
             `${ctx.label ?? ''}: ${faNum(ctx.parsed)}٪`,
@@ -276,14 +278,14 @@ function ProgressSparkline({ series }: { series: ProjectProgressSeriesPoint[] })
         labels: {
           boxWidth: 12,
           boxHeight: 8,
-          font: { family: 'Vazirmatn, Tahoma, sans-serif', size: 12, weight: 'bold' as const },
+          font: { family: appFontFamily, size: 12, weight: 'bold' as const },
           color: '#334155',
         },
       },
       tooltip: {
         rtl: true,
-        titleFont: { family: 'Vazirmatn, Tahoma, sans-serif' },
-        bodyFont: { family: 'Vazirmatn, Tahoma, sans-serif' },
+        titleFont: { family: appFontFamily },
+        bodyFont: { family: appFontFamily },
         callbacks: {
           title: (items: Array<{ dataIndex: number }>) => {
             const idx = items[0]?.dataIndex ?? 0
@@ -321,7 +323,7 @@ function ProgressSparkline({ series }: { series: ProjectProgressSeriesPoint[] })
           autoSkip: true,
           autoSkipPadding: 8,
           font: {
-            family: 'Vazirmatn, Tahoma, sans-serif',
+            family: appFontFamily,
             size: 12,
             weight: 'bold' as const,
           },
@@ -343,7 +345,7 @@ function ProgressSparkline({ series }: { series: ProjectProgressSeriesPoint[] })
           stepSize: 5,
           callback: (v: string | number) => `${faNum(Number(v))}٪`,
           font: {
-            family: 'Vazirmatn, Tahoma, sans-serif',
+            family: appFontFamily,
             size: 12,
             weight: 'bold' as const,
           },

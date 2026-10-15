@@ -4,6 +4,8 @@ import { refreshScheduleAfterProgress } from '@/features/schedule/lib/refresh-af
 import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
 import { parseDailyReportActivityRef } from '@/features/supervisor/lib/daily-report-activities'
 import { persistSupervisorPhysicalProgress } from '@/features/supervisor/lib/persist-daily-progress'
+import { fetchDailyReportMeta, upsertDailyReportMeta } from '@/features/supervisor/lib/persist-daily-report-meta'
+import { parseWeatherSnapshot } from '@/features/weather/lib/report-stamp'
 import { WorkshopError } from '@/features/workshop/lib/domain'
 import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
@@ -53,7 +55,18 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: true })
     const packageUpdates = packageError ? [] : packageRows ?? []
 
-    return NextResponse.json({ updates, packageUpdates })
+    let notes: Record<string, string> = {}
+    let weather: Record<string, unknown> = {}
+    try {
+      const meta = await fetchDailyReportMeta(supabase, projectId)
+      notes = meta.notes
+      weather = meta.weather
+    } catch {
+      notes = {}
+      weather = {}
+    }
+
+    return NextResponse.json({ updates, packageUpdates, notes, weather })
   } catch (error) {
     if (error instanceof WorkshopError) return workshopErrorResponse(error)
     const message = error instanceof Error ? error.message : 'خواندن گزارش روزانه ناموفق بود'
@@ -192,11 +205,13 @@ export async function POST(request: NextRequest) {
         ? body.reportDate
         : new Date().toISOString().slice(0, 10)
     const rawUpdates = Array.isArray(body.updates) ? body.updates : []
+    const note = typeof body.note === 'string' ? body.note : null
+    const weather = parseWeatherSnapshot(body.weather)
 
     if (!projectId) {
       return NextResponse.json({ error: 'projectId لازم است' }, { status: 400 })
     }
-    if (rawUpdates.length === 0) {
+    if (rawUpdates.length === 0 && !note && !weather) {
       return NextResponse.json({ error: 'updates خالی است' }, { status: 400 })
     }
 
@@ -210,12 +225,19 @@ export async function POST(request: NextRequest) {
       reportDate,
     }))
 
-    const result = await persistSupervisorPhysicalProgress(
-      supabase,
-      projectId,
-      user.id,
-      updates
-    )
+    const result = await persistSupervisorPhysicalProgress(supabase, projectId, user.id, updates)
+
+    try {
+      await upsertDailyReportMeta(supabase, {
+        projectId,
+        supervisorId: user.id,
+        reportDate,
+        note,
+        weather,
+      })
+    } catch (metaError) {
+      console.error('[supervisor/daily-progress] weather snapshot', metaError)
+    }
 
     return NextResponse.json({
       ok: true,

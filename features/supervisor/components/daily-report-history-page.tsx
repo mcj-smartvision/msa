@@ -9,6 +9,7 @@ import {
 AlertTriangle,
 ArrowRight,
 CalendarCheck,
+CloudSun,
 Filter,
 MessageSquareText,
 Search,
@@ -27,6 +28,8 @@ progressDeltaLabel,
 REPORT_PROGRESS_BAR_COLORS,
 } from '@/features/supervisor/lib/daily-report-history'
 import { readProjectDailyProgress } from '@/features/supervisor/lib/daily-progress-storage'
+import { ensureWeatherLine, extractWeatherLine, parseWeatherSnapshot } from '@/features/weather/lib/report-stamp'
+import type { DailyWeatherSnapshot } from '@/features/weather/lib/types'
 import { useStoreProgress } from '@/features/project-store/use-store-progress'
 import {
 buildDailyReportActivitiesFromTree,
@@ -119,6 +122,7 @@ export function DailyReportHistoryPage() {
   const [loading, setLoading] = useState(true)
   const [entries, setEntries] = useState<DailyProgressEntry[]>([])
   const [notesByDate, setNotesByDate] = useState<Record<string, string>>({})
+  const [weatherByDate, setWeatherByDate] = useState<Record<string, DailyWeatherSnapshot>>({})
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [monthFilter, setMonthFilter] = useState('')
@@ -160,6 +164,7 @@ export function DailyReportHistoryPage() {
       setActivities([])
       setEntries([])
       setNotesByDate({})
+      setWeatherByDate({})
       setLoading(false)
       return
     }
@@ -184,8 +189,23 @@ export function DailyReportHistoryPage() {
       const progressJson = await progressRes.json().catch(() => ({}))
       if (progressRes.ok) {
         const remoteNotes =
-          progressJson.notes && typeof progressJson.notes === 'object' ? progressJson.notes : {}
-        setNotesByDate({ ...stored.notesByDate, ...remoteNotes })
+          progressJson.notes && typeof progressJson.notes === 'object'
+            ? (progressJson.notes as Record<string, string>)
+            : {}
+        const remoteWeather =
+          progressJson.weather && typeof progressJson.weather === 'object'
+            ? (progressJson.weather as Record<string, unknown>)
+            : {}
+        const parsedWeather: Record<string, DailyWeatherSnapshot> = {}
+        const notesWithWeather = { ...stored.notesByDate, ...remoteNotes }
+        for (const [date, value] of Object.entries(remoteWeather)) {
+          const snap = parseWeatherSnapshot(value)
+          if (!snap) continue
+          parsedWeather[date] = snap
+          notesWithWeather[date] = ensureWeatherLine(notesWithWeather[date] ?? '', snap.lineFa)
+        }
+        setWeatherByDate(parsedWeather)
+        setNotesByDate(notesWithWeather)
       }
     } finally {
       setLoading(false)
@@ -328,6 +348,7 @@ export function DailyReportHistoryPage() {
               )
               const title = formatReportTitle(day.reportDate, calendar)
               const highlightNote = extractAiHighlightNote(day.note)
+              const weatherNote = weatherByDate[day.reportDate]?.lineFa ?? extractWeatherLine(day.note)
               const sortedEntries = [...day.entries].sort((a, b) => {
                 const aw = activityById.get(a.activityId)?.wbs ?? ''
                 const bw = activityById.get(b.activityId)?.wbs ?? ''
@@ -360,6 +381,13 @@ export function DailyReportHistoryPage() {
                       {faNum(day.entries.length)} آیتم گزارش‌شده
                     </span>
                   </div>
+
+                  {weatherNote ? (
+                    <div className="mx-4 mt-3 flex items-start gap-2 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+                      <CloudSun className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                      <p className="leading-relaxed">{weatherNote}</p>
+                    </div>
+                  ) : null}
 
                   <div className="px-4 pt-2 pb-1">
                     {sortedEntries.map((entry, idx) => {

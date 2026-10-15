@@ -25,15 +25,19 @@ function decodeEnvFile(raw: Buffer): string {
 }
 
 function fromDotEnvFile(): string {
-  for (const file of ['.env.local', '.env']) {
-    const path = join(process.cwd(), file)
-    if (!existsSync(path)) continue
-    const text = decodeEnvFile(readFileSync(path))
-    for (const name of KEY_NAMES) {
-      const match = text.match(new RegExp(`^${name}=([^\\r\\n]+)`, 'm'))
-      const value = match?.[1]?.trim().replace(/^['"]|['"]$/g, '')
-      if (value) return value
+  try {
+    for (const file of ['.env.local', '.env']) {
+      const path = join(process.cwd(), file)
+      if (!existsSync(path)) continue
+      const text = decodeEnvFile(readFileSync(path))
+      for (const name of KEY_NAMES) {
+        const match = text.match(new RegExp(`^${name}=([^\\r\\n]+)`, 'm'))
+        const value = match?.[1]?.trim().replace(/^['"]|['"]$/g, '')
+        if (value) return value
+      }
     }
+  } catch {
+    return ''
   }
   return ''
 }

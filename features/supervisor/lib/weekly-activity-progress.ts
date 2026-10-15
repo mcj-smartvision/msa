@@ -161,6 +161,40 @@ export interface ReportedDayProgress {
   cumulative: number
 }
 
+/** True when this day's cumulative is new information, not a copy of the previous report. */
+export function isDistinctProgressPoint(
+  day: Pick<ReportedDayProgress, 'cumulative'>,
+  previous: Pick<ReportedDayProgress, 'cumulative'> | undefined
+): boolean {
+  if (!previous) return round2(day.cumulative) !== 0
+  return round2(day.cumulative) !== round2(previous.cumulative)
+}
+
+/** Last known cumulative on or before `date` (reports, else the schedule percent if it is > 0). */
+export function cumulativeOnOrBefore(
+  activityId: string,
+  entries: DailyProgressEntry[],
+  date: string,
+  baselinePercent = 0
+): number | null {
+  const pool = activityEntries(activityId, entries)
+  const hit = [...pool].reverse().find((e) => e.reportDate <= date)
+  if (hit) return hit.percentComplete
+  return baselinePercent > 0 ? baselinePercent : null
+}
+
+/** Skip stamping a new calendar day with the same cumulative already stored on an earlier day. */
+export function isUnchangedProgressStamp(
+  activityId: string,
+  entries: DailyProgressEntry[],
+  date: string,
+  percent: number
+): boolean {
+  const last = latestReport(activityId, entries)
+  if (!last || last.reportDate === date) return false
+  return round2(last.percentComplete) === round2(percent)
+}
+
 /** Every reported day of one activity, oldest first, with the progress gained that day. */
 export function reportedDays(activityId: string, entries: DailyProgressEntry[], baselinePercent = 0): ReportedDayProgress[] {
   const pool = activityEntries(activityId, entries)

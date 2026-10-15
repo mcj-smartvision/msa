@@ -33,12 +33,13 @@ export async function uploadReportImage(
 
 export async function analyzeReportImage(
   _supabase: SupabaseClient,
-  imageUrl: string
+  imageUrl: string,
+  projectId?: string
 ): Promise<AIAnalysisResponse> {
   const response = await fetch('/api/analyze-report', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageUrl }),
+    body: JSON.stringify({ imageUrl, projectId }),
   })
 
   const data = await response.json()

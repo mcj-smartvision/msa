@@ -45,6 +45,9 @@ import type { ParsedDailyReportVoice } from '@/features/supervisor/lib/parse-dai
 import { VoiceToTextButton } from '@/shared/components/common/voice-to-text-button'
 import { postDailyProgress } from '@/features/supervisor/lib/daily-progress-sync'
 import { cn } from '@/shared/lib/utils'
+import { DailyReportWeatherBanner } from '@/features/weather/components/daily-report-weather'
+import { useWeather } from '@/features/weather/hooks/use-weather'
+import { ensureWeatherLine, extractWeatherLine, formatWeatherReportLine, weatherSnapshotFromPayload } from '@/features/weather/lib/report-stamp'
 
 function faNum(n: number): string {
   return n.toLocaleString('fa-IR-u-nu-latn')
@@ -919,6 +922,7 @@ export function DailyReportPanel({
   projectName?: string
 }) {
   useProjectStoreSync(projectId)
+  const { data: weather } = useWeather(projectId)
   const reportDate = useProjectStore((s) => s.today)
   const { calendar } = useScheduleCalendar()
   const todayHeading = formatTodayHeading(calendar, reportDate)
@@ -961,6 +965,16 @@ export function DailyReportPanel({
     setNote(stored.notesByDate[reportDate] ?? '')
     setHydrated(true)
   }, [projectId, reportDate])
+
+  useEffect(() => {
+    if (!hydrated || !weather) return
+    const line = formatWeatherReportLine(weather)
+    setNote((prev) => {
+      const existing = extractWeatherLine(prev)
+      if (existing === line) return prev
+      return ensureWeatherLine(prev, line)
+    })
+  }, [hydrated, weather, reportDate])
 
   const eligible = useMemo(
     () => activitiesEligibleForDailyReport(activities, history, reportDate),
@@ -1063,11 +1077,18 @@ export function DailyReportPanel({
     setFormValues(initial)
   }, [hydrated, eligible, history, reportDate])
 
+  function weatherByDateFor(date: string) {
+    return weather ? { [date]: weatherSnapshotFromPayload(weather, date) } : undefined
+  }
+
   /** Saves through the store (this browser's copy, then the database); a failed upload keeps the local copy. */
   async function saveReports(reports: Array<{ taskId: string; dateKey: string; progress: number }>, nextNotes?: Record<string, string>) {
     if (nextNotes) setNotesByDate(nextNotes)
     try {
-      await useProjectStore.getState().saveDailyReports(reports, nextNotes ? { notesByDate: nextNotes } : undefined)
+      await useProjectStore.getState().saveDailyReports(reports, {
+        notesByDate: nextNotes,
+        weatherByDate: weatherByDateFor(reportDate),
+      })
       setSaveError(null)
     } catch (error) {
       console.error(error)
@@ -1117,11 +1138,19 @@ export function DailyReportPanel({
     setSavingActivityId(activityId)
     setSavedActivityId(null)
 
-    await saveReports([{ taskId: activityId, dateKey: date, progress: percent }])
+    const nextNotes = date === reportDate ? notesWithWeather(note.trim()) : undefined
+    if (nextNotes) setNote(nextNotes[reportDate] ?? note)
+    await saveReports([{ taskId: activityId, dateKey: date, progress: percent }], nextNotes)
 
     setSavingActivityId(null)
     setSavedActivityId(activityId)
     window.setTimeout(() => setSavedActivityId(null), 2500)
+  }
+
+  function notesWithWeather(body: string): Record<string, string> {
+    const line = weather ? formatWeatherReportLine(weather) : ''
+    const stamped = line ? ensureWeatherLine(body, line) : body
+    return { ...notesByDate, [reportDate]: stamped }
   }
 
   async function handleSubmit() {
@@ -1134,7 +1163,9 @@ export function DailyReportPanel({
       dateKey: reportDate,
       progress: formValues[a.id] ?? cumulativeBefore(a.id, history, reportDate, a.baselinePercentComplete ?? 0) ?? 0,
     }))
-    await saveReports(reports, { ...notesByDate, [reportDate]: note.trim() })
+    const nextNotes = notesWithWeather(note.trim())
+    setNote(nextNotes[reportDate] ?? note)
+    await saveReports(reports, nextNotes)
 
     setSubmitting(false)
     setSubmitOk(true)
@@ -1180,7 +1211,11 @@ export function DailyReportPanel({
       }
       return next
     })
-    setNote(organizedDraft.trim())
+    setNote((prev) => {
+      const line = extractWeatherLine(prev) ?? (weather ? formatWeatherReportLine(weather) : '')
+      const body = organizedDraft.trim()
+      return line ? ensureWeatherLine(body, line) : body
+    })
     setVoiceParsed(null)
     setOrganizedDraft('')
   }
@@ -1216,6 +1251,9 @@ export function DailyReportPanel({
               <p className="text-lg font-bold text-[#1e3a5f]">{todayHeading}</p>
               <p className="text-xs text-slate-500 tabular-nums mt-0.5">{todayShort}</p>
             </div>
+          </div>
+          <div className="min-w-[16rem] max-w-md flex-1">
+            <DailyReportWeatherBanner projectId={projectId} compact />
           </div>
           <div className="text-right text-sm">
             <p className="text-slate-500">فعالیت قابل گزارش</p>
@@ -1430,7 +1468,7 @@ export function DailyReportPanel({
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Label htmlFor="daily-report-note" className="text-sm font-semibold text-slate-800">
-            یادداشت گزارش روزانه (اختیاری)
+            یادداشت گزارش روزانه (وضعیت هوا خودکار درج می‌شود)
           </Label>
           <VoiceToTextButton
             size="sm"

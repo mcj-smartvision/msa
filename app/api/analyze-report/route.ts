@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/shared/lib/supabase/server'
+import { loadWeather } from '@/features/weather/lib/fetch-weather'
+import { overlayWeatherAir } from '@/features/weather/lib/report-stamp'
 
 const SYSTEM_PROMPT = `You are an expert construction site safety and progress inspector analyzing photos for field supervisors in Iran.
 
@@ -52,7 +55,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'OpenAI API key not configured in .env.local' }, { status: 500 })
   }
 
-  const { imageUrl } = await request.json()
+  const { imageUrl, projectId } = await request.json()
   if (!imageUrl) {
     return NextResponse.json({ error: 'imageUrl is required' }, { status: 400 })
   }
@@ -95,6 +98,17 @@ export async function POST(request: NextRequest) {
     const raw = aiData.choices?.[0]?.message?.content
     const parsed = JSON.parse(raw)
 
+    let weatherAir = parsed.weather_air
+    if (typeof projectId === 'string' && projectId.trim()) {
+      try {
+        const supabase = createClient()
+        const live = await loadWeather(supabase, projectId.trim())
+        weatherAir = overlayWeatherAir(parsed.weather_air, live)
+      } catch {
+        /* keep the photo-based guess if live weather is unavailable */
+      }
+    }
+
     const extended = {
       activity_description_fa: parsed.activity_description_fa,
       work_being_performed_fa: parsed.work_being_performed_fa,
@@ -102,7 +116,7 @@ export async function POST(request: NextRequest) {
       time_of_day: parsed.time_of_day,
       time_of_day_fa: parsed.time_of_day_fa,
       lighting: parsed.lighting,
-      weather_air: parsed.weather_air,
+      weather_air: weatherAir,
       risks_observed_fa: parsed.risks_observed_fa ?? [],
       supervisor_summary_fa: parsed.supervisor_summary_fa,
     }

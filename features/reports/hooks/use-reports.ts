@@ -91,7 +91,7 @@ export function useSubmitReport() {
         const { path, publicUrl } = await uploadReportImage(supabase, file, projectId)
 
         setState({ status: 'analyzing', progress: 55, message: 'تحلیل با AI...', error: null })
-        const analysis = await analyzeReportImage(supabase, publicUrl)
+        const analysis = await analyzeReportImage(supabase, publicUrl, projectId)
 
         setState({ status: 'saving', progress: 85, message: 'ذخیره نتایج...', error: null })
         const saved = await saveReportWithAnalysis(supabase, {

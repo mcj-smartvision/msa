@@ -6,11 +6,13 @@ import { createJSONStorage, devtools, persist } from 'zustand/middleware'
 import type { DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
 import { readProjectDailyProgress, upsertDailyEntries, writeProjectDailyProgress } from '@/features/supervisor/lib/daily-progress-storage'
 import { deleteDailyProgress, postDailyProgress } from '@/features/supervisor/lib/daily-progress-sync'
+import type { DailyWeatherSnapshot } from '@/features/weather/lib/types'
 import {
 checkPercentEntry,
 cumulativeBefore,
 cumulativeEntry,
 entryOn,
+isUnchangedProgressStamp,
 latestReport,
 mergeProgressHistory,
 withLatestReports,
@@ -76,7 +78,7 @@ export interface ProjectStoreState {
    */
   saveDailyReports: (
     reports: Array<{ taskId: string; dateKey: string; progress: number }>,
-    options?: { notesByDate?: Record<string, string> }
+    options?: { notesByDate?: Record<string, string>; weatherByDate?: Record<string, DailyWeatherSnapshot> }
   ) => Promise<void>
   /** Root cause of a missed commitment; the week defaults to the latest week open for evaluation. */
   setWeeklyEvaluation: (taskId: string, rncReason: string, options?: { note?: string; weekStart?: string }) => Promise<void>
@@ -162,12 +164,21 @@ export const useProjectStore = create<ProjectStoreState>()(
 
         const setCell = (taskId: string, dateKey: string, value: number | null, action: string) => {
           if (value != null && checkPercentEntry(value, null).error != null) throw new Error('درصد پیشرفت باید بین 0 و 100 باشد')
-          const saved = get().getSavedCumulative(taskId, dateKey)
+          const history = savedHistory(get())
+          const saved = entryOn(taskId, history, dateKey)?.percentComplete ?? null
           const normalized = value == null ? null : round2(value)
           setDrafts((drafts) => {
             const key = draftKey(taskId, dateKey)
             if (normalized === saved) delete drafts[key]
-            else drafts[key] = normalized
+            else if (
+              normalized != null &&
+              saved == null &&
+              isUnchangedProgressStamp(taskId, history, dateKey, normalized)
+            ) {
+              delete drafts[key]
+            } else {
+              drafts[key] = normalized
+            }
             return drafts
           }, action)
         }
@@ -288,7 +299,24 @@ export const useProjectStore = create<ProjectStoreState>()(
             if (!projectId || state.syncing || count === 0) return { saved: 0 }
             set({ syncing: true, error: null }, false, 'sync/start')
             try {
-              const { preview, changed, removed } = applyDrafts(savedHistory(state), drafts)
+              const history = savedHistory(state)
+              const meaningful: ProgressDrafts = {}
+              for (const [key, value] of Object.entries(drafts)) {
+                const { activityId, date } = parseDraftKey(key)
+                if (value == null) {
+                  meaningful[key] = null
+                  continue
+                }
+                if (isUnchangedProgressStamp(activityId, history, date, value)) continue
+                meaningful[key] = value
+              }
+              if (Object.keys(meaningful).length === 0) {
+                const nextByProject = { ...get().draftsByProject }
+                delete nextByProject[projectId]
+                commit({ draftsByProject: nextByProject }, 'sync/noop')
+                return { saved: 0 }
+              }
+              const { preview, changed, removed } = applyDrafts(history, meaningful)
               const stored = readProjectDailyProgress(projectId)
               let nextLocal = stored.entries
               for (const r of removed) nextLocal = withoutDay(r.activityId, nextLocal, r.reportDate)
@@ -310,7 +338,7 @@ export const useProjectStore = create<ProjectStoreState>()(
               delete nextByProject[projectId]
               commit({ draftsByProject: nextByProject, localEntries: nextLocal, lastSyncedAt: new Date().toISOString() }, 'sync/saved')
               await get().loadProject(projectId, { force: true })
-              return { saved: count }
+              return { saved: Object.keys(meaningful).length }
             } catch (e) {
               set({ error: e instanceof Error ? e.message : 'ذخیره ناموفق بود' }, false, 'sync/error')
               throw e
@@ -329,7 +357,9 @@ export const useProjectStore = create<ProjectStoreState>()(
             set({ syncing: true, error: null }, false, 'report/start')
             try {
               const saved = savedHistory(state)
-              const changed = reports.map((r) => cumulativeEntry(r.taskId, saved, r.dateKey, round2(r.progress)))
+              const changed = reports
+                .map((r) => cumulativeEntry(r.taskId, saved, r.dateKey, round2(r.progress)))
+                .filter((e) => !isUnchangedProgressStamp(e.activityId, saved, e.reportDate, e.percentComplete))
               const stored = readProjectDailyProgress(projectId)
               const nextLocal = upsertDailyEntries(stored.entries, changed)
               writeProjectDailyProgress(projectId, { entries: nextLocal, notesByDate: options?.notesByDate ?? stored.notesByDate })
@@ -343,7 +373,13 @@ export const useProjectStore = create<ProjectStoreState>()(
               commit({ localEntries: nextLocal, draftsByProject: nextByProject }, 'report/savedLocal')
 
               const toPost = withLatestReports(changed, upsertDailyEntries(saved, changed))
-              if (toPost.length > 0) await postDailyProgress(projectId, toPost, toPost.map((r) => r.reportDate))
+              const dates = toPost.map((r) => r.reportDate)
+              if (toPost.length > 0 || options?.notesByDate || options?.weatherByDate) {
+                await postDailyProgress(projectId, toPost, dates, {
+                  notesByDate: options?.notesByDate,
+                  weatherByDate: options?.weatherByDate,
+                })
+              }
               commit({ lastSyncedAt: new Date().toISOString() }, 'report/saved')
               await get().loadProject(projectId, { force: true })
             } catch (e) {

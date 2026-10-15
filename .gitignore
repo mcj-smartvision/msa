@@ -34,3 +34,6 @@ backups/
 .vercel
 install.log
 copy-log.txt
+
+.vercel
+.env*

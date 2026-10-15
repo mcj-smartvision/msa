@@ -136,7 +136,7 @@ function MapGraphics({
               fontSize="3"
               fill="#1e293b"
               fontWeight="600"
-              fontFamily="Vazirmatn, Tahoma, sans-serif"
+              fontFamily="inherit"
             >
               {zone.name.length > 18 ? `${zone.name.slice(0, 16)}…` : zone.name}
             </text>
@@ -194,7 +194,7 @@ function MapGraphics({
               fontSize="5"
               fill="#1e3a5f"
               fontWeight="700"
-              fontFamily="Vazirmatn, Tahoma, sans-serif"
+              fontFamily="inherit"
               paintOrder="stroke"
               stroke="#ffffff"
               strokeWidth="0.5"

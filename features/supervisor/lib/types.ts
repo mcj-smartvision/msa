@@ -1,3 +1,5 @@
+import type { DailyWeatherSnapshot } from '@/features/weather/lib/types'
+
 /** Site Supervisor dashboard domain types */
 
 export type AiStatus = 'draft_by_ai' | 'confirmed_by_user' | 'rejected_by_user'
@@ -157,6 +159,8 @@ export interface DailyReportInput {
   }
   hse: { hasIncident: boolean; description?: string }
   supervisorNote?: string
+  /** Structured weather captured at submit; stored on daily_reports.weather_json. */
+  weather?: DailyWeatherSnapshot
 }
 
 export interface PurchaseRequestPayload {

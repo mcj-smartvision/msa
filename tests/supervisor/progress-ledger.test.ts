@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
 buildProgressLedgerRows,
+clipLedgerDays,
 ledgerDateRange,
 plannedProgressFrom,
 plannedWorkdays,
@@ -66,7 +67,23 @@ describe('buildProgressLedgerRows', () => {
       ['package:p9', 1, null],
     ])
     expect(rows[0]!.schedulePercent).toBe(40)
-    expect(rows[3]).toMatchObject({ startDate: '2026-09-01', finishDate: '2026-10-10' })
+    expect(rows[2]).toMatchObject({ startDate: null, finishDate: '2026-10-10', hasOwnWindow: false })
+    expect(rows[3]).toMatchObject({ startDate: null, finishDate: null, hasOwnWindow: false })
+  })
+
+  it('does not copy a parent date window onto a package that has no dates of its own', () => {
+    const rows = buildProgressLedgerRows(
+      [node('t1', '1', 0, { packages: [pkg('p1', '1.1')] })],
+      [],
+      [activity('package:p1')]
+    )
+    expect(rows[1]).toMatchObject({ key: 'package:p1', startDate: null, finishDate: null, hasOwnWindow: false })
+  })
+
+  it('clips the sheet to weeks around today unless the full range is requested', () => {
+    const days = ['2026-08-01', '2026-10-01', '2026-10-10', '2026-10-20', '2026-12-01']
+    expect(clipLedgerDays(days, '2026-10-10', false)).toEqual(['2026-10-01', '2026-10-10'])
+    expect(clipLedgerDays(days, '2026-10-10', true)).toEqual(days)
   })
 
   it('project range spans the schedule and any later report or today', () => {

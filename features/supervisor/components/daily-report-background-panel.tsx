@@ -17,11 +17,13 @@ import { useProjectStore } from '@/features/project-store/use-project-store'
 import { useProjectStoreSync } from '@/features/project-store/use-project-store-sync'
 import {
 buildProgressLedgerRows,
+clipLedgerDays,
 forecastShift,
 ledgerDateRange,
 segmentedPlannedProgress,
 startDelay,
 type PlannedDay,
+type ProgressLedgerRow,
 } from '@/features/supervisor/lib/progress-ledger'
 import {
 groupWindows,
@@ -31,6 +33,8 @@ import {
 calendarDays,
 checkPercentEntry,
 cumulativeBefore,
+cumulativeOnOrBefore,
+isDistinctProgressPoint,
 mergeProgressHistory,
 reportedDays,
 type ReportedDayProgress,
@@ -48,6 +52,45 @@ const faNum = (n: number) => n.toLocaleString('fa-IR-u-nu-latn')
 const NO_DRAFTS: Record<string, number | null> = {}
 /** 0 = Saturday … 6 = Friday. */
 const siteWeekday = (iso: string) => (new Date(`${iso}T00:00:00Z`).getUTCDay() + 1) % 7
+
+/** Approved schedule window of this row only — never inherited from a parent. */
+function schedulePlanWindow(
+  row: Pick<ProgressLedgerRow, 'hasOwnWindow' | 'approvedStartDate' | 'approvedFinishDate' | 'startDate' | 'finishDate'>
+): { start: string; finish: string } | null {
+  if (!row.hasOwnWindow) return null
+  const start = row.approvedStartDate ?? row.startDate
+  const finish = row.approvedFinishDate ?? row.finishDate
+  if (!start || !finish) return null
+  return { start, finish }
+}
+
+function monthDayLabel(iso: string, calendar: Parameters<typeof formatScheduleDate>[1]) {
+  const parts = formatScheduleDate(iso, calendar).split(/[/-]/)
+  return parts.length === 3 ? `${parts[1]}/${parts[2]}` : parts.join('/')
+}
+
+function PlanBar({ isStart, isFinish }: { isStart: boolean; isFinish: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'pointer-events-none absolute inset-x-0 bottom-0.5 h-1.5 bg-sky-500',
+        isStart && 'right-0.5 rounded-r-sm',
+        isFinish && 'left-0.5 rounded-l-sm'
+      )}
+    />
+  )
+}
+
+function previousPoint(cells: Map<string, ReportedDayProgress> | undefined, date: string): ReportedDayProgress | undefined {
+  if (!cells) return undefined
+  let previous: ReportedDayProgress | undefined
+  for (const point of cells.values()) {
+    if (point.date >= date) break
+    previous = point
+  }
+  return previous
+}
 
 function parseDraft(raw: string): number | null {
   const ascii = raw
@@ -84,6 +127,7 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
   const [editing, setEditing] = useState<{ activityId: string; date: string } | null>(null)
   const [draft, setDraft] = useState('')
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
+  const [showFullRange, setShowFullRange] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const scrolledToToday = useRef(false)
 
@@ -134,7 +178,7 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
   const plannedByActivity = useMemo(() => {
     const out = new Map<string, Map<string, PlannedDay>>()
     for (const row of rows) {
-      if (!row.activityId) continue
+      if (!row.activityId || !row.hasOwnWindow) continue
       const approved = { start: row.approvedStartDate, finish: row.approvedFinishDate }
       out.set(row.activityId, segmentedPlannedProgress(windowSegments(forecastWindows, row.activityId, approved), isWorkday))
     }
@@ -145,8 +189,9 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
   const days = useMemo(() => {
     const reported = preview.filter((e) => e.percentComplete > 0).map((e) => e.reportDate)
     const range = ledgerDateRange(rows, [today, ...reported])
-    return range ? calendarDays(range.from, range.to) : []
-  }, [rows, preview, today])
+    const all = range ? calendarDays(range.from, range.to) : []
+    return clipLedgerDays(all, today, showFullRange)
+  }, [rows, preview, today, showFullRange])
 
   const visibleRows = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -203,6 +248,10 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
   }, [isAdmin, rows, cellsByActivity, baselineOf, plannedByActivity, today, drafts, headingExplanations])
 
   useEffect(() => {
+    scrolledToToday.current = false
+  }, [showFullRange, projectId])
+
+  useEffect(() => {
     if (scrolledToToday.current || days.length === 0) return
     const cell = scrollRef.current?.querySelector('[data-today]')
     if (!cell) return
@@ -222,7 +271,9 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
     const activityId = cell.dataset.act!
     const date = cell.dataset.date!
     if (editing?.activityId === activityId && editing.date === date) return
-    const cumulative = cellsByActivity.get(activityId)?.get(date)?.cumulative
+    const cumulative =
+      cellsByActivity.get(activityId)?.get(date)?.cumulative ??
+      cumulativeOnOrBefore(activityId, preview, date, baselineOf.get(activityId) ?? 0)
     setDraft(cumulative == null ? '' : String(cumulative))
     setEditing({ activityId, date })
   }
@@ -294,13 +345,8 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
         <div className="space-y-1">
           <h2 className="text-base font-bold text-slate-900">بک‌گراند گزارش‌های روزانه</h2>
           <p className="text-xs leading-5 text-slate-500">
-            در هر خانه، عدد بالا درصد پیشرفت تجمعی ثبت‌شده سرپرست تا آن روز است (0 تا 100) و عدد کوچک آبی پایین، پیشرفت
-            اجباری تجمعی طبق برنامه زمانبندی است: از تاریخ شروع فعالیت در برنامه، هر روز کاری (بدون جمعه و تعطیلات ثبت‌شده) 100 تقسیم بر
-            روزهای کاری فعالیت اضافه می‌شود تا تاریخ پایان آن که به 100 می‌رسد. جدول از تاریخ شروع پروژه در برنامه شروع
-            می‌شود و بازهٔ هر فعالیت آبی کم‌رنگ است. ستون «تجمعی» آخرین عدد ثبت‌شده را
-            نشان می‌دهد. خانه‌های تغییرکرده زرد می‌شوند؛ عددی که از روز قبلش کمتر باشد قرمز می‌شود. برای حذف گزارش یک روز،
-            عدد خانه را پاک کنید و Enter بزنید. در پایان «ذخیره تغییرات»
-            را بزنید تا همه با هم در برنامه زمانبندی، نمودارها و گزارش‌ها ثبت شوند.
+            هر خانه فقط روزی را نشان می‌دهد که درصد تجمعی واقعاً عوض شده. نوار آبی بازهٔ همان ردیف در برنامه زمان‌بندی است.
+            روی خانه کلیک کنید، درصد را بگذارید، بعد «ذخیره تغییرات» تا همان عدد در برنامه، گزارش روزانه و نمودار داشبورد بنشیند.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -311,6 +357,15 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
             placeholder="جستجوی WBS یا نام فعالیت"
             className="h-9 w-52 text-sm"
           />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9"
+            onClick={() => setShowFullRange((v) => !v)}
+          >
+            {showFullRange ? 'بازهٔ نزدیک' : 'کل بازهٔ برنامه'}
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -398,6 +453,10 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
                   : `فعالیت هنوز شروع نشده؛ طبق پیش‌بینی ${faNum(delay.days)} روز دیرتر از برنامهٔ مصوب شروع می‌شود`
                 : null
               const dateOf = (iso: string | null) => (iso ? formatScheduleDate(iso, calendar) : '—')
+              const plan = schedulePlanWindow(row)
+              const planDays = plan ? days.filter((d) => d >= plan.start && d <= plan.finish) : []
+              const planVisStart = planDays[0]
+              const planVisEnd = planDays.at(-1)
               return (
                 <tr key={row.key} className="group">
                   <td
@@ -416,11 +475,20 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
                       {row.wbs && !nameHasWbs(row.name, row.wbs) ? (
                         <span className="shrink-0 font-mono text-[10px] text-slate-500">{row.wbs}</span>
                       ) : null}
-                      <span className="truncate">{row.name}</span>
+                      <span className="min-w-0 truncate">{row.name}</span>
+                      {plan ? (
+                        <span
+                          className="mr-auto shrink-0 font-mono text-[9px] tabular-nums text-sky-800"
+                          dir="ltr"
+                        >
+                          {monthDayLabel(plan.start, calendar)}–{monthDayLabel(plan.finish, calendar)}
+                        </span>
+                      ) : null}
                       {shift ? (
                         <span
                           className={cn(
-                            'mr-auto shrink-0 rounded px-1 text-[9px] font-semibold tabular-nums',
+                            'shrink-0 rounded px-1 text-[9px] font-semibold tabular-nums',
+                            !plan && 'mr-auto',
                             shift.days > 0 ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'
                           )}
                         >
@@ -453,19 +521,31 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
                   {days.map((d) => {
                     const wd = siteWeekday(d)
                     if (!editable) {
+                      const inWindow = plan != null && d >= plan.start && d <= plan.finish
                       return (
                         <td
                           key={d}
-                          className={cn('border-b border-l border-slate-100 bg-slate-50', wd === 0 && 'border-r-2 border-r-slate-300')}
-                        />
+                          className={cn(
+                            'relative border-b border-l border-slate-100 bg-slate-50',
+                            wd === 0 && 'border-r-2 border-r-slate-300',
+                            inWindow && 'bg-sky-50'
+                          )}
+                        >
+                          {inWindow ? (
+                            <PlanBar isStart={d === planVisStart} isFinish={d === planVisEnd} />
+                          ) : null}
+                        </td>
                       )
                     }
                     const cell = cells?.get(d)
-                    const inWindow = row.startDate != null && d >= row.startDate && (row.finishDate == null || d <= row.finishDate)
+                    const inWindow = plan != null && d >= plan.start && d <= plan.finish
                     const isEditing = editing?.activityId === row.activityId && editing.date === d
                     const key = `${row.activityId}@${d}`
                     const planned = plannedByDate?.get(d) ?? null
-                    const delayHere = delay && d === row.approvedStartDate
+                    const showActual =
+                      cell != null &&
+                      drafts[key] !== null &&
+                      (drafts[key] != null || isDistinctProgressPoint(cell, previousPoint(cells, d)))
                     return (
                       <td
                         key={d}
@@ -474,24 +554,28 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
                         title={[
                           drafts[key] === null
                             ? 'گزارش این روز با «ذخیره تغییرات» حذف می‌شود'
-                            : cell
-                              ? `ثبت سرپرست — تجمعی: ${faNum(cell.cumulative)}٪، پیشرفت همان روز: ${cell.daily == null ? '—' : `${faNum(cell.daily)}٪`} (برای حذف، عدد را پاک کنید)`
-                              : 'گزارشی ثبت نشده — برای ثبت درصد تجمعی کلیک کنید',
-                          planned != null
-                            ? `اجباری طبق برنامه — تجمعی: ${faNum(planned.cumulative)}٪ (روزی ${faNum(planned.daily)}٪)`
+                            : showActual
+                              ? `ثبت سرپرست — تجمعی: ${faNum(cell!.cumulative)}٪، پیشرفت همان روز: ${cell!.daily == null ? '—' : `${faNum(cell!.daily)}٪`} (برای حذف، عدد را پاک کنید)`
+                              : 'گزارشی در این روز نیست — برای ثبت درصد تجمعی کلیک کنید',
+                          inWindow && plan
+                            ? `بازهٔ برنامه زمان‌بندی: ${dateOf(plan.start)} تا ${dateOf(plan.finish)}`
                             : null,
-                          delayHere ? `شروع طبق برنامهٔ مصوب: همین روز — ${delayText}` : null,
+                          planned != null
+                            ? `برنامه (فقط راهنما): ${faNum(planned.cumulative)}٪`
+                            : null,
+                          delayText && d === row.approvedStartDate ? delayText : null,
                         ]
                           .filter(Boolean)
                           .join('\n')}
                         className={cn(
-                          'h-10 cursor-pointer border-b border-l border-slate-100 p-0 text-center align-middle tabular-nums',
+                          'relative h-10 cursor-pointer border-b border-l border-slate-100 p-0 text-center align-middle tabular-nums',
                           wd === 0 && 'border-r-2 border-r-slate-300',
                           !isWorkday(d) && (wd === 6 ? 'bg-slate-100/70' : 'bg-red-50/70'),
-                          inWindow && isWorkday(d) && 'bg-sky-50/70',
+                          inWindow && isWorkday(d) && 'bg-sky-100',
+                          inWindow && isWorkday(d) && (d === plan.start || d === plan.finish) && 'bg-sky-200',
                           d === today && 'bg-amber-50',
-                          cell && 'font-semibold text-amber-800',
-                          cell?.daily != null && cell.daily < 0 && 'text-red-600',
+                          showActual && 'font-semibold text-amber-800',
+                          showActual && cell?.daily != null && cell.daily < 0 && 'text-red-600',
                           drafts[key] != null && 'bg-amber-200 font-bold text-amber-950 ring-1 ring-inset ring-amber-500',
                           'hover:outline hover:outline-1 hover:outline-[#1e3a5f]'
                         )}
@@ -529,16 +613,10 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
                             ) : null}
                           </div>
                         ) : (
-                          <div className="flex flex-col items-center leading-tight">
-                            <span className="min-h-[14px]">
-                              {drafts[key] !== null && cell ? faNum(cell.cumulative) : ''}
-                            </span>
-                            {delayHere && delay ? (
-                              <span className="whitespace-nowrap rounded bg-red-50 px-0.5 text-[9px] font-semibold text-red-700">
-                                {faNum(delay.days)} روز دیر
-                              </span>
-                            ) : planned != null ? (
-                              <span className="text-[9px] font-normal text-sky-700">{faNum(planned.cumulative)}</span>
+                          <div className="relative flex h-full flex-col items-center justify-center leading-tight">
+                            <span className="min-h-[14px]">{showActual && cell ? faNum(cell.cumulative) : ''}</span>
+                            {inWindow ? (
+                              <PlanBar isStart={d === planVisStart} isFinish={d === planVisEnd} />
                             ) : null}
                           </div>
                         )}
@@ -554,19 +632,13 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
 
       <div className="flex flex-wrap gap-3 text-[10px] text-slate-500">
         <span className="inline-flex items-center gap-1">
-          <span className="font-semibold text-amber-800">45</span> تجمعی ثبت‌شده سرپرست
+          <span className="font-semibold text-amber-800">45</span> درصد تجمعی ثبت‌شده در آن روز
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="text-sky-700">50</span> پیشرفت اجباری تجمعی — طبق آخرین پیش‌بینی (گزارش فعالیت‌های قبلی همان لحظه اثر می‌کند)
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="h-3 w-3 rounded-sm border border-slate-200 bg-sky-50" /> بازهٔ پیش‌بینی‌شدهٔ فعالیت (آخرین برنامه)
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="rounded bg-red-50 px-1 font-semibold text-red-700">شروع 2 روز دیرتر</span> جابه‌جایی پیش‌بینی نسبت به برنامهٔ مصوب
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <span className="rounded bg-red-50 px-0.5 font-semibold text-red-700">4 روز دیر</span> در روز شروع برنامهٔ مصوب: فعالیت چند روز دیرتر شروع شد
+          <span className="inline-flex h-3 w-5 items-end rounded-sm border border-sky-200 bg-sky-100">
+            <span className="h-1 w-full rounded-sm bg-sky-500" />
+          </span>{' '}
+          بازهٔ همان فعالیت در برنامه زمان‌بندی
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="h-3 w-3 rounded-sm border border-slate-200 bg-amber-50" /> امروز

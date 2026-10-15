@@ -73,6 +73,8 @@ updateAiActionText,
 } from '@/features/supervisor/services/dashboard'
 import { cn } from '@/shared/lib/utils'
 import { refreshProjectStore, storePercentOf, useStoreProgress } from '@/features/project-store/use-store-progress'
+import { useWeather } from '@/features/weather/hooks/use-weather'
+import { ensureWeatherLine, formatWeatherReportLine, weatherSnapshotFromPayload } from '@/features/weather/lib/report-stamp'
 
 interface SiteSupervisorDashboardProps {
   initialContext: DashboardUserContext
@@ -117,6 +119,7 @@ export function SiteSupervisorDashboard({
 
   const projectId = useSyncedProjectId(initialProjectId)
   const storeProgress = useStoreProgress(projectId)
+  const { data: weather } = useWeather(projectId)
   const [tasks, setTasks] = useState(initialTasks)
   const [alerts, setAlerts] = useState(initialAlerts)
   const [inventory, setInventory] = useState<Awaited<ReturnType<typeof fetchInventoryItems>>>([])
@@ -569,7 +572,13 @@ export function SiteSupervisorDashboard({
         labels={t}
         locale={locale === 'fa' ? 'fa' : 'en'}
         onSubmit={async (input) => {
-          const { report, summaryText } = await submitQuickReport(supabase, input, locale === 'fa' ? 'fa' : 'en')
+          const line = weather ? formatWeatherReportLine(weather) : ''
+          const stamped = {
+            ...input,
+            supervisorNote: line ? ensureWeatherLine(input.supervisorNote ?? '', line) : input.supervisorNote,
+            weather: weather ? weatherSnapshotFromPayload(weather, input.date) : input.weather,
+          }
+          const { report, summaryText } = await submitQuickReport(supabase, stamped, locale === 'fa' ? 'fa' : 'en')
           refreshProjectStore()
           return { summaryText, reportId: report.id }
         }}

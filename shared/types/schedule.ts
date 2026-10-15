@@ -1,3 +1,5 @@
+import type { DailyWeatherSnapshot } from '@/features/weather/lib/types'
+
 /** MSP schedule + daily report domain types (tables from migration 24+). */
 
 export type TaskRelationType = 'FS' | 'SS' | 'FF' | 'SF'
@@ -192,6 +194,8 @@ export interface SiteDailyReport {
   summary_text?: string | null
   ai_status?: 'draft_by_ai' | 'confirmed_by_user' | 'rejected_by_user'
   ai_parsed: DailyReportAiParsed | null
+  /** Structured weather at save time; used by later documents. */
+  weather_json?: DailyWeatherSnapshot | null
   approved_by_manager: boolean
   approved_at: string | null
   approved_by: string | null
@@ -252,6 +256,7 @@ export interface DailyReportAiParsed {
     status: string
   }>
   summary?: string
+  weather?: DailyWeatherSnapshot | string
 }
 
 export interface CreateDailyReportInput {

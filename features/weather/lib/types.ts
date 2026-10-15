@@ -47,3 +47,29 @@ export interface WeatherPayload {
   days: WeatherDay[]
   fetchedAt: string
 }
+
+/**
+ * Immutable weather snapshot stored on the daily report for later documents.
+ * Numbers stay numeric so PDFs / weekly packs do not parse a Persian sentence.
+ */
+export interface DailyWeatherSnapshot {
+  version: 1
+  capturedAt: string
+  reportDate: string
+  locationName: string
+  lat: number
+  lon: number
+  tempC: number
+  feelsLikeC: number
+  humidityPct: number
+  windMs: number
+  windKmh: number
+  rainMm: number
+  weatherId: number
+  condition: string
+  description: string
+  riskLevel: OutdoorRiskLevel
+  riskTitle: string
+  riskMessage: string
+  lineFa: string
+}
