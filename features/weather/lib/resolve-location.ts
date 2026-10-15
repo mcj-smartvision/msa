@@ -1,5 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { weatherApiKey } from '@/features/weather/lib/api-key'
 import type { WeatherLocation } from '@/features/weather/lib/types'
+
+export { weatherApiKey }
 
 export const TEHRAN_WEATHER: WeatherLocation = {
   lat: 35.6892,
@@ -59,17 +62,10 @@ export async function resolveProjectWeatherLocation(
     return { ...coords, name: data?.name?.trim() || query }
   }
 
-  const geo = await geocodeOpenWeather(query, apiKey).catch(() => null)
-  if (geo) return geo
+  if (apiKey) {
+    const geo = await geocodeOpenWeather(query, apiKey).catch(() => null)
+    if (geo) return geo
+  }
 
   return { ...TEHRAN_WEATHER, name: query }
-}
-
-export function weatherApiKey(): string {
-  return (
-    process.env.WEATHER_API_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_WEATHER_API_KEY?.trim() ||
-    process.env.OPENWEATHER_API_KEY?.trim() ||
-    ''
-  )
 }

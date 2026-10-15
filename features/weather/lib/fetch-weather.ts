@@ -5,7 +5,8 @@ import {
   owmIconFor,
   wmoToOwmId,
 } from '@/features/weather/lib/conditions'
-import { weatherApiKey, resolveProjectWeatherLocation } from '@/features/weather/lib/resolve-location'
+import { weatherApiKey } from '@/features/weather/lib/api-key'
+import { resolveProjectWeatherLocation } from '@/features/weather/lib/resolve-location'
 import type { CurrentWeather, WeatherDay, WeatherPayload } from '@/features/weather/lib/types'
 import { dayKind, weatherDateWindow } from '@/features/weather/lib/window'
 import { tehranDateIso, todayTehranIso } from '@/shared/lib/time/tehran'
@@ -47,8 +48,39 @@ interface OpenMeteoDaily {
   relative_humidity_2m_mean: (number | null)[]
 }
 
+interface OpenMeteoResponse {
+  current?: {
+    temperature_2m?: number
+    relative_humidity_2m?: number
+    weather_code?: number
+    wind_speed_10m?: number
+    precipitation?: number
+  }
+  daily?: OpenMeteoDaily
+}
+
 function num(value: unknown, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+}
+
+function currentFromMeteo(json: OpenMeteoResponse): CurrentWeather | null {
+  const row = json.current
+  if (typeof row?.temperature_2m !== 'number') return null
+  const weatherId = wmoToOwmId(num(row.weather_code, 0))
+  const windMs = num(row.wind_speed_10m) / 3.6
+  const rainMm = num(row.precipitation)
+  return {
+    temp: row.temperature_2m,
+    feelsLike: row.temperature_2m,
+    humidity: num(row.relative_humidity_2m),
+    windMs,
+    rainMm,
+    weatherId,
+    condition: conditionLabelFa(weatherId),
+    description: conditionLabelFa(weatherId),
+    icon: owmIconFor(weatherId),
+    risk: classifyOutdoorRisk({ weatherId, windMs, rainMm }),
+  }
 }
 
 function owmCurrentFrom(json: OwmCurrent): CurrentWeather {
@@ -152,10 +184,6 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 export async function loadWeather(supabase: SupabaseClient, projectId: string | null): Promise<WeatherPayload> {
   const apiKey = weatherApiKey()
-  if (!apiKey) {
-    throw new WorkshopError('VALIDATION', 'کلید OpenWeatherMap تنظیم نشده است. NEXT_PUBLIC_WEATHER_API_KEY را در .env.local بگذارید.')
-  }
-
   const location = { ...(await resolveProjectWeatherLocation(supabase, projectId, apiKey)) }
   const cacheKey = `${location.lat.toFixed(3)},${location.lon.toFixed(3)}`
   const hit = cache.get(cacheKey)
@@ -169,21 +197,27 @@ export async function loadWeather(supabase: SupabaseClient, projectId: string | 
     `https://api.openweathermap.org${path}${path.includes('?') ? '&' : '?'}appid=${apiKey}&units=metric&lang=fa`
 
   const [currentRes, forecastRes, meteoRes] = await Promise.allSettled([
-    fetchJson<OwmCurrent>(owm(`/data/2.5/weather?lat=${lat}&lon=${lon}`)),
-    fetchJson<{ list?: OwmForecastSlot[] }>(owm(`/data/2.5/forecast?lat=${lat}&lon=${lon}`)),
-    fetchJson<{ daily?: OpenMeteoDaily }>(
+    apiKey
+      ? fetchJson<OwmCurrent>(owm(`/data/2.5/weather?lat=${lat}&lon=${lon}`))
+      : Promise.resolve(null),
+    apiKey
+      ? fetchJson<{ list?: OwmForecastSlot[] }>(owm(`/data/2.5/forecast?lat=${lat}&lon=${lon}`))
+      : Promise.resolve(null),
+    fetchJson<OpenMeteoResponse>(
       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+        `&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation` +
         `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,relative_humidity_2m_mean` +
         `&timezone=Asia%2FTehran&past_days=7&forecast_days=8`
     ),
   ])
 
-  if (currentRes.status !== 'fulfilled') {
-    throw new WorkshopError('VALIDATION', 'خواندن وضعیت هوای زنده از OpenWeatherMap ناموفق بود.')
+  const current =
+    (currentRes.status === 'fulfilled' && currentRes.value ? owmCurrentFrom(currentRes.value) : null) ??
+    (meteoRes.status === 'fulfilled' ? currentFromMeteo(meteoRes.value) : null)
+  if (!current) {
+    throw new WorkshopError('VALIDATION', 'خواندن وضعیت هوا ناموفق بود.')
   }
-
-  const current = owmCurrentFrom(currentRes.value)
-  if (currentRes.value.name && location.name === 'تهران') {
+  if (currentRes.status === 'fulfilled' && currentRes.value?.name && location.name === 'تهران') {
     location.name = currentRes.value.name
   }
 
@@ -220,7 +254,7 @@ export async function loadWeather(supabase: SupabaseClient, projectId: string | 
     })
   }
 
-  if (forecastRes.status === 'fulfilled') {
+  if (forecastRes.status === 'fulfilled' && forecastRes.value) {
     const overlay = aggregateOwmForecast(forecastRes.value.list ?? [])
     for (const [iso, patch] of overlay) {
       const existing = days.get(iso)

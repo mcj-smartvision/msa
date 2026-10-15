@@ -5,6 +5,7 @@ import { loadWeather } from '@/features/weather/lib/fetch-weather'
 import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 /** GET /api/weather?projectId= — live OpenWeatherMap current + 7 past / 7 future days. */
 export async function GET(request: NextRequest) {
