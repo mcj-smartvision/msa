@@ -90,7 +90,7 @@ export function SectionCard({
               {icon}
             </span>
           ) : null}
-          <h2 id={headingId} className="truncate text-[15px] font-bold tracking-tight text-slate-800">
+          <h2 id={headingId} className="truncate text-[13px] font-medium tracking-tight text-slate-800">
             {title}
           </h2>
           {hint ? <InfoHint label={title}>{hint}</InfoHint> : null}

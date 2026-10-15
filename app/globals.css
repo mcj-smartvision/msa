@@ -176,6 +176,64 @@ html[data-native-app='accountant'] body {
   background: #0b0e14;
 }
 
+/* Manager dashboard: compact readable type. Unlayered so it wins over utilities. */
+.manager-dashboard {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: 0;
+  font-synthesis: none;
+}
+
+.manager-dashboard :is(h1, h2, h3, h4, h5, h6) {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.45;
+}
+
+.manager-dashboard :is(strong, b) {
+  font-weight: 500;
+}
+
+.manager-dashboard .font-black,
+.manager-dashboard .font-extrabold,
+.manager-dashboard .font-bold {
+  font-weight: 500;
+}
+
+.manager-dashboard .font-semibold,
+.manager-dashboard .font-medium {
+  font-weight: 400;
+}
+
+.manager-dashboard .text-xs {
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.manager-dashboard .text-sm {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.manager-dashboard .text-base {
+  font-size: 13px;
+}
+
+.manager-dashboard .text-lg {
+  font-size: 14px;
+}
+
+.manager-dashboard .text-xl,
+.manager-dashboard .text-2xl {
+  font-size: 18px;
+}
+
+.manager-dashboard svg text {
+  font-weight: 400;
+}
+
 /* Calculation ledger: «چاپ» prints only the open trace. */
 @media print {
   html.calc-trace-printing body * {

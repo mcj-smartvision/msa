@@ -780,7 +780,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
       style={{ '--font-sans': managerFont.style.fontFamily } as CSSProperties}
       className={cn(
         managerFont.variable,
-        'flex min-h-screen bg-slate-50 font-sans text-right text-slate-900 antialiased [font-feature-settings:normal]'
+        'manager-dashboard flex min-h-screen bg-slate-50 font-sans text-right text-slate-900 antialiased [font-feature-settings:normal]'
       )}
     >
       {/* Desktop / tablet sidebar: 240px, or a 56px icon strip when collapsed */}
@@ -881,7 +881,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                 }}
                 aria-label="انتخاب پروژه"
                 className={cn(
-                  'h-10 appearance-none truncate rounded-xl border border-slate-200/80 bg-white py-0 pe-9 ps-3.5 text-[15px] font-bold tracking-tight text-slate-900 shadow-xs transition-colors hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
+                  'h-10 appearance-none truncate rounded-xl border border-slate-200/80 bg-white py-0 pe-9 ps-3.5 text-[15px] font-medium tracking-tight text-slate-900 shadow-xs transition-colors hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
                   view === 'home' ? 'w-44 max-w-[70vw] xl:w-72' : 'max-w-[240px]'
                 )}
               >

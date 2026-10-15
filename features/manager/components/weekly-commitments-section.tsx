@@ -192,7 +192,7 @@ function Ghost({ reason, children }: { reason: string; children: ReactNode }) {
 function GhostValue() {
   return (
     <div className="mt-1">
-      <p className="text-[40px] font-extrabold leading-none tabular-nums text-transparent" style={{ WebkitTextStroke: `1.5px ${GHOST_STROKE}` }}>
+      <p className="text-[22px] font-medium leading-none tabular-nums text-transparent" style={{ WebkitTextStroke: `1px ${GHOST_STROKE}` }}>
         —٪
       </p>
       <div className="mt-3 space-y-2">
@@ -263,8 +263,8 @@ function GhostDonut() {
     <div className="grid grid-cols-1 items-center gap-3.5 sm:grid-cols-[170px_1fr]">
       <svg viewBox="0 0 120 120" className="mx-auto block w-full max-w-[170px]">
         <circle cx={60} cy={60} r={50} fill="none" stroke={GHOST_STROKE} strokeDasharray="4 4" />
-        <circle cx={60} cy={60} r={34} fill="none" stroke={GHOST_STROKE} strokeDasharray="4 4" />
-        <text x={60} y={64} textAnchor="middle" fontSize={22} fontWeight={800} fill={GHOST_STROKE}>
+        <circle cx={60} cy={60} r={38} fill="none" stroke={GHOST_STROKE} strokeDasharray="4 4" />
+        <text x={60} y={64} textAnchor="middle" fontSize={18} fontWeight={600} fill={GHOST_STROKE}>
           —
         </text>
       </svg>
@@ -393,10 +393,10 @@ function RncDonut({ data }: { data: WeeklyCommitmentsData }) {
               key={c.key}
               cx={60}
               cy={60}
-              r={42}
+              r={44}
               fill="none"
               stroke={CAUSE_COLOR[c.key]}
-              strokeWidth={16}
+              strokeWidth={6}
               pathLength={100}
               strokeDasharray={`${len} ${100 - len}`}
               strokeDashoffset={-offset}
@@ -406,10 +406,10 @@ function RncDonut({ data }: { data: WeeklyCommitmentsData }) {
           offset += c.share
           return el
         })}
-        <text x={60} y={60} textAnchor="middle" fontSize={24} fontWeight={800}>
+        <text x={60} y={58} textAnchor="middle" fontSize={16} fontWeight={500}>
           {faNumber(total)}
         </text>
-        <text x={60} y={76} textAnchor="middle" fontSize={8.5} fill="#8a867e">
+        <text x={60} y={74} textAnchor="middle" fontSize={9} fill="#8a867e">
           کار ناتمام
         </text>
       </svg>
@@ -547,7 +547,7 @@ function WeeklyCommitmentsBody({
             </div>
           ) : current && ppc != null && ppcData ? (
             <>
-              <p className="mb-1 mt-3 text-[40px] font-extrabold leading-none tabular-nums" style={{ color: TONE_COLOR[ppcTn!] }}>
+              <p className="mb-1 mt-3 text-[22px] font-medium leading-none tabular-nums" style={{ color: TONE_COLOR[ppcTn!] }}>
                 {pct(ppc)}
               </p>
               <p className="min-h-[42px] text-[11.5px] leading-7 text-slate-500">
@@ -583,7 +583,7 @@ function WeeklyCommitmentsBody({
             </div>
           ) : spi?.value != null ? (
             <>
-              <p className="mb-1 mt-3 text-[40px] font-extrabold leading-none tabular-nums" style={{ color: TONE_COLOR[indexTone(spi.value)] }}>
+              <p className="mb-1 mt-3 text-[22px] font-medium leading-none tabular-nums" style={{ color: TONE_COLOR[indexTone(spi.value)] }}>
                 {faNumber(spi.value, 2)}
               </p>
               <p className="min-h-[42px] text-[11.5px] leading-7 text-slate-500">
@@ -615,7 +615,7 @@ function WeeklyCommitmentsBody({
             </div>
           ) : spiT?.value != null ? (
             <>
-              <p className="mb-1 mt-3 text-[40px] font-extrabold leading-none tabular-nums" style={{ color: TONE_COLOR[indexTone(spiT.value)] }}>
+              <p className="mb-1 mt-3 text-[22px] font-medium leading-none tabular-nums" style={{ color: TONE_COLOR[indexTone(spiT.value)] }}>
                 {faNumber(spiT.value, 2)}
               </p>
               <p className="min-h-[42px] text-[11.5px] leading-7 text-slate-500">
@@ -643,7 +643,7 @@ function WeeklyCommitmentsBody({
             <span className="grid h-[46px] w-[46px] shrink-0 place-items-center rounded-full border-[1.5px] border-rose-300 bg-rose-100">
               <AlertTriangle className="h-6 w-6 text-rose-500" aria-hidden />
             </span>
-            <span className="text-[30px] font-extrabold text-slate-400">—</span>
+            <span className="text-[22px] font-medium text-slate-400">—</span>
           </div>
           <p className="mt-2 text-[11.5px] leading-6 text-slate-600">قفل‌ها هنوز در سامانه ثبت نمی‌شوند؛ جزئیات در کادر «قفل‌های هفته‌های آینده».</p>
         </div>

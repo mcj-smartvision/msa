@@ -33,9 +33,9 @@ const FORWARD_MONTHS = 3
 const RECENT_HISTORY_DAYS = 45
 
 const SERIES = [
-  { key: 'planned', label: 'برنامه (PV)', color: '#1e3a8a', dash: undefined, width: 2.5, fill: 0.1 },
-  { key: 'actual', label: 'واقعی ثبت‌شده', color: '#10b981', dash: undefined, width: 2.5, fill: 0.14 },
-  { key: 'earned', label: 'ارزش کسب‌شده (EV)', color: '#fb923c', dash: '5 4', width: 2.5, fill: 0.1 },
+  { key: 'planned', label: 'برنامه (PV)', color: '#1e3a8a', dash: undefined, width: 1.5, fill: 0.08 },
+  { key: 'actual', label: 'واقعی ثبت‌شده', color: '#10b981', dash: undefined, width: 1.5, fill: 0.1 },
+  { key: 'earned', label: 'ارزش کسب‌شده (EV)', color: '#fb923c', dash: '5 4', width: 1.5, fill: 0.08 },
 ] as const
 
 const FORECAST = { key: 'forecast', label: 'پیش‌بینی EV', color: '#c2410c', dash: '2 5' } as const
@@ -57,14 +57,14 @@ function renderDot(key: SeriesKey, color: string) {
     if (cx == null || cy == null || value == null) return <g key={id} />
     if (key === FORECAST.key) {
       return payload?.kind === 'forecast' ? (
-        <circle key={id} cx={cx} cy={cy} r={4} fill="#fff" stroke={color} strokeWidth={2} />
+        <circle key={id} cx={cx} cy={cy} r={3} fill="#fff" stroke={color} strokeWidth={1.4} />
       ) : (
         <g key={id} />
       )
     }
     if (!payload?.isToday) {
       return payload?.kind === 'record' && key !== 'planned' ? (
-        <circle key={id} cx={cx} cy={cy} r={3} fill="#fff" stroke={color} strokeWidth={2} />
+        <circle key={id} cx={cx} cy={cy} r={2.5} fill="#fff" stroke={color} strokeWidth={1.3} />
       ) : (
         <g key={id} />
       )
@@ -79,7 +79,7 @@ function renderDot(key: SeriesKey, color: string) {
           opacity={0.35}
           className="origin-center [transform-box:fill-box] motion-safe:animate-ping"
         />
-        <circle cx={cx} cy={cy} r={4.5} fill="#fff" stroke={color} strokeWidth={2.5} />
+        <circle cx={cx} cy={cy} r={3.5} fill="#fff" stroke={color} strokeWidth={1.5} />
       </g>
     )
   }
@@ -103,9 +103,9 @@ function isoOf(ts: number): string {
 function ForecastPanel({ forecast }: { forecast: EvForecast }) {
   if (forecast.status !== 'ok') {
     return (
-      <aside className="rounded-2xl border border-slate-200/80 bg-slate-50 p-3 text-xs leading-6 text-slate-600 lg:w-60">
-        <p className="font-semibold text-slate-700">پیش‌بینی رسم نشد</p>
-        <p>{forecast.reason_fa}</p>
+      <aside className="rounded-2xl border border-slate-200/80 bg-slate-50 p-3.5 text-xs leading-7 text-slate-600 lg:w-72 lg:shrink-0">
+        <p className="font-medium text-slate-700">پیش‌بینی رسم نشد</p>
+        <p className="mt-1">{forecast.reason_fa}</p>
       </aside>
     )
   }
@@ -122,22 +122,22 @@ function ForecastPanel({ forecast }: { forecast: EvForecast }) {
   ]
   return (
     <aside
-      className="rounded-2xl border border-orange-200/80 bg-orange-50/60 p-3 text-xs leading-6 text-slate-600 lg:w-60"
+      className="rounded-2xl border border-orange-200/80 bg-orange-50/60 p-3.5 text-xs leading-7 text-slate-600 lg:w-72 lg:shrink-0"
       aria-label="پیش‌بینی تاریخ پایان"
     >
       <p className="text-slate-500">تاریخ پایان پیش‌بینی‌شده</p>
-      <p className={cn('text-lg font-bold tabular-nums', late ? 'text-orange-700' : 'text-emerald-700')}>
+      <p className={cn('mt-0.5 text-lg font-semibold tabular-nums', late ? 'text-orange-700' : 'text-emerald-700')}>
         {jalaliDate(forecast.finishDate)}
       </p>
-      <dl className="mt-2 space-y-1">
+      <dl className="mt-2 space-y-2">
         {rows.map((row) => (
-          <div key={row.label} className="flex items-baseline justify-between gap-2">
-            <dt className="text-slate-500" dir="ltr">{row.label}</dt>
-            <dd className="font-semibold tabular-nums text-slate-900">{row.value}</dd>
+          <div key={row.label} className="flex items-baseline justify-between gap-3">
+            <dt className="min-w-0 break-words text-slate-500" dir="ltr">{row.label}</dt>
+            <dd className="shrink-0 font-medium tabular-nums text-slate-900">{row.value}</dd>
           </div>
         ))}
       </dl>
-      <p className="mt-2 border-t border-orange-200/70 pt-2 text-[11px] leading-5 text-slate-500">
+      <p className="mt-2 border-t border-orange-200/70 pt-2 text-[11px] leading-6 text-slate-500">
         پایان = پایان مبنا + DelayDays. خط‌چین: EV(d) = PV مبنا در (ES + Δt × SPI(t))؛ یعنی کار باقی‌مانده با همان کارایی زمانی
         امروز پیش می‌رود. نقطهٔ شروع، EV امروز است و هیچ نقطه‌ای خارج از snapshot ساخته نمی‌شود.
       </p>
@@ -257,7 +257,7 @@ export function ManagerProgressChart({ curve }: { curve: ManagerCurve }) {
       >
         <div className="absolute inset-0" dir="ltr">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={data} margin={{ top: 24, right: 28, left: 8, bottom: 0 }}>
+            <ComposedChart data={data} margin={{ top: 28, right: 40, left: 8, bottom: 4 }}>
               <defs>
                 {SERIES.map((s) => (
                   <linearGradient key={s.key} id={`manager-fill-${s.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -296,7 +296,7 @@ export function ManagerProgressChart({ curve }: { curve: ManagerCurve }) {
                   x={tsOf(today.date)}
                   stroke="#cbd5e1"
                   strokeDasharray="4 4"
-                  label={{ value: 'امروز', position: 'top', fill: '#334155', fontSize: 11, fontWeight: 600 }}
+                  label={{ value: 'امروز', position: 'top', fill: '#334155', fontSize: 11, fontWeight: 500 }}
                 />
               ) : null}
               <Tooltip
@@ -332,7 +332,7 @@ export function ManagerProgressChart({ curve }: { curve: ManagerCurve }) {
                   stroke={FORECAST.color}
                   strokeOpacity={0.5}
                   strokeDasharray="2 4"
-                  label={{ value: 'پایان پیش‌بینی', position: 'insideTopLeft', fill: FORECAST.color, fontSize: 11, fontWeight: 600 }}
+                  label={{ value: 'پایان پیش‌بینی', position: 'top', fill: FORECAST.color, fontSize: 11, fontWeight: 500 }}
                 />
               ) : null}
               {visible.map((s) => (
@@ -370,7 +370,7 @@ export function ManagerProgressChart({ curve }: { curve: ManagerCurve }) {
                   type="linear"
                   dataKey={FORECAST.key}
                   stroke={FORECAST.color}
-                  strokeWidth={2}
+                  strokeWidth={1.4}
                   strokeDasharray={FORECAST.dash}
                   strokeLinecap="round"
                   dot={renderDot(FORECAST.key, FORECAST.color)}

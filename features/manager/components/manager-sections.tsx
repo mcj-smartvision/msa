@@ -192,11 +192,11 @@ export function buildHealthPillars(overview: ManagerOverview | null, hrefs: Mana
     key: 'schedule',
     label: 'زمان‌بندی',
     tone: indexTone(evm?.spi),
-    subtitle: 'شاخص عملکرد زمانی (SPI)',
+    subtitle: 'عملکرد زمانی (SPI)',
     visual: { kind: 'gauge', value: evm?.spi ?? null, max: 1.5, target: 1 },
     status:
       evm?.spi != null
-        ? `با ${faPercent(evm.spi * 100, 0)} سرعت برنامه پیش می‌رویم`
+        ? `${faPercent(evm.spi * 100, 0)} سرعت برنامه`
         : evm
           ? 'ارزش برنامه‌ای هنوز صفر است'
           : stateMissing(overview?.evm),
@@ -221,7 +221,7 @@ export function buildHealthPillars(overview: ManagerOverview | null, hrefs: Mana
     return {
       ...base,
       tone,
-      subtitle: 'شاخص عملکرد هزینه (CPI)',
+      subtitle: 'عملکرد هزینه (CPI)',
       visual: {
         kind: 'ring',
         center: faNumber(evm.cpi, 2),
@@ -229,7 +229,11 @@ export function buildHealthPillars(overview: ManagerOverview | null, hrefs: Mana
         segments: [{ value: Math.min(evm.cpi, 1.5), tone: tone === 'none' ? 'good' : tone }],
         total: 1.5,
       },
-      status: evm.cv >= 0 ? `${compactToman(evm.cv)} زیر بودجه` : `${compactToman(-evm.cv)} بیش از بودجه`,
+      status: (() => {
+        const parts = compactTomanParts(Math.abs(evm.cv))
+        const amount = `${parts.value} ${parts.unit.replace(' تومان', '')}`
+        return evm.cv >= 0 ? `${amount} زیر بودجه` : `${amount} بیش از بودجه`
+      })(),
       action: details(hrefs.finance ?? hrefs.evm),
     }
   })()
@@ -379,6 +383,7 @@ function SemiGauge({ value, max, target, tone }: { value: number | null; max: nu
   const cx = 100
   const cy = 100
   const r = 78
+  const stroke = 5
   const point = (fraction: number, radius = r) => {
     const angle = Math.PI * (1 - Math.min(Math.max(fraction, 0), 1))
     return { x: cx + radius * Math.cos(angle), y: cy - radius * Math.sin(angle) }
@@ -386,85 +391,96 @@ function SemiGauge({ value, max, target, tone }: { value: number | null; max: nu
   const start = point(0)
   const end = point(1)
   const valueEnd = value != null && value > 0 ? point(value / max) : null
-  const tickIn = point(target / max, r - 16)
-  const tickOut = point(target / max, r + 16)
+  const tickIn = point(target / max, r - 12)
+  const tickOut = point(target / max, r + 12)
   const color = PILLAR_TONE[tone].color
 
   return (
-    <svg viewBox="0 0 200 112" className="block w-[68px]" aria-hidden>
-      <path
-        d={`M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}`}
-        fill="none"
-        stroke="#e2e8f0"
-        strokeWidth={18}
-        strokeLinecap="round"
-      />
-      {valueEnd ? (
+    <div className="relative h-10 w-16">
+      <svg viewBox="0 0 200 118" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden>
         <path
-          d={`M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${valueEnd.x} ${valueEnd.y}`}
+          d={`M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}`}
           fill="none"
-          stroke={color}
-          strokeWidth={18}
+          stroke="#e2e8f0"
+          strokeWidth={stroke}
           strokeLinecap="round"
         />
-      ) : null}
-      <line x1={tickIn.x} y1={tickIn.y} x2={tickOut.x} y2={tickOut.y} stroke="#475569" strokeWidth={5} strokeLinecap="round" />
-      <text x={cx} y={cy + 4} textAnchor="middle" style={{ fill: value != null ? color : '#94a3b8' }} className="text-[50px] font-extrabold">
+        {valueEnd ? (
+          <path
+            d={`M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${valueEnd.x} ${valueEnd.y}`}
+            fill="none"
+            stroke={color}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+          />
+        ) : null}
+        <line x1={tickIn.x} y1={tickIn.y} x2={tickOut.x} y2={tickOut.y} stroke="#475569" strokeWidth={1.4} strokeLinecap="round" />
+      </svg>
+      <span
+        className="pointer-events-none absolute inset-x-0 bottom-0 text-center text-[11px] font-medium tabular-nums leading-none"
+        style={{ color: value != null ? color : '#94a3b8' }}
+      >
         {value != null ? faNumber(value, 2) : '—'}
-      </text>
-    </svg>
+      </span>
+    </div>
   )
 }
 
 function Ring({ visual, tone }: { visual: Exclude<PillarVisual, { kind: 'gauge' }>; tone: Tone }) {
-  const r = 44
+  const r = 48
+  const stroke = 4.5
   const c = 2 * Math.PI * r
+  const color = PILLAR_TONE[tone].color
   if (visual.kind === 'empty') {
     return (
       <svg viewBox="0 0 120 120" className="block h-12 w-12" aria-hidden>
-        <circle cx={60} cy={60} r={r} fill="none" stroke="#d6d3d1" strokeWidth={9} strokeDasharray="5 12.3" strokeLinecap="round" />
-        <line x1={52} y1={60} x2={68} y2={60} stroke="#a8a29e" strokeWidth={3} strokeLinecap="round" />
+        <circle cx={60} cy={60} r={r} fill="none" stroke="#d6d3d1" strokeWidth={4} strokeDasharray="5 12.3" strokeLinecap="round" />
+        <line x1={52} y1={60} x2={68} y2={60} stroke="#a8a29e" strokeWidth={1.5} strokeLinecap="round" />
       </svg>
     )
   }
-  const color = PILLAR_TONE[tone].color
   if (visual.center == null) {
     return (
       <svg viewBox="0 0 120 120" className="block h-12 w-12" aria-hidden>
-        <circle cx={60} cy={60} r={r} fill="none" stroke={color} strokeWidth={14} />
-        <circle cx={60} cy={60} r={5} fill="white" stroke={color} strokeWidth={3} />
+        <circle cx={60} cy={60} r={r} fill="none" stroke={color} strokeWidth={stroke} />
+        <circle cx={60} cy={60} r={3} fill="white" stroke={color} strokeWidth={1.4} />
       </svg>
     )
   }
   let offset = 0
   return (
-    <svg viewBox="0 0 120 120" className="block h-12 w-12" aria-hidden>
-      <circle cx={60} cy={60} r={r} fill="none" stroke="#e2e8f0" strokeWidth={14} />
-      <g transform="rotate(-90 60 60)">
-        {visual.segments.map((segment, index) => {
-          if (segment.value <= 0 || visual.total <= 0) return null
-          const length = (segment.value / visual.total) * c
-          const dash = (
-            <circle
-              key={index}
-              cx={60}
-              cy={60}
-              r={r}
-              fill="none"
-              stroke={RING_COLORS[segment.tone]}
-              strokeWidth={14}
-              strokeDasharray={`${length} ${c - length}`}
-              strokeDashoffset={-offset}
-            />
-          )
-          offset += length
-          return dash
-        })}
-      </g>
-      <text x={60} y={73} textAnchor="middle" style={{ fill: color }} className="text-[36px] font-extrabold">
+    <div className="relative h-12 w-12 shrink-0">
+      <svg viewBox="0 0 120 120" className="absolute inset-0 h-12 w-12" aria-hidden>
+        <circle cx={60} cy={60} r={r} fill="none" stroke="#e2e8f0" strokeWidth={stroke} />
+        <g transform="rotate(-90 60 60)">
+          {visual.segments.map((segment, index) => {
+            if (segment.value <= 0 || visual.total <= 0) return null
+            const length = (segment.value / visual.total) * c
+            const dash = (
+              <circle
+                key={index}
+                cx={60}
+                cy={60}
+                r={r}
+                fill="none"
+                stroke={RING_COLORS[segment.tone]}
+                strokeWidth={stroke}
+                strokeDasharray={`${length} ${c - length}`}
+                strokeDashoffset={-offset}
+              />
+            )
+            offset += length
+            return dash
+          })}
+        </g>
+      </svg>
+      <span
+        className="pointer-events-none absolute inset-0 flex items-center justify-center text-[11px] font-medium tabular-nums leading-none"
+        style={{ color }}
+      >
         {visual.center}
-      </text>
-    </svg>
+      </span>
+    </div>
   )
 }
 
@@ -473,7 +489,7 @@ function PillarCard({ pillar, loading }: { pillar: HealthPillar; loading: boolea
   const { visual, action } = pillar
   const body = (
     <>
-      <div className="flex w-[72px] shrink-0 flex-col items-center justify-center gap-1">
+      <div className="flex w-16 shrink-0 flex-col items-center justify-center gap-1">
         {visual.kind === 'gauge' ? (
           <SemiGauge value={visual.value} max={visual.max} target={visual.target} tone={pillar.tone} />
         ) : (
@@ -481,7 +497,7 @@ function PillarCard({ pillar, loading }: { pillar: HealthPillar; loading: boolea
         )}
         <span
           className={cn(
-            'inline-flex max-w-full items-center whitespace-nowrap rounded-full px-1.5 text-[10px] font-semibold leading-4 ring-1 ring-inset',
+            'inline-flex max-w-full items-center whitespace-nowrap rounded-full px-1.5 text-[10px] font-medium leading-4 ring-1 ring-inset',
             TONE_STYLE[pillar.tone].chip,
             loading && 'animate-pulse'
           )}
@@ -489,35 +505,43 @@ function PillarCard({ pillar, loading }: { pillar: HealthPillar; loading: boolea
           {style.badge}
         </span>
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className="truncate text-[13px] font-bold text-slate-800" title={pillar.label}>
-          {pillar.label}
-        </p>
-        <p className="truncate text-[11px] text-slate-500">{pillar.subtitle}</p>
-        <div className="flex min-h-[18px] items-center justify-between gap-2 text-[11px] font-bold">
-          {pillar.status ? <span className={cn('truncate', style.text)} title={pillar.status}>{pillar.status}</span> : <span />}
-          {action?.href ? (
-            <Link
-              href={action.href}
-              className={cn(
-                'inline-flex shrink-0 items-center gap-0.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
-                action.kind === 'add' ? 'text-orange-600 hover:text-orange-700' : 'text-orange-400 hover:text-orange-600'
-              )}
-            >
-              {action.label}
-              {action.kind === 'add' ? (
-                <Plus className="h-3 w-3" aria-hidden />
-              ) : (
-                <ChevronLeft className="h-3 w-3 rtl:rotate-0 ltr:rotate-180" aria-hidden />
-              )}
-            </Link>
-          ) : null}
-        </div>
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+        <p className="text-[12px] font-medium leading-4 text-slate-800">{pillar.label}</p>
+        <p className="text-[10.5px] leading-4 text-slate-500">{pillar.subtitle}</p>
+        {pillar.status || action?.href ? (
+          <div className="mt-0.5 flex items-center gap-2 text-[10.5px] leading-4">
+            {pillar.status ? (
+              <span className={cn('min-w-0 font-medium', style.text)}>{pillar.status}</span>
+            ) : (
+              <span className="min-w-0 flex-1" />
+            )}
+            {action?.href ? (
+              <Link
+                href={action.href}
+                aria-label={action.label}
+                title={action.label}
+                className={cn(
+                  'inline-flex shrink-0 items-center gap-0.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
+                  action.kind === 'add' ? 'text-orange-600 hover:text-orange-700' : 'text-orange-500 hover:text-orange-700'
+                )}
+              >
+                {action.kind === 'add' ? (
+                  <>
+                    {action.label}
+                    <Plus className="h-3 w-3" aria-hidden />
+                  </>
+                ) : (
+                  <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-0 ltr:rotate-180" aria-hidden />
+                )}
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </>
   )
   const cls = cn(
-    'flex h-full items-center gap-2.5 rounded-xl border border-[#1e2a5e]/45 bg-gradient-to-br via-white to-white px-2.5 py-2 shadow-xs transition-all duration-200',
+    'flex h-full items-center gap-2.5 rounded-xl border border-[#1e2a5e]/45 bg-gradient-to-br via-white to-white px-3 py-2.5 shadow-xs transition-all duration-200',
     style.card
   )
   return !action && pillar.href ? (
@@ -537,10 +561,10 @@ export function HealthBar({ pillars, loading }: { pillars: HealthPillar[]; loadi
     <div data-tour="health" className="border-t border-sky-200/60">
       <ul
         aria-label="نوار سلامت پروژه"
-        className="flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain px-3 py-2 [scrollbar-width:thin] sm:px-5 lg:px-7 xl:grid xl:snap-none xl:grid-cols-5 xl:overflow-visible"
+        className="flex gap-2 overflow-x-auto overscroll-x-contain px-3 py-2 [scrollbar-width:thin] sm:px-5 lg:px-7 2xl:grid 2xl:grid-cols-5 2xl:overflow-visible"
       >
         {pillars.map((pillar) => (
-          <li key={pillar.key} title={`${pillar.label}: ${pillar.subtitle}`} className="w-[220px] shrink-0 snap-start xl:w-auto">
+          <li key={pillar.key} title={`${pillar.label}: ${pillar.subtitle}`} className="w-[268px] shrink-0 2xl:w-auto">
             <PillarCard pillar={pillar} loading={loading} />
           </li>
         ))}
@@ -572,7 +596,7 @@ function KpiCard({
   const body = (
     <>
       <div className="flex min-h-[26px] items-start justify-between gap-2">
-        <p className="flex items-center gap-1 text-sm font-bold text-slate-800">
+        <p className="flex items-center gap-1 text-[12px] font-medium leading-5 text-slate-800">
           {title}
           {action ? <span className="pointer-events-auto relative z-10">{action}</span> : null}
         </p>
@@ -619,7 +643,7 @@ function BigValue({ value, unit, muted, className }: { value: string; unit?: str
     <p className="mt-4 flex items-baseline gap-1.5">
       <span
         className={cn(
-          'text-2xl font-black leading-none tracking-tight tabular-nums text-slate-900 sm:text-[28px]',
+          'text-xl font-medium leading-none tracking-tight tabular-nums text-slate-900 sm:text-[22px]',
           className,
           muted && 'text-slate-300'
         )}
@@ -642,17 +666,17 @@ function ProgressVsPlan({ actual, planned }: { actual: number; planned: number }
     <div className="mt-4" aria-hidden>
       <div className="relative mx-1 h-4">
         <span
-          className="absolute -top-4 translate-x-1/2 whitespace-nowrap text-[10.5px] font-bold text-slate-700"
+          className="absolute -top-4 translate-x-1/2 whitespace-nowrap text-[10.5px] font-medium text-slate-700"
           style={{ right: `${p}%` }}
         >
           برنامه
         </span>
       </div>
-      <div className="relative mx-1 h-3.5">
+      <div className="relative mx-1 h-2">
         <div className="absolute inset-0 rounded-full bg-slate-100" />
         <div className="absolute inset-y-0 right-0 rounded-full bg-orange-600" style={{ width: `${a}%` }} />
         <span
-          className="absolute -top-1.5 h-[26px] w-[3px] translate-x-1/2 rounded-full bg-slate-800 ring-2 ring-white"
+          className="absolute -top-1 h-[18px] w-[2px] translate-x-1/2 rounded-full bg-slate-800 ring-1 ring-white"
           style={{ right: `${p}%` }}
         />
       </div>
@@ -667,7 +691,7 @@ function LegendRow({ swatch, label, value }: { swatch: ReactNode; label: string;
         <span className="flex w-3.5 shrink-0 justify-center">{swatch}</span>
         <span className="truncate">{label}</span>
       </dt>
-      <dd className="shrink-0 font-bold tabular-nums text-slate-800">{value}</dd>
+      <dd className="shrink-0 font-medium tabular-nums text-slate-800">{value}</dd>
     </div>
   )
 }
@@ -686,7 +710,7 @@ interface TimelineMarker {
 }
 
 const TIMELINE_ROW_PX = 30
-const TIMELINE_MIN_GAP = 24
+const TIMELINE_MIN_GAP = 32
 
 function ScheduleTimeline({
   start,
@@ -726,14 +750,14 @@ function ScheduleTimeline({
   return (
     <div className="mt-4" aria-hidden>
       <div className="relative mx-2 h-4">
-        <div className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-slate-100" />
+        <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-slate-100" />
         <div
-          className="absolute top-1/2 right-0 h-2 -translate-y-1/2 rounded-full"
+          className="absolute top-1/2 right-0 h-1 -translate-y-1/2 rounded-full"
           style={{ width: `${todayPos}%`, backgroundColor: color }}
         />
         {forecastPos > todayPos ? (
           <div
-            className="absolute top-1/2 h-2 -translate-y-1/2 opacity-25"
+            className="absolute top-1/2 h-1 -translate-y-1/2 opacity-25"
             style={{ right: `${todayPos}%`, width: `${forecastPos - todayPos}%`, backgroundColor: color }}
           />
         ) : null}
@@ -741,7 +765,7 @@ function ScheduleTimeline({
           m.shape === 'today' ? (
             <span
               key={m.key}
-              className="absolute top-1/2 h-4 w-4 -translate-y-1/2 translate-x-1/2 rounded-full border-[3px] bg-white"
+              className="absolute top-1/2 h-3 w-3 -translate-y-1/2 translate-x-1/2 rounded-full border-2 bg-white"
               style={{ right: `${m.p}%`, borderColor: color }}
             />
           ) : m.shape === 'forecast' ? (
@@ -769,7 +793,7 @@ function ScheduleTimeline({
             )}
             style={{ right: `${m.p}%`, top: m.row * TIMELINE_ROW_PX }}
           >
-            <p className="text-[10.5px] font-bold" style={m.shape === 'today' ? { color } : undefined}>
+            <p className="text-[10.5px] font-medium" style={m.shape === 'today' ? { color } : undefined}>
               <span className={m.shape === 'today' ? undefined : 'text-slate-700'}>{m.label}</span>
             </p>
             <p className="text-[10px] tabular-nums text-slate-500">{jalaliDate(m.date)}</p>
@@ -784,6 +808,7 @@ function CostGauge({ cpi, tone }: { cpi: number | null; tone: Tone }) {
   const cx = 100
   const cy = 100
   const r = 72
+  const stroke = 5
   const max = 1.5
   const point = (fraction: number, radius = r) => {
     const angle = Math.PI * (1 - Math.min(Math.max(fraction, 0), 1))
@@ -793,25 +818,25 @@ function CostGauge({ cpi, tone }: { cpi: number | null; tone: Tone }) {
   const end = point(1)
   const arc = (to: { x: number; y: number }) => `M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${to.x} ${to.y}`
   const color = PILLAR_TONE[tone].color
-  const tickIn = point(1 / max, r - 14)
-  const tickOut = point(1 / max, r + 14)
+  const tickIn = point(1 / max, r - 10)
+  const tickOut = point(1 / max, r + 10)
 
   return (
     <div className="mt-3 flex justify-center" aria-hidden>
-      <svg viewBox="0 0 200 112" className="block w-[150px]">
+      <svg viewBox="0 0 200 118" className="block w-[150px]">
         {cpi == null ? (
-          <path d={arc(end)} fill="none" stroke="#d6d3d1" strokeWidth={14} strokeDasharray="1 17" strokeLinecap="round" />
+          <path d={arc(end)} fill="none" stroke="#d6d3d1" strokeWidth={stroke} strokeDasharray="1 17" strokeLinecap="round" />
         ) : (
           <>
-            <path d={arc(end)} fill="none" stroke="#e2e8f0" strokeWidth={14} strokeLinecap="round" />
-            {cpi > 0 ? <path d={arc(point(cpi / max))} fill="none" stroke={color} strokeWidth={14} strokeLinecap="round" /> : null}
-            <line x1={tickIn.x} y1={tickIn.y} x2={tickOut.x} y2={tickOut.y} stroke="#475569" strokeWidth={4} strokeLinecap="round" />
+            <path d={arc(end)} fill="none" stroke="#e2e8f0" strokeWidth={stroke} strokeLinecap="round" />
+            {cpi > 0 ? <path d={arc(point(cpi / max))} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" /> : null}
+            <line x1={tickIn.x} y1={tickIn.y} x2={tickOut.x} y2={tickOut.y} stroke="#475569" strokeWidth={1.4} strokeLinecap="round" />
           </>
         )}
         {cpi == null ? (
-          <line x1={88} y1={88} x2={112} y2={88} stroke="#a8a29e" strokeWidth={5} strokeLinecap="round" />
+          <line x1={88} y1={88} x2={112} y2={88} stroke="#a8a29e" strokeWidth={3} strokeLinecap="round" />
         ) : (
-          <text x={cx} y={cy - 4} textAnchor="middle" style={{ fill: color }} className="text-[34px] font-extrabold">
+          <text x={cx} y={94} textAnchor="middle" fontSize={16} fontWeight={500} fill={color}>
             {faNumber(cpi, 2)}
           </text>
         )}
@@ -828,7 +853,7 @@ function CostTile({ label, value }: { label: string; value: string | null }) {
         value == null ? 'border border-dashed border-slate-300 bg-slate-50/60' : 'bg-slate-50'
       )}
     >
-      <span className={cn('text-sm font-bold tabular-nums', value == null ? 'text-slate-300' : 'text-slate-800')}>
+      <span className={cn('text-sm font-semibold tabular-nums', value == null ? 'text-slate-300' : 'text-slate-800')}>
         {value ?? '—'}
       </span>
       <span className="max-w-full break-words text-[11px] leading-4 text-slate-500">{label}</span>

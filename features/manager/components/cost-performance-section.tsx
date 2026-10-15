@@ -68,13 +68,14 @@ function Gauge({ value, bands, label }: { value: number | null; bands: Array<[nu
   const cx = 150
   const cy = 150
   const R = 108
+  const stroke = 7
   const point = (v: number, r: number): [number, number] => {
     const t = Math.PI * (1 - Math.min(Math.max(v, 0), GAUGE_MAX) / GAUGE_MAX)
     return [cx + r * Math.cos(t), cy - r * Math.sin(t)]
   }
-  const [m1x, m1y] = point(1, R - 16)
-  const [m2x, m2y] = point(1, R + 16)
-  const tip = value == null ? null : point(value, R - 10)
+  const [m1x, m1y] = point(1, R - 12)
+  const [m2x, m2y] = point(1, R + 12)
+  const tip = value == null ? null : point(value, R - 8)
   return (
     <svg viewBox="0 0 300 190" role="img" aria-label={label} className="mx-auto block h-auto w-full max-w-[340px]">
       {bands.map(([from, to, color]) => {
@@ -86,30 +87,31 @@ function Gauge({ value, bands, label }: { value: number | null; bands: Array<[nu
             d={`M${ax} ${ay} A${R} ${R} 0 0 1 ${bx} ${by}`}
             fill="none"
             stroke={value == null ? COLOR.idle : color}
-            strokeWidth={22}
+            strokeWidth={stroke}
+            strokeLinecap="butt"
           />
         )
       })}
-      <line x1={m1x} y1={m1y} x2={m2x} y2={m2y} stroke={COLOR.ink} strokeWidth={2.2} />
+      <line x1={m1x} y1={m1y} x2={m2x} y2={m2y} stroke={COLOR.ink} strokeWidth={1.2} />
       {[0.5, 1].map((v) => {
-        const [x, y] = point(v, R + 26)
+        const [x, y] = point(v, R + 22)
         return (
-          <text key={v} x={x} y={y + 3} textAnchor="middle" fontSize={10.5} fill={COLOR.mute}>
+          <text key={v} x={x} y={y + 3} textAnchor="middle" fontSize={11} fontWeight={500} fill={COLOR.mute}>
             {faNumber(v, 1)}
           </text>
         )
       })}
-      <text x={cx - R} y={cy + 22} textAnchor="middle" fontSize={10.5} fill={COLOR.mute}>
+      <text x={cx - R} y={cy + 22} textAnchor="middle" fontSize={11} fontWeight={500} fill={COLOR.mute}>
         {faNumber(0)}
       </text>
-      <text x={cx + R} y={cy + 22} textAnchor="middle" fontSize={10.5} fill={COLOR.mute}>
+      <text x={cx + R} y={cy + 22} textAnchor="middle" fontSize={11} fontWeight={500} fill={COLOR.mute}>
         {faNumber(GAUGE_MAX, 1)}
       </text>
       {tip ? (
         <>
-          <line x1={cx} y1={cy} x2={tip[0]} y2={tip[1]} stroke={COLOR.ink} strokeWidth={4} strokeLinecap="round" />
-          <circle cx={cx} cy={cy} r={9} fill={COLOR.ink} />
-          <circle cx={cx} cy={cy} r={3} fill="#fff" />
+          <line x1={cx} y1={cy} x2={tip[0]} y2={tip[1]} stroke={COLOR.ink} strokeWidth={1.6} strokeLinecap="round" />
+          <circle cx={cx} cy={cy} r={4} fill={COLOR.ink} />
+          <circle cx={cx} cy={cy} r={1.8} fill="#fff" />
         </>
       ) : null}
     </svg>
@@ -139,13 +141,13 @@ function GaugeCard({
     <div className="rounded-2xl border border-[#1e2a5e]/45 bg-white px-5 py-4">
       <div className="flex items-start justify-between gap-2.5">
         <div>
-          <p className="text-sm font-bold text-slate-800">{title}</p>
+          <p className="text-sm font-medium text-slate-800">{title}</p>
           <p className="mt-0.5 text-[11.5px] leading-6 text-slate-500">{subtitle}</p>
         </div>
-        <span className={cn('whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10.5px] font-bold', CHIP[chip.tone])}>{chip.label}</span>
+        <span className={cn('whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10.5px] font-medium', CHIP[chip.tone])}>{chip.label}</span>
       </div>
       <div className="mt-1.5">{gauge}</div>
-      <p className="-mt-1 text-center text-[42px] font-extrabold leading-none tabular-nums" style={{ color: bigColor }}>
+      <p className="-mt-1 text-center text-[22px] font-medium leading-none tabular-nums" style={{ color: bigColor }}>
         {big}
       </p>
       <p className="mt-2.5 min-h-[46px] text-center text-[12.5px] leading-7 text-slate-700">{sentence}</p>
