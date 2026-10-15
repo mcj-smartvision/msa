@@ -26,6 +26,7 @@ import { publishScheduleViewSync } from '@/features/schedule/lib/schedule-view-s
 import type { ProjectTask } from '@/shared/types/schedule'
 import { formatScheduleWeightDisplay } from '@/features/workshop/lib/package-weight'
 import { cn } from '@/shared/lib/utils'
+import { refreshProjectStore, storePercentOf, useStoreProgress } from '@/features/project-store/use-store-progress'
 
 interface ScheduleCatchUpPanelProps {
   projectId: string
@@ -48,10 +49,19 @@ export function ScheduleCatchUpPanel({
   const fa = locale === 'fa' || locale === 'ar'
   const isRtl = dir === 'rtl'
   const asOf = todayIso()
+  const storeProgress = useStoreProgress(projectId)
+
+  const liveTasks = useMemo(() => {
+    if (!storeProgress.ready) return tasks
+    return tasks.map((task) => {
+      const percent = storePercentOf(storeProgress.percents, `schedule:${task.id}`, task.percent_complete)
+      return percent == null ? task : { ...task, percent_complete: percent, physical_percent_complete: percent }
+    })
+  }, [tasks, storeProgress.ready, storeProgress.percents])
 
   const compliance = useMemo(
-    () => buildPlanCompliance(tasks, { actualStart, asOfDate: asOf }),
-    [tasks, actualStart, asOf]
+    () => buildPlanCompliance(liveTasks, { actualStart, asOfDate: asOf }),
+    [liveTasks, actualStart, asOf]
   )
 
   const [mode, setMode] = useState<Mode>('ask')
@@ -132,6 +142,7 @@ export function ScheduleCatchUpPanel({
         onTasksUpdated(data.tasks as ProjectTask[])
       }
       publishScheduleViewSync(projectId)
+      refreshProjectStore()
       setMode('done')
       setSavedMsg(
         fa

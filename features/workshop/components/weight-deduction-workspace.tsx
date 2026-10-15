@@ -27,6 +27,7 @@ schedulePhysicalPercent,
 } from '@/features/schedule/lib/physical-progress'
 import { readProjectDailyProgress } from '@/features/supervisor/lib/daily-progress-storage'
 import { type DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
+import { useStoreProgress, withStoreEntries } from '@/features/project-store/use-store-progress'
 import { cn } from '@/shared/lib/utils'
 import { todayTehranIso } from '@/shared/lib/time/tehran'
 
@@ -133,6 +134,7 @@ type RowMeta = {
 export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: boolean }) {
   const searchParams = useSearchParams()
   const projectId = searchParams.get('projectId') ?? ''
+  const storeProgress = useStoreProgress(projectId || null)
   const tabActive = (searchParams.get('workshopTab') ?? 'schedule') === 'weight-deduction'
 
   const [nodes, setNodes] = useState<ScheduleTreeNode[]>([])
@@ -301,8 +303,12 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
   )
 
   const progressEntries = useMemo(
-    () => mergeSupervisorProgressEntries(savedProgressEntries, dailyProgressEntries),
-    [savedProgressEntries, dailyProgressEntries]
+    () =>
+      withStoreEntries(
+        storeProgress.entries,
+        mergeSupervisorProgressEntries(savedProgressEntries, dailyProgressEntries)
+      ),
+    [storeProgress.entries, savedProgressEntries, dailyProgressEntries]
   )
 
   const progressRollup = useMemo(

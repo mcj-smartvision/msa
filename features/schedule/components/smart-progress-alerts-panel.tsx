@@ -13,6 +13,7 @@ RefreshCw,
 Settings2,
 } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
+import { storePercentOf, useStoreProgress } from '@/features/project-store/use-store-progress'
 
 type PaceStatus = 'good' | 'warning' | 'bad'
 type AlertQuadrant = 'urgent' | 'normal_watch' | 'soft_notice' | 'no_display'
@@ -345,6 +346,7 @@ function ColoredActivityTable({
 export function SmartProgressAlertsPanel({ projectId }: { projectId: string }) {
   const searchParams = useSearchParams()
   const asSupervisor = searchParams.get('as') === 'supervisor'
+  const storeProgress = useStoreProgress(projectId || null)
 
   const [data, setData] = useState<PaceResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -425,7 +427,11 @@ export function SmartProgressAlertsPanel({ projectId }: { projectId: string }) {
   }, [projectId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const coloredRows = useMemo(() => {
-    const rows = [...(data?.rows ?? [])]
+    const rows = [...(data?.rows ?? [])].map((row) => {
+      if (!storeProgress.ready) return row
+      const percent = storePercentOf(storeProgress.percents, row.id, row.physicalPercent)
+      return percent == null ? row : { ...row, physicalPercent: percent }
+    })
     rows.sort((a, b) => {
       const ai = a.alertQuadrant ? QUADRANT_ORDER.indexOf(a.alertQuadrant) : 99
       const bi = b.alertQuadrant ? QUADRANT_ORDER.indexOf(b.alertQuadrant) : 99
@@ -433,7 +439,7 @@ export function SmartProgressAlertsPanel({ projectId }: { projectId: string }) {
       return (a.wbs ?? '').localeCompare(b.wbs ?? '', 'en', { numeric: true })
     })
     return rows
-  }, [data?.rows])
+  }, [data?.rows, storeProgress.ready, storeProgress.percents])
 
   const counts = data?.counts
 

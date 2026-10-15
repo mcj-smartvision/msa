@@ -26,6 +26,7 @@ mergeSupervisorProgressEntries,
 resolvePhysicalProgressPercent,
 schedulePhysicalPercent,
 } from '@/features/schedule/lib/physical-progress'
+import { useStoreProgress, withStoreEntries } from '@/features/project-store/use-store-progress'
 import type { MspImportReportSummary, ProjectTask, ScheduleImport } from '@/shared/types/schedule'
 import { CalendarRange, CheckCircle2, FileUp, Loader2, AlertTriangle, ClipboardList } from 'lucide-react'
 import { ScheduleDownloadButton } from '@/features/schedule/components/schedule-download-button'
@@ -140,6 +141,7 @@ export function ScheduleImportPanel({
   scheduleActualStart: initialActualStart,
   predecessorLabels: initialPredecessorLabels,
 }: ScheduleImportPanelProps) {
+  const storeProgress = useStoreProgress(projectId)
   const router = useRouter()
   const searchParams = useSearchParams()
   const sendScheduleActive = searchParams.get('section') === 'send-schedule'
@@ -290,12 +292,12 @@ export function ScheduleImportPanel({
     const local = projectId ? readProjectDailyProgress(projectId).entries : []
     const withSupervisor = applySupervisorPhysicalProgress(
       base,
-      mergeSupervisorProgressEntries(savedProgressEntries, local)
+      withStoreEntries(storeProgress.entries, mergeSupervisorProgressEntries(savedProgressEntries, local))
     )
     return applyFieldDrafts(withSupervisor, fieldDrafts)
     // progressEpoch forces re-read of localStorage after supervisor save
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, previewTasks, predecessorLabels, fieldDrafts, projectId, progressEpoch, savedProgressEntries])
+  }, [tasks, previewTasks, predecessorLabels, fieldDrafts, projectId, progressEpoch, savedProgressEntries, storeProgress.entries])
   const hasSchedule = taskCount > 0 || displayTasks.length > 0
   const latestImportId =
     initialImports.find((item) => item.status === 'completed')?.id ?? null

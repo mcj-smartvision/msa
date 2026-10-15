@@ -12,6 +12,7 @@ export type ManagerNavIcon =
   | 'contracts'
   | 'reports'
   | 'background'
+  | 'store'
   | 'estimate'
 
 export interface ManagerNavLink {
@@ -149,6 +150,7 @@ export function buildManagerNav(context: DashboardUserContext): ManagerNavModel 
   }
   groups.push({ key: 'reports', label: 'گزارش‌ها', icon: 'reports', href: '/reports' })
   groups.push({ key: 'background', label: 'بک‌گراند محاسبات', icon: 'background', href: '/dashboard/manager/background' })
+  groups.push({ key: 'store', label: 'جدول داده‌ها (Store)', icon: 'store', href: '/dashboard/manager/store' })
 
   return { groups, unavailable }
 }

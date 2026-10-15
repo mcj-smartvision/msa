@@ -4,6 +4,7 @@ import { HeaderProjectSwitcher } from '@/shared/components/project/header-projec
 import { HeaderUserMenu } from '@/features/account/components/header-user-menu'
 import { HeaderLanguageSwitcher } from '@/shared/components/i18n/header-language-switcher'
 import { PersianCalendar } from '@/shared/components/layout/PersianCalendar'
+import { HeaderWeather } from '@/features/weather/components/header-weather'
 
 /** Header left cluster (RTL — user at screen left, project chip immediately after user). */
 export function HeaderUserControls({
@@ -27,6 +28,7 @@ export function HeaderUserControls({
       />
       {showLanguage ? <HeaderLanguageSwitcher /> : null}
       <PersianCalendar />
+      <HeaderWeather />
 
     </div>
   )

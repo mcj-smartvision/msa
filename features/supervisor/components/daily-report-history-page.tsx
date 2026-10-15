@@ -27,6 +27,7 @@ progressDeltaLabel,
 REPORT_PROGRESS_BAR_COLORS,
 } from '@/features/supervisor/lib/daily-report-history'
 import { readProjectDailyProgress } from '@/features/supervisor/lib/daily-progress-storage'
+import { useStoreProgress } from '@/features/project-store/use-store-progress'
 import {
 buildDailyReportActivitiesFromTree,
 getLatestProgressForActivity,
@@ -108,6 +109,7 @@ export function DailyReportHistoryPage() {
   const searchParams = useSearchParams()
   const urlProjectId = searchParams.get('projectId')
   const projectId = useSyncedProjectId(urlProjectId) ?? urlProjectId ?? ''
+  const storeProgress = useStoreProgress(projectId || null)
   const urlName = searchParams.get('projectName') ?? ''
   const [projectName, setProjectName] = useState(urlName)
   const { calendar } = useScheduleCalendar()
@@ -162,7 +164,7 @@ export function DailyReportHistoryPage() {
       return
     }
     const stored = readProjectDailyProgress(projectId)
-    setEntries(stored.entries)
+    setEntries(storeProgress.entries ?? stored.entries)
     setNotesByDate(stored.notesByDate)
 
     setLoading(true)
@@ -188,11 +190,15 @@ export function DailyReportHistoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [projectId])
+  }, [projectId, storeProgress.entries])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (storeProgress.entries) setEntries(storeProgress.entries)
+  }, [storeProgress.entries])
 
   const activityById = useMemo(
     () => new Map(activities.map((a) => [a.id, a])),

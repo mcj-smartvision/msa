@@ -26,6 +26,7 @@ type DailyProgressEntry,
 import type { ScheduleTreeNode } from '@/features/workshop/lib/types'
 import { enrichScheduleTreeWithWbs } from '@/features/workshop/lib/wbs-numbering'
 import { cn } from '@/shared/lib/utils'
+import { useStoreProgress } from '@/features/project-store/use-store-progress'
 
 type ActivityRow = {
   id: string
@@ -87,6 +88,7 @@ export function OverheadPerCapitaTable({
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const storeProgress = useStoreProgress(projectId)
 
   useEffect(() => {
     if (!projectId) {
@@ -143,6 +145,10 @@ export function OverheadPerCapitaTable({
       cancelled = true
     }
   }, [projectId, fa])
+
+  useEffect(() => {
+    if (storeProgress.entries) setEntries(storeProgress.entries)
+  }, [storeProgress.entries])
 
   const model = useMemo(() => {
     const tasks = flattenTasks(nodes)

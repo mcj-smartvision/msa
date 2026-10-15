@@ -7,6 +7,7 @@ import type { ProjectEvmActivityRow, ProjectEvmSnapshot } from '@/features/evm/l
 import type { ManagerOverview } from '@/features/manager/lib/overview-types'
 import { compactToman, faNumber, faPercent, jalaliDate, jalaliDateTime } from '@/features/manager/lib/format'
 import { readProjectDailyProgress } from '@/features/supervisor/lib/daily-progress-storage'
+import { useStoreProgress } from '@/features/project-store/use-store-progress'
 import {
 buildDailyReportActivitiesFromTree,
 buildSCurveActivitiesFromTree,
@@ -24,6 +25,7 @@ import { DATA_QUALITY_FA, KPI_STATUS_TOKENS } from '@/features/project-controls/
 import { buildControlsSnapshot } from '@/features/project-controls/lib/controls-snapshot'
 import type { WeeklyPlanLoad } from '@/features/project-controls/lib/load-weekly-plan'
 import { buildEarnedScheduleKpis, buildPpcKpi, buildTcpiKpi, type EarnedScheduleKpiKey } from '@/features/project-controls/lib/kpis'
+import { StoreInspector } from '@/features/project-store/components/store-inspector'
 import { EmptyNote, LoadingRows, SectionCard } from './manager-ui'
 import { Frac, MathBlock, MathLine, Num, Op, Sum, V } from './math-formula'
 
@@ -976,11 +978,12 @@ function SupervisorCard({
   projectId: string
   managerValue: number | null
 }) {
+  const storeProgress = useStoreProgress(projectId)
   const computed = useMemo(() => {
     const today = todayTehranIso()
     const curve = buildSCurveActivitiesFromTree(nodes)
     const packages = buildDailyReportActivitiesFromTree(nodes, orphanPackages).filter((a) => a.kind === 'package')
-    const entries = readProjectDailyProgress(projectId).entries
+    const entries = storeProgress.entries ?? readProjectDailyProgress(projectId).entries
     const rows = curve.map((activity: DailyReportActivity) => {
       const own = latestEntry(entries, activity.id, today)
       const used = progressForSCurveAsOf(activity, entries, today, today, packages)
@@ -994,7 +997,7 @@ function SupervisorCard({
     const value = calculateSCurveActualProgress(curve, entries, today, today, packages)
     const totalWeight = curve.reduce((s, a) => s + (a.progressWeight > 0 ? a.progressWeight : 1), 0)
     return { rows, value, totalWeight, localCount: entries.length }
-  }, [nodes, orphanPackages, projectId])
+  }, [nodes, orphanPackages, projectId, storeProgress.entries])
 
   return (
     <SectionCard title="پیشرفت در کارتابل سرپرست کارگاه" icon={<HardHat className="h-4 w-4" aria-hidden />}>
@@ -1074,7 +1077,7 @@ export function ManagerBackgroundView({
 
       <ConventionsCard />
 
-      {!projectId ? <EmptyNote title="پروژه‌ای انتخاب نشده است" /> : null}
+      {!projectId ? <EmptyNote title="پروژه‌ای انتخاب نشده است" /> : <StoreInspector projectId={projectId} />}
 
       {projectId ? (
         evm.state === 'ok' ? (

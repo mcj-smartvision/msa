@@ -37,6 +37,8 @@ export interface PpcWeek extends Omit<WwpWeekRow, 'wwpId'> {
 }
 
 export interface WeekCommitment {
+  /** Daily-report activity id (`schedule:` / `package:`) of a schedule-based commitment. */
+  activityId?: string
   description: string
   wbs: string | null
   completed: boolean
@@ -45,7 +47,7 @@ export interface WeekCommitment {
   rootCauseNote: string | null
   /** actual ÷ planned output, only when both were recorded. */
   progressPercent: number | null
-  /** Schedule-based commitments: required cumulative percent by Thursday and the reported cumulative. */
+  /** Schedule-based commitments: the week's planned share and the week's reported gain (percentage points). */
   targetPercent?: number
   actualPercent?: number
 }

@@ -1,10 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, X } from 'lucide-react'
+import { AlertTriangle, Loader2, X } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { UomStack } from '@/features/workshop/components/uom-display'
+import { useProjectStore } from '@/features/project-store/use-project-store'
+import { useProjectStoreSync } from '@/features/project-store/use-project-store-sync'
 import { cn } from '@/shared/lib/utils'
+
+/** Statement and reported physical progress may differ by less than this (percentage points). */
+const PROGRESS_MISMATCH_POINTS = 1
 
 function formatMoney(value: number): string {
   return Math.round(value).toLocaleString('en-US', { maximumFractionDigits: 0 })
@@ -37,6 +42,8 @@ export function ContractorActivitiesPanel({
   contractorName: string
   onClose: () => void
 }) {
+  useProjectStoreSync(projectId)
+  const tasks = useProjectStore((s) => (s.snapshot?.projectId === projectId ? s.tasks : null))
   const [activities, setActivities] = useState<ContractorActivity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -68,15 +75,20 @@ export function ContractorActivitiesPanel({
       activities.map((activity) => {
         const amount = (Number(activity.estimatedQty) || 0) * (Number(activity.unitPrice) || 0)
         const progress = Math.min(100, Math.max(0, Number(activity.progressPercent) || 0))
+        const storeId = `${activity.entityType === 'task' ? 'schedule' : 'package'}:${activity.entityId}`
+        const physical = tasks?.[storeId]?.actual_progress ?? null
         return {
           ...activity,
           amount,
           progress,
+          physical,
+          mismatch: physical != null && Math.abs(physical - progress) >= PROGRESS_MISMATCH_POINTS,
           executed: amount * (progress / 100),
         }
       }),
-    [activities]
+    [activities, tasks]
   )
+  const mismatchCount = rows.filter((r) => r.mismatch).length
 
   const totals = useMemo(
     () =>
@@ -109,6 +121,13 @@ export function ContractorActivitiesPanel({
       </div>
 
       {error ? <p className="mx-4 mt-3 rounded-lg bg-red-50 p-2 text-sm text-red-700">{error}</p> : null}
+      {!loading && mismatchCount > 0 ? (
+        <p className="mx-4 mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs leading-5 text-amber-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          درصد صورت‌وضعیت {mismatchCount.toLocaleString('en-US')} فعالیت با پیشرفت فیزیکی گزارش روزانه فرق دارد. مبلغ کارکرد با همان درصد صورت‌وضعیت حساب
+          می‌شود.
+        </p>
+      ) : null}
       {loading ? (
         <p className="flex items-center gap-2 px-4 py-8 text-sm text-slate-500">
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -120,7 +139,7 @@ export function ContractorActivitiesPanel({
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] border-collapse text-sm">
+          <table className="w-full min-w-[860px] border-collapse text-sm">
             <thead>
               <tr className="bg-slate-800 text-[11px] font-semibold text-white">
                 <th className="px-3 py-2.5 text-center">WBS</th>
@@ -129,7 +148,10 @@ export function ContractorActivitiesPanel({
                 <th className="px-3 py-2.5 text-center">وضعیت مقدار</th>
                 <th className="px-3 py-2.5 text-center">واحد</th>
                 <th className="px-3 py-2.5 text-center">قیمت واحد</th>
-                <th className="px-3 py-2.5 text-center">پیشرفت</th>
+                <th className="px-3 py-2.5 text-center">پیشرفت صورت‌وضعیت</th>
+                <th className="px-3 py-2.5 text-center" title="آخرین درصد تجمعی ثبت‌شدهٔ سرپرست کارگاه">
+                  پیشرفت فیزیکی
+                </th>
                 <th className="px-3 py-2.5 text-center">کارکرد</th>
               </tr>
             </thead>
@@ -180,6 +202,23 @@ export function ContractorActivitiesPanel({
                       </span>
                     </div>
                   </td>
+                  <td className="px-3 py-2.5 text-center">
+                    {row.physical == null ? (
+                      <span className="text-[11px] text-slate-400">—</span>
+                    ) : (
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums',
+                          row.mismatch ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-700'
+                        )}
+                        title={row.mismatch ? 'با درصد صورت‌وضعیت فرق دارد' : undefined}
+                        dir="ltr"
+                      >
+                        {row.mismatch ? <AlertTriangle className="h-3 w-3" aria-hidden /> : null}
+                        {Math.round(row.physical * 100) / 100}%
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 text-center font-semibold tabular-nums text-slate-800" dir="ltr">
                     {formatMoney(row.executed)}
                   </td>
@@ -191,7 +230,7 @@ export function ContractorActivitiesPanel({
                 <td className="px-3 py-3" colSpan={6}>
                   جمع
                 </td>
-                <td className="px-3 py-3 text-center text-[11px] font-medium text-slate-600">
+                <td className="px-3 py-3 text-center text-[11px] font-medium text-slate-600" colSpan={2}>
                   مبلغ قرارداد {formatMoney(totals.amount)}
                 </td>
                 <td className="px-3 py-3 text-center tabular-nums" dir="ltr">

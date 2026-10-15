@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, CalendarDays, ClipboardList, Loader2 } from 'lucide-react'
 import { useScheduleCalendar } from '@/features/schedule/hooks/use-schedule-calendar'
@@ -12,11 +12,10 @@ import { Skeleton } from '@/shared/components/ui/skeleton'
 import { Textarea } from '@/shared/components/ui/textarea'
 import { FormattedDate } from '@/features/schedule/components/formatted-date'
 import { UomStack } from '@/features/workshop/components/uom-display'
-import {
-readProjectDailyProgress,
-upsertDailyEntries,
-writeProjectDailyProgress,
-} from '@/features/supervisor/lib/daily-progress-storage'
+import { readProjectDailyProgress } from '@/features/supervisor/lib/daily-progress-storage'
+import { useProjectStore } from '@/features/project-store/use-project-store'
+import { useProjectStoreSync } from '@/features/project-store/use-project-store-sync'
+import { WeeklyEvaluationCard } from '@/features/project-store/components/weekly-evaluation-card'
 import {
 activitiesEligibleForDailyReport,
 buildDailyReportActivitiesFromTree,
@@ -33,9 +32,7 @@ import {
 buildActivityProgressTimeline,
 checkPercentEntry,
 cumulativeBefore,
-cumulativeEntry,
 entryOn,
-historyFromServer,
 isSuspiciousWeeklyGain,
 mergeProgressHistory,
 progressAxis,
@@ -43,22 +40,14 @@ SITE_WEEK_DAY_LABELS,
 type PercentEntryCheck,
 type ActivityProgressWeek,
 type ActivityWeekProgress,
-type ServerProgressRow,
-withLatestReports,
 } from '@/features/supervisor/lib/weekly-activity-progress'
-import type { ScheduleTreeNode, WorkshopPackageNode } from '@/features/workshop/lib/types'
 import type { ParsedDailyReportVoice } from '@/features/supervisor/lib/parse-daily-report-voice'
 import { VoiceToTextButton } from '@/shared/components/common/voice-to-text-button'
-import { useScheduleViewSync } from '@/features/schedule/lib/schedule-view-sync'
 import { postDailyProgress } from '@/features/supervisor/lib/daily-progress-sync'
 import { cn } from '@/shared/lib/utils'
 
 function faNum(n: number): string {
   return n.toLocaleString('fa-IR-u-nu-latn')
-}
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
 }
 
 /** Cumulative before today: the last earlier report, else what today's report started from, else the schedule percent. */
@@ -93,8 +82,7 @@ function todayIncrementOf(entry: DailyProgressEntry | null, previous: number | n
   return previous == null ? null : Math.round((entry.percentComplete - previous) * 100) / 100
 }
 
-function formatTodayHeading(calendar: 'jalali' | 'gregorian'): string {
-  const iso = todayIso()
+function formatTodayHeading(calendar: 'jalali' | 'gregorian', iso: string): string {
   const d = new Date(`${iso}T12:00:00`)
   if (calendar === 'jalali') {
     return d.toLocaleDateString('fa-IR-u-nu-latn', {
@@ -930,16 +918,24 @@ export function DailyReportPanel({
   projectId: string | null
   projectName?: string
 }) {
-  const reportDate = todayIso()
+  useProjectStoreSync(projectId)
+  const reportDate = useProjectStore((s) => s.today)
   const { calendar } = useScheduleCalendar()
-  const todayHeading = formatTodayHeading(calendar)
+  const todayHeading = formatTodayHeading(calendar, reportDate)
   const todayShort = formatScheduleDate(reportDate, calendar)
 
-  const [activities, setActivities] = useState<DailyReportActivity[]>([])
-  const [activitiesLoading, setActivitiesLoading] = useState(false)
-  const [activitiesError, setActivitiesError] = useState<string | null>(null)
+  const snapshot = useProjectStore((s) => (projectId && s.snapshot?.projectId === projectId ? s.snapshot : null))
+  const localEntries = useProjectStore((s) => s.localEntries)
+  const storeStatus = useProjectStore((s) => s.status)
+  const storeError = useProjectStore((s) => s.error)
+  const activities = useMemo(
+    () => (snapshot ? buildDailyReportActivitiesFromTree(snapshot.tree.nodes, snapshot.tree.orphanPackages) : []),
+    [snapshot]
+  )
+  const activitiesLoading = !snapshot && storeStatus !== 'error' && Boolean(projectId)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const activitiesError = saveError ?? (storeStatus === 'error' ? storeError : null)
 
-  const [entries, setEntries] = useState<DailyProgressEntry[]>([])
   const [notesByDate, setNotesByDate] = useState<Record<string, string>>({})
   const [formValues, setFormValues] = useState<Record<string, number>>({})
   const [note, setNote] = useState('')
@@ -955,86 +951,25 @@ export function DailyReportPanel({
   const [timingFilter, setTimingFilter] = useState<'all' | DailyReportTiming>('current')
   const [searchQuery, setSearchQuery] = useState('')
 
-  const loadActivities = useCallback(async () => {
-    if (!projectId) {
-      setActivities([])
-      return
-    }
-    setActivitiesLoading(true)
-    setActivitiesError(null)
-    try {
-      const res = await fetch(`/api/workshop/schedule-tree?projectId=${projectId}`)
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'خطا در بارگذاری برنامه')
-      const nodes = (data.nodes ?? []) as ScheduleTreeNode[]
-      const orphanPackages = (data.orphanPackages ?? []) as WorkshopPackageNode[]
-      setActivities(buildDailyReportActivitiesFromTree(nodes, orphanPackages))
-    } catch (e) {
-      setActivities([])
-      setActivitiesError(e instanceof Error ? e.message : 'خطا در بارگذاری برنامه')
-    } finally {
-      setActivitiesLoading(false)
-    }
-  }, [projectId])
+  /** Saved reports (database + this browser's copies): the history every view reads from the store. */
+  const history = useMemo(() => mergeProgressHistory(snapshot?.history ?? [], localEntries), [snapshot, localEntries])
 
   useEffect(() => {
-    void loadActivities()
-  }, [loadActivities])
-
-  const [serverHistory, setServerHistory] = useState<DailyProgressEntry[] | null>(null)
-
-  const loadServerHistory = useCallback(async () => {
-    if (!projectId) {
-      setServerHistory([])
-      return
-    }
-    try {
-      const res = await fetch(`/api/supervisor/daily-progress?projectId=${encodeURIComponent(projectId)}`, {
-        cache: 'no-store',
-      })
-      const data = (await res.json().catch(() => ({}))) as {
-        updates?: ServerProgressRow[]
-        packageUpdates?: ServerProgressRow[]
-      }
-      setServerHistory(res.ok ? historyFromServer(data.updates ?? [], data.packageUpdates ?? []) : [])
-    } catch {
-      /* this browser's entries still drive the panel */
-      setServerHistory([])
-    }
-  }, [projectId])
-
-  useEffect(() => {
-    setServerHistory(null)
-    void loadServerHistory()
-  }, [loadServerHistory])
-
-  useScheduleViewSync(projectId ?? '', () => {
-    void loadServerHistory()
-  })
-
-  const history = useMemo(() => mergeProgressHistory(serverHistory ?? [], entries), [serverHistory, entries])
-
-  const hydrate = useCallback(() => {
     if (!projectId) return
     const stored = readProjectDailyProgress(projectId)
-    setEntries(stored.entries)
     setNotesByDate(stored.notesByDate)
     setNote(stored.notesByDate[reportDate] ?? '')
     setHydrated(true)
   }, [projectId, reportDate])
 
-  useEffect(() => {
-    hydrate()
-  }, [hydrate])
-
   const eligible = useMemo(
-    () => activitiesEligibleForDailyReport(activities, entries, reportDate),
-    [activities, entries, reportDate]
+    () => activitiesEligibleForDailyReport(activities, history, reportDate),
+    [activities, history, reportDate]
   )
 
   const eligibleByTiming = useMemo(
-    () => partitionEligibleByTiming(activities, entries, reportDate),
-    [activities, entries, reportDate]
+    () => partitionEligibleByTiming(activities, history, reportDate),
+    [activities, history, reportDate]
   )
 
   const timingCounts = useMemo(
@@ -1047,8 +982,8 @@ export function DailyReportPanel({
   )
 
   const remainingCount = useMemo(
-    () => countRemainingForTodayReport(activities, entries, reportDate),
-    [activities, entries, reportDate]
+    () => countRemainingForTodayReport(activities, history, reportDate),
+    [activities, history, reportDate]
   )
 
   const reportSections = useMemo(
@@ -1128,68 +1063,41 @@ export function DailyReportPanel({
     setFormValues(initial)
   }, [hydrated, eligible, history, reportDate])
 
-  function persist(nextEntries: DailyProgressEntry[], nextNotes: Record<string, string>) {
-    if (!projectId) return
-    writeProjectDailyProgress(projectId, { entries: nextEntries, notesByDate: nextNotes })
-    setEntries(nextEntries)
-    setNotesByDate(nextNotes)
-  }
-
-  async function syncProgressToSchedule(nextEntries: DailyProgressEntry[], dates: string[] = [reportDate]) {
-    if (!projectId) return
-    await postDailyProgress(projectId, nextEntries, dates)
-  }
-
-  async function saveEntries(
-    newEntries: DailyProgressEntry[],
-    nextNotes?: Record<string, string>,
-    toPost?: DailyProgressEntry[]
-  ) {
-    const nextNotesFinal = nextNotes ?? notesByDate
-    persist(newEntries, nextNotesFinal)
-    window.dispatchEvent(
-      new CustomEvent('sitepilot-daily-progress-updated', { detail: { projectId } })
-    )
+  /** Saves through the store (this browser's copy, then the database); a failed upload keeps the local copy. */
+  async function saveReports(reports: Array<{ taskId: string; dateKey: string; progress: number }>, nextNotes?: Record<string, string>) {
+    if (nextNotes) setNotesByDate(nextNotes)
     try {
-      if (toPost) await syncProgressToSchedule(toPost, toPost.map((e) => e.reportDate))
-      else await syncProgressToSchedule(newEntries)
-      setActivitiesError(null)
-      void loadServerHistory()
+      await useProjectStore.getState().saveDailyReports(reports, nextNotes ? { notesByDate: nextNotes } : undefined)
+      setSaveError(null)
     } catch (error) {
       console.error(error)
-      setActivitiesError(
-        error instanceof Error
-          ? error.message
-          : 'ذخیره پیشرفت در برنامه زمانبندی ناموفق بود'
-      )
+      setSaveError(error instanceof Error ? error.message : 'ذخیره پیشرفت در برنامه زمانبندی ناموفق بود')
     }
   }
 
   // Re-push local daily progress into Supabase after the schedule:uuid fix
   // so previously saved supervisor % lands in ویرایش/ارسال without retyping.
   // A newer server value (e.g. edited in the schedule) is not overwritten.
-  const serverLoaded = serverHistory != null
+  const serverLoaded = snapshot != null
   useEffect(() => {
-    if (!hydrated || !projectId || !serverLoaded || entries.length === 0) return
-    const pending = entries.filter((e) => {
+    if (!hydrated || !projectId || !snapshot || localEntries.length === 0) return
+    const pending = localEntries.filter((e) => {
       if (e.reportDate !== reportDate) return false
-      const server = entryOn(e.activityId, serverHistory ?? [], reportDate)
+      const server = entryOn(e.activityId, snapshot.history, reportDate)
       return !server || (e.savedAt ?? '') > (server.savedAt ?? '')
     })
     if (pending.length === 0) return
     let cancelled = false
     void (async () => {
       try {
-        await syncProgressToSchedule(pending)
-        if (!cancelled) setActivitiesError(null)
+        await postDailyProgress(projectId, pending, [reportDate])
+        if (cancelled) return
+        setSaveError(null)
+        void useProjectStore.getState().refresh()
       } catch (error) {
         if (!cancelled) {
           console.error(error)
-          setActivitiesError(
-            error instanceof Error
-              ? error.message
-              : 'همگام‌سازی پیشرفت با برنامه زمانبندی ناموفق بود'
-          )
+          setSaveError(error instanceof Error ? error.message : 'همگام‌سازی پیشرفت با برنامه زمانبندی ناموفق بود')
         }
       }
     })()
@@ -1209,9 +1117,7 @@ export function DailyReportPanel({
     setSavingActivityId(activityId)
     setSavedActivityId(null)
 
-    const entry = cumulativeEntry(activityId, history, date, percent)
-    const nextEntries = upsertDailyEntries(entries, [entry])
-    await saveEntries(nextEntries, undefined, withLatestReports([entry], upsertDailyEntries(history, [entry])))
+    await saveReports([{ taskId: activityId, dateKey: date, progress: percent }])
 
     setSavingActivityId(null)
     setSavedActivityId(activityId)
@@ -1223,18 +1129,12 @@ export function DailyReportPanel({
     setSubmitting(true)
     setSubmitOk(false)
 
-    const newEntries: DailyProgressEntry[] = eligible.map((a) =>
-      cumulativeEntry(
-        a.id,
-        history,
-        reportDate,
-        formValues[a.id] ?? cumulativeBefore(a.id, history, reportDate, a.baselinePercentComplete ?? 0) ?? 0
-      )
-    )
-
-    const nextEntries = upsertDailyEntries(entries, newEntries)
-    const nextNotes = { ...notesByDate, [reportDate]: note.trim() }
-    await saveEntries(nextEntries, nextNotes)
+    const reports = eligible.map((a) => ({
+      taskId: a.id,
+      dateKey: reportDate,
+      progress: formValues[a.id] ?? cumulativeBefore(a.id, history, reportDate, a.baselinePercentComplete ?? 0) ?? 0,
+    }))
+    await saveReports(reports, { ...notesByDate, [reportDate]: note.trim() })
 
     setSubmitting(false)
     setSubmitOk(true)
@@ -1393,6 +1293,8 @@ export function DailyReportPanel({
         </p>
       ) : null}
 
+      <WeeklyEvaluationCard projectId={projectId} />
+
       {activities.length === 0 && !activitiesError ? (
         <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-600">
           هنوز زیرشاخه از دفتر فنی ثبت نشده — در داشبورد دفتر فنی → «برنامه زمانبندی» زیرشاخه و مقدار تعریف کنید.
@@ -1479,7 +1381,7 @@ export function DailyReportPanel({
                             reportDate={reportDate}
                             timing={
                               section.timing === 'all'
-                                ? classifyDailyReportTiming(activity, entries, reportDate, activities)
+                                ? classifyDailyReportTiming(activity, history, reportDate, activities)
                                 : section.timing
                             }
                             value={formValues[activity.id]}

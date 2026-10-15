@@ -14,6 +14,7 @@ import {
 ganttBarClassName,
 ganttBarFillClassName,
 ganttBarShowsFloat,
+resolveGanttBarTone,
 } from '@/features/schedule/lib/gantt-tone'
 import {
 GANTT_FLOAT_DISPLAY_CAP_DAYS,
@@ -29,6 +30,7 @@ publishScheduleViewSync,
 useScheduleViewSync,
 } from '@/features/schedule/lib/schedule-view-sync'
 import { cn } from '@/shared/lib/utils'
+import { storePercentOf, useStoreProgress } from '@/features/project-store/use-store-progress'
 
 const DAY_PX = 14
 const FIT_MIN_DAY_PX = 4
@@ -57,6 +59,7 @@ function formatPercent(value: number): string {
 export function ScheduleGanttWorkspace() {
   const searchParams = useSearchParams()
   const projectId = searchParams.get('projectId') ?? ''
+  const storeProgress = useStoreProgress(projectId || null)
   const forceReadOnly = searchParams.get('as') === 'supervisor'
 
   const [rows, setRows] = useState<GanttRowDto[]>([])
@@ -145,17 +148,36 @@ export function ScheduleGanttWorkspace() {
   const displayRows = useMemo(() => {
     return rows.map((r) => {
       const d = draft[r.id]
-      if (!d) return r
+      const storeId = r.kind === 'package' ? `package:${r.id}` : `schedule:${r.id}`
+      const percent = storeProgress.ready
+        ? storePercentOf(storeProgress.percents, storeId, r.percentComplete)
+        : r.percentComplete
+      let tone = r.tone
+      if (percent != null && percent >= 100) tone = 'completed'
+      else if (r.tone === 'completed') {
+        tone = resolveGanttBarTone({
+          isCritical: r.isCritical,
+          totalFloat: r.totalFloat,
+          alertSeverity: r.alertSeverity,
+          percentComplete: percent,
+        })
+      }
+      const next = {
+        ...r,
+        percentComplete: percent,
+        tone,
+      }
+      if (!d) return next
       const span = barSpanDays(d.startDate, d.finishDate)
       return {
-        ...r,
+        ...next,
         startDate: d.startDate,
         finishDate: d.finishDate,
         durationDays: durationDaysFromRange(d.startDate, d.finishDate),
         isMilestone: r.isMilestone || span === 0,
       }
     })
-  }, [rows, draft])
+  }, [rows, draft, storeProgress.ready, storeProgress.percents])
 
   useEffect(() => {
     if (!focusTaskId || displayRows.length === 0) return

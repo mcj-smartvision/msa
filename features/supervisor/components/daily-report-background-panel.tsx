@@ -8,19 +8,13 @@ import { Skeleton } from '@/shared/components/ui/skeleton'
 import { useScheduleCalendar } from '@/features/schedule/hooks/use-schedule-calendar'
 import { formatScheduleDate } from '@/features/schedule/lib/dates'
 import { applyWeightedParentRollup } from '@/features/schedule/lib/parent-progress-rollup'
-import { useScheduleViewSync } from '@/features/schedule/lib/schedule-view-sync'
-import { useHolidays } from '@/features/holidays/hooks/use-holidays'
 import { holidaysOn, siteWorkCalendar } from '@/features/holidays/lib/work-calendar'
 import {
 buildDailyReportActivitiesFromTree,
 type DailyProgressEntry,
 } from '@/features/supervisor/lib/daily-report-activities'
-import {
-readProjectDailyProgress,
-upsertDailyEntries,
-writeProjectDailyProgress,
-} from '@/features/supervisor/lib/daily-progress-storage'
-import { deleteDailyProgress, postDailyProgress } from '@/features/supervisor/lib/daily-progress-sync'
+import { useProjectStore } from '@/features/project-store/use-project-store'
+import { useProjectStoreSync } from '@/features/project-store/use-project-store-sync'
 import {
 buildProgressLedgerRows,
 forecastShift,
@@ -32,24 +26,15 @@ type PlannedDay,
 import {
 groupWindows,
 windowSegments,
-type ActivityWindows,
-type WindowChange,
 } from '@/features/schedule/lib/week-commitment-windows'
 import {
 calendarDays,
 checkPercentEntry,
 cumulativeBefore,
-cumulativeEntry,
-historyFromServer,
-latestReport,
 mergeProgressHistory,
 reportedDays,
 type ReportedDayProgress,
-type ServerProgressRow,
-withLatestReports,
-withoutDay,
 } from '@/features/supervisor/lib/weekly-activity-progress'
-import type { ScheduleTreeNode, WorkshopPackageNode } from '@/features/workshop/lib/types'
 import { cn } from '@/shared/lib/utils'
 import { CalcTraceProvider, CalcTraceTrigger } from '@/features/calc-trace/components/calc-trace'
 import type { CalcTraceMap } from '@/features/calc-trace/lib/types'
@@ -60,7 +45,7 @@ const NAME_COL = 280
 const TOTAL_COL = 64
 
 const faNum = (n: number) => n.toLocaleString('fa-IR-u-nu-latn')
-const todayIso = () => new Date().toISOString().slice(0, 10)
+const NO_DRAFTS: Record<string, number | null> = {}
 /** 0 = Saturday … 6 = Friday. */
 const siteWeekday = (iso: string) => (new Date(`${iso}T00:00:00Z`).getUTCDay() + 1) % 7
 
@@ -78,67 +63,33 @@ function parseDraft(raw: string): number | null {
 const nameHasWbs = (name: string, wbs: string) =>
   name.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).trim().startsWith(wbs)
 
-type Tree = { nodes: ScheduleTreeNode[]; orphanPackages: WorkshopPackageNode[] }
-
 /**
  * Every daily-report percent of the project on one sheet: the latest schedule's rows against each
  * calendar day from the first to the last project day. A cell is that day's progress and can be edited.
  */
 export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { projectId: string | null; isAdmin?: boolean }) {
   const { calendar } = useScheduleCalendar()
-  const today = todayIso()
-  const [tree, setTree] = useState<Tree | null>(null)
-  const [forecastWindows, setForecastWindows] = useState<ActivityWindows>(new Map())
-  const [serverHistory, setServerHistory] = useState<DailyProgressEntry[]>([])
-  const [localEntries, setLocalEntries] = useState<DailyProgressEntry[]>([])
-  const [loading, setLoading] = useState(false)
+  useProjectStoreSync(projectId)
+  const snapshot = useProjectStore((s) => (s.snapshot?.projectId === projectId ? s.snapshot : null))
+  const localEntries = useProjectStore((s) => s.localEntries)
+  /** Saved history with the store's drafts applied: the same entries every view shows. */
+  const preview = useProjectStore((s) => s.entries)
+  const drafts = useProjectStore((s) => (projectId ? s.draftsByProject[projectId] : undefined)) ?? NO_DRAFTS
+  const today = useProjectStore((s) => s.today)
+  const loading = useProjectStore((s) => s.status === 'loading')
+  const saving = useProjectStore((s) => s.syncing)
+  const storeError = useProjectStore((s) => s.error)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState<{ activityId: string; date: string } | null>(null)
   const [draft, setDraft] = useState('')
-  /** Unsaved cumulative percents by `activityId@date`; null removes that day's report. */
-  const [drafts, setDrafts] = useState<Record<string, number | null>>({})
-  const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const scrolledToToday = useRef(false)
 
-  const loadHistory = useCallback(async () => {
-    if (!projectId) return
-    const res = await fetch(`/api/supervisor/daily-progress?projectId=${encodeURIComponent(projectId)}`, { cache: 'no-store' })
-    const data = (await res.json().catch(() => ({}))) as { updates?: ServerProgressRow[]; packageUpdates?: ServerProgressRow[]; error?: string }
-    if (!res.ok) throw new Error(data.error || 'خواندن گزارش‌های روزانه ناموفق بود')
-    setServerHistory(historyFromServer(data.updates ?? [], data.packageUpdates ?? []))
-    setLocalEntries(readProjectDailyProgress(projectId).entries)
-  }, [projectId])
-
-  const load = useCallback(async () => {
-    if (!projectId) {
-      setTree(null)
-      return
-    }
-    setLoading(true)
-    setError(null)
-    try {
-      const [treeRes, windowsRes] = await Promise.all([
-        fetch(`/api/workshop/schedule-tree?projectId=${encodeURIComponent(projectId)}`, { cache: 'no-store' }),
-        fetch(`/api/schedule/week-commitments?projectId=${encodeURIComponent(projectId)}`, { cache: 'no-store' }),
-        loadHistory(),
-      ])
-      const data = await treeRes.json()
-      if (!treeRes.ok) throw new Error(data.error || 'خطا در بارگذاری برنامه زمانبندی')
-      const windowsData = (await windowsRes.json().catch(() => ({}))) as { windows?: WindowChange[] }
-      setForecastWindows(groupWindows(windowsRes.ok ? windowsData.windows ?? [] : []))
-      setTree({ nodes: data.nodes ?? [], orphanPackages: data.orphanPackages ?? [] })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'خطا در بارگذاری')
-    } finally {
-      setLoading(false)
-    }
-  }, [projectId, loadHistory])
-
-  // Loads on open and again whenever the schedule or a report is saved anywhere.
-  useScheduleViewSync(projectId ?? '', () => void load())
+  const tree = snapshot?.tree ?? null
+  const forecastWindows = useMemo(() => groupWindows(snapshot?.windows ?? []), [snapshot])
+  const holidays = useMemo(() => snapshot?.holidays ?? [], [snapshot])
 
   const activities = useMemo(
     () => (tree ? buildDailyReportActivitiesFromTree(tree.nodes, tree.orphanPackages) : []),
@@ -149,28 +100,7 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
     () => (tree ? buildProgressLedgerRows(tree.nodes, tree.orphanPackages, activities) : []),
     [tree, activities]
   )
-  const history = useMemo(() => mergeProgressHistory(serverHistory, localEntries), [serverHistory, localEntries])
-
-  /** Saved history with the drafts applied day by day, the entries they set and the days they remove. */
-  const { preview, changed, removed } = useMemo(() => {
-    let working = history
-    const out: DailyProgressEntry[] = []
-    const removed: { activityId: string; reportDate: string }[] = []
-    for (const [key, value] of Object.entries(drafts).sort(([a], [b]) => a.localeCompare(b))) {
-      const at = key.lastIndexOf('@')
-      const activityId = key.slice(0, at)
-      const date = key.slice(at + 1)
-      if (value == null) {
-        working = withoutDay(activityId, working, date)
-        removed.push({ activityId, reportDate: date })
-        continue
-      }
-      const entry = cumulativeEntry(activityId, working, date, value)
-      working = upsertDailyEntries(working, [entry])
-      out.push(entry)
-    }
-    return { preview: working, changed: out, removed }
-  }, [history, drafts])
+  const history = useMemo(() => mergeProgressHistory(snapshot?.history ?? [], localEntries), [snapshot, localEntries])
 
   const cellsOf = useCallback(
     (source: DailyProgressEntry[]) => {
@@ -195,7 +125,6 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
     return () => window.removeEventListener('beforeunload', warn)
   }, [draftCount])
 
-  const { holidays } = useHolidays()
   const isWorkday = useMemo(() => siteWorkCalendar(holidays), [holidays])
 
   /**
@@ -298,60 +227,37 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
     setEditing({ activityId, date })
   }
 
-  /** Keeps the typed value as a draft; nothing is saved until «ذخیره». */
+  /** Keeps the typed value as a store draft; nothing is saved until «ذخیره». */
   function commitCell() {
     if (!editing) return
     const { activityId, date } = editing
-    const key = `${activityId}@${date}`
     const value = parseDraft(draft)
     if (value == null ? draft.trim() !== '' : checkPercentEntry(value, null).error != null) return
     setEditing(null)
-    const saved = savedCells.get(activityId)?.get(date)?.cumulative ?? null
-    setDrafts((prev) => {
-      const next = { ...prev }
-      if (value === saved) delete next[key]
-      else next[key] = value
-      return next
-    })
+    const store = useProjectStore.getState()
+    if (value == null) store.removeDailyLog(activityId, date)
+    else store.updateTaskProgress(activityId, value, date)
   }
 
   async function saveAll() {
     if (!projectId || saving || draftCount === 0) return
-    setSaving(true)
     setError(null)
     setSavedMsg(null)
     try {
-      const stored = readProjectDailyProgress(projectId)
-      let nextLocal = stored.entries
-      for (const r of removed) nextLocal = withoutDay(r.activityId, nextLocal, r.reportDate)
-      nextLocal = upsertDailyEntries(nextLocal, changed)
-      writeProjectDailyProgress(projectId, { ...stored, entries: nextLocal })
-      setLocalEntries(nextLocal)
-      window.dispatchEvent(new CustomEvent('sitepilot-daily-progress-updated', { detail: { projectId } }))
-      await deleteDailyProgress(projectId, removed)
-      const toPost = withLatestReports(changed, preview)
-      for (const activityId of new Set(removed.map((r) => r.activityId))) {
-        const latest = latestReport(activityId, preview)
-        if (latest && !toPost.some((e) => e.activityId === activityId && e.reportDate === latest.reportDate)) {
-          toPost.push({ ...latest, activityId })
-        }
-      }
-      await postDailyProgress(projectId, toPost, toPost.map((r) => r.reportDate))
-      await loadHistory()
-      setSavedMsg(`${faNum(draftCount)} تغییر ذخیره شد.`)
-      setDrafts({})
+      const { saved } = await useProjectStore.getState().syncWithDatabase()
+      setSavedMsg(`${faNum(saved)} تغییر ذخیره شد.`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'ذخیره ناموفق بود')
-    } finally {
-      setSaving(false)
     }
   }
+
+  const shownError = error ?? storeError
 
   if (!projectId) return <p className="text-sm text-muted-foreground">ابتدا یک پروژه انتخاب کنید.</p>
   if (!tree) {
     return (
       <div className="space-y-3" aria-busy="true" aria-label="در حال بارگذاری برنامه و گزارش‌ها…">
-        {error ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p> : null}
+        {shownError ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{shownError}</p> : null}
         <Skeleton className="h-16 w-full" />
         {Array.from({ length: 8 }, (_, i) => (
           <Skeleton key={i} className="h-10 w-full" />
@@ -411,7 +317,7 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
             size="sm"
             className="h-9"
             disabled={saving || draftCount === 0}
-            onClick={() => setDrafts({})}
+            onClick={() => useProjectStore.getState().discardDrafts()}
           >
             لغو تغییرات
           </Button>
@@ -427,7 +333,7 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
         </div>
       </div>
 
-      {error ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p> : null}
+      {shownError ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{shownError}</p> : null}
       {savedMsg && draftCount === 0 ? (
         <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">{savedMsg}</p>
       ) : null}

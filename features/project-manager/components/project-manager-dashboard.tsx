@@ -9,10 +9,13 @@ import type { DashboardUserContext } from '@/shared/types/dashboard'
 import type { ProjectEvmSnapshot } from '@/features/evm/lib/load-project-evm'
 import { useSyncedProjectId } from '@/shared/hooks/use-synced-project-id'
 import { cn } from '@/shared/lib/utils'
+import { useStoreEvm } from '@/features/project-store/use-project-store'
+import { storePercentOf, useStoreProgress } from '@/features/project-store/use-store-progress'
 import { RagStatusBadge } from './rag-status-badge'
 import { EvmKpiWidgets } from './evm-kpi-widgets'
 import { EvmSourcesButton } from './evm-sources-dialog'
 import { ControlsKpiCards, ScheduleSpiCard, useProjectControls } from './controls-kpi-cards'
+import { OutdoorWeatherAlert } from '@/features/weather/components/outdoor-weather-alert'
 
 interface ProjectManagerDashboardProps {
   initialContext: DashboardUserContext
@@ -60,6 +63,36 @@ export function ProjectManagerDashboard({
   const t = getProjectManagerMessages(locale)
   const projectId = useSyncedProjectId(initialProjectId)
   const { snapshot, loading, error, reload } = useProjectEvm(projectId)
+  const storeEvm = useStoreEvm(projectId)
+  const storeProgress = useStoreProgress(projectId)
+  const liveSnapshot = snapshot
+    ? {
+        ...snapshot,
+        metrics: storeEvm
+          ? {
+              ...snapshot.metrics,
+              spi: storeEvm.spi,
+              cpi: storeEvm.cpi,
+              sv: storeEvm.sv,
+              cv: storeEvm.cv,
+              pv: storeEvm.pv,
+              ev: storeEvm.ev,
+              evAmount: storeEvm.evAmount,
+              bac: storeEvm.bac,
+              ac: storeEvm.ac,
+              plannedPercent: storeEvm.plannedPercent,
+              earnedPercent: storeEvm.earnedPercent,
+            }
+          : snapshot.metrics,
+        activities: storeProgress.ready
+          ? snapshot.activities.map((a) => {
+              const key = `${a.kind === 'package' ? 'package' : 'schedule'}:${a.id}`
+              const percent = storePercentOf(storeProgress.percents, key, a.physicalPercent)
+              return percent == null ? a : { ...a, physicalPercent: percent }
+            })
+          : snapshot.activities,
+      }
+    : null
   const controls = useProjectControls(projectId)
   const reloadAll = useCallback(() => Promise.all([reload(), controls.reload()]).then(() => undefined), [reload, controls.reload])
 
@@ -80,17 +113,19 @@ export function ProjectManagerDashboard({
     <div className={cn('space-y-6', dir === 'rtl' && 'text-right')} dir={dir}>
       <PageHeader title={t.title} description={t.description} />
 
+      <OutdoorWeatherAlert projectId={projectId} />
+
       <section className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1">
               <h2 className="text-lg font-bold text-slate-900">{t.executiveTitle}</h2>
-              <EvmSourcesButton snapshot={snapshot} />
+              <EvmSourcesButton snapshot={liveSnapshot} />
             </div>
-            {snapshot ? <RagStatusBadge rag={snapshot.rag} /> : null}
+            {liveSnapshot ? <RagStatusBadge rag={liveSnapshot.rag} /> : null}
           </div>
           <div className="flex items-center gap-3 text-xs text-slate-500">
-            {snapshot ? <span>{t.asOf(snapshot.metrics.asOf)}</span> : null}
+            {liveSnapshot ? <span>{t.asOf(liveSnapshot.metrics.asOf)}</span> : null}
             <button
               type="button"
               onClick={() => void reloadAll()}
@@ -111,8 +146,8 @@ export function ProjectManagerDashboard({
           <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
         ) : null}
 
-        {snapshot ? (
-          <EvmKpiWidgets metrics={snapshot.metrics} float={snapshot.float} scheduleCard={<ScheduleSpiCard state={controls} />} />
+        {liveSnapshot ? (
+          <EvmKpiWidgets metrics={liveSnapshot.metrics} float={liveSnapshot.float} scheduleCard={<ScheduleSpiCard state={controls} />} />
         ) : loading ? (
           <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
             <Loader2 className="h-4 w-4 animate-spin" />

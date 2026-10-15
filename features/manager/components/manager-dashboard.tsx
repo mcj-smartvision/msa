@@ -14,6 +14,7 @@ ChevronRight,
 CircleHelp,
 Coins,
 Compass,
+Database,
 FileSignature,
 FileText,
 HardHat,
@@ -35,11 +36,15 @@ import { EmptyState } from '@/features/admin/components/shared'
 import { BrandLogo } from '@/shared/components/brand/brand-logo'
 import { HeaderUserMenu } from '@/features/account/components/header-user-menu'
 import { PersianCalendar } from '@/shared/components/layout/PersianCalendar'
+import { HeaderWeather } from '@/features/weather/components/header-weather'
 import { useSyncedProjectId } from '@/shared/hooks/use-synced-project-id'
 import { writeProjectCookie } from '@/shared/lib/project/project-cookie'
 import type { ManagerNavGroup, ManagerNavIcon, ManagerNavModel } from '@/features/manager/lib/manager-nav'
 import type { ManagerAlert, ManagerAlertDomain, ManagerOverview, ManagerPeriod } from '@/features/manager/lib/overview-types'
 import { MANAGER_PERIODS } from '@/features/manager/lib/alert-period'
+import { useStoreEvm } from '@/features/project-store/use-project-store'
+import { useProjectStoreSync } from '@/features/project-store/use-project-store-sync'
+import { withStoreEvm } from '@/features/project-store/lib/overview-overlay'
 import { faNumber, jalaliDate, jalaliDateTime, relativeTimeFa } from '@/features/manager/lib/format'
 import { SectionBody, SectionCard, Spinner } from './manager-ui'
 import {
@@ -62,6 +67,7 @@ import { CostPerformanceSection } from './cost-performance-section'
 import { WeeklyCommitmentsSection } from './weekly-commitments-section'
 import { ManagerPeriodCompare } from './manager-period-compare'
 import { ManagerBackgroundView } from './manager-background'
+import { StoreInspector } from '@/features/project-store/components/store-inspector'
 import { CostEstimateView } from './cost-estimate-view'
 import { PmInboxCard } from './pm-inbox-card'
 import { BlockersDelaysCard, DailyDeltaCard } from './manager-daily-section'
@@ -83,6 +89,7 @@ const NAV_ICONS: Record<ManagerNavIcon, ComponentType<{ className?: string }>> =
   contracts: FileSignature,
   reports: FileText,
   background: Calculator,
+  store: Database,
   estimate: Coins,
 }
 
@@ -622,12 +629,15 @@ interface ManagerDashboardProps {
   nav: ManagerNavModel
   projectOptions: { id: string; name: string }[]
   initialProjectId: string | null
-  view: 'home' | 'alerts' | 'background' | 'estimate'
+  view: 'home' | 'alerts' | 'background' | 'store' | 'estimate'
 }
 
 export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, view }: ManagerDashboardProps) {
   const projectId = useSyncedProjectId(initialProjectId)
-  const { data, loading, error, reload } = useManagerOverview(projectId)
+  const { data: serverOverview, loading, error, reload } = useManagerOverview(projectId)
+  useProjectStoreSync(projectId)
+  const storeEvm = useStoreEvm(projectId, { savedOnly: true })
+  const data = useMemo(() => withStoreEvm(serverOverview, storeEvm), [serverOverview, storeEvm])
   const [period, setPeriod] = usePeriodParam()
   const [periodReportOpen, setPeriodReportOpen] = useState(false)
   const closePeriodReport = useCallback(() => setPeriodReportOpen(false), [])
@@ -690,6 +700,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
     const candidates: (ManagerHelpLink | null)[] = [
       { label: 'همهٔ هشدارها', description: 'فهرست کامل هشدارها با فیلتر حوزه و سطح', href: '/dashboard/manager/alerts' },
       { label: 'بک‌گراند محاسبات', description: 'فرمول و ریز محاسبهٔ هر عدد داشبورد', href: '/dashboard/manager/background' },
+      { label: 'جدول داده‌ها (Store)', description: 'پیشرفت، تعهد هفته و PPC هر فعالیت از منبع مشترک', href: '/dashboard/manager/store' },
       { label: 'برآورد و کنترل هزینه', description: 'ارزش قرارداد، BAC، هزینهٔ واقعی و EAC', href: '/dashboard/manager/estimate' },
       hrefs.inbox ? { label: 'کارتابل من', description: 'تصمیم‌ها و تأییدهای در انتظار', href: hrefs.inbox() } : null,
       hrefs.evm ? { label: 'شاخص‌های ارزش کسب‌شده', description: 'جزئیات SPI، CPI و فعالیت‌ها', href: hrefs.evm } : null,
@@ -944,6 +955,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
               </button>
 
               <PersianCalendar className="hidden sm:block" />
+              <HeaderWeather />
 
               <NotificationsMenu overview={data} critical={criticalAlerts} inboxHref={hrefs.inbox} />
 
@@ -981,6 +993,16 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
             <AllAlertsView overview={data} loading={loading} period={period} hrefs={hrefs} />
           ) : view === 'background' ? (
             <ManagerBackgroundView projectId={projectId} overview={data} loading={loading} />
+          ) : view === 'store' ? (
+            <div className="space-y-4">
+              <div>
+                <h1 className="text-base font-bold text-slate-900">جدول داده‌ها (Store)</h1>
+                <p className="mt-1 text-xs leading-6 text-slate-500">
+                  همین جدول منبع مشترک پیشرفت فعالیت‌هاست. عددها را می‌توانید جستجو کنید یا با JSON و CSV دانلود کنید.
+                </p>
+              </div>
+              <StoreInspector projectId={projectId} />
+            </div>
           ) : view === 'estimate' ? (
             <CostEstimateView projectId={projectId} overview={data} loading={loading} />
           ) : (

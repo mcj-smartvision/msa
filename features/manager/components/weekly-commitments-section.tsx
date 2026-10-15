@@ -16,6 +16,8 @@ type PpcTone,
 type WeeklyCommitmentsData,
 type WeeklyCommitmentsResult,
 } from '@/features/manager/lib/weekly-commitments'
+import { useStoreWeeklyPpc } from '@/features/project-store/use-project-store'
+import { withStorePpc } from '@/features/project-store/lib/overview-overlay'
 import { LoadingRows, SectionCard } from './manager-ui'
 import { CalcTraceProvider, CalcTraceTrigger } from '@/features/calc-trace/components/calc-trace'
 import type { CalcTraceMap } from '@/features/calc-trace/lib/types'
@@ -434,10 +436,12 @@ function WeeklyCommitmentsBody({
   overview,
   controls,
   wwp,
+  livePpc,
 }: {
   overview: ManagerOverview
   controls: Load<ControlsBody>
   wwp: Load<WeeklyCommitmentsResult>
+  livePpc: ReturnType<typeof useStoreWeeklyPpc>
 }) {
   const kpis = controls.state === 'ok' ? controls.data.kpis : null
   const snapshot = controls.state === 'ok' ? controls.data.snapshot : null
@@ -463,7 +467,8 @@ function WeeklyCommitmentsBody({
     }
   }, [snapshot, overview.progress, spi?.value, spiT?.value])
 
-  const ppcData = wwp.state === 'ok' && wwp.data.status === 'ok' ? wwp.data.data : null
+  const serverPpc = wwp.state === 'ok' && wwp.data.status === 'ok' ? wwp.data.data : null
+  const ppcData = useMemo(() => withStorePpc(serverPpc, livePpc), [serverPpc, livePpc])
   const ppcMissing =
     wwp.state === 'error' ? `بارگذاری برنامهٔ هفتگی ناموفق بود: ${wwp.message}` : wwp.state === 'ok' && wwp.data.status === 'missing' ? wwp.data.reason_fa : null
   const current = ppcData?.current ?? null
@@ -551,7 +556,7 @@ function WeeklyCommitmentsBody({
                   {faNumber(current.completed)} از {faNumber(current.planned)}
                 </b>{' '}
                 {ppcData.source === 'schedule'
-                  ? `فعالیت برنامهٔ هفتهٔ ${faNumber(current.weekNumber)} (${jalaliDate(current.start)} تا ${jalaliDate(current.end)}) به درصد برنامه رسید`
+                  ? `فعالیت برنامهٔ هفتهٔ ${faNumber(current.weekNumber)} (${jalaliDate(current.start)} تا ${jalaliDate(current.end)}) سهم هفته را کامل کرد`
                   : `کار تعهدشدهٔ هفتهٔ ${faNumber(current.weekNumber)} (${jalaliDate(current.start)} تا ${jalaliDate(current.end)}) کامل شد`}
                 <br />
                 {delta != null ? `${delta < 0 ? '▼' : '▲'} ${faNumber(Math.abs(Math.round(delta)))} واحد درصد نسبت به هفتهٔ قبل` : 'هفتهٔ قبلی برای مقایسه نیست'}
@@ -723,7 +728,7 @@ function WeeklyCommitmentsBody({
               </div>
               <p className="mt-3 rounded-[10px] border border-slate-200 bg-[#faf9f7] px-3 py-2 text-xs leading-6 text-slate-500">
                 {ppcData?.source === 'schedule'
-                  ? 'فعالیتی نمره می‌گیرد که درصد ثبت‌شده‌اش تا پایان پنج‌شنبه به درصد برنامه برسد یا از آن بیشتر شود؛ حتی کمی کمتر یعنی «انجام‌نشده».'
+                  ? 'فعالیتی نمره می‌گیرد که پیشرفت ثبت‌شده‌اش در این هفته (شنبه تا پنج‌شنبه) به سهم برنامهٔ هفته برسد یا از آن بیشتر شود؛ حتی کمی کمتر یعنی «انجام‌نشده» و ثبت علت لازم دارد.'
                   : 'کار نیمه‌تمام در PPC صفر حساب می‌شود؛ حتی کاری که بخشی از آن پیش رفته هنوز «انجام‌نشده» است.'}
               </p>
             </>
@@ -803,7 +808,7 @@ function WeeklyCommitmentsBody({
       </details>
 
       <p className="text-[11px] text-slate-500">
-        PPC = فعالیت‌هایی که تا پایان پنج‌شنبه به درصد برنامه رسیده‌اند ÷ کل فعالیت‌های برنامهٔ آن هفته (هدف {pct(ppcData?.target ?? 80)}، زیر {pct(PPC_LOW)} پایین). مرز رنگ SPI و
+        PPC = فعالیت‌هایی که پیشرفت هفته‌شان به سهم برنامهٔ هفته رسیده ÷ کل تعهدات هفته؛ ارزیابی پنج‌شنبه 16:00 (هدف {pct(ppcData?.target ?? 80)}، زیر {pct(PPC_LOW)} پایین). مرز رنگ SPI و
         SPI(t): ≥1 سبز، 0.9 تا 1 زرد، زیر 0.9 قرمز. روند SPI و SPI(t) از نقاط ثبت‌شدهٔ منحنی S تا امروز است.
       </p>
     </div>
@@ -829,6 +834,7 @@ export function WeeklyCommitmentsSection({
     refreshKey
   )
   const traces = wwp.state === 'ok' ? { ...overview?.traces, ...wwp.data.traces } : overview?.traces
+  const livePpc = useStoreWeeklyPpc(projectId, { savedOnly: true })
 
   return (
     <CalcTraceProvider traces={traces}>
@@ -842,7 +848,7 @@ export function WeeklyCommitmentsSection({
       {!overview ? (
         loading ? <LoadingRows rows={6} /> : <Missing text="داده هنوز بارگذاری نشده است" />
       ) : (
-        <WeeklyCommitmentsBody overview={overview} controls={controls} wwp={wwp} />
+        <WeeklyCommitmentsBody overview={overview} controls={controls} wwp={wwp} livePpc={livePpc} />
       )}
     </SectionCard>
     </CalcTraceProvider>

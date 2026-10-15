@@ -24,6 +24,7 @@ TrendingUp,
 } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { readProjectDailyProgress } from '@/features/supervisor/lib/daily-progress-storage'
+import { useStoreProgress } from '@/features/project-store/use-store-progress'
 import {
 buildDailyReportActivitiesFromTree,
 buildProjectProgressSeries,
@@ -390,6 +391,7 @@ export function SupervisorOverviewPanel({
   projectId,
   onViewSafety,
 }: SupervisorOverviewPanelProps) {
+  const storeProgress = useStoreProgress(projectId)
   const [curveActivities, setCurveActivities] = useState<DailyReportActivity[]>([])
   const [packageActivities, setPackageActivities] = useState<DailyReportActivity[]>([])
   const [scheduleStartDate, setScheduleStartDate] = useState<string | null>(null)
@@ -441,20 +443,20 @@ export function SupervisorOverviewPanel({
     if (!projectId) return
 
     function refresh() {
-      const stored = readProjectDailyProgress(projectId!)
+      const entries = storeProgress.entries ?? readProjectDailyProgress(projectId!).entries
       const today = todayIso()
       const yesterday = yesterdayIso()
 
       const todayOverall = calculateSCurveActualProgress(
         curveActivities,
-        stored.entries,
+        entries,
         today,
         today,
         packageActivities
       )
       const yesterdayOverall = calculateSCurveActualProgress(
         curveActivities,
-        stored.entries,
+        entries,
         yesterday,
         today,
         packageActivities
@@ -465,7 +467,7 @@ export function SupervisorOverviewPanel({
       setProgressSeries(
         buildProjectProgressSeries(
           curveActivities,
-          stored.entries,
+          entries,
           today,
           scheduleStartDate,
           packageActivities
@@ -482,7 +484,7 @@ export function SupervisorOverviewPanel({
 
     window.addEventListener('sitepilot-daily-progress-updated', onUpdated)
     return () => window.removeEventListener('sitepilot-daily-progress-updated', onUpdated)
-  }, [projectId, curveActivities, packageActivities, scheduleStartDate])
+  }, [projectId, curveActivities, packageActivities, scheduleStartDate, storeProgress.entries])
 
   const overviewKpis = {
     ...MOCK,

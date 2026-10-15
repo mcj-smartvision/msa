@@ -8,6 +8,7 @@ import { PageHeader, LoadingBlock, ErrorBlock, EmptyState } from '@/features/adm
 import { SupervisorDrawingsZoningPanel } from '@/features/supervisor/components/supervisor-drawings-zoning-panel'
 import { DailyReportPanel } from '@/features/supervisor/components/daily-report-panel'
 import { DailyReportBackgroundPanel } from '@/features/supervisor/components/daily-report-background-panel'
+import { StoreInspector } from '@/features/project-store/components/store-inspector'
 import { HolidaysPanel } from '@/features/holidays/components/holidays-panel'
 import { ScheduleDateInput } from '@/features/schedule/components/schedule-date-input'
 import { SupervisorOverviewPanel } from '@/features/supervisor/components/supervisor-overview-panel'
@@ -71,6 +72,7 @@ submitQuickReport,
 updateAiActionText,
 } from '@/features/supervisor/services/dashboard'
 import { cn } from '@/shared/lib/utils'
+import { refreshProjectStore, storePercentOf, useStoreProgress } from '@/features/project-store/use-store-progress'
 
 interface SiteSupervisorDashboardProps {
   initialContext: DashboardUserContext
@@ -114,6 +116,7 @@ export function SiteSupervisorDashboard({
   }
 
   const projectId = useSyncedProjectId(initialProjectId)
+  const storeProgress = useStoreProgress(projectId)
   const [tasks, setTasks] = useState(initialTasks)
   const [alerts, setAlerts] = useState(initialAlerts)
   const [inventory, setInventory] = useState<Awaited<ReturnType<typeof fetchInventoryItems>>>([])
@@ -191,10 +194,20 @@ export function SiteSupervisorDashboard({
   }, [loadData])
 
   /** Same date filter as before: current window + incomplete overdue (not all unfinished tasks). */
-  const todayActivities = useMemo(
-    () => tasksToTodayActivities(tasks, viewDate, inventory),
-    [tasks, viewDate, inventory]
-  )
+  const todayActivities = useMemo(() => {
+    const base = tasksToTodayActivities(tasks, viewDate, inventory)
+    if (!storeProgress.ready) return base
+    return base.map((a) => {
+      const key = a.kind === 'package' ? `package:${a.packageId ?? a.id}` : `schedule:${a.id}`
+      const percent = storePercentOf(storeProgress.percents, key, a.actual_progress_percent)
+      if (percent == null) return a
+      return {
+        ...a,
+        actual_progress_percent: percent,
+        actual_status: percent >= 100 ? ('finished' as const) : a.actual_status,
+      }
+    })
+  }, [tasks, viewDate, inventory, storeProgress.ready, storeProgress.percents])
   const scheduleTodayRows = todayActivities
   const lookahead = useMemo(() => tasksToLookahead(tasks, viewDate), [tasks, viewDate])
   const resources = useMemo(
@@ -292,6 +305,11 @@ export function SiteSupervisorDashboard({
             id: 'report-background',
             label: 'بک‌گراند گزارش‌های روزانه',
             hint: 'همه درصدهای ثبت‌شده به تفکیک روز — مشاهده و ویرایش',
+          },
+          {
+            id: 'store',
+            label: 'جدول داده‌ها (Store)',
+            hint: 'پیشرفت، تعهد هفته و PPC هر فعالیت از منبع مشترک',
           },
           {
             id: 'holidays',
@@ -427,6 +445,8 @@ export function SiteSupervisorDashboard({
 
         {activeSection === 'report-background' ? <DailyReportBackgroundPanel projectId={projectId} isAdmin={initialContext.isSystemAdmin} /> : null}
 
+        {activeSection === 'store' ? <StoreInspector projectId={projectId} /> : null}
+
         {activeSection === 'holidays' ? <HolidaysPanel /> : null}
 
         {activeSection === 'today' ? (
@@ -550,6 +570,7 @@ export function SiteSupervisorDashboard({
         locale={locale === 'fa' ? 'fa' : 'en'}
         onSubmit={async (input) => {
           const { report, summaryText } = await submitQuickReport(supabase, input, locale === 'fa' ? 'fa' : 'en')
+          refreshProjectStore()
           return { summaryText, reportId: report.id }
         }}
         onApproveReport={async (reportId, text) => {
@@ -569,6 +590,7 @@ export function SiteSupervisorDashboard({
         labels={t}
         locale={locale === 'fa' ? 'fa' : 'en'}
         onSaved={() => {
+          refreshProjectStore()
           void loadData()
         }}
       />

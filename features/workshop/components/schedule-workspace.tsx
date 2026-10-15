@@ -70,6 +70,7 @@ mergeSupervisorProgressEntries,
 resolvePhysicalProgressPercent,
 schedulePhysicalPercent,
 } from '@/features/schedule/lib/physical-progress'
+import { useStoreProgress, withStoreEntries } from '@/features/project-store/use-store-progress'
 
 type Selection =
   | { kind: 'schedule'; id: string; name: string; wbs: string | null }
@@ -298,6 +299,7 @@ function parseCommercialNumber(raw: string | undefined): number | null {
 export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean }) {
   const searchParams = useSearchParams()
   const projectId = searchParams.get('projectId') ?? ''
+  const storeProgress = useStoreProgress(projectId || null)
   const forceSupervisorView = searchParams.get('as') === 'supervisor'
   const { calendar, setCalendar } = useScheduleCalendar()
   useEffect(() => {
@@ -350,8 +352,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
   const [dailyProgressEntries, setDailyProgressEntries] = useState<DailyProgressEntry[]>([])
   const [savedProgressEntries, setSavedProgressEntries] = useState<DailyProgressEntry[]>([])
   const supervisorProgressEntries = useMemo(
-    () => mergeSupervisorProgressEntries(savedProgressEntries, dailyProgressEntries),
-    [savedProgressEntries, dailyProgressEntries]
+    () =>
+      withStoreEntries(
+        storeProgress.entries,
+        mergeSupervisorProgressEntries(savedProgressEntries, dailyProgressEntries)
+      ),
+    [storeProgress.entries, savedProgressEntries, dailyProgressEntries]
   )
   const scheduleTableScrollRef = useRef<HTMLDivElement>(null)
   const topHScrollRef = useRef<HTMLDivElement>(null)

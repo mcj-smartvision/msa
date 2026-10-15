@@ -12,6 +12,7 @@ export type SupervisorNavId =
   | 'today'
   | 'daily-report'
   | 'report-background'
+  | 'store'
   | 'holidays'
   | 'lookahead'
   | 'issues'
