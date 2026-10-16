@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/calendar-preference.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (calendar-preference)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on nothing
+ */
+
 export type ScheduleCalendar = 'gregorian' | 'jalali'
 
 export const SCHEDULE_CALENDAR_KEY = 'sitepilot_schedule_calendar'

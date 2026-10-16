@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/float-alerts.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (float-alerts)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/dates
+ */
+
 import { diffDaysIso } from '@/features/schedule/lib/dates'
 
 export type ScheduleAlertSeverity =

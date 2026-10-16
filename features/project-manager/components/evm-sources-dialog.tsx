@@ -1,3 +1,11 @@
+/**
+ * @file features/project-manager/components/evm-sources-dialog.tsx
+ * @purpose کامپوننت UI — اتاق فرمان مدیر پروژه و کارتابل (evm-sources-dialog)
+ * @safe-to-edit CAREFUL
+ * @affects اتاق فرمان مدیر پروژه و کارتابل
+ * @depends-on shared/lib/utils, features/schedule/lib/dates, features/evm/lib/metrics, features/evm/lib/rag-status, features/evm/lib/load-project-evm, features/project-manager/config
+ */
+
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -7,14 +15,11 @@ import { formatScheduleDate } from '@/features/schedule/lib/dates'
 import { EVM_COST_SOURCES, type EvmCostSource } from '@/features/evm/lib/metrics'
 import { DEFAULT_RAG_THRESHOLDS as T } from '@/features/evm/lib/rag-status'
 import type { ProjectEvmSnapshot } from '@/features/evm/lib/load-project-evm'
+import { EVM_SOURCES_COPY } from '@/features/project-manager/config'
 
-const COST_SOURCE_LABEL: Record<EvmCostSource, string> = {
-  expense: 'اسناد هزینهٔ حسابداری (نهایی / اصلاح‌شده)',
-  vendor_bill: 'صورت‌حساب تأمین‌کنندگان',
-  overhead: 'جدول هزینهٔ بالاسری کارگاه',
-}
+const C = EVM_SOURCES_COPY
 
-const RAG_LABEL = { GREEN: 'سبز', AMBER: 'زرد', RED: 'قرمز' } as const
+const COST_SOURCE_LABEL: Record<EvmCostSource, string> = C.costSource
 
 function n(value: number): string {
   return Math.round(value).toLocaleString('en-US')
@@ -60,25 +65,25 @@ type Check = { label: string; value: string; verdict: string; tone: 'ok' | 'warn
 
 function ragChecks(s: ProjectEvmSnapshot): Check[] {
   const indexCheck = (label: string, value: number | null, missing: string): Check => {
-    if (value == null) return { label, value: '—', verdict: `${missing}؛ در ارزیابی حساب نشد`, tone: 'skip' }
-    if (value < T.critical) return { label, value: ratio(value), verdict: `کمتر از ${T.critical} ← قرمز`, tone: 'bad' }
-    if (value < T.onTrack) return { label, value: ratio(value), verdict: `بین ${T.critical} و ${T.onTrack} ← زرد`, tone: 'warn' }
-    return { label, value: ratio(value), verdict: `حداقل ${T.onTrack} ← سبز`, tone: 'ok' }
+    if (value == null) return { label, value: '—', verdict: C.missingSkipped(missing), tone: 'skip' }
+    if (value < T.critical) return { label, value: ratio(value), verdict: C.belowCritical(T.critical), tone: 'bad' }
+    if (value < T.onTrack) return { label, value: ratio(value), verdict: C.betweenAmber(T.critical, T.onTrack), tone: 'warn' }
+    return { label, value: ratio(value), verdict: C.atLeastGreen(T.onTrack), tone: 'ok' }
   }
   const { criticalFloatDays: cf, floatConsumptionPercent: fc } = s.float
   return [
-    indexCheck('SPI', s.metrics.spi, 'PV صفر است'),
-    indexCheck('CPI', s.metrics.cpi, 'AC صفر است'),
+    indexCheck('SPI', s.metrics.spi, C.pvZero),
+    indexCheck('CPI', s.metrics.cpi, C.acZero),
     cf == null
-      ? { label: 'کمترین شناوری بحرانی', value: '—', verdict: 'CPM اجرا نشده؛ حساب نشد', tone: 'skip' }
+      ? { label: C.minCriticalFloat, value: '—', verdict: C.cpmNotRun, tone: 'skip' }
       : cf < 0
-        ? { label: 'کمترین شناوری بحرانی', value: `${n(cf)} روز`, verdict: 'منفی ← قرمز', tone: 'bad' }
-        : { label: 'کمترین شناوری بحرانی', value: `${n(cf)} روز`, verdict: 'نامنفی ← سبز', tone: 'ok' },
+        ? { label: C.minCriticalFloat, value: C.days(n(cf)), verdict: C.negativeRed, tone: 'bad' }
+        : { label: C.minCriticalFloat, value: C.days(n(cf)), verdict: C.nonnegativeGreen, tone: 'ok' },
     fc == null
-      ? { label: 'مصرف شناوری', value: '—', verdict: 'تاریخچه ندارد؛ حساب نشد', tone: 'skip' }
+      ? { label: C.floatConsumption, value: '—', verdict: C.noHistorySkipped, tone: 'skip' }
       : fc > T.floatConsumptionAmber
-        ? { label: 'مصرف شناوری', value: `${Math.round(fc)}٪`, verdict: `بیش از ${T.floatConsumptionAmber}٪ ← زرد`, tone: 'warn' }
-        : { label: 'مصرف شناوری', value: `${Math.round(fc)}٪`, verdict: `حداکثر ${T.floatConsumptionAmber}٪ ← سبز`, tone: 'ok' },
+        ? { label: C.floatConsumption, value: C.percent(fc), verdict: C.floatOverAmber(T.floatConsumptionAmber), tone: 'warn' }
+        : { label: C.floatConsumption, value: C.percent(fc), verdict: C.floatAtMostGreen(T.floatConsumptionAmber), tone: 'ok' },
   ]
 }
 
@@ -93,7 +98,7 @@ function ActivityTable({ s }: { s: ProjectEvmSnapshot }) {
   const { metrics, activities } = s
   const byWeight = metrics.budgetBasis === 'weighted_project_budget'
   if (activities.length === 0) {
-    return <p>هیچ فعالیتی بودجه ندارد؛ در «ویرایش برنامه زمانبندی» مقدار و قیمت واحد وارد نشده است.</p>
+    return <p>{C.noBudgetActivities}</p>
   }
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200">
@@ -101,15 +106,15 @@ function ActivityTable({ s }: { s: ProjectEvmSnapshot }) {
         <thead className="bg-slate-50 text-slate-500">
           <tr className="text-start">
             <th className="px-2 py-2 text-start font-medium">WBS</th>
-            <th className="px-2 py-2 text-start font-medium">فعالیت</th>
+            <th className="px-2 py-2 text-start font-medium">{C.activity}</th>
             <th className="px-2 py-2 text-start font-medium">
-              {byWeight ? 'بودجه = وزن × بودجهٔ پروژه' : 'بودجه = مقدار × قیمت واحد'}
+              {byWeight ? C.budgetByWeight : C.budgetByQty}
             </th>
-            <th className="px-2 py-2 text-start font-medium">baseline شروع ← پایان</th>
-            <th className="px-2 py-2 text-start font-medium">٪ برنامه‌ای</th>
-            <th className="px-2 py-2 text-start font-medium">PV = بودجه × ٪ برنامه‌ای</th>
-            <th className="px-2 py-2 text-start font-medium">٪ فیزیکی</th>
-            <th className="px-2 py-2 text-start font-medium">EV = بودجه × ٪ فیزیکی</th>
+            <th className="px-2 py-2 text-start font-medium">{C.baselineRange}</th>
+            <th className="px-2 py-2 text-start font-medium">{C.plannedPct}</th>
+            <th className="px-2 py-2 text-start font-medium">{C.pvFormula}</th>
+            <th className="px-2 py-2 text-start font-medium">{C.physicalPct}</th>
+            <th className="px-2 py-2 text-start font-medium">{C.evFormula}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -118,7 +123,7 @@ function ActivityTable({ s }: { s: ProjectEvmSnapshot }) {
               <td className="px-2 py-1.5 tabular-nums" dir="ltr">{a.wbs ?? '—'}</td>
               <td className="px-2 py-1.5">
                 {a.name}
-                {a.kind === 'package' ? <span className="ms-1 text-slate-400">(زیرشاخه)</span> : null}
+                {a.kind === 'package' ? <span className="ms-1 text-slate-400">{C.package}</span> : null}
               </td>
               <td className="px-2 py-1.5 tabular-nums" dir="ltr">
                 {byWeight
@@ -137,7 +142,7 @@ function ActivityTable({ s }: { s: ProjectEvmSnapshot }) {
         </tbody>
         <tfoot className="bg-slate-50 font-semibold text-slate-900">
           <tr>
-            <td className="px-2 py-2" colSpan={2}>جمع ({activities.length} فعالیت)</td>
+            <td className="px-2 py-2" colSpan={2}>{C.activityTotal(activities.length)}</td>
             <td className="px-2 py-2 tabular-nums" dir="ltr">BAC = {n(metrics.bac)}</td>
             <td />
             <td />
@@ -156,8 +161,10 @@ function CostTable({ s }: { s: ProjectEvmSnapshot }) {
   if (costs.length === 0) {
     return (
       <p>
-        تا {jalali(metrics.asOf)} هیچ رکوردی در این سه منبع ثبت نشده است:{' '}
-        {EVM_COST_SOURCES.map((key) => COST_SOURCE_LABEL[key]).join('، ')}. پس AC = 0.
+        {C.costEmpty(
+          jalali(metrics.asOf),
+          EVM_COST_SOURCES.map((key) => COST_SOURCE_LABEL[key]).join(C.listSep)
+        )}
       </p>
     )
   }
@@ -166,11 +173,11 @@ function CostTable({ s }: { s: ProjectEvmSnapshot }) {
       <table className="w-full min-w-[620px] text-[12px]">
         <thead className="bg-slate-50 text-slate-500">
           <tr>
-            <th className="px-2 py-2 text-start font-medium">منبع</th>
-            <th className="px-2 py-2 text-start font-medium">رکورد</th>
-            <th className="px-2 py-2 text-start font-medium">تاریخ</th>
-            <th className="px-2 py-2 text-start font-medium">محاسبه</th>
-            <th className="px-2 py-2 text-start font-medium">مبلغ (تومان)</th>
+            <th className="px-2 py-2 text-start font-medium">{C.source}</th>
+            <th className="px-2 py-2 text-start font-medium">{C.record}</th>
+            <th className="px-2 py-2 text-start font-medium">{C.date}</th>
+            <th className="px-2 py-2 text-start font-medium">{C.calc}</th>
+            <th className="px-2 py-2 text-start font-medium">{C.amountToman}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -188,7 +195,7 @@ function CostTable({ s }: { s: ProjectEvmSnapshot }) {
                 </tr>
               )),
               <tr key={`${source}-sum`} className="bg-slate-50/60 font-medium">
-                <td className="px-2 py-1.5" colSpan={4}>جمع {COST_SOURCE_LABEL[source]}</td>
+                <td className="px-2 py-1.5" colSpan={4}>{C.sourceSum(COST_SOURCE_LABEL[source])}</td>
                 <td className="px-2 py-1.5 tabular-nums" dir="ltr">{n(metrics.acBySource[source])}</td>
               </tr>,
             ]
@@ -206,7 +213,7 @@ function CostTable({ s }: { s: ProjectEvmSnapshot }) {
 }
 
 function taskLabel(task: { name: string; wbs: string | null } | null): string {
-  if (!task) return 'فعالیت نامشخص'
+  if (!task) return C.unknownActivity
   return task.wbs ? `${task.wbs} — ${task.name}` : task.name
 }
 
@@ -215,7 +222,7 @@ function SourcesContent({ s }: { s: ProjectEvmSnapshot }) {
   const f = s.float
   return (
     <div className="space-y-4">
-      <Section title={`وضعیت پروژه: ${s.rag.evaluated ? RAG_LABEL[s.rag.status] : 'داده ناکافی'}`}>
+      <Section title={C.projectStatus(s.rag.evaluated ? C.rag[s.rag.status] : C.rag.insufficient)}>
         <ul className="space-y-1">
           {ragChecks(s).map((c) => (
             <li key={c.label} className="flex flex-wrap gap-x-2">
@@ -233,8 +240,8 @@ function SourcesContent({ s }: { s: ProjectEvmSnapshot }) {
           {m.spi == null ? '' : ` = ${ratio(m.spi)}`}
         </Calc>
         <p>
-          {m.spi == null ? 'PV صفر است، پس تقسیم انجام نمی‌شود. ' : ''}
-          EV و PV جمع ستون‌های جدول فعالیت‌ها در پایین همین صفحه‌اند.
+          {m.spi == null ? C.spiNull : ''}
+          {C.spiHint}
         </p>
       </Section>
 
@@ -244,15 +251,17 @@ function SourcesContent({ s }: { s: ProjectEvmSnapshot }) {
           {m.cpi == null ? '' : ` = ${ratio(m.cpi)}`}
         </Calc>
         <p>
-          {m.cpi == null ? 'AC صفر است، پس تقسیم انجام نمی‌شود. ' : ''}
-          AC جمع جدول هزینه‌ها در پایین همین صفحه است.
+          {m.cpi == null ? C.cpiNull : ''}
+          {C.cpiHint}
         </p>
       </Section>
 
       <Section
         title={
           <>
-            پیشرفت واقعی = <Ltr>{pct(m.earnedPercent)}</Ltr> · پیشرفت برنامه‌ای ={' '}
+            {C.earnedProgress} <Ltr>{pct(m.earnedPercent)}</Ltr>
+            {' · '}
+            {C.plannedProgress}{' '}
             <Ltr>{pct(m.plannedPercent)}</Ltr>
           </>
         }
@@ -266,7 +275,7 @@ function SourcesContent({ s }: { s: ProjectEvmSnapshot }) {
       <Section
         title={
           <>
-            <Ltr>SV</Ltr> و <Ltr>CV</Ltr>
+            <Ltr>SV</Ltr> {C.andWord} <Ltr>CV</Ltr>
           </>
         }
       >
@@ -279,18 +288,21 @@ function SourcesContent({ s }: { s: ProjectEvmSnapshot }) {
       <Section
         title={
           <>
-            <Ltr>BAC</Ltr>، <Ltr>PV</Ltr> و <Ltr>EV</Ltr> — {s.activities.length} فعالیت بودجه‌دار تا{' '}
-            {jalali(m.asOf)}
+            <Ltr>BAC</Ltr>
+            {C.listSep}
+            <Ltr>PV</Ltr>
+            {C.and}
+            <Ltr>EV</Ltr>
+            {C.bacSectionRest(s.activities.length, jalali(m.asOf))}
           </>
         }
       >
         <p>
-          منبع هر ردیف: «دفتر فنی ← ویرایش برنامه زمانبندی»؛ مقدار، قیمت واحد، تاریخ‌های baseline برنامه
-          MSP و ٪ پیشرفت فیزیکی همان فعالیت.
+          {C.activitySourceHint}
           {m.budgetBasis === 'technical_office_cost'
-            ? ' بودجهٔ هر ردیف = ستون «هزینه» همان فعالیت در برنامهٔ دفتر فنی (بسته‌های کاری سهم هزینهٔ فعالیت والد را به نسبت وزن می‌گیرند)؛ ردیف‌های خلاصه جمع زیرمجموعه‌اند و دوباره شمرده نمی‌شوند.'
+            ? C.technicalOfficeCostHint
             : m.budgetBasis === 'weighted_project_budget'
-              ? ` هیچ فعالیتی قیمت واحد ندارد، پس بودجهٔ پروژه (${n(s.projectBudget ?? 0)} تومان) به نسبت وزن تقسیم شده است.`
+              ? C.weightedBudgetHint(n(s.projectBudget ?? 0))
               : ''}
         </p>
         <ActivityTable s={s} />
@@ -299,40 +311,37 @@ function SourcesContent({ s }: { s: ProjectEvmSnapshot }) {
       <Section
         title={
           <>
-            <Ltr>AC = {n(m.ac)}</Ltr> تومان
+            <Ltr>AC = {n(m.ac)}</Ltr> {C.toman}
           </>
         }
       >
         <CostTable s={s} />
       </Section>
 
-      <Section title="شناوری مسیر بحرانی و مصرف شناوری">
+      <Section title={C.floatSection}>
         {f.criticalFloatDays == null ? (
-          <p>برای این پروژه هنوز CPM محاسبه نشده است.</p>
+          <p>{C.cpmMissing}</p>
         ) : (
           <p>
-            کمترین شناوری کل: فعالیت «{taskLabel(f.criticalTask)}» با{' '}
-            <span dir="ltr" className="tabular-nums font-medium">{n(f.criticalFloatDays)}</span> روز، از آخرین
-            محاسبهٔ CPM برنامه
-            {f.criticalFromAllTasks ? ' (هیچ فعالیتی بحرانی علامت نخورده بود، پس بین همهٔ فعالیت‌ها)' : ' (بین فعالیت‌های بحرانی)'}.
+            {C.criticalFloatBefore(taskLabel(f.criticalTask))}{' '}
+            <span dir="ltr" className="tabular-nums font-medium">{n(f.criticalFloatDays)}</span> {C.criticalFloatAfter}
+            {f.criticalFromAllTasks ? C.criticalFromAll : C.criticalFromCritical}.
           </p>
         )}
         {f.floatConsumptionPercent == null ||
         f.worstInitialFloat == null ||
         f.worstCurrentFloat == null ? (
-          <p>مصرف شناوری: هیچ فعالیتی در تاریخچهٔ CPM شناوری اولیهٔ مثبت ندارد، پس قابل محاسبه نیست.</p>
+          <p>{C.floatConsumptionUnavailable}</p>
         ) : f.floatConsumptionPercent === 0 ? (
-          <p>
-            مصرف شناوری 0٪: شناوری فعلی هیچ فعالیتی از اولین شناوری ثبت‌شده‌اش در تاریخچهٔ CPM کمتر نشده است.
-          </p>
+          <p>{C.floatConsumptionZero}</p>
         ) : (
           <>
-            <p>بیشترین مصرف شناوری: فعالیت «{taskLabel(f.worstConsumptionTask)}»</p>
+            <p>{C.worstConsumption(taskLabel(f.worstConsumptionTask))}</p>
             <Calc>
               ({n(f.worstInitialFloat)} − {n(f.worstCurrentFloat)}) ÷ {n(f.worstInitialFloat)} × 100 ={' '}
               {Math.round(f.floatConsumptionPercent)}%
             </Calc>
-            <p>عدد اول اولین شناوری ثبت‌شده در تاریخچهٔ CPM و عدد دوم شناوری فعلی است.</p>
+            <p>{C.floatNumbersHint}</p>
           </>
         )}
       </Section>
@@ -361,7 +370,7 @@ export function EvmSourcesButton({ snapshot }: { snapshot: ProjectEvmSnapshot | 
         onClick={() => setOpen(true)}
         disabled={!snapshot}
         className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-slate-200/70 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 disabled:opacity-40"
-        aria-label="منبع و محاسبهٔ شاخص‌های سلامت پروژه"
+        aria-label={C.sourcesAria}
         aria-haspopup="dialog"
       >
         <CircleHelp className="h-5 w-5" />
@@ -376,19 +385,19 @@ export function EvmSourcesButton({ snapshot }: { snapshot: ProjectEvmSnapshot | 
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="منبع و محاسبهٔ شاخص‌های سلامت پروژه"
+            aria-label={C.sourcesAria}
             className={cn('w-full max-w-5xl rounded-xl bg-white text-start shadow-2xl')}
           >
             <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-xl border-b border-slate-100 bg-white px-5 py-3">
               <p className="text-base font-bold text-slate-900">
-                منبع و محاسبهٔ اعداد — تا {jalali(snapshot.metrics.asOf)}
+                {C.dialogTitle(jalali(snapshot.metrics.asOf))}
               </p>
               <button
                 ref={closeRef}
                 type="button"
                 onClick={() => setOpen(false)}
                 className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                aria-label="بستن"
+                aria-label={C.close}
               >
                 <X className="h-5 w-5" />
               </button>

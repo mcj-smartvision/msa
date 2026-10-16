@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/components/weight-deduction-workspace.tsx
+ * @purpose کامپوننت UI — بسته‌های اجرایی و تأیید کارگاه (weight-deduction-workspace)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on features/admin/components/shared, features/schedule/lib/parent-weight-rollup, features/schedule/lib/parent-progress-rollup, features/schedule/lib/monthly-deducted-weight, features/schedule/lib/planned-month-weight, features/schedule/lib/earned-month-weight, features/schedule/lib/dates, features/schedule/lib/wbs-utils, features/schedule/lib/schedule-view-sync, features/workshop/lib/package-weight
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
@@ -30,6 +38,7 @@ import { type DailyProgressEntry } from '@/features/supervisor/lib/daily-report-
 import { useStoreProgress, withStoreEntries } from '@/features/project-store/use-store-progress'
 import { cn } from '@/shared/lib/utils'
 import { todayTehranIso } from '@/shared/lib/time/tehran'
+import { WORKSHOP_COPY } from '@/features/workshop/lib/ui-copy'
 
 function shownNumber(value: number): string {
   return String(Math.round(value * 100) / 100)
@@ -51,10 +60,10 @@ function plannedOriginText(
   if (row.isParent) {
     const parts = childParts.filter((part) => part.value !== 0)
     if (parts.length === 0) {
-      return `Planned ${month.label} جمع Planned زیرشاخه‌هاست و برابر ${shownNumber(shown)} است.`
+      return WORKSHOP_COPY.weight.plannedParentEmpty(month.label, shownNumber(shown))
     }
     const expr = parts.map((part) => `${part.name} ${shownNumber(part.value)}`).join(' + ')
-    return `جمع Planned زیرشاخه‌ها در ${month.label}: ${expr} = ${shownNumber(shown)}`
+    return WORKSHOP_COPY.weight.plannedParentParts(month.label, expr, shownNumber(shown))
   }
   const weight = row.physicalWeight ?? row.weight ?? 0
   const slices = plannedMonthlyWeights(
@@ -66,9 +75,15 @@ function plannedOriginText(
   const totalDays = slices.reduce((sum, slice) => sum + slice.overlapDays, 0)
   const slice = slices.find((item) => item.snapshotMonth === month.startIso)
   if (!slice || totalDays <= 0) {
-    return `Planned ${month.label} از تاریخ شروع و پایان همین فعالیت در ویرایش برنامه آمده و برابر ${shownNumber(shown)} است.`
+    return WORKSHOP_COPY.weight.plannedLeafEmpty(month.label, shownNumber(shown))
   }
-  return `از ویرایش برنامه زمانبندی. وزن ${shownNumber(weight)} روی مدت فعالیت (${totalDays} روز، از شروع تا پایان) پخش شده. ${month.label} ${slice.overlapDays} روز از این مدت است: ${slice.overlapDays}÷${totalDays}×${shownNumber(weight)} = ${shownNumber(shown)}`
+  return WORKSHOP_COPY.weight.plannedLeaf(
+    shownNumber(weight),
+    totalDays,
+    month.label,
+    slice.overlapDays,
+    shownNumber(shown)
+  )
 }
 
 function earnedOriginText(
@@ -83,23 +98,32 @@ function earnedOriginText(
   if (row.isParent) {
     const parts = childParts.filter((part) => part.value !== 0)
     if (parts.length === 0) {
-      return `Earned ${month.label} جمع Earned زیرشاخه‌هاست و برابر ${shownNumber(earned)} است.`
+      return WORKSHOP_COPY.weight.earnedParentEmpty(month.label, shownNumber(earned))
     }
     const expr = parts.map((part) => `${part.name} ${shownNumber(part.value)}`).join(' + ')
-    return `جمع Earned زیرشاخه‌ها در ${month.label}: ${expr} = ${shownNumber(earned)}`
+    return WORKSHOP_COPY.weight.earnedParentParts(month.label, expr, shownNumber(earned))
   }
   const weight = row.weight ?? 0
   const percent = row.physicalPercent
-  if (percent == null) return 'برای این فعالیت پیشرفت فیزیکی ثبت نشده.'
+  if (percent == null) return WORKSHOP_COPY.weight.noPhysical;
   const product = Math.round(((weight * percent) / 100) * 100) / 100
   const plannedHere = plannedByMonth[monthIndex] ?? 0
   const plannedUpToNow = plannedByMonth.slice(0, currentMonthIndex + 1)
   const plannedSum = plannedUpToNow.reduce((sum, value) => sum + (value || 0), 0)
   const monthCount = plannedUpToNow.filter((value) => value > 0).length
   if (monthCount <= 1) {
-    return `وزن ${shownNumber(weight)} × پیشرفت فیزیکی ${shownNumber(percent)}٪ = ${shownNumber(earned)}`
+    return WORKSHOP_COPY.weight.earnedSingle(shownNumber(weight), shownNumber(percent), shownNumber(earned))
   }
-  return `وزن ${shownNumber(weight)} × پیشرفت فیزیکی ${shownNumber(percent)}٪ = ${shownNumber(product)}. این حاصل به نسبت Planned ماه‌های ${row.name} تا ماه جاری پخش شده. Planned ${month.label} برابر ${shownNumber(plannedHere)} از ${shownNumber(plannedSum)} است، پس Earned این ماه = ${shownNumber(earned)}`
+  return WORKSHOP_COPY.weight.earnedSplit(
+    shownNumber(weight),
+    shownNumber(percent),
+    shownNumber(product),
+    row.name,
+    month.label,
+    shownNumber(plannedHere),
+    shownNumber(plannedSum),
+    shownNumber(earned)
+  )
 }
 
 function expandAllSchedule(nodes: ScheduleTreeNode[]): Record<string, boolean> {
@@ -166,7 +190,7 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
         { cache: 'no-store' }
       )
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'خطا در بارگذاری برنامه')
+      if (!res.ok) throw new Error(data.error || WORKSHOP_COPY.weight.loadFailed)
       const tree = enrichScheduleTreeWithWbs(data.nodes ?? [])
       setNodes(tree)
       setExpanded(expandAllSchedule(tree))
@@ -191,7 +215,7 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
         /* local daily-report entries still apply */
       }
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'خطا')
+      setMessage(err instanceof Error ? err.message : WORKSHOP_COPY.genericError)
       setNodes([])
     } finally {
       setLoading(false)
@@ -543,21 +567,21 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
   }
 
   if (!projectId) {
-    return <p className="text-sm text-slate-600">پروژه را از بالا انتخاب کنید.</p>
+    return <p className="text-sm text-slate-600">{WORKSHOP_COPY.selectProjectTop}</p>
   }
 
   return (
     <div className="w-full min-w-0 max-w-full space-y-4" dir="rtl">
       {showBanner ? (
         <PageHeader
-          title="وزن کسر شده ماهانه"
-          description="درصد پیشرفت فیزیکی همان عدد ویرایش برنامه است. Earned هر فعالیت برابر وزن ضربدر همان درصد پیشرفت فیزیکی است."
+          title={WORKSHOP_COPY.weight.title}
+          description={WORKSHOP_COPY.weight.description}
         />
       ) : (
         <div className="space-y-1">
-          <h2 className="text-base font-semibold text-slate-900">وزن کسر شده ماهانه</h2>
+          <h2 className="text-base font-semibold text-slate-900">{WORKSHOP_COPY.weight.title}</h2>
           <p className="text-xs leading-relaxed text-slate-600">
-            درصد پیشرفت فیزیکی همان عدد ویرایش برنامه است. Earned هر فعالیت برابر وزن ضربدر همان درصد است و به نسبت Planned روی ماه‌های همان فعالیت تا ماه جاری پخش می‌شود؛ ماه‌های آینده «—» نشان داده می‌شوند.
+            {WORKSHOP_COPY.weight.descriptionShort}
           </p>
         </div>
       )}
@@ -570,12 +594,12 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-          بروزرسانی
+          {WORKSHOP_COPY.weight.refresh}
         </button>
         {message ? <span className="text-xs text-red-600">{message}</span> : null}
         {months.length > 0 ? (
           <span className="text-[11px] text-slate-500">
-            {months.length} ماه · از {months[0]?.label} تا {months[months.length - 1]?.label}
+            {WORKSHOP_COPY.weight.monthsRange(months.length, months[0]?.label ?? '', months[months.length - 1]?.label ?? '')}
           </span>
         ) : null}
       </div>
@@ -599,19 +623,19 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
                 className="sticky z-40 w-px whitespace-nowrap border-b border-e border-slate-400 bg-slate-100 px-1.5 py-1.5 text-start align-middle text-[10px] font-semibold shadow-[-4px_0_8px_-4px_rgba(15,23,42,0.12)]"
                 style={{ insetInlineStart: nameStickyStart }}
               >
-                نام
+                {WORKSHOP_COPY.weight.colName}
               </th>
               <th
                 rowSpan={2}
                 className="w-px whitespace-nowrap border-b border-e border-slate-400 bg-slate-100 px-1.5 py-1.5 text-center align-middle text-[10px] font-semibold"
               >
-                وزن
+                {WORKSHOP_COPY.weight.colWeight}
               </th>
               <th
                 rowSpan={2}
                 className="w-px whitespace-nowrap border-b border-e border-slate-400 bg-slate-100 px-1.5 py-1.5 text-center align-middle text-[10px] font-semibold"
               >
-                ٪ پیشرفت فیزیکی
+                {WORKSHOP_COPY.weight.colPhysical}
               </th>
               {months.map((m) => (
                 <th
@@ -644,14 +668,14 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
             {loading && visibleRows.length === 0 ? (
               <tr>
                 <td colSpan={4 + months.length * 2} className="px-3 py-10 text-center text-slate-500">
-                  در حال بارگذاری…
+                  {WORKSHOP_COPY.loading}
                 </td>
               </tr>
             ) : null}
             {!loading && visibleRows.length === 0 ? (
               <tr>
                 <td colSpan={4 + months.length * 2} className="px-3 py-10 text-center text-slate-500">
-                  برنامه‌ای برای این پروژه یافت نشد.
+                  {WORKSHOP_COPY.weight.empty}
                 </td>
               </tr>
             ) : null}
@@ -737,7 +761,7 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
                       cellBg,
                       row.isParent ? 'font-semibold text-sky-950' : 'text-slate-700'
                     )}
-                    title="از گزارش روزانه سرپرست کارگاه"
+                    title={WORKSHOP_COPY.weight.fromSupervisor}
                   >
                     {row.physicalPercent == null ? '—' : `${row.physicalPercent}`}
                   </td>
@@ -778,7 +802,7 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
                             <button
                               type="button"
                               className="text-[11px] font-bold leading-none text-sky-700 hover:text-sky-900"
-                              aria-label="Planned از کجا آمده؟"
+                              aria-label={WORKSHOP_COPY.weight.plannedOriginAria}
                               onClick={(event) =>
                                 openOrigin(
                                   event,
@@ -806,7 +830,7 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
                             <button
                               type="button"
                               className="text-[11px] font-bold leading-none text-emerald-700 hover:text-emerald-900"
-                              aria-label="Earned از کجا آمده؟"
+                              aria-label={WORKSHOP_COPY.weight.earnedOriginAria}
                               onClick={(event) =>
                                 openOrigin(
                                   event,
@@ -844,7 +868,7 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
                   className="sticky z-30 w-px whitespace-nowrap border-e border-t border-slate-400 bg-slate-100 px-1.5 py-1.5 shadow-[-4px_0_8px_-4px_rgba(15,23,42,0.12)]"
                   style={{ insetInlineStart: nameStickyStart }}
                 >
-                  جمع
+                  {WORKSHOP_COPY.weight.total}
                 </td>
                 <td className="w-px whitespace-nowrap border-e border-t border-slate-400 bg-slate-100 px-1.5 py-1.5 text-center tabular-nums">
                   {formatScheduleWeightDisplay(rootWeightSum)}
@@ -867,12 +891,12 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
                           <button
                             type="button"
                             className="text-[11px] font-bold leading-none text-sky-700 hover:text-sky-900"
-                            aria-label="جمع Planned از کجا آمده؟"
+                            aria-label={WORKSHOP_COPY.weight.totalPlannedAria}
                             onClick={(event) =>
                               openOrigin(
                                 event,
                                 `total-planned-${monthKey}`,
-                                `جمع Planned فعالیت‌هایی که خودشان زیرشاخه نیستند، در ${month.label} = ${shownNumber(planned)}`
+                                WORKSHOP_COPY.weight.totalPlannedOrigin(month.label, shownNumber(planned))
                               )
                             }
                           >
@@ -894,12 +918,12 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
                           <button
                             type="button"
                             className="text-[11px] font-bold leading-none text-emerald-700 hover:text-emerald-900"
-                            aria-label="جمع Earned از کجا آمده؟"
+                            aria-label={WORKSHOP_COPY.weight.totalEarnedAria}
                             onClick={(event) =>
                               openOrigin(
                                 event,
                                 `total-earned-${monthKey}`,
-                                `جمع Earned فعالیت‌هایی که خودشان زیرشاخه نیستند، در ${month.label} = ${shownNumber(earned)}`
+                                WORKSHOP_COPY.weight.totalEarnedOrigin(month.label, shownNumber(earned))
                               )
                             }
                           >
@@ -923,7 +947,7 @@ export function WeightDeductionWorkspace({ showBanner = true }: { showBanner?: b
           onClick={(event) => event.stopPropagation()}
         >
           <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="font-semibold text-sky-800">از کجا آمده؟</span>
+            <span className="font-semibold text-sky-800">{WORKSHOP_COPY.weight.originTitle}</span>
             <button
               type="button"
               className="text-sky-700 hover:underline"

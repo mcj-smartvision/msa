@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/lib/service.ts
+ * @purpose منطق دامنه — عملیات کارگاه، دستورکار و برنامه روزانه (service)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on features/cre-contract/lib, features/site-ops/domain, features/site-ops/domain/errors
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { parseCrePhase1Export, type CrePhase1Export } from '@/features/cre-contract/lib'
 import {

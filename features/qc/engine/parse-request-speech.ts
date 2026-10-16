@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/engine/parse-request-speech.ts
+ * @purpose منطق دامنه — کنترل کیفیت و عدم انطباق (parse-request-speech)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on features/qc/engine/activity-types
+ */
+
 import { isQcActivityType, matchQcActivity, QC_ACTIVITY_FA, QC_ACTIVITY_META, QC_ACTIVITY_RULES, QC_ACTIVITY_TYPES, type QcActivityType } from '@/features/qc/engine/activity-types'
 
 export type QcSpeechItem = {

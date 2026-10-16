@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/load-live-cost-inputs.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (load-live-cost-inputs)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/workshop/lib/domain, features/schedule/lib/physical-progress, features/schedule/lib/dates, features/schedule/lib/monthly-deducted-weight, features/schedule/lib/leaf-activities, features/evm/lib/load-project-evm, features/finance/lib/employer-purchases-service, features/finance/lib/employer-purchases, features/finance/lib/overhead-months, features/finance/lib/live-workshop-cost
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { WorkshopError } from '@/features/workshop/lib/domain'
 import { schedulePhysicalPercent } from '@/features/schedule/lib/physical-progress'

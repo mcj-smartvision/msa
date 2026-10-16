@@ -1,3 +1,11 @@
+/**
+ * @file features/weather/lib/resolve-location.ts
+ * @purpose منطق دامنه — هوای کارگاه (resolve-location)
+ * @safe-to-edit CAREFUL
+ * @affects هوای کارگاه
+ * @depends-on features/weather/lib/api-key, features/weather/lib/types
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { weatherApiKey } from '@/features/weather/lib/api-key'
 import type { WeatherLocation } from '@/features/weather/lib/types'

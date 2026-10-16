@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/i18n/qc.ts
+ * @purpose تنظیمات و برچسب‌ها — زیرساخت مشترک سامانه (qc)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/project-init/lib/i18n/types, shared/lib/common/ai-types, features/qc/lib/types
+ */
+
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import type { AiDraftLabels } from '@/shared/lib/common/ai-types'
 import type { InspectionStatus, NcrStatus } from '@/features/qc/lib/types'

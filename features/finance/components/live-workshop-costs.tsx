@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/components/live-workshop-costs.tsx
+ * @purpose کامپوننت UI — حسابداری، هزینه،overhead و صورت‌وضعیت (live-workshop-costs)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/finance/components/overhead-costs-matrix, features/finance/lib/overhead-schedule-months, features/finance/lib/live-workshop-cost, features/finance/lib/workshop-cost-curve, features/finance/components/workshop-cost-chart, features/evm/lib/metrics, shared/lib/utils, features/calc-trace/components/calc-trace, features/calc-trace/lib/types
+ */
+
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
@@ -14,6 +22,7 @@ type OverheadMonthAmount,
 import type { CostCurvePoint, ItemCostModel } from '@/features/finance/lib/workshop-cost-curve'
 import { WorkshopCostChart } from '@/features/finance/components/workshop-cost-chart'
 import type { EvmBudgetBasis } from '@/features/evm/lib/metrics'
+import { LIVE_WORKSHOP_COPY } from '@/features/finance/config'
 import { cn } from '@/shared/lib/utils'
 import { CalcTraceProvider, CalcTraceTrigger } from '@/features/calc-trace/components/calc-trace'
 import type { CalcTraceMap } from '@/features/calc-trace/lib/types'
@@ -42,7 +51,7 @@ function groupComma(value: number): string {
 }
 
 function toman(value: number, fa: boolean): string {
-  return fa ? `${groupComma(value)} تومان` : `${groupComma(value)} Toman`
+  return fa ? LIVE_WORKSHOP_COPY.toman(groupComma(value)) : `${groupComma(value)} Toman`
 }
 
 function localOverheadMonths(projectId: string | null, fa: boolean): OverheadMonthAmount[] {
@@ -90,7 +99,7 @@ export function LiveWorkshopCosts({
           { cache: 'no-store' }
         )
         const json = await response.json()
-        if (!response.ok) throw new Error(json.error || (fa ? 'بارگذاری ناموفق بود' : 'Load failed'))
+        if (!response.ok) throw new Error(json.error || (fa ? LIVE_WORKSHOP_COPY.loadFailed : 'Load failed'))
         if (!cancelled) setData(json as Payload)
       } catch (loadError) {
         if (!cancelled) {
@@ -139,7 +148,7 @@ export function LiveWorkshopCosts({
   if (!projectId) {
     return (
       <p className="rounded-2xl border bg-white p-6 text-sm text-slate-500">
-        {fa ? 'ابتدا یک پروژه انتخاب کنید.' : 'Select a project first.'}
+        {fa ? LIVE_WORKSHOP_COPY.selectProject : 'Select a project first.'}
       </p>
     )
   }
@@ -148,7 +157,7 @@ export function LiveWorkshopCosts({
     return (
       <div className="flex items-center justify-center rounded-2xl border bg-white p-10 text-slate-500">
         <Loader2 className="me-2 h-4 w-4 animate-spin" />
-        {fa ? 'در حال محاسبه هزینه تا این لحظه…' : 'Calculating live cost…'}
+        {fa ? LIVE_WORKSHOP_COPY.calculating : 'Calculating live cost…'}
       </div>
     )
   }
@@ -160,7 +169,7 @@ export function LiveWorkshopCosts({
   if (!merged) return null
 
   const shareOf = (amount: number) =>
-    `${merged.total > 0 ? Math.round((amount / merged.total) * 100) : 0}${fa ? '٪' : '%'}`
+    `${merged.total > 0 ? Math.round((amount / merged.total) * 100) : 0}${fa ? LIVE_WORKSHOP_COPY.percent : '%'}`
   const traces =
     merged.traces && merged !== data
       ? Object.fromEntries(
@@ -170,7 +179,7 @@ export function LiveWorkshopCosts({
               ...trace,
               warnings: [
                 ...trace.warnings,
-                'بالاسری این صفحه از جدول بالاسری ذخیره‌شده در همین مرورگر خوانده شده و با عدد سرور فرق دارد؛ این محاسبه با عدد سرور است.',
+                LIVE_WORKSHOP_COPY.localOverheadWarning,
               ],
             },
           ])
@@ -184,7 +193,7 @@ export function LiveWorkshopCosts({
         <div className="flex items-center gap-2 text-orange-200">
           <Sparkles className="h-4 w-4" />
           <p className="text-[12px] font-medium">
-            {fa ? 'کل هزینه کارگاه تا این لحظه' : 'Workshop cost incurred to date'}
+            {fa ? LIVE_WORKSHOP_COPY.totalToDate : 'Workshop cost incurred to date'}
           </p>
           <CalcTraceTrigger
             metrics={['accountant.overhead_cumulative', 'accountant.cost_variance', 'accountant.contractor_share']}
@@ -195,7 +204,7 @@ export function LiveWorkshopCosts({
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="group rounded-2xl bg-white/10 p-3">
             <div className="flex items-start justify-between gap-1">
-              <p className="text-[11px] text-slate-300">{fa ? 'بالاسری دقیق ماه‌های بسته' : 'Closed overhead'}</p>
+              <p className="text-[11px] text-slate-300">{fa ? LIVE_WORKSHOP_COPY.closedOverhead : 'Closed overhead'}</p>
               <CalcTraceTrigger metrics={['accountant.overhead_cumulative']} className="text-slate-300 hover:bg-white/10 hover:text-white" />
             </div>
             <p className="mt-1 text-lg font-semibold tabular-nums">{toman(merged.overheadExact, fa)}</p>
@@ -203,20 +212,20 @@ export function LiveWorkshopCosts({
           <div className="rounded-2xl bg-white/10 p-3">
             <div className="flex items-center gap-1 text-[11px] text-amber-200">
               <Timer className="h-3.5 w-3.5" />
-              {fa ? 'برآورد این ماه' : 'Current month estimate'}
+              {fa ? LIVE_WORKSHOP_COPY.currentMonthEstimate : 'Current month estimate'}
             </div>
             <p className="mt-1 text-lg font-semibold tabular-nums">{toman(merged.overheadEstimated, fa)}</p>
           </div>
           <div className="group rounded-2xl bg-white/10 p-3">
             <div className="flex items-start justify-between gap-1">
-              <p className="text-[11px] text-teal-200">{fa ? 'سهم پیمانکاران' : 'Contractor share'}</p>
+              <p className="text-[11px] text-teal-200">{fa ? LIVE_WORKSHOP_COPY.contractorShare : 'Contractor share'}</p>
               <CalcTraceTrigger metrics={['accountant.contractor_share']} className="text-teal-200 hover:bg-white/10 hover:text-white" />
             </div>
             <p className="mt-1 text-lg font-semibold tabular-nums">{toman(merged.contractor, fa)}</p>
             <p className="mt-1 text-[11px] text-slate-300">{shareOf(merged.contractor)}</p>
           </div>
           <div className="rounded-2xl bg-white/10 p-3">
-            <p className="text-[11px] text-indigo-200">{fa ? 'خرید کارفرمایی' : 'Employer purchases'}</p>
+            <p className="text-[11px] text-indigo-200">{fa ? LIVE_WORKSHOP_COPY.employerPurchases : 'Employer purchases'}</p>
             <p className="mt-1 text-lg font-semibold tabular-nums">{toman(merged.employerPurchases ?? 0, fa)}</p>
             <p className="mt-1 text-[11px] text-slate-300">{shareOf(merged.employerPurchases ?? 0)}</p>
           </div>
@@ -227,7 +236,7 @@ export function LiveWorkshopCosts({
         <section className="group overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between gap-2 border-b bg-slate-50 px-5 py-4">
             <h3 className="text-base font-semibold text-slate-900">
-              {fa ? 'نمودار هزینهٔ کارگاه نسبت به زمان' : 'Workshop cost over time'}
+              {fa ? LIVE_WORKSHOP_COPY.chartTitle : 'Workshop cost over time'}
             </h3>
             <CalcTraceTrigger metrics={['accountant.cost_variance']} />
           </div>
@@ -238,11 +247,11 @@ export function LiveWorkshopCosts({
       <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
         <div className="border-b bg-slate-50 px-5 py-4">
           <h3 className="text-base font-semibold text-slate-900">
-            {fa ? 'خلاصه هزینه‌های کارگاه' : 'Workshop cost summary'}
+            {fa ? LIVE_WORKSHOP_COPY.summaryTitle : 'Workshop cost summary'}
           </h3>
           <p className="mt-1 text-[12px] text-slate-500">
             {fa
-              ? 'هر ردیف می‌گوید این مبلغ از کجا آمده تا عدد بالای صفحه قابل ردگیری باشد.'
+              ? LIVE_WORKSHOP_COPY.summaryHint
               : 'Each row shows where that amount comes from.'}
           </p>
         </div>
@@ -250,10 +259,10 @@ export function LiveWorkshopCosts({
           <table className="min-w-full text-[13px]">
             <thead>
               <tr className="bg-slate-100 text-slate-600">
-                <th className="px-4 py-2.5 text-start font-semibold">{fa ? 'مورد' : 'Item'}</th>
-                <th className="px-4 py-2.5 text-start font-semibold">{fa ? 'منبع' : 'Source'}</th>
-                <th className="px-4 py-2.5 text-start font-semibold">{fa ? 'توضیح' : 'How'}</th>
-                <th className="px-4 py-2.5 text-end font-semibold">{fa ? 'مبلغ' : 'Amount'}</th>
+                <th className="px-4 py-2.5 text-start font-semibold">{fa ? LIVE_WORKSHOP_COPY.colItem : 'Item'}</th>
+                <th className="px-4 py-2.5 text-start font-semibold">{fa ? LIVE_WORKSHOP_COPY.colSource : 'Source'}</th>
+                <th className="px-4 py-2.5 text-start font-semibold">{fa ? LIVE_WORKSHOP_COPY.colHow : 'How'}</th>
+                <th className="px-4 py-2.5 text-end font-semibold">{fa ? LIVE_WORKSHOP_COPY.colAmount : 'Amount'}</th>
               </tr>
             </thead>
             <tbody>
@@ -279,7 +288,7 @@ export function LiveWorkshopCosts({
             <tfoot>
               <tr className="border-t border-slate-800 bg-slate-900 text-white">
                 <td className="px-4 py-3 font-semibold" colSpan={3}>
-                  {fa ? 'جمع هزینه تا این لحظه' : 'Total incurred to date'}
+                  {fa ? LIVE_WORKSHOP_COPY.totalIncurred : 'Total incurred to date'}
                 </td>
                 <td className="px-4 py-3 text-end text-lg font-bold tabular-nums">
                   {toman(merged.total, fa)}
@@ -303,12 +312,12 @@ function ItemCostTable({ items, fa }: { items: ItemCostModel; fa: boolean }) {
   const extras = [
     {
       id: 'unallocated',
-      title: fa ? 'بالاسری ماه‌هایی که هیچ آیتمی پیشرفت نداشت' : 'Overhead of months without progress',
+      title: fa ? LIVE_WORKSHOP_COPY.unallocatedOverhead : 'Overhead of months without progress',
       amount: items.unallocatedOverhead,
     },
     {
       id: 'on-site',
-      title: fa ? 'مصالح پای کار (خریده‌شده، هنوز مصرف‌نشده)' : 'Materials on site (bought, not yet built in)',
+      title: fa ? LIVE_WORKSHOP_COPY.materialsOnSite : 'Materials on site (bought, not yet built in)',
       amount: items.materialsOnSite,
     },
   ].filter((row) => Math.round(row.amount) !== 0)
@@ -317,11 +326,11 @@ function ItemCostTable({ items, fa }: { items: ItemCostModel; fa: boolean }) {
     <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
       <div className="border-b bg-slate-50 px-5 py-4">
         <h3 className="text-base font-semibold text-slate-900">
-          {fa ? 'هزینهٔ هر آیتم برنامه تا این لحظه' : 'Cost of each schedule item to date'}
+          {fa ? LIVE_WORKSHOP_COPY.itemCostTitle : 'Cost of each schedule item to date'}
         </h3>
         <p className="mt-1 text-[12px] leading-6 text-slate-500">
           {fa
-            ? 'پیمانکار = مبلغ قرارداد × پیشرفت · سهم بالاسری = بالاسری هر ماه × (وزن کسب‌شدهٔ آیتم در آن ماه ÷ وزن کسب‌شدهٔ همهٔ آیتم‌ها) · خرید کارفرمایی مصرف‌شده = مبلغ × سهم آیتم × پیشرفت آیتم.'
+            ? LIVE_WORKSHOP_COPY.itemCostHint
             : 'Contractor = contract value × progress · overhead = monthly overhead × earned-weight share · purchases built in = amount × share × progress.'}
         </p>
       </div>
@@ -329,20 +338,20 @@ function ItemCostTable({ items, fa }: { items: ItemCostModel; fa: boolean }) {
         <table className="min-w-full text-[13px]">
           <thead>
             <tr className="bg-slate-100 text-slate-600">
-              <th className="px-3 py-2.5 text-start font-semibold">{fa ? 'آیتم برنامه' : 'Item'}</th>
-              <th className="px-3 py-2.5 text-end font-semibold">{fa ? 'پیشرفت' : 'Progress'}</th>
-              <th className="px-3 py-2.5 text-end font-semibold">{fa ? 'پیمانکار' : 'Contractor'}</th>
-              <th className="px-3 py-2.5 text-end font-semibold">{fa ? 'سهم بالاسری' : 'Overhead'}</th>
-              <th className="px-3 py-2.5 text-end font-semibold">{fa ? 'خرید کارفرمایی (کل)' : 'Purchases (all)'}</th>
-              <th className="px-3 py-2.5 text-end font-semibold">{fa ? 'خرید مصرف‌شده' : 'Purchases built in'}</th>
-              <th className="px-3 py-2.5 text-end font-semibold">{fa ? 'هزینهٔ آیتم' : 'Item cost'}</th>
+              <th className="px-3 py-2.5 text-start font-semibold">{fa ? LIVE_WORKSHOP_COPY.scheduleItem : 'Item'}</th>
+              <th className="px-3 py-2.5 text-end font-semibold">{fa ? LIVE_WORKSHOP_COPY.progress : 'Progress'}</th>
+              <th className="px-3 py-2.5 text-end font-semibold">{fa ? LIVE_WORKSHOP_COPY.contractor : 'Contractor'}</th>
+              <th className="px-3 py-2.5 text-end font-semibold">{fa ? LIVE_WORKSHOP_COPY.overheadShare : 'Overhead'}</th>
+              <th className="px-3 py-2.5 text-end font-semibold">{fa ? LIVE_WORKSHOP_COPY.purchasesAll : 'Purchases (all)'}</th>
+              <th className="px-3 py-2.5 text-end font-semibold">{fa ? LIVE_WORKSHOP_COPY.purchasesBuiltIn : 'Purchases built in'}</th>
+              <th className="px-3 py-2.5 text-end font-semibold">{fa ? LIVE_WORKSHOP_COPY.itemCost : 'Item cost'}</th>
             </tr>
           </thead>
           <tbody>
             {items.rows.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-6 text-center text-slate-500">
-                  {fa ? 'هنوز هزینه‌ای به آیتم‌ها نرسیده است.' : 'No item cost yet.'}
+                  {fa ? LIVE_WORKSHOP_COPY.noItemCost : 'No item cost yet.'}
                 </td>
               </tr>
             ) : (
@@ -354,7 +363,7 @@ function ItemCostTable({ items, fa }: { items: ItemCostModel; fa: boolean }) {
                   </td>
                   <td className="px-3 py-2.5 text-end tabular-nums text-slate-600">
                     {Math.round(row.percent * 10) / 10}
-                    {fa ? '٪' : '%'}
+                    {fa ? LIVE_WORKSHOP_COPY.percent : '%'}
                   </td>
                   <td className="px-3 py-2.5 text-end tabular-nums">{groupComma(row.contractor)}</td>
                   <td className="px-3 py-2.5 text-end tabular-nums">{groupComma(row.overhead)}</td>
@@ -368,7 +377,7 @@ function ItemCostTable({ items, fa }: { items: ItemCostModel; fa: boolean }) {
           <tfoot>
             <tr className="border-t border-slate-300 bg-slate-50 font-semibold">
               <td className="px-3 py-2.5" colSpan={2}>
-                {fa ? 'جمع آیتم‌ها' : 'Items total'}
+                {fa ? LIVE_WORKSHOP_COPY.itemsTotal : 'Items total'}
               </td>
               <td className="px-3 py-2.5 text-end tabular-nums">{groupComma(sum((r) => r.contractor))}</td>
               <td className="px-3 py-2.5 text-end tabular-nums">{groupComma(sum((r) => r.overhead))}</td>
@@ -386,7 +395,7 @@ function ItemCostTable({ items, fa }: { items: ItemCostModel; fa: boolean }) {
             ))}
             <tr className="border-t border-slate-800 bg-slate-900 text-white">
               <td className="px-3 py-3 font-semibold" colSpan={6}>
-                {fa ? 'برابر با جمع هزینه تا این لحظه' : 'Equals total incurred to date'}
+                {fa ? LIVE_WORKSHOP_COPY.equalsTotal : 'Equals total incurred to date'}
               </td>
               <td className="px-3 py-3 text-end font-bold tabular-nums">
                 {groupComma(itemsTotal + extras.reduce((s, row) => s + row.amount, 0))}

@@ -1,8 +1,16 @@
+/**
+ * @file features/account/components/account-page-shell.tsx
+ * @purpose کامپوننت UI — حساب کاربری (account-page-shell)
+ * @safe-to-edit CAREFUL
+ * @affects حساب کاربری
+ * @depends-on shared/components/brand/brand-logo, features/account/lib/copy, features/account/lib/open-account-page, shared/components/i18n/locale-provider
+ */
+
 'use client'
 
 import { X } from 'lucide-react'
 import { BrandLogo } from '@/shared/components/brand/brand-logo'
-import { accountCopy } from '@/features/account/lib/copy'
+import { accountCopy } from '@/features/account/config'
 import { closeAccountPage } from '@/features/account/lib/open-account-page'
 import { useLocale } from '@/shared/components/i18n/locale-provider'
 

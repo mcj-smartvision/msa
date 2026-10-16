@@ -1,3 +1,11 @@
+/**
+ * @file features/project-controls/lib/tcpi-ppc.ts
+ * @purpose منطق دامنه — موتور کنترل پروژه و شاخص‌های توضیح‌پذیر (tcpi-ppc)
+ * @safe-to-edit CAREFUL
+ * @affects موتور کنترل پروژه و شاخص‌های توضیح‌پذیر
+ * @depends-on shared/types/project-controls
+ */
+
 import type { ActionableMetric, RagStatus, TcpiPpcInput } from '@/shared/types/project-controls'
 
 function fmt(value: number, digits = 2): string {

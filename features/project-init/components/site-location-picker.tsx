@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/components/site-location-picker.tsx
+ * @purpose کامپوننت UI — راه‌اندازی پروژه (site-location-picker)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on shared/components/ui/input, shared/components/ui/label, shared/components/ui/button, shared/lib/maps/geocoding, shared/lib/maps/openstreetmap, features/project-init/lib/schema, shared/lib/utils
+ */
+
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'

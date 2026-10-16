@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/parent-unit-price-rollup.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (parent-unit-price-rollup)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/wbs-utils, features/schedule/lib/parent-weight-rollup
+ */
+
 import { wbsDepth } from '@/features/schedule/lib/wbs-utils'
 import { isDirectChildWbs } from '@/features/schedule/lib/parent-weight-rollup'
 

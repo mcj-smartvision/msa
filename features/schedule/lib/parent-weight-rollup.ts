@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/parent-weight-rollup.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (parent-weight-rollup)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/wbs-utils
+ */
+
 import { wbsDepth } from '@/features/schedule/lib/wbs-utils'
 
 export type WeightRollupNode = {

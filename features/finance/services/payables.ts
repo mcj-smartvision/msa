@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/services/payables.ts
+ * @purpose سرویس داده — حسابداری، هزینه،overhead و صورت‌وضعیت (payables)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/finance/lib/payable-types
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
 ContractorPayablePayment,

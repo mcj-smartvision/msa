@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/components/schedule-catch-up-panel.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (schedule-catch-up-panel)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/components/ui/button, shared/components/ui/badge, shared/components/ui/card, features/schedule/components/formatted-date, features/schedule/components/task-status-badge, shared/components/i18n/locale-provider, features/project-manager/lib/plan-compliance, features/schedule/lib/parent-progress-rollup, features/schedule/lib/task-view-date, features/schedule/lib/schedule-view-sync, features/admin/config
+ */
+
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
@@ -27,6 +35,7 @@ import type { ProjectTask } from '@/shared/types/schedule'
 import { formatScheduleWeightDisplay } from '@/features/workshop/lib/package-weight'
 import { cn } from '@/shared/lib/utils'
 import { refreshProjectStore, storePercentOf, useStoreProgress } from '@/features/project-store/use-store-progress'
+import { ADMIN_CATCH_UP_COPY, pickAdminLocale } from '@/features/admin/config'
 
 interface ScheduleCatchUpPanelProps {
   projectId: string
@@ -47,6 +56,7 @@ export function ScheduleCatchUpPanel({
 }: ScheduleCatchUpPanelProps) {
   const { locale, dir } = useLocale()
   const fa = locale === 'fa' || locale === 'ar'
+  const copy = pickAdminLocale(fa, ADMIN_CATCH_UP_COPY)
   const isRtl = dir === 'rtl'
   const asOf = todayIso()
   const storeProgress = useStoreProgress(projectId)
@@ -137,20 +147,16 @@ export function ScheduleCatchUpPanel({
         body: JSON.stringify({ project_id: projectId, updates }),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || (fa ? 'ذخیره ناموفق بود' : 'Save failed'))
+      if (!response.ok) throw new Error(data.error || copy.saveFailed)
       if (Array.isArray(data.tasks) && data.tasks.length > 0) {
         onTasksUpdated(data.tasks as ProjectTask[])
       }
       publishScheduleViewSync(projectId)
       refreshProjectStore()
       setMode('done')
-      setSavedMsg(
-        fa
-          ? `پیشرفت ${data.updated} فعالیت ثبت شد (درصد سرشاخه‌ها از وزن زیرشاخه‌ها حساب شد).`
-          : `Progress saved for ${data.updated} activities (parents rolled up from children).`
-      )
+      setSavedMsg(copy.saved(data.updated))
     } catch (err) {
-      setError(err instanceof Error ? err.message : fa ? 'ذخیره ناموفق بود' : 'Save failed')
+      setError(err instanceof Error ? err.message : copy.saveFailed)
     } finally {
       setSaving(false)
     }
@@ -225,31 +231,29 @@ export function ScheduleCatchUpPanel({
       <CardHeader className="border-b bg-gradient-to-l from-amber-50 via-orange-50/50 to-card">
         <CardTitle className="text-base flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-amber-700" />
-          {fa ? 'گزارش کارهای تا امروز' : 'Work-to-date catch-up report'}
+          {copy.title}
         </CardTitle>
         <CardDescription className="leading-relaxed">
-          {fa
-            ? `شروع واقعی پروژه قبل از امروز است (${actualStart}). ${compliance.totalDue} فعالیت طبق برنامه باید تا امروز شروع یا پیشرفت کرده باشند — وضعیت را تأیید کنید.`
-            : `Actual start is before today (${actualStart}). ${compliance.totalDue} activities should have progressed by today — confirm status.`}
+          {copy.description(actualStart, compliance.totalDue)}
         </CardDescription>
       </CardHeader>
 
       <CardContent className="pt-5 space-y-4">
         <div className="flex flex-wrap gap-2 text-xs">
           <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200">
-            {fa ? 'انجام‌شده' : 'Done'}: {compliance.done}
+            {copy.done}: {compliance.done}
           </Badge>
           <Badge variant="outline" className="bg-sky-50 text-sky-800 border-sky-200">
-            {fa ? 'مطابق' : 'On track'}: {compliance.onTrack}
+            {copy.onTrack}: {compliance.onTrack}
           </Badge>
           <Badge variant="outline" className="bg-red-50 text-red-800 border-red-200">
-            {fa ? 'عقب' : 'Behind'}: {compliance.behind}
+            {copy.behind}: {compliance.behind}
           </Badge>
           <Badge variant="outline" className="bg-amber-50 text-amber-900 border-amber-200">
-            {fa ? 'شروع‌نشده' : 'Not started'}: {compliance.notStarted}
+            {copy.notStarted}: {compliance.notStarted}
           </Badge>
           <Badge variant="outline" className="bg-orange-100 text-orange-950 border-orange-300">
-            {fa ? 'تاریخ گذشته / ناتمام' : 'Past due / incomplete'}:{' '}
+            {copy.pastDueIncomplete}:{' '}
             {
               editorRows.filter(
                 (r) => r.finish && asOf > r.finish && r.actualPercent < 100
@@ -257,8 +261,8 @@ export function ScheduleCatchUpPanel({
             }
           </Badge>
           <span className="text-muted-foreground self-center">
-            {fa ? 'میانگین برنامه' : 'Avg plan'} {compliance.avgPlanned}% ·{' '}
-            {fa ? 'واقعی' : 'actual'} {compliance.avgActual}%
+            {copy.avgPlan} {compliance.avgPlanned}% ·{' '}
+            {copy.avgActual} {compliance.avgActual}%
           </span>
         </div>
 
@@ -266,9 +270,7 @@ export function ScheduleCatchUpPanel({
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 flex gap-2">
             <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
             <p>
-              {fa
-                ? 'بر اساس پیشرفت ثبت‌شده، کارهای موعد تا امروز با برنامه هم‌خوان است. در صورت نیاز می‌توانید جزئیات را بازبینی کنید.'
-                : 'Based on saved progress, due work looks aligned with the plan. You can still review details.'}
+              {copy.alignedHint}
             </p>
           </div>
         ) : null}
@@ -276,19 +278,15 @@ export function ScheduleCatchUpPanel({
         {mode === 'ask' ? (
           <div className="rounded-xl border-2 border-amber-200 bg-amber-50/60 p-4 space-y-3">
             <p className="font-semibold text-amber-950">
-              {fa
-                ? 'تا امروز کارها طبق برنامه انجام شده؟'
-                : 'Was work completed according to the plan through today?'}
+              {copy.askTitle}
             </p>
             <p className="text-xs text-amber-900/80 leading-relaxed">
-              {fa
-                ? 'اگر «بله» بزنید، پیشرفت هر فعالیتِ موعد روی درصد برنامه‌ای تا امروز تنظیم می‌شود. اگر «خیر / گزارش دقیق» بزنید، ردیف‌به‌ردیف وضعیت را مشخص می‌کنید.'
-                : '“Yes” sets each due activity to its planned % through today. “No / detailed report” lets you set each row.'}
+              {copy.askHint}
             </p>
             <div className="flex flex-wrap gap-2">
               <Button type="button" disabled={saving} onClick={confirmOnPlan}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin me-1" /> : <Check className="h-4 w-4 me-1" />}
-                {fa ? 'بله — طبق برنامه انجام شده' : 'Yes — on plan through today'}
+                {copy.yesOnPlan}
               </Button>
               <Button
                 type="button"
@@ -296,7 +294,7 @@ export function ScheduleCatchUpPanel({
                 disabled={saving}
                 onClick={() => setMode('review')}
               >
-                {fa ? 'خیر / گزارش دقیق فعالیت‌ها' : 'No / detailed activity report'}
+                {copy.noDetailed}
               </Button>
             </div>
           </div>
@@ -305,9 +303,7 @@ export function ScheduleCatchUpPanel({
         {(mode === 'review' || mode === 'done' || (mode === 'ask' && allAligned)) && (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
-              {fa
-                ? `${editorRows.length} فعالیت — داخل کادر اسکرول کنید تا انتهای برنامه. ردیف‌های نارنجی: تاریخ پایان گذشته ولی هنوز 100٪ نشده‌اند.`
-                : `${editorRows.length} activities — scroll inside the list. Orange rows: finish date passed but still incomplete.`}
+              {copy.editorHint(editorRows.length)}
             </p>
           <div className="overflow-y-scroll overflow-x-auto rounded-xl border max-h-[min(62vh,560px)] [scrollbar-gutter:stable]">
             <table className="w-full text-sm">
@@ -315,18 +311,18 @@ export function ScheduleCatchUpPanel({
                 <tr className="border-b bg-muted text-muted-foreground shadow-sm">
                   <th className="px-3 py-2 text-start font-medium">WBS</th>
                   <th className="px-3 py-2 text-start font-medium min-w-[10rem]">
-                    {fa ? 'فعالیت' : 'Activity'}
+                    {copy.activity}
                   </th>
                   <th className="px-3 py-2 text-end font-medium whitespace-nowrap">
-                    {fa ? 'وزن' : 'Weight'}
+                    {copy.weight}
                   </th>
                   <th className="px-3 py-2 text-start font-medium hidden md:table-cell">
-                    {fa ? 'بازه' : 'Window'}
+                    {copy.window}
                   </th>
-                  <th className="px-3 py-2 text-end font-medium">{fa ? 'برنامه' : 'Plan'}</th>
-                  <th className="px-3 py-2 text-end font-medium">{fa ? 'واقعی' : 'Actual'}</th>
+                  <th className="px-3 py-2 text-end font-medium">{copy.plan}</th>
+                  <th className="px-3 py-2 text-end font-medium">{copy.actualCol}</th>
                   {mode === 'review' ? (
-                    <th className="px-3 py-2 text-end font-medium">{fa ? 'ثبت' : 'Set'}</th>
+                    <th className="px-3 py-2 text-end font-medium">{copy.set}</th>
                   ) : null}
                 </tr>
               </thead>
@@ -370,24 +366,24 @@ export function ScheduleCatchUpPanel({
                           {row.isCritical ? <CriticalBadge /> : null}
                           {isPastDueIncomplete ? (
                             <Badge className="text-[10px] bg-orange-200 text-orange-950 border border-orange-400">
-                              {fa ? 'تاریخ گذشته' : 'Past due'}
+                              {copy.pastDue}
                             </Badge>
                           ) : null}
                           {row.check === 'behind' ? (
                             <Badge variant="destructive" className="text-[10px]">
-                              {fa ? 'عقب' : 'Behind'}
+                              {copy.behind}
                             </Badge>
                           ) : row.check === 'done' ? (
                             <Badge className="text-[10px] bg-emerald-100 text-emerald-800">
-                              {fa ? 'انجام' : 'Done'}
+                              {copy.doneShort}
                             </Badge>
                           ) : row.check === 'not_started' ? (
                             <Badge variant="outline" className="text-[10px]">
-                              {fa ? 'شروع‌نشده' : 'Not started'}
+                              {copy.notStarted}
                             </Badge>
                           ) : (
                             <Badge variant="secondary" className="text-[10px]">
-                              {fa ? 'مطابق' : 'On track'}
+                              {copy.onTrack}
                             </Badge>
                           )}
                         </div>
@@ -406,8 +402,8 @@ export function ScheduleCatchUpPanel({
                             <button
                               type="button"
                               className="rounded-full p-0.5 text-sky-700 hover:bg-sky-100"
-                              title={fa ? 'نحوه محاسبه درصد سرشاخه' : 'How parent % is calculated'}
-                              aria-label={fa ? 'نحوه محاسبه درصد سرشاخه' : 'How parent % is calculated'}
+                              title={copy.parentPctHelp}
+                              aria-label={copy.parentPctHelp}
                               onClick={(e) => {
                                 e.stopPropagation()
                                 setHelpParentId((id) =>
@@ -431,7 +427,7 @@ export function ScheduleCatchUpPanel({
                               className="mt-1 text-[10px] text-sky-700 hover:underline"
                               onClick={() => setHelpParentId(null)}
                             >
-                              {fa ? 'بستن' : 'Close'}
+                              {copy.close}
                             </button>
                           </div>
                         ) : null}
@@ -453,11 +449,7 @@ export function ScheduleCatchUpPanel({
                             {parentLocked ? (
                               <div
                                 className="w-16 rounded border border-dashed border-slate-300 bg-slate-100 px-1.5 py-1 text-end text-xs tabular-nums text-slate-600"
-                                title={
-                                  fa
-                                    ? 'از وزن زیرشاخه‌ها محاسبه می‌شود'
-                                    : 'Calculated from children weights'
-                                }
+                                title={copy.fromChildren}
                               >
                                 {value}
                               </div>
@@ -479,7 +471,7 @@ export function ScheduleCatchUpPanel({
                                   type="button"
                                   className="text-[10px] text-sky-700 hover:underline"
                                   onClick={() => markRowAsPlanned(row)}
-                                  title={fa ? 'طبق برنامه' : 'As planned'}
+                                  title={copy.asPlanned}
                                 >
                                   <Check className="h-3 w-3 inline" />
                                 </button>
@@ -487,7 +479,7 @@ export function ScheduleCatchUpPanel({
                                   type="button"
                                   className="text-[10px] text-emerald-700 hover:underline"
                                   onClick={() => markRowDone(row)}
-                                  title={fa ? '100٪' : '100%'}
+                                  title={copy.pct100}
                                 >
                                   <CheckCircle2 className="h-3 w-3 inline" />
                                 </button>
@@ -495,14 +487,14 @@ export function ScheduleCatchUpPanel({
                                   type="button"
                                   className="text-[10px] text-amber-700 hover:underline"
                                   onClick={() => markRowZero(row)}
-                                  title={fa ? '0٪' : '0%'}
+                                  title={copy.pct0}
                                 >
                                   <CircleDashed className="h-3 w-3 inline" />
                                 </button>
                               </div>
                             ) : (
                               <span className="text-[10px] text-slate-500">
-                                {fa ? 'خودکار از زیرشاخه' : 'Auto from children'}
+                                {copy.autoFromChildren}
                               </span>
                             )}
                           </div>
@@ -521,11 +513,11 @@ export function ScheduleCatchUpPanel({
           <div className="flex flex-wrap gap-2 sticky bottom-0 z-10 -mx-1 px-1 py-2 bg-card border-t">
             <Button type="button" disabled={saving} onClick={confirmCustom}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin me-1" /> : null}
-              {fa ? 'ذخیره گزارش پیشرفت' : 'Save progress report'}
+              {copy.saveReport}
             </Button>
             <Button type="button" variant="ghost" disabled={saving} onClick={() => setMode('ask')}>
               <X className="h-4 w-4 me-1" />
-              {fa ? 'بازگشت' : 'Back'}
+              {copy.back}
             </Button>
             <Button
               type="button"
@@ -543,14 +535,14 @@ export function ScheduleCatchUpPanel({
                 })
               }}
             >
-              {fa ? 'همه را طبق برنامه پر کن' : 'Fill all as planned'}
+              {copy.fillAllPlanned}
             </Button>
           </div>
         ) : null}
 
         {mode === 'ask' && allAligned ? (
           <Button type="button" variant="outline" size="sm" onClick={() => setMode('review')}>
-            {fa ? 'بازبینی و اصلاح پیشرفت' : 'Review & edit progress'}
+            {copy.reviewEdit}
           </Button>
         ) : null}
 
@@ -563,9 +555,7 @@ export function ScheduleCatchUpPanel({
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          {fa
-            ? 'این گزارش همان مبنای داشبورد مدیر پروژه برای شاخص انطباق و SPI است. بعد از ذخیره، وضعیت «تأخیر» در جدول برنامه بر اساس پیشرفت جدید به‌روز می‌شود.'
-            : 'This report feeds the Project Manager compliance / SPI indicators. After save, Delay badges update from the new progress.'}
+          {copy.footer}
         </p>
       </CardContent>
     </Card>

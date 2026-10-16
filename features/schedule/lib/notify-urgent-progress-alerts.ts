@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/notify-urgent-progress-alerts.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (notify-urgent-progress-alerts)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on nothing
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 const NOTIFY_POSITION_KEYS = new Set([

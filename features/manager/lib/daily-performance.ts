@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/daily-performance.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (daily-performance)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/manager/lib/format, features/schedule/lib/planned-progress, features/manager/lib/overview-types
+ */
+
 import { faNumber } from '@/features/manager/lib/format'
 import { weightedPlannedPercent } from '@/features/schedule/lib/planned-progress'
 import type {

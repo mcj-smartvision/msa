@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/replay-week-windows.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (replay-week-windows)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/dates, features/holidays/lib/work-calendar, features/schedule/lib/progress-forecast, features/schedule/lib/week-commitment-windows, features/supervisor/lib/daily-report-activities
+ */
+
 import { addDaysIso } from '@/features/schedule/lib/dates'
 import type { IsWorkday } from '@/features/holidays/lib/work-calendar'
 import {

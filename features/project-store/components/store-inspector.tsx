@@ -1,3 +1,11 @@
+/**
+ * @file features/project-store/components/store-inspector.tsx
+ * @purpose کامپوننت UI — ذخیره پیشرفت و overlay اعداد داشبورد (store-inspector)
+ * @safe-to-edit CAREFUL
+ * @affects ذخیره پیشرفت و overlay اعداد داشبورد
+ * @depends-on shared/components/ui/button, shared/components/ui/input, features/project-store/use-project-store, features/project-store/use-project-store-sync, features/project-store/lib/export, features/project-store/lib/schema, features/manager/lib/format, features/manager/components/manager-ui
+ */
+
 'use client'
 
 import { useMemo, useState } from 'react'
@@ -10,6 +18,7 @@ import { downloadText } from '@/features/project-store/lib/export'
 import { TASK_COLUMNS, type TaskColumn, type TaskItem } from '@/features/project-store/lib/schema'
 import { compactToman, faNumber, jalaliDate } from '@/features/manager/lib/format'
 import { EmptyNote, LoadingRows, SectionCard } from '@/features/manager/components/manager-ui'
+import { STORE_INSPECTOR_COPY as copy } from '@/features/project-store/config'
 
 const MAX_ROWS = 300
 
@@ -29,10 +38,10 @@ function formatCell(task: TaskItem, column: TaskColumn): string {
     case 'binary':
       return String(value)
     case 'flag':
-      return value ? 'بله' : ''
+      return value ? copy.yes : ''
     case 'logs': {
       const entries = Object.entries(value as Record<string, number>)
-      return entries.length ? entries.slice(-5).map(([d, g]) => `${jalaliDate(d)}: ${faNumber(g, 2)}`).join('، ') : '—'
+      return entries.length ? entries.slice(-5).map(([d, g]) => copy.logLine(jalaliDate(d), faNumber(g, 2))).join(copy.listSep) : '—'
     }
     default:
       return String(value)
@@ -69,9 +78,9 @@ export function StoreInspector({ projectId }: { projectId: string | null }) {
 
   return (
     <SectionCard
-      title="جدول مرجع داده‌ها (Store)"
+      title={copy.title}
       icon={<Database className="h-4 w-4" aria-hidden />}
-      hint="همهٔ صفحه‌ها پیشرفت هر فعالیت را از همین جدول می‌خوانند. ستون‌ها از فهرست مرکزی فیلدها ساخته می‌شوند؛ هر فیلد تازه با یک خط به جدول و خروجی اضافه می‌شود."
+      hint={copy.hint}
       action={
         <div className="flex items-center gap-2">
           <Button type="button" size="sm" className="h-9" disabled={!ready} onClick={() => download('json')}>
@@ -86,19 +95,24 @@ export function StoreInspector({ projectId }: { projectId: string | null }) {
       }
     >
       {!projectId ? (
-        <EmptyNote title="پروژه‌ای انتخاب نشده است" />
+<EmptyNote title={copy.noProject} />
       ) : !ready ? (
-        status === 'error' ? <EmptyNote tone="error" title="داده بارگذاری نشد" description={error ?? undefined} /> : <LoadingRows rows={4} />
+        status === 'error' ? <EmptyNote tone="error" title={copy.loadFailed} description={error ?? undefined} /> : <LoadingRows rows={4} />
       ) : (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4 lg:grid-cols-8">
             {[
-              ['هفته', weekStart ? jalaliDate(weekStart) : '—'],
+              [copy.week, weekStart ? jalaliDate(weekStart) : '—'],
               [
-                'PPC هفته',
+                copy.ppcWeek,
                 weekly?.ppc.ppc == null
                   ? '—'
-                  : `${faNumber(weekly.ppc.completed)} ÷ ${faNumber(weekly.ppc.committed)} = ${faNumber(Math.round(weekly.ppc.ppc))}٪${weekly.ppc.provisional ? ' (تا این لحظه)' : ''}`,
+                  : copy.ppcValue(
+                      faNumber(weekly.ppc.completed),
+                      faNumber(weekly.ppc.committed),
+                      faNumber(Math.round(weekly.ppc.ppc)),
+                      Boolean(weekly.ppc.provisional)
+                    ),
               ],
               ['SPI', index(evm?.spi)],
               ['SPI(t)', index(evm?.spiT)],
@@ -117,11 +131,11 @@ export function StoreInspector({ projectId }: { projectId: string | null }) {
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="جستجوی WBS یا نام فعالیت"
+placeholder={copy.searchPh}
               className="h-9 w-56 text-sm"
             />
             <span className="text-[11px] text-slate-500">
-              {faNumber(rows.length)} فعالیت{rows.length > MAX_ROWS ? ` · ${faNumber(MAX_ROWS)} ردیف اول نمایش داده شده؛ همه در خروجی هستند` : ''}
+              {copy.activityCount(faNumber(rows.length))}{rows.length > MAX_ROWS ? copy.truncated(faNumber(MAX_ROWS)) : ''}
             </span>
           </div>
           <div className="max-h-[60vh] overflow-auto rounded-lg border border-slate-200">

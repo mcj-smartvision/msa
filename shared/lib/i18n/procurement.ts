@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/i18n/procurement.ts
+ * @purpose تنظیمات و برچسب‌ها — زیرساخت مشترک سامانه (procurement)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/project-init/lib/i18n/types, shared/lib/common/ai-types
+ */
+
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import type { AiDraftLabels } from '@/shared/lib/common/ai-types'
 
@@ -38,6 +46,7 @@ const EN = {
   statusPo: 'PO Issued',
   statusTransit: 'In Transit',
   statusReceived: 'Received',
+  emptyAssign: 'Ask an admin to assign you as procurement officer on a project.',
 }
 
 export type ProcurementMessages = typeof EN
@@ -79,6 +88,7 @@ const FA = {
   statusPo: 'PO صادر شد',
   statusTransit: 'در راه',
   statusReceived: 'تحویل شد',
+  emptyAssign: 'از ادمین بخواهید شما را به‌عنوان مسئول تدارکات روی یک پروژه منصوب کند.',
 } as const satisfies Record<keyof typeof EN, string>
 
 export function getProcurementMessages(locale: FormLocale): typeof EN {

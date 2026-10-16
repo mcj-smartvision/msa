@@ -1,3 +1,11 @@
+/**
+ * @file features/weather/lib/api-key.ts
+ * @purpose منطق دامنه — هوای کارگاه (api-key)
+ * @safe-to-edit CAREFUL
+ * @affects هوای کارگاه
+ * @depends-on nothing
+ */
+
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 

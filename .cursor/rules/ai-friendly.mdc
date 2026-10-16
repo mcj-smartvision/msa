@@ -1,0 +1,50 @@
+---
+description: AI-friendly architecture for SitePilot (MSA) — isolation, layers, new-file size
+alwaysApply: true
+---
+
+# SitePilot — AI-friendly code
+
+A person (or AI) with no extra context must be able to edit one file safely.
+
+## Layers (this repo, not a Liparta tree)
+
+- `features/<domain>/lib/` — pure logic, no React
+- `features/<domain>/components/` — UI only; call lib, do not embed formulas
+- `features/<domain>/config.ts` or `lib/*-config.ts` — titles, labels, thresholds, tokens
+- `shared/types/` and `features/<domain>/lib/types.ts` — types only
+- `app/` — routes and wiring only
+- `database/NNN-name.sql` — migrations (user runs them in SQL Editor)
+- `tests/` — colocate by domain
+
+Do not invent a top-level `liparta/` or `config/` rewrite. New code follows the layers above. When you touch a messy file, extract **the piece you change**; do not restructure the whole app in one turn.
+
+## File size (new and extracted files)
+
+- One file, one job
+- New lib modules: prefer under 150 lines
+- New components: prefer under 200 lines
+- Functions: prefer under 30 lines
+- Existing giants (e.g. manager dashboard): extract only the slice in scope
+
+## Imports
+
+List dependencies explicitly. No `import * from`. Prefer
+`import { calculateCpi } from '@/features/evm/lib/metrics'` over barrel stars.
+
+## Allowed imports
+
+- config/types → nothing from UI or app
+- lib → config, types, other lib (never components or `app/`)
+- components → lib, config, types, other components
+- `app/` → features, shared
+
+Forbidden: lib importing components; circular imports.
+
+## New feature order
+
+1. Types
+2. Config (labels, thresholds)
+3. Lib (pure functions + tests)
+4. Components
+5. Wire in `app/`

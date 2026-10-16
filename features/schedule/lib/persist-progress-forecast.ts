@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/persist-progress-forecast.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (persist-progress-forecast)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule, features/schedule/lib/dates, features/schedule/lib/predecessor-format, features/schedule/lib/progress-forecast, features/schedule/lib/progress-history, features/schedule/lib/replay-week-windows, features/supervisor/lib/daily-report-activities, features/workshop/lib/service, shared/lib/time/tehran, features/holidays/lib/load-holidays
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { TaskRelationType } from '@/shared/types/schedule'
 import { toIsoDateOnly } from '@/features/schedule/lib/dates'

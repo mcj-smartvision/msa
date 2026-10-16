@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/lib/header-rules.ts
+ * @purpose منطق دامنه — بسته‌های اجرایی و تأیید کارگاه (header-rules)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on features/schedule/lib/dates
+ */
+
 import { toIsoDateOnly } from '@/features/schedule/lib/dates';
 
 export function collectDateEnvelope(

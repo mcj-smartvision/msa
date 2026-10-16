@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/auth/login-identifier.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (login-identifier)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 /** Internal domain for username-only logins (Supabase Auth requires an email). */
 export const LOGIN_EMAIL_DOMAIN = 'site.local'
 

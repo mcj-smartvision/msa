@@ -1,3 +1,11 @@
+/**
+ * @file features/project-manager/lib/contract-export.ts
+ * @purpose منطق دامنه — اتاق فرمان مدیر پروژه و کارتابل (contract-export)
+ * @safe-to-edit CAREFUL
+ * @affects اتاق فرمان مدیر پروژه و کارتابل
+ * @depends-on features/project-manager/lib/subcontractor-types, features/finance/lib/invoice-weekday, features/schedule/lib/dates, features/schedule/lib/calendar-preference
+ */
+
 import type { ProjectSubcontractor, SubcontractorContract } from '@/features/project-manager/lib/subcontractor-types'
 import { formatInvoiceNumber } from '@/features/finance/lib/invoice-weekday'
 import { formatScheduleDate } from '@/features/schedule/lib/dates'

@@ -1,3 +1,11 @@
+/**
+ * @file features/project-store/use-store-progress.ts
+ * @purpose ماژول — ذخیره پیشرفت و overlay اعداد داشبورد (use-store-progress)
+ * @safe-to-edit CAREFUL
+ * @affects ذخیره پیشرفت و overlay اعداد داشبورد
+ * @depends-on features/project-store/use-project-store, features/project-store/use-project-store-sync, features/supervisor/lib/daily-report-activities
+ */
+
 'use client'
 
 import { useMemo } from 'react'

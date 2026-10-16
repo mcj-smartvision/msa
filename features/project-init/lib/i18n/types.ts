@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/lib/i18n/types.ts
+ * @purpose تنظیمات و برچسب‌ها — راه‌اندازی پروژه (types)
+ * @safe-to-edit YES
+ * @affects راه‌اندازی پروژه
+ * @depends-on nothing
+ */
+
 export type FormLocale = 'en' | 'de' | 'fr' | 'ar' | 'fa'
 
 export const FORM_LOCALES: FormLocale[] = ['en', 'de', 'fr', 'ar', 'fa']

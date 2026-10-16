@@ -1,3 +1,11 @@
+/**
+ * @file app/api/schedule/contractor-activities/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/site-ops/lib/auth, features/workshop/lib/service, features/workshop/lib/domain
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/shared/lib/supabase/server'

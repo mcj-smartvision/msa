@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/dashboard/user-context.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (user-context)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/admin/lib/access, shared/lib/dashboard/roles, shared/types/admin, shared/types/dashboard
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isSystemAdmin } from '@/features/admin/lib/access'
 import { resolvePrimaryRole } from '@/shared/lib/dashboard/roles'

@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule-intelligence/lib/index.ts
+ * @purpose منطق دامنه — تحلیل کیفیت برنامه و آپلود MSP (index)
+ * @safe-to-edit CAREFUL
+ * @affects تحلیل کیفیت برنامه و آپلود MSP
+ * @depends-on shared/types/schedule-intelligence, features/schedule-intelligence/lib/config, features/schedule-intelligence/lib/cpm-engine, features/schedule-intelligence/lib/executive-summary, features/schedule-intelligence/lib/risk-analyzer, features/schedule-intelligence/lib/schedule-quality, features/schedule-intelligence/lib/schedule-metrics, features/schedule-intelligence/lib/xml-parser
+ */
+
 import type { ScheduleAnalysisConfig, ScheduleDashboardResult } from '@/shared/types/schedule-intelligence'
 import { mergeScheduleConfig } from '@/features/schedule-intelligence/lib/config'
 import { runCpmEngine } from '@/features/schedule-intelligence/lib/cpm-engine'

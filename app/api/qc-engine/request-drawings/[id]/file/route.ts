@@ -1,3 +1,11 @@
+/**
+ * @file app/api/qc-engine/request-drawings/[id]/file/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/qc/engine/service
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { requireQcEngineUser, signRequestDrawing } from '@/features/qc/engine/service'

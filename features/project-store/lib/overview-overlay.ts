@@ -1,3 +1,11 @@
+/**
+ * @file features/project-store/lib/overview-overlay.ts
+ * @purpose منطق دامنه — ذخیره پیشرفت و overlay اعداد داشبورد (overview-overlay)
+ * @safe-to-edit CAREFUL
+ * @affects ذخیره پیشرفت و overlay اعداد داشبورد
+ * @depends-on features/manager/lib/overview-types, features/manager/lib/weekly-commitments
+ */
+
 import type { ManagerOverview } from '@/features/manager/lib/overview-types'
 import type { WeeklyCommitmentsData } from '@/features/manager/lib/weekly-commitments'
 import type { EvmIndices } from './derive'

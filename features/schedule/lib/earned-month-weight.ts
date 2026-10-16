@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/earned-month-weight.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (earned-month-weight)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on nothing
+ */
+
 export type ProgressSnapshotPoint = {
   snapshotMonth: string
   jalaliMonth: string

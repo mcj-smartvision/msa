@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/common/ai-types.ts
+ * @purpose تعاریف نوع — زیرساخت مشترک سامانه (ai-types)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 export type AiStatus = 'draft_by_ai' | 'confirmed_by_user' | 'rejected_by_user'
 
 export type PmReviewStatus = 'not_required' | 'pending' | 'approved' | 'rejected'

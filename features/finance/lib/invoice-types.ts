@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/invoice-types.ts
+ * @purpose تعاریف نوع — حسابداری، هزینه،overhead و صورت‌وضعیت (invoice-types)
+ * @safe-to-edit YES
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/finance/lib/payable-types
+ */
+
 export const FINANCIAL_INVOICE_STATUSES = [
   'draft',
   'submitted',

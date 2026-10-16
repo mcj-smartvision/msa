@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/preview-with-packages.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (preview-with-packages)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule, features/schedule/lib/msp-import, features/schedule/lib/wbs-utils, features/workshop/lib/wbs-numbering, features/workshop/lib/package-commercial
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ProjectTask } from '@/shared/types/schedule'
 import { fetchProjectTasksSummary } from '@/features/schedule/lib/msp-import'

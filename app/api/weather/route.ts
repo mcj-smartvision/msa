@@ -1,3 +1,11 @@
+/**
+ * @file app/api/weather/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/site-ops/lib/auth, features/weather/lib/fetch-weather, features/workshop/lib/service
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { requireUser } from '@/features/site-ops/lib/auth'

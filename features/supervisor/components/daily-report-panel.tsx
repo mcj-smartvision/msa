@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/daily-report-panel.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (daily-report-panel)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/schedule/hooks/use-schedule-calendar, features/schedule/lib/dates, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/skeleton, shared/components/ui/textarea, features/schedule/components/formatted-date, features/workshop/components/uom-display, features/supervisor/lib/daily-progress-storage
+ */
+
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -48,6 +56,10 @@ import { cn } from '@/shared/lib/utils'
 import { DailyReportWeatherBanner } from '@/features/weather/components/daily-report-weather'
 import { useWeather } from '@/features/weather/hooks/use-weather'
 import { ensureWeatherLine, extractWeatherLine, formatWeatherReportLine, weatherSnapshotFromPayload } from '@/features/weather/lib/report-stamp'
+import { SUPERVISOR_COPY, SUPERVISOR_PUNCT } from '@/features/supervisor/config'
+import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+
+const t = getSiteSupervisorMessages('fa')
 
 function faNum(n: number): string {
   return n.toLocaleString('fa-IR-u-nu-latn')
@@ -126,11 +138,11 @@ function ProgressBar({
   )
 }
 
-const SHORT_DAY_LABELS = ['شنبه', 'یک', 'دو', 'سه', 'چهار', 'پنج']
+const SHORT_DAY_LABELS = [t.shortSat, t.shortSun, t.shortMon, t.shortTue, t.shortWed, t.shortThu]
 
-const PERCENT_ERROR_TEXT = { max: 'حداکثر 100٪', min: 'حداقل 0٪' } as const
-const DECREASE_WARNING = 'پیشرفت نمی‌تواند کاهش پیدا کند — اگر عدد قبلی اشتباه بوده، این اصلاح ثبت می‌شود'
-const WEEKLY_GAIN_WARNING = 'افزایش بیش از 30٪ در یک هفته — احتمال خطای ورود داده'
+const PERCENT_ERROR_TEXT = { max: t.percentMax, min: t.percentMin } as const
+const DECREASE_WARNING = t.decreaseWarning
+const WEEKLY_GAIN_WARNING = t.weeklyGainWarning
 
 function PercentEntryMessage({ check }: { check: PercentEntryCheck | null }) {
   if (check?.error) {
@@ -213,20 +225,20 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
   return (
     <div className="rounded-lg border border-slate-100 bg-white p-3">
       <p className="text-[11px] font-semibold text-slate-600">
-        روند پیشرفت تجمعی از اولین روز ثبت پیشرفت (نقطه‌ها روزهای گزارش سرپرست؛ تجمعی هر هفته روی پنجشنبه)
+        {t.cumulativeTrendHint}
       </p>
       <div ref={boxRef} className="mt-1 flex" dir="ltr">
         <svg width={axisW} height={H} className="block shrink-0" aria-hidden>
           {ticks.map((t) => (
             <text key={t} x={axisW - 5} y={yOf(t) + 4} fontSize={11} fill="#475569" textAnchor="end" direction="ltr">
-              {t.toLocaleString('en-US')}٪
+              {SUPERVISOR_COPY.pct(t.toLocaleString('en-US'))}
             </text>
           ))}
           <line x1={axisW - 0.5} x2={axisW - 0.5} y1={top - 4} y2={bottom} stroke="#94a3b8" />
         </svg>
         <div ref={scrollRef} className="min-w-0 flex-1 overflow-x-auto">
           <div className="relative" style={{ width: W }} onMouseLeave={() => setHover(null)}>
-            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block" role="img" aria-label="نمودار پیشرفت روزانه از اولین گزارش تا امروز">
+            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block" role="img" aria-label={t.dailyChartAria}>
               {weeks.map((w, wi) => {
                 const x0 = pad + weekStartCol[wi]! * colW
                 const weekW = colW * w.days.length
@@ -237,14 +249,14 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
                     {wi % 2 === 1 ? <rect x={x0} y={0} width={weekW} height={bottom} fill="#f8fafc" /> : null}
                     {wi > 0 ? <line x1={x0} x2={x0} y1={0} y2={bottom + 6} stroke="#cbd5e1" strokeDasharray="4 3" /> : null}
                     <text x={x0 + weekW / 2} y={13} textAnchor="middle" fontSize={11} fontWeight={700} fill="#475569">
-                      هفته {faNum(w.index)}
+                      {t.weekN(faNum(w.index))}
                     </text>
                     <rect x={thuX - badgeW / 2} y={20} width={badgeW} height={27} rx={6} fill={w.weekComplete ? '#1e3a5f' : '#ffffff'} stroke="#1e3a5f" strokeDasharray={w.weekComplete ? undefined : '3 2'} />
                     <text x={thuX} y={31} textAnchor="middle" fontSize={9} fill={w.weekComplete ? '#cbd5e1' : '#64748b'}>
-                      تجمعی
+                      {t.cumulativeShort}
                     </text>
                     <text x={thuX} y={43} textAnchor="middle" fontSize={11} fontWeight={700} fill={w.weekComplete ? '#ffffff' : '#1e3a5f'}>
-                      {w.endCumulative == null ? '—' : `${faNum(w.endCumulative)}٪`}
+                      {w.endCumulative == null ? '—' : SUPERVISOR_COPY.pct(faNum(w.endCumulative))}
                     </text>
                   </g>
                 )
@@ -269,7 +281,7 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
                     <>
                       <circle cx={p.x} cy={p.y} r={hover === i ? 6 : 4.5} fill="#f59e0b" stroke="#fff" strokeWidth={1.5} />
                       <text x={p.x} y={p.y - 10} textAnchor="middle" fontSize={11} fontWeight={700} fill="#92400e">
-                        {faNum(p.cumulative ?? 0)}٪
+                        {SUPERVISOR_COPY.pct(faNum(p.cumulative ?? 0))}
                       </text>
                     </>
                   ) : (
@@ -309,18 +321,18 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
                 <p className="font-bold text-slate-800">
                   {hovered.label} <span className="font-normal text-slate-500"><FormattedDate value={hovered.date} /></span>
                 </p>
-                <p className="text-[10px] text-slate-500">هفته {faNum(weeks[hovered.weekIndex]!.index)}</p>
+                <p className="text-[10px] text-slate-500">{t.weekN(faNum(weeks[hovered.weekIndex]!.index))}</p>
                 {hovered.future ? (
-                  <p className="text-slate-400">هنوز نرسیده</p>
+                  <p className="text-slate-400">{t.notReachedYet}</p>
                 ) : (
                   <>
                     <p className="flex justify-between gap-2">
-                      <span className="text-slate-500">پیشرفت روز</span>
-                      <span className="font-bold tabular-nums text-amber-700">{hovered.daily == null ? 'ثبت نشده' : `${faNum(hovered.daily)}٪`}</span>
+                      <span className="text-slate-500">{t.dayProgress}</span>
+                      <span className="font-bold tabular-nums text-amber-700">{hovered.daily == null ? t.notRecorded : SUPERVISOR_COPY.pct(faNum(hovered.daily))}</span>
                     </p>
                     <p className="flex justify-between gap-2">
-                      <span className="text-slate-500">تجمعی</span>
-                      <span className="font-bold tabular-nums text-[#1e3a5f]">{hovered.cumulative == null ? '—' : `${faNum(hovered.cumulative)}٪`}</span>
+                      <span className="text-slate-500">{t.cumulativeShort}</span>
+                      <span className="font-bold tabular-nums text-[#1e3a5f]">{hovered.cumulative == null ? '—' : SUPERVISOR_COPY.pct(faNum(hovered.cumulative))}</span>
                     </p>
                   </>
                 )}
@@ -343,22 +355,22 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
             >
               <p className="flex items-center justify-between gap-2">
                 <span className="font-bold text-slate-800">
-                  هفته {faNum(w.index)}
-                  {isCurrent ? <span className="mr-1 font-normal text-sky-700">(جاری)</span> : null}
+                  {t.weekN(faNum(w.index))}
+                  {isCurrent ? <span className="mr-1 font-normal text-sky-700">{t.currentParen}</span> : null}
                 </span>
                 <span className="text-[10px] text-slate-500">
-                  <FormattedDate value={w.days[0]?.date ?? w.weekStart} /> تا <FormattedDate value={w.weekEnd} />
+                  <FormattedDate value={w.days[0]?.date ?? w.weekStart} /> {t.until} <FormattedDate value={w.weekEnd} />
                 </span>
               </p>
               <p className="mt-0.5 flex items-center justify-between gap-2 tabular-nums">
                 <span className="text-slate-600">
-                  پیشرفت هفته:{' '}
-                  <span className="font-bold text-amber-700">{w.gain == null ? 'ثبت نشده' : `${faNum(w.gain)}٪`}</span>{' '}
+                  {t.weekProgressPrefix}{' '}
+                  <span className="font-bold text-amber-700">{w.gain == null ? t.notRecorded : SUPERVISOR_COPY.pct(faNum(w.gain))}</span>{' '}
                   <WeeklyGainFlag gain={w.gain} />
                 </span>
                 <span className="text-slate-600">
-                  تجمعی:{' '}
-                  <span className="font-bold text-[#1e3a5f]">{w.endCumulative == null ? '—' : `${faNum(w.endCumulative)}٪`}</span>
+                  {t.cumulativeColon}{' '}
+                  <span className="font-bold text-[#1e3a5f]">{w.endCumulative == null ? '—' : SUPERVISOR_COPY.pct(faNum(w.endCumulative))}</span>
                 </span>
               </p>
             </li>
@@ -368,10 +380,10 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
 
       <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
         <span className="text-[11px] text-slate-500">
-          {current.weekComplete ? 'تجمعی پایان هفته (پنجشنبه)' : 'تجمعی تا امروز'}
+          {current.weekComplete ? t.weekEndCumulative : t.cumulativeToToday}
         </span>
         <span className="text-base font-bold tabular-nums text-[#1e3a5f]">
-          {current.endCumulative == null ? '—' : `${faNum(current.endCumulative)}٪`}
+          {current.endCumulative == null ? '—' : SUPERVISOR_COPY.pct(faNum(current.endCumulative))}
         </span>
       </div>
     </div>
@@ -393,7 +405,7 @@ function timingTheme(timing: DailyReportTiming) {
       header: 'border-amber-100 bg-gradient-to-b from-amber-50 to-white',
       wbs: 'bg-amber-700',
       accent: 'text-amber-800',
-      badge: 'عقب‌افتاده',
+      badge: t.badgeOverdue,
       badgeClass: 'bg-amber-100 text-amber-900',
       progressAccent: 'text-amber-800',
     }
@@ -404,7 +416,7 @@ function timingTheme(timing: DailyReportTiming) {
       header: 'border-slate-100 bg-gradient-to-b from-slate-50 to-white',
       wbs: 'bg-slate-500',
       accent: 'text-slate-600',
-      badge: 'هنوز شروع نشده',
+      badge: t.badgeNotStarted,
       badgeClass: 'bg-slate-100 text-slate-700',
       progressAccent: 'text-slate-700',
     }
@@ -414,7 +426,7 @@ function timingTheme(timing: DailyReportTiming) {
     header: 'border-slate-100 bg-gradient-to-b from-slate-50 to-white',
     wbs: 'bg-[#1e3a5f]',
     accent: 'text-[#1e3a5f]',
-    badge: 'ایام جاری',
+    badge: t.badgeCurrent,
     badgeClass: 'bg-sky-100 text-sky-900',
     progressAccent: 'text-[#1e3a5f]',
   }
@@ -499,7 +511,7 @@ function ActivityProgressRow({
             <div className="flex flex-wrap gap-1.5">
               {activity.quantity != null && activity.uom ? (
                 <MetaPill>
-                  مقدار برنامه:{' '}
+                  {t.planQtyPrefix}{' '}
                   <span className="font-semibold tabular-nums text-slate-800">
                     <span className="inline-flex items-center gap-1">
                       {faNum(activity.quantity)}
@@ -509,19 +521,19 @@ function ActivityProgressRow({
                 </MetaPill>
               ) : null}
               <MetaPill>
-                شروع: <FormattedDate value={activity.plannedStartDate} />
+                {t.start}: <FormattedDate value={activity.plannedStartDate} />
               </MetaPill>
               {activity.plannedFinishDate ? (
                 <MetaPill>
-                  پایان: <FormattedDate value={activity.plannedFinishDate} />
+                  {t.finish}: <FormattedDate value={activity.plannedFinishDate} />
                 </MetaPill>
               ) : null}
-              {activity.location ? <MetaPill>محل: {activity.location}</MetaPill> : null}
+              {activity.location ? <MetaPill>{t.locationColon} {activity.location}</MetaPill> : null}
             </div>
           </div>
           {reportedToday ? (
             <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-800">
-              ثبت شده
+              {t.recorded}
             </span>
           ) : null}
         </div>
@@ -532,17 +544,21 @@ function ActivityProgressRow({
           <div className="rounded-lg border border-slate-100 bg-white p-2.5">
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor={`pct-${activity.id}`} className="text-[11px] font-semibold text-slate-600">
-                درصد پیشرفت تجمعی امروز
+                {t.todayCumulativeProgress}
               </Label>
               <span className={cn('text-lg font-bold tabular-nums', theme.progressAccent)}>
-                {faNum(cumulativeAfter)}٪
+                {SUPERVISOR_COPY.pct(faNum(cumulativeAfter))}
               </span>
             </div>
             <ProgressBar value={cumulativeAfter} tone="amber" />
             <p className="mt-1 text-[10px] text-slate-500">
-              قبلی: <span className="font-semibold tabular-nums text-slate-700">{faNum(base)}٪</span> — پیشرفت امروز:{' '}
+              {t.previousLabel}{' '}
+              <span className="font-semibold tabular-nums text-slate-700">
+                {SUPERVISOR_COPY.pct(faNum(base))}
+              </span>{' '}
+              — {t.todayProgressLabel}{' '}
               <span className={cn('font-semibold tabular-nums', gainToday < 0 ? 'text-red-600' : 'text-slate-700')}>
-                {faNum(gainToday)}٪
+                {SUPERVISOR_COPY.pct(faNum(gainToday))}
               </span>
             </p>
             <div className="mt-1.5 flex items-center gap-1.5">
@@ -573,7 +589,7 @@ function ActivityProgressRow({
                 disabled={saving || value === undefined || inputCheck?.error != null}
                 onClick={() => void onSave()}
               >
-                {saving ? '…' : 'ثبت'}
+                {saving ? '…' : t.save}
               </Button>
             </div>
             <div className="mt-1">
@@ -591,11 +607,11 @@ function ActivityProgressRow({
           >
             <div className="flex items-center justify-between gap-2">
               <p className={cn('text-[11px] font-semibold', reportedToday ? 'text-emerald-800' : 'text-slate-400')}>
-                ثبت امروز
+                {t.recordToday}
               </p>
               {reportedToday ? (
                 <p className="text-lg font-bold tabular-nums leading-none text-emerald-800">
-                  {faNum(todayEntry.percentComplete)}٪
+                  {SUPERVISOR_COPY.pct(faNum(todayEntry.percentComplete))}
                 </p>
               ) : null}
             </div>
@@ -604,9 +620,9 @@ function ActivityProgressRow({
                 <ProgressBar value={todayEntry.percentComplete} tone="emerald" />
                 <p className="flex items-center justify-between gap-2 text-[10px] text-emerald-800/85">
                   <span>
-                    پیشرفت امروز:{' '}
+                    {t.todayProgressLabel}{' '}
                     <span className="font-semibold tabular-nums">
-                      {todayIncrement == null ? '—' : `${faNum(todayIncrement)}٪`}
+                      {todayIncrement == null ? '—' : SUPERVISOR_COPY.pct(faNum(todayIncrement))}
                     </span>
                   </span>
                   {todayEntry.savedAt ? (
@@ -617,15 +633,15 @@ function ActivityProgressRow({
                 </p>
               </div>
             ) : (
-              <p className="mt-1 text-xs text-slate-400">در انتظار ثبت امروز</p>
+              <p className="mt-1 text-xs text-slate-400">{t.awaitingTodayRecord}</p>
             )}
             <BoxEditor
-              label="درصد تجمعی امروز (٪)"
+              label={t.todayCumulativeLabel}
               initial={todayEntry?.percentComplete ?? cumulativeAfter}
               min={0}
               max={100}
               previous={previous.percent}
-              hint={(v) => `پیشرفت امروز: ${faNum(Math.round((v - base) * 100) / 100)}٪`}
+              hint={(v) => t.todayProgressHint(faNum(Math.round((v - base) * 100) / 100))}
               saving={saving}
               onSave={(v) => onSaveDay(reportDate, v)}
             />
@@ -696,7 +712,7 @@ function BoxEditor({
           setEditing(true)
         }}
       >
-        ویرایش
+        {t.editText}
       </Button>
     )
   }
@@ -730,15 +746,15 @@ function BoxEditor({
           disabled={saving || !valid}
           onClick={() => void save()}
         >
-          {saving ? '…' : 'ثبت'}
+          {saving ? '…' : t.save}
         </Button>
         <Button type="button" size="sm" variant="ghost" className="h-8" disabled={saving} onClick={() => setEditing(false)}>
-          انصراف
+          {t.dismiss}
         </Button>
       </div>
       {parsed == null ? (
         <p role="alert" className="text-[10px] text-red-600">
-          عددی بین {faNum(min)} و {faNum(max)} وارد کنید
+          {t.numberBetween(faNum(min), faNum(max))}
         </p>
       ) : check?.error || check?.decrease ? (
         <PercentEntryMessage check={check} />
@@ -752,8 +768,8 @@ function BoxEditor({
 function parseDraft(raw: string): number | null {
   const ascii = raw
     .trim()
-    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
-    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/[۰-۹]/g, (d) => String(SUPERVISOR_PUNCT.persianDigits.indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String(SUPERVISOR_PUNCT.arabicDigits.indexOf(d)))
     .replace(/[٫,]/g, '.')
   if (ascii === '' || !/^-?\d+(\.\d+)?$/.test(ascii)) return null
   return Number(ascii)
@@ -786,7 +802,7 @@ function PastDaysEditor({
       .filter((d) => d.date < reportDate)
       .map((d) => ({ date: d.date, label: d.label as string }))
     if (previousDate && previousDate < week.weekStart) {
-      list.unshift({ date: previousDate, label: 'آخرین گزارش قبلی' })
+      list.unshift({ date: previousDate, label: t.lastPreviousReport })
     }
     return list.map((d) => {
       const entry = entryOn(activity.id, history, d.date)
@@ -804,7 +820,7 @@ function PastDaysEditor({
         className="text-[11px] font-semibold text-[#1e3a5f] hover:underline"
         onClick={() => setOpen((v) => !v)}
       >
-        {open ? 'بستن ویرایش روزهای قبل' : `ویرایش روزهای قبل (${faNum(days.length)})`}
+        {open ? t.closeEditPrevious : t.editPreviousDays(faNum(days.length))}
       </button>
       {open ? (
         <ul className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -846,14 +862,14 @@ function PastDaysEditor({
                         !valid && 'border-red-400 focus-visible:ring-red-300'
                       )}
                       dir="ltr"
-                      aria-label={`درصد تجمعی ${d.label}`}
+                      aria-label={t.cumulativeAria(d.label)}
                     />
                     <span className={cn('text-[10px]', valid ? 'text-slate-500' : 'text-red-600')}>
                       {parsed != null && valid
-                        ? `پیشرفت آن روز: ${faNum(Math.round((parsed - start) * 100) / 100)}٪`
+                        ? t.thatDayProgress(faNum(Math.round((parsed - start) * 100) / 100))
                         : check?.error
                           ? null
-                          : '0 تا 100'}
+                          : t.range0to100}
                     </span>
                     <Button
                       type="button"
@@ -862,7 +878,7 @@ function PastDaysEditor({
                       disabled={saving || !valid}
                       onClick={() => void save()}
                     >
-                      {saving ? '…' : 'ثبت'}
+                      {saving ? '…' : t.save}
                     </Button>
                     <Button
                       type="button"
@@ -872,7 +888,7 @@ function PastDaysEditor({
                       disabled={saving}
                       onClick={() => setEditingDate(null)}
                     >
-                      انصراف
+                      {t.dismiss}
                     </Button>
                     <div className="basis-full">
                       <PercentEntryMessage check={check} />
@@ -882,11 +898,11 @@ function PastDaysEditor({
                   <div className="flex items-center gap-2">
                     <div className="text-left">
                       <p className="text-sm font-bold tabular-nums text-slate-800">
-                        {d.entry ? `${faNum(d.entry.percentComplete)}٪` : 'ثبت نشده'}
+                        {d.entry ? SUPERVISOR_COPY.pct(faNum(d.entry.percentComplete)) : t.notRecorded}
                       </p>
                       {d.entry ? (
                         <p className="text-[10px] text-slate-500">
-                          پیشرفت آن روز: {d.daily == null ? '—' : `${faNum(d.daily)}٪`}
+                          {t.thatDayProgress(d.daily == null ? '—' : faNum(d.daily))}
                         </p>
                       ) : null}
                     </div>
@@ -901,7 +917,7 @@ function PastDaysEditor({
                         setEditingDate(d.date)
                       }}
                     >
-                      {d.entry ? 'ویرایش' : 'ثبت'}
+                      {d.entry ? t.editText : t.save}
                     </Button>
                   </div>
                 )}
@@ -1006,16 +1022,15 @@ export function DailyReportPanel({
         [
           {
             timing: 'current' as const,
-            title: 'ایام جاری',
-            description:
-              'فعالیت‌هایی که امروز در بازه برنامه (از شروع تا پایان) هستند — برای ثبت درصد پیشرفت.',
+            title: t.currentPeriod,
+            description: t.currentPeriodDesc,
             shellClass: 'border-sky-200 bg-sky-50/40',
             titleClass: 'text-sky-900',
           },
           {
             timing: 'past' as const,
-            title: 'کارهای قبلی (عقب‌افتاده)',
-            description: 'فعالیت‌های قبلی که هنوز 100٪ نشده‌اند (گزارش کارگاه یا برنامه).',
+            title: t.previousWork,
+            description: t.previousWorkDesc,
             shellClass: 'border-amber-200 bg-amber-50/40',
             titleClass: 'text-amber-900',
           },
@@ -1046,9 +1061,8 @@ export function DailyReportPanel({
       return [
         {
           timing: 'all' as const,
-          title: 'فعالیت‌های قابل گزارش امروز',
-          description:
-            'فعالیت‌های بازه امروز و کارهای قبلی تکمیل‌نشده — برای یافتن سریع WBS یا نام را جستجو کنید.',
+          title: t.reportableToday,
+          description: t.reportableTodayDesc,
           shellClass: 'border-slate-200 bg-white',
           titleClass: 'text-slate-900',
           groups: groupDailyReportActivitiesByParent(filteredEligible),
@@ -1092,7 +1106,7 @@ export function DailyReportPanel({
       setSaveError(null)
     } catch (error) {
       console.error(error)
-      setSaveError(error instanceof Error ? error.message : 'ذخیره پیشرفت در برنامه زمانبندی ناموفق بود')
+      setSaveError(error instanceof Error ? error.message : t.saveScheduleFailed)
     }
   }
 
@@ -1118,7 +1132,7 @@ export function DailyReportPanel({
       } catch (error) {
         if (!cancelled) {
           console.error(error)
-          setSaveError(error instanceof Error ? error.message : 'همگام‌سازی پیشرفت با برنامه زمانبندی ناموفق بود')
+          setSaveError(error instanceof Error ? error.message : t.syncScheduleFailed)
         }
       }
     })()
@@ -1190,11 +1204,11 @@ export function DailyReportPanel({
         }),
       })
       const data = (await res.json()) as ParsedDailyReportVoice & { error?: string }
-      if (!res.ok) throw new Error(data.error || 'خطا در پردازش گزارش صوتی')
+      if (!res.ok) throw new Error(data.error || t.voiceProcessFailed)
       setVoiceParsed(data)
       setOrganizedDraft(data.organizedText)
     } catch (e) {
-      setOrganizeError(e instanceof Error ? e.message : 'خطا در پردازش گزارش صوتی')
+      setOrganizeError(e instanceof Error ? e.message : t.voiceProcessFailed)
     } finally {
       setOrganizeLoading(false)
     }
@@ -1223,14 +1237,14 @@ export function DailyReportPanel({
   if (!projectId) {
     return (
       <p className="text-sm text-slate-500" dir="rtl" lang="fa">
-        ابتدا یک پروژه انتخاب کنید.
+        {t.selectProjectFirst}
       </p>
     )
   }
 
   if (!hydrated || activitiesLoading) {
     return (
-      <div className="space-y-4" dir="rtl" aria-busy="true" aria-label="در حال بارگذاری برنامه و گزارش‌ها…">
+      <div className="space-y-4" dir="rtl" aria-busy="true" aria-label={t.loadingScheduleReports}>
         <Skeleton className="h-24 w-full rounded-xl" />
         <Skeleton className="h-16 w-full rounded-xl" />
         {[0, 1, 2].map((i) => (
@@ -1247,7 +1261,7 @@ export function DailyReportPanel({
           <div className="flex items-center gap-3">
             <CalendarDays className="h-8 w-8 text-[#1e3a5f]" aria-hidden="true" />
             <div>
-              <p className="text-xs font-medium text-slate-500">امروز — تاریخ گزارش روزانه</p>
+              <p className="text-xs font-medium text-slate-500">{t.todayReportDateTitle}</p>
               <p className="text-lg font-bold text-[#1e3a5f]">{todayHeading}</p>
               <p className="text-xs text-slate-500 tabular-nums mt-0.5">{todayShort}</p>
             </div>
@@ -1256,7 +1270,7 @@ export function DailyReportPanel({
             <DailyReportWeatherBanner projectId={projectId} compact />
           </div>
           <div className="text-right text-sm">
-            <p className="text-slate-500">فعالیت قابل گزارش</p>
+            <p className="text-slate-500">{t.reportableActivity}</p>
             <p className="text-2xl font-bold tabular-nums text-[#1e3a5f]">
               {faNum(eligible.length)}
             </p>
@@ -1268,12 +1282,12 @@ export function DailyReportPanel({
         <div className="flex flex-wrap items-center gap-3">
           <ClipboardList className="h-5 w-5 text-[#1e3a5f]" aria-hidden="true" />
           <p className="text-sm font-bold text-slate-900">
-            {faNum(remainingCount)} فعالیت باقی‌مانده برای ثبت امروز
+            {t.remainingToRecord(faNum(remainingCount))}
           </p>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-slate-600">
-          همه <strong>فعالیت‌های ایام جاری</strong> و کارهای قبلی که هنوز 100٪ نشده‌اند اینجا می‌آیند.
-          اگر فعالیت قبلی 100٪ شود، فعالیت بعدی حتی قبل از تاریخ شروع برنامه‌ای هم برای ثبت درصد می‌آید.
+          {t.eligibleIntroLead} <strong>{t.eligibleIntroEm}</strong> {t.eligibleIntroTail}
+          {t.eligibleIntroNext}
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
           <button
@@ -1286,7 +1300,7 @@ export function DailyReportPanel({
                 : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
             )}
           >
-            همه ({faNum(eligible.length)})
+            {t.allCount(faNum(eligible.length))}
           </button>
           <button
             type="button"
@@ -1299,7 +1313,7 @@ export function DailyReportPanel({
             )}
           >
             <span className="h-2 w-2 rounded-full bg-current opacity-80" />
-            ایام جاری ({faNum(timingCounts.current)})
+            {t.currentPeriod} ({faNum(timingCounts.current)})
           </button>
           <button
             type="button"
@@ -1312,14 +1326,14 @@ export function DailyReportPanel({
             )}
           >
             <span className="h-2 w-2 rounded-full bg-current opacity-80" />
-            کار قبلی ({faNum(timingCounts.past)})
+            {t.previousWorkShort} ({faNum(timingCounts.past)})
           </button>
         </div>
         <div className="mt-3">
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="جستجو با WBS یا نام فعالیت (مثلاً 1.4 یا فونداسیون)"
+            placeholder={t.searchWbsPlaceholder}
             className="h-9 bg-white text-sm"
           />
         </div>
@@ -1335,23 +1349,23 @@ export function DailyReportPanel({
 
       {activities.length === 0 && !activitiesError ? (
         <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-600">
-          هنوز زیرشاخه از دفتر فنی ثبت نشده — در داشبورد دفتر فنی → «برنامه زمانبندی» زیرشاخه و مقدار تعریف کنید.
+          {t.noWorkshopPackages}
         </p>
       ) : null}
 
       {eligible.length === 0 && activities.length > 0 ? (
         <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-600">
-          فعالیت واجد شرایطی برای امروز نیست (ایام جاری یا کار قبلی ناتمام).
+          {t.noEligibleToday}
         </p>
       ) : displaySections.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-600">
           {searchQuery.trim()
-            ? 'فعالیتی با این جستجو پیدا نشد.'
+            ? t.noSearchResults
             : timingFilter === 'current'
-              ? 'فعالیت ایام جاری برای ثبت امروز نیست.'
+              ? t.noCurrentPeriod
               : timingFilter === 'past'
-                ? 'کار قبلی ناتمامی باقی نمانده است.'
-                : 'فعالیت واجد شرایطی برای نمایش نیست.'}
+                ? t.noPreviousLeft
+                : t.noEligible}
         </p>
       ) : (
         <div className="space-y-6">
@@ -1390,7 +1404,7 @@ export function DailyReportPanel({
                                 : 'text-[#1e3a5f]/70'
                           )}
                         >
-                          سرتیتر فعالیت
+                          {t.activityHeader}
                         </p>
                         <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
                           {group.parentTaskWbs ? (
@@ -1442,7 +1456,7 @@ export function DailyReportPanel({
       )}
 
       {savedActivityId ? (
-        <p className="text-sm font-medium text-emerald-700">این مورد ثبت شد.</p>
+        <p className="text-sm font-medium text-emerald-700">{t.itemRecorded}</p>
       ) : null}
 
       {eligible.length > 0 ? (
@@ -1453,13 +1467,13 @@ export function DailyReportPanel({
               disabled={submitting}
               onClick={handleSubmit}
             >
-              {submitting ? 'در حال ثبت…' : 'ثبت گزارش امروز (همه)'}
+              {submitting ? t.submitting : t.submitTodayAll}
             </Button>
             <p className="text-xs text-slate-500">
-              یا برای هر فعالیت دکمه «ثبت» کنار درصد را بزنید.
+              {t.orSaveEach}
             </p>
             {submitOk ? (
-              <p className="text-sm font-medium text-emerald-700">گزارش امروز با موفقیت ثبت شد.</p>
+              <p className="text-sm font-medium text-emerald-700">{t.todayReportSaved}</p>
             ) : null}
           </div>
         </div>
@@ -1468,12 +1482,12 @@ export function DailyReportPanel({
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Label htmlFor="daily-report-note" className="text-sm font-semibold text-slate-800">
-            یادداشت گزارش روزانه (وضعیت هوا خودکار درج می‌شود)
+            {t.dailyNoteLabel}
           </Label>
           <VoiceToTextButton
             size="sm"
             disabled={organizeLoading}
-            prompt="گزارش روزانه کارگاه. درصد پیشرفت، مشکلات، کمبود مصالح، HSE."
+            prompt={t.voicePrompt}
             onTranscript={(text) => void handleVoiceOrganize(text)}
           />
         </div>
@@ -1481,7 +1495,7 @@ export function DailyReportPanel({
         {organizeLoading ? (
           <div className="flex items-center gap-2 text-xs text-slate-600">
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-            در حال تبدیل و مرتب‌سازی گزارش صوتی…
+            {t.organizingVoice}
           </div>
         ) : null}
 
@@ -1489,7 +1503,7 @@ export function DailyReportPanel({
 
         {voiceParsed ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 space-y-2">
-            <p className="text-xs font-medium text-amber-950">پیش‌نمایش گزارش مرتب‌شده:</p>
+            <p className="text-xs font-medium text-amber-950">{t.organizedPreview}</p>
             <Textarea
               rows={6}
               value={organizedDraft}
@@ -1498,16 +1512,16 @@ export function DailyReportPanel({
             />
             {voiceParsed.activities.some((a) => a.percentComplete != null) ? (
               <p className="text-xs text-slate-600">
-                درصد شناسایی‌شده:{' '}
+                {t.detectedPercents}{' '}
                 {voiceParsed.activities
                   .filter((a) => a.percentComplete != null)
-                  .map((a) => `${a.wbs ?? a.name}: ${a.percentComplete}٪`)
-                  .join('، ')}
+                  .map((a) => SUPERVISOR_COPY.labeledPct(a.wbs ?? a.name, a.percentComplete!))
+                  .join(SUPERVISOR_PUNCT.listSep)}
               </p>
             ) : null}
             <div className="flex flex-wrap gap-2">
               <Button type="button" size="sm" onClick={applyOrganizedReport}>
-                اعمال روی فرم
+                {t.applyToForm}
               </Button>
               <Button
                 type="button"
@@ -1518,7 +1532,7 @@ export function DailyReportPanel({
                   setOrganizedDraft('')
                 }}
               >
-                لغو
+                {t.cancel}
               </Button>
             </div>
           </div>
@@ -1529,7 +1543,7 @@ export function DailyReportPanel({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
-          placeholder="مثلاً تأخیر تحویل میلگرد، کمبود نیرو، یا یادداشت میدانی…"
+          placeholder={t.fieldNotePlaceholder}
           className="text-sm"
         />
       </div>
@@ -1546,7 +1560,7 @@ export function DailyReportPanel({
               : '/dashboard/site-supervisor/daily-reports'
           }
         >
-          گزارش‌های ثبت‌شده قبلی
+          {t.previousReports}
         </Link>
       </Button>
     </div>

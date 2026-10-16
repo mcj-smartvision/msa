@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/components/settings-page.tsx
+ * @purpose کامپوننت UI — ایمنی، بهداشت و محیط زیست (settings-page)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on features/hse/components/ui, shared/components/ui/button, shared/components/ui/input, features/hse/lib/mock-data, features/hse/config
+ */
+
 'use client'
 
 import { useState } from 'react'
@@ -6,13 +14,9 @@ import { HsePageHeader, Panel } from '@/features/hse/components/ui'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { HSE_PROJECT, HSE_USERS } from '@/features/hse/lib/mock-data'
+import { HSE_COMMON_COPY, HSE_ROLE_COPY, HSE_SETTINGS_COPY } from '@/features/hse/config'
 
-const ROLE_LABEL: Record<(typeof HSE_USERS)[number]['role'], string> = {
-  employer: 'کارفرما',
-  hse_officer: 'مسئول ایمنی و بهداشت',
-  technical_admin: 'مدیر فنی',
-  supervisor: 'ناظر',
-}
+const ROLE_LABEL: Record<(typeof HSE_USERS)[number]['role'], string> = HSE_ROLE_COPY
 
 export function SettingsPage() {
   const [retentionDays, setRetentionDays] = useState(90)
@@ -23,14 +27,14 @@ export function SettingsPage() {
   const [savedNote, setSavedNote] = useState<string | null>(null)
 
   function save() {
-    setSavedNote('تنظیمات سازمان ذخیره شد (فقط نشست محلی)')
+    setSavedNote(HSE_SETTINGS_COPY.savedNote)
   }
 
   return (
     <div className="space-y-4" dir="rtl" lang="fa">
       <HsePageHeader
-        title="تنظیمات"
-        description="هویت پروژه، نگهداری، تأیید هوش مصنوعی، و جایگاه نقش‌ها برای این ماژول ایمنی."
+        title={HSE_SETTINGS_COPY.title}
+        description={HSE_SETTINGS_COPY.description}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {savedNote ? (
@@ -40,39 +44,39 @@ export function SettingsPage() {
             ) : null}
             <Button size="sm" onClick={save}>
               <Save className="h-3.5 w-3.5" />
-              ذخیره
+              {HSE_COMMON_COPY.save}
             </Button>
           </div>
         }
       />
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <Panel title="سازمان / پروژه" description="هویت فقط‌خواندنی از رکورد پروژه">
+        <Panel title={HSE_SETTINGS_COPY.orgTitle} description={HSE_SETTINGS_COPY.orgDesc}>
           <dl className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <dt className="text-[11px] font-semibold tracking-wide text-slate-500">
-                نام پروژه
+                {HSE_SETTINGS_COPY.projectName}
               </dt>
               <dd className="mt-0.5 font-medium text-slate-900">{HSE_PROJECT.name}</dd>
             </div>
             <div>
               <dt className="text-[11px] font-semibold tracking-wide text-slate-500">
-                کد پروژه
+                {HSE_SETTINGS_COPY.projectCode}
               </dt>
               <dd className="mt-0.5 font-mono text-slate-900">{HSE_PROJECT.code}</dd>
             </div>
             <div className="col-span-2">
               <dt className="text-[11px] font-semibold tracking-wide text-slate-500">
-                محل
+                {HSE_SETTINGS_COPY.location}
               </dt>
               <dd className="mt-0.5 text-slate-900">{HSE_PROJECT.location}</dd>
             </div>
           </dl>
         </Panel>
 
-        <Panel title="نگهداری و هوش مصنوعی" description="پیش‌فرض‌های عملیاتی قابل ویرایش">
+        <Panel title={HSE_SETTINGS_COPY.retentionTitle} description={HSE_SETTINGS_COPY.retentionDesc}>
           <label className="block space-y-1 text-xs">
-            <span className="font-medium text-slate-600">نگهداری شواهد (روز)</span>
+            <span className="font-medium text-slate-600">{HSE_SETTINGS_COPY.retentionDays}</span>
             <Input
               type="number"
               min={7}
@@ -83,8 +87,7 @@ export function SettingsPage() {
             />
           </label>
           <p className="mt-1 text-xs text-slate-500">
-            بافرهای لبه کلیپ‌های کوتاه را نگه می‌دارند؛ نگهداری ابری فریم‌ها، گزارش تصمیم و
-            گزارش‌های قابل خروجی را برای بازه انتخاب‌شده پوشش می‌دهد.
+            {HSE_SETTINGS_COPY.retentionHint}
           </p>
           <label className="mt-3 flex items-center gap-2 text-sm text-slate-800">
             <input
@@ -93,12 +96,12 @@ export function SettingsPage() {
               checked={aiVerification}
               onChange={(e) => setAiVerification(e.target.checked)}
             />
-            فعال‌سازی تأیید فهرست کوتاه هوش مصنوعی پیش از صف بازبینی انسانی
+            {HSE_SETTINGS_COPY.aiEnable}
           </label>
         </Panel>
       </div>
 
-      <Panel title="پیش‌فرض اعلان‌ها" description="هنگام پیوستن کاربر جدید به پروژه اعمال می‌شود">
+      <Panel title={HSE_SETTINGS_COPY.notifyTitle} description={HSE_SETTINGS_COPY.notifyDesc}>
         <div className="flex flex-wrap gap-4">
           <label className="flex items-center gap-2 text-sm text-slate-800">
             <input
@@ -107,7 +110,7 @@ export function SettingsPage() {
               checked={notifyCriticalDefault}
               onChange={(e) => setNotifyCriticalDefault(e.target.checked)}
             />
-            بحرانی به‌طور پیش‌فرض
+            {HSE_SETTINGS_COPY.notifyCritical}
           </label>
           <label className="flex items-center gap-2 text-sm text-slate-800">
             <input
@@ -116,7 +119,7 @@ export function SettingsPage() {
               checked={notifyHighDefault}
               onChange={(e) => setNotifyHighDefault(e.target.checked)}
             />
-            بالا به‌طور پیش‌فرض
+            {HSE_SETTINGS_COPY.notifyHigh}
           </label>
           <label className="flex items-center gap-2 text-sm text-slate-800">
             <input
@@ -125,19 +128,19 @@ export function SettingsPage() {
               checked={notifyMediumDefault}
               onChange={(e) => setNotifyMediumDefault(e.target.checked)}
             />
-            متوسط به‌طور پیش‌فرض
+            {HSE_SETTINGS_COPY.notifyMedium}
           </label>
         </div>
       </Panel>
 
-      <Panel title="نقش‌ها (جایگزین موقت)" description="فهرست کاربران نگاشت‌شده به نقش‌های ایمنی">
+      <Panel title={HSE_SETTINGS_COPY.rolesTitle} description={HSE_SETTINGS_COPY.rolesDesc}>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-[11px] tracking-wide text-slate-500">
-                <th className="pb-2 pl-3 font-semibold">نام</th>
-                <th className="pb-2 pl-3 font-semibold">نقش</th>
-                <th className="pb-2 font-semibold">ایمیل</th>
+                <th className="pb-2 pl-3 font-semibold">{HSE_SETTINGS_COPY.colName}</th>
+                <th className="pb-2 pl-3 font-semibold">{HSE_SETTINGS_COPY.colRole}</th>
+                <th className="pb-2 font-semibold">{HSE_SETTINGS_COPY.colEmail}</th>
               </tr>
             </thead>
             <tbody>
@@ -152,8 +155,7 @@ export function SettingsPage() {
           </table>
         </div>
         <p className="mt-2 text-xs text-slate-500">
-          مجوز نقش‌ها (چه کسی می‌تواند تأیید، ارجاع یا تغییر قوانین کند) در تولید به کنترل دسترسی
-          سازمانی سایت‌پایلوت متصل می‌شود. این جدول فهرست جایگزین برای ماژول نمایشی است.
+          {HSE_SETTINGS_COPY.rolesHint}
         </p>
       </Panel>
     </div>

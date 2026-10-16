@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/lib/wbs-numbering.ts
+ * @purpose منطق دامنه — بسته‌های اجرایی و تأیید کارگاه (wbs-numbering)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on shared/types/schedule, features/schedule/lib/wbs-utils
+ */
+
 import type { ProjectTask } from '@/shared/types/schedule'
 import { compareWbs, isWbsDescendant, wbsDepth } from '@/features/schedule/lib/wbs-utils'
 import type { ScheduleTreeNode, WorkshopPackageNode } from './types'

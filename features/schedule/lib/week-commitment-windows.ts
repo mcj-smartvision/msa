@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/week-commitment-windows.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (week-commitment-windows)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on nothing
+ */
+
 /** An activity's commitment window from `from` on (until its next change). */
 export interface WindowChange {
   from: string

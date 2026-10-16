@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/lib/types.ts
+ * @purpose تعاریف نوع — ایمنی، بهداشت و محیط زیست (types)
+ * @safe-to-edit YES
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on nothing
+ */
+
 /** HSE camera-safety operations — shared types (English UI module). */
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low'

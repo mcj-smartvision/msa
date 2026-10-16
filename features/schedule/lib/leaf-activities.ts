@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/leaf-activities.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (leaf-activities)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/dates
+ */
+
 import { toIsoDateOnly } from '@/features/schedule/lib/dates';
 
 type Row = Record<string, unknown>

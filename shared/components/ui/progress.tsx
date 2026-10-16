@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/ui/progress.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (progress)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/lib/utils
+ */
+
 'use client'
 import * as React from 'react'
 import * as ProgressPrimitive from '@radix-ui/react-progress'

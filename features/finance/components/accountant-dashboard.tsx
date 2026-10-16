@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/components/accountant-dashboard.tsx
+ * @purpose کامپوننت UI — حسابداری، هزینه،overhead و صورت‌وضعیت (accountant-dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on shared/components/i18n/locale-provider, features/admin/components/shared, features/finance/components/overhead-costs-matrix, features/finance/components/overhead-per-capita-table, features/finance/components/contractor-workshop-costs, features/finance/components/live-workshop-costs, features/finance/components/employer-purchases, shared/lib/i18n/accountant, shared/lib/utils, shared/types/dashboard
+ */
+
 'use client'
 
 import { Component, useState, type ReactNode } from 'react'
@@ -9,6 +17,7 @@ import { ContractorWorkshopCosts } from '@/features/finance/components/contracto
 import { LiveWorkshopCosts } from '@/features/finance/components/live-workshop-costs'
 import { EmployerPurchases } from '@/features/finance/components/employer-purchases'
 import { getAccountantMessages } from '@/shared/lib/i18n/accountant'
+import { COSTS_DASHBOARD_COPY } from '@/features/finance/config'
 import { cn } from '@/shared/lib/utils'
 import type { DashboardUserContext } from '@/shared/types/dashboard'
 import { useSyncedProjectId } from '@/shared/hooks/use-synced-project-id'
@@ -111,8 +120,8 @@ class PerCapitaTabErrorBoundary extends Component<
       return (
         <p className="text-sm text-red-600">
           {this.props.fa
-            ? `جدول سرانه بالا نیامد: ${this.state.error}`
-            : `Per-capita table failed: ${this.state.error}`}
+            ? COSTS_DASHBOARD_COPY.perCapitaFailed(this.state.error)
+            : COSTS_DASHBOARD_COPY.perCapitaFailedEn(this.state.error)}
         </p>
       )
     }

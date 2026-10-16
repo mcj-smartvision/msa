@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/layout/last-presence-sidebar-footer.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (last-presence-sidebar-footer)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/components/i18n/locale-provider, features/schedule/hooks/use-schedule-calendar, features/schedule/lib/dates, shared/lib/i18n/chrome
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -5,6 +13,7 @@ import { Loader2 } from 'lucide-react'
 import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { useScheduleCalendar } from '@/features/schedule/hooks/use-schedule-calendar'
 import { formatScheduleDateTime } from '@/features/schedule/lib/dates'
+import { getChromeMessages } from '@/shared/lib/i18n/chrome'
 
 function formatSiteLoginAt(value: string, fa: boolean, calendar: 'jalali' | 'gregorian') {
   const d = new Date(value)
@@ -28,6 +37,7 @@ export function LastPresenceSidebarFooter() {
   const { locale } = useLocale()
   const { calendar } = useScheduleCalendar()
   const fa = locale === 'fa' || locale === 'ar'
+  const chrome = getChromeMessages('fa')
   const [lastLoginAt, setLastLoginAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -59,18 +69,18 @@ export function LastPresenceSidebarFooter() {
       dir="rtl"
       lang="fa"
     >
-      <p className="text-sm font-bold text-slate-900">آخرین ورود به سایت</p>
+      <p className="text-sm font-bold text-slate-900">{chrome.lastLogin}</p>
       {loading ? (
         <div className="mt-2 flex items-center justify-center gap-2 text-sm font-medium text-slate-800">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          <span>در حال بارگذاری...</span>
+          <span>{chrome.lastLoginLoading}</span>
         </div>
       ) : lastLoginAt ? (
         <p className="mt-2 text-[15px] font-bold leading-relaxed tabular-nums text-slate-900">
           {formatSiteLoginAt(lastLoginAt, fa, calendar)}
         </p>
       ) : (
-        <p className="mt-2 text-sm font-semibold text-slate-800">ثبت نشده</p>
+        <p className="mt-2 text-sm font-semibold text-slate-800">{chrome.lastLoginUnset}</p>
       )}
     </div>
   )

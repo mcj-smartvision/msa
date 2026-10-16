@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/expense-ai-types.ts
+ * @purpose تعاریف نوع — حسابداری، هزینه،overhead و صورت‌وضعیت (expense-ai-types)
+ * @safe-to-edit YES
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/finance/lib/types, features/finance/lib/expense-types
+ */
+
 import type { FinancialCostType } from '@/features/finance/lib/types'
 import type { CreateExpenseItemInput } from '@/features/finance/lib/expense-types'
 

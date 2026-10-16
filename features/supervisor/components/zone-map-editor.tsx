@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/zone-map-editor.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (zone-map-editor)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/components/zone-map-svg, features/supervisor/components/drawing-file-preview, shared/components/ui/button, shared/components/ui/input, features/supervisor/lib/drawings-zoning-mock, features/technical-office/lib/drawing-discipline, features/technical-office/lib/drawings-shared, shared/lib/utils
+ */
+
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -39,7 +47,11 @@ ZONE_COLOR_PRESETS
 } from '@/features/supervisor/lib/drawings-zoning-mock'
 import { drawingDisciplineLabel } from '@/features/technical-office/lib/drawing-discipline'
 import type { ProjectDrawing } from '@/features/technical-office/lib/drawings-shared'
+import { ZONE_MAP_COPY } from '@/features/supervisor/config'
 import { cn } from '@/shared/lib/utils'
+import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+
+const t = getSiteSupervisorMessages('fa')
 
 const DISCIPLINE_ICONS = {
   structure: Building2,
@@ -55,10 +67,10 @@ const ANNOTATION_TOOLS: Array<{
   icon: typeof Pencil
   hint: string
 }> = [
-  { id: 'pen', label: 'قلم', icon: Pencil, hint: 'رسم آزاد' },
-  { id: 'freeline', label: 'خط دلخواه', icon: Minus, hint: 'کلیک و بکش — خط با هر زاویه' },
-  { id: 'line', label: 'خط افقی/عمودی', icon: Minus, hint: 'کلیک و بکش — افقی یا عمودی' },
-  { id: 'text', label: 'متن', icon: Type, hint: 'کلیک و نوشتن متن' },
+  { id: 'pen', label: t.toolPen, icon: Pencil, hint: t.toolPenHint },
+  { id: 'freeline', label: t.toolFreeline, icon: Minus, hint: t.toolFreelineHint },
+  { id: 'line', label: t.toolLine, icon: Minus, hint: t.toolLineHint },
+  { id: 'text', label: t.toolText, icon: Type, hint: t.toolTextHint },
 ]
 
 const ZONE_MARKING_TOOLS: Array<{
@@ -67,8 +79,8 @@ const ZONE_MARKING_TOOLS: Array<{
   icon: typeof Pencil
   hint: string
 }> = [
-  { id: 'pen', label: 'قلم', icon: Pencil, hint: 'رسم آزاد — خط صاف و منحنی' },
-  { id: 'text', label: 'متن', icon: Type, hint: 'کلیک و نوشتن متن' },
+  { id: 'pen', label: t.toolPen, icon: Pencil, hint: t.toolPenZoneHint },
+  { id: 'text', label: t.toolText, icon: Type, hint: t.toolTextHint },
 ]
 
 const ZONE_SHAPE_TOOLS: Array<{
@@ -77,10 +89,10 @@ const ZONE_SHAPE_TOOLS: Array<{
   icon: typeof Square
   hint: string
 }> = [
-  { id: 'rectangle', label: 'مستطیل', icon: Square, hint: 'کلیک و بکش برای مستطیل' },
-  { id: 'square', label: 'مربع', icon: Square, hint: 'کلیک و بکش برای مربع' },
-  { id: 'circle', label: 'دایره', icon: Circle, hint: 'کلیک و بکش برای دایره' },
-  { id: 'polygon', label: 'چندضلعی', icon: Hexagon, hint: 'کلیک نقطه‌ها — دابل‌کلیک یا پایان رسم' },
+  { id: 'rectangle', label: t.toolRectangle, icon: Square, hint: t.toolRectangleHint },
+  { id: 'square', label: t.toolSquare, icon: Square, hint: t.toolSquareHint },
+  { id: 'circle', label: t.toolCircle, icon: Circle, hint: t.toolCircleHint },
+  { id: 'polygon', label: t.toolPolygon, icon: Hexagon, hint: t.toolPolygonHint },
 ]
 
 const DRAG_ZONE_SHAPES: ZoneShapeTool[] = ['rectangle', 'square', 'circle']
@@ -398,7 +410,7 @@ export function ZoneMapEditor({
           setShapeHint(null)
           onZoneShapeComplete(polygon)
         } else if (pts.length > 1) {
-          setShapeHint('محدوده خیلی کوچک است — دوباره با قلم دور نقشه بکشید.')
+          setShapeHint(t.shapeTooSmallPen)
         }
         return
       }
@@ -439,7 +451,7 @@ export function ZoneMapEditor({
           setShapeHint(null)
           onZoneShapeComplete(fallback)
         } else {
-          setShapeHint('کلیک و بکش برای رسم شکل — ناحیه خیلی کوچک است.')
+          setShapeHint(t.shapeTooSmallDrag)
           setShapePreview(point)
         }
       }
@@ -462,7 +474,7 @@ export function ZoneMapEditor({
   return (
     <div className="space-y-4" dir="rtl" lang="fa">
       <div>
-        <p className="mb-2 text-sm font-semibold text-slate-800">رشته نقشه</p>
+        <p className="mb-2 text-sm font-semibold text-slate-800">{ZONE_MAP_COPY.discipline}</p>
         <div className="flex flex-wrap gap-2">
           {EDITOR_DISCIPLINES.map((d) => {
             const Icon = DISCIPLINE_ICONS[d]
@@ -497,10 +509,10 @@ export function ZoneMapEditor({
       </div>
 
       <div>
-        <p className="mb-2 text-xs font-medium text-slate-600">انتخاب نقشه — پیش‌نمایش (بارگذاری دفتر فنی)</p>
+        <p className="mb-2 text-xs font-medium text-slate-600">{ZONE_MAP_COPY.pickDrawing}</p>
         {disciplineDrawings.length === 0 ? (
           <p className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-            در این رشته هنوز نقشه‌ای از دفتر فنی بارگذاری نشده است.
+            {ZONE_MAP_COPY.noDrawingsInDiscipline}
           </p>
         ) : (
           <div className="flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:thin]">
@@ -522,7 +534,7 @@ export function ZoneMapEditor({
 
       <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/80 p-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-semibold text-slate-600">رنگ زون:</span>
+          <span className="text-[11px] font-semibold text-slate-600">{ZONE_MAP_COPY.zoneColor}</span>
           {ZONE_COLOR_PRESETS.map((preset) => (
             <button
               key={preset.id}
@@ -545,7 +557,7 @@ export function ZoneMapEditor({
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-200/80 pt-2">
           {zoneMarkingOnly ? (
             <>
-              <span className="text-[11px] font-semibold text-slate-600">ابزار ترسیم:</span>
+              <span className="text-[11px] font-semibold text-slate-600">{ZONE_MAP_COPY.drawTool}</span>
               {ZONE_MARKING_TOOLS.map((item) => {
                 const Icon = item.icon
                 const active = annotationTool === item.id
@@ -570,7 +582,7 @@ export function ZoneMapEditor({
             </>
           ) : (
             <>
-              <span className="text-[11px] font-semibold text-slate-600">شکل زون:</span>
+              <span className="text-[11px] font-semibold text-slate-600">{ZONE_MAP_COPY.zoneShape}</span>
               {ZONE_SHAPE_TOOLS.map((item) => {
                 const Icon = item.icon
                 const active = !annotationTool && zoneShapeTool === item.id
@@ -598,7 +610,7 @@ export function ZoneMapEditor({
 
         {!zoneMarkingOnly ? (
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-200/80 pt-2">
-          <span className="text-[11px] font-semibold text-slate-600">علامت‌گذاری:</span>
+          <span className="text-[11px] font-semibold text-slate-600">{ZONE_MAP_COPY.marking}</span>
           {ANNOTATION_TOOLS.map((item) => {
             const Icon = item.icon
             const active = annotationTool === item.id
@@ -629,7 +641,7 @@ export function ZoneMapEditor({
             disabled={annotations.length === 0}
           >
             <Eraser className="h-3.5 w-3.5" aria-hidden="true" />
-            پاک‌کردن علامت‌ها
+            {ZONE_MAP_COPY.eraseMarks}
           </Button>
         </div>
         ) : null}
@@ -639,7 +651,7 @@ export function ZoneMapEditor({
             <Input
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
-              placeholder="متن را بنویسید..."
+              placeholder={t.textPlaceholder}
               className="h-8 max-w-[220px] bg-white text-sm"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') commitText()
@@ -652,10 +664,10 @@ export function ZoneMapEditor({
               disabled={!textAnchor || textInput.trim().length === 0}
               onClick={commitText}
             >
-              ثبت متن
+              {ZONE_MAP_COPY.saveText}
             </Button>
             <span className="text-[11px] text-slate-500">
-              {textAnchor ? 'محل متن روی نقشه انتخاب شد' : 'ابتدا روی نقشه کلیک کنید'}
+              {textAnchor ? t.textPlaced : t.clickMapFirst}
             </span>
           </div>
         ) : null}
@@ -663,8 +675,8 @@ export function ZoneMapEditor({
         {zoneMarkingOnly ? (
           <p className="border-t border-slate-200/80 pt-2 text-xs text-slate-600">
             {annotationTool === 'text'
-              ? 'روی نقشه کلیک کنید، متن بنویسید و «ثبت متن» بزنید.'
-              : 'با قلم دور محدوده زون بکشید (خط صاف یا منحنی) — Esc برای لغو.'}
+              ? t.textClickWriteConfirm
+              : t.penAroundEsc}
           </p>
         ) : null}
       </div>
@@ -701,19 +713,19 @@ export function ZoneMapEditor({
       <p className="text-xs text-slate-500">
         {zoneMarkingOnly
           ? annotationTool === 'text'
-            ? 'کلیک کنید، متن بنویسید و «ثبت متن» بزنید.'
-            : 'با قلم دور محدوده زون بکشید — Esc برای لغو.'
+            ? t.textClickWriteConfirmShort
+            : t.penAroundEscShort
           : annotationTool === 'pen'
-            ? 'با قلم روی نقشه بکشید — Esc برای لغو.'
+            ? t.penOnMapEsc
             : annotationTool === 'freeline'
-              ? 'کلیک و بکش برای خط دلخواه — Esc برای لغو.'
+              ? t.freelineEsc
               : annotationTool === 'line'
-                ? 'کلیک و بکش: حرکت افقی یا عمودی — Esc برای لغو.'
+                ? t.axisLineEsc
                 : annotationTool === 'text'
-                  ? 'کلیک کنید، متن بنویسید و «ثبت» بزنید.'
+                  ? t.textClickWriteSave
                   : zoneShapeTool === 'polygon'
-                    ? 'چندضلعی: کلیک نقطه‌ها، دابل‌کلیک یا «پایان رسم زون».'
-                    : 'کلیک و بکش روی نقشه برای رسم شکل زون با رنگ انتخابی.'}
+                    ? t.polygonHint
+                    : t.dragShapeHint}
       </p>
     </div>
   )

@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/components/qc-drawing-markup.tsx
+ * @purpose کامپوننت UI — کنترل کیفیت و عدم انطباق (qc-drawing-markup)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on shared/components/ui/button, features/qc/engine/drawing-file, features/qc/engine/pdfjs, shared/lib/utils
+ */
+
 'use client'
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'

@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/components/project-form.tsx
+ * @purpose کامپوننت UI — راه‌اندازی پروژه (project-form)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on shared/lib/utils, shared/components/ui/button, shared/components/ui/card, shared/components/ui/progress, shared/components/ui/alert, shared/components/i18n/locale-provider, features/project-init/lib/constants, features/project-init/lib/schema
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'

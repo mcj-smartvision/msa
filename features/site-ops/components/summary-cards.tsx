@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/components/summary-cards.tsx
+ * @purpose کامپوننت UI — عملیات کارگاه، دستورکار و برنامه روزانه (summary-cards)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on nothing
+ */
+
 'use client'
 
 export function SiteOpsSummaryCards({

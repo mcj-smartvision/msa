@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/manager-nav.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (manager-nav)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on shared/types/dashboard, features/schedule/lib/access
+ */
+
 import type { DashboardUserContext } from '@/shared/types/dashboard'
 import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
 

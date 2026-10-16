@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/overview-types.ts
+ * @purpose تعاریف نوع — داشبورد مدیر پروژه و KPI (overview-types)
+ * @safe-to-edit YES
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/evm/lib/metrics, features/evm/lib/rag-status, features/project-controls/lib/ev-forecast, features/calc-trace/lib/types
+ */
+
 import type { EvmBudgetBasis } from '@/features/evm/lib/metrics';
 import type { RagResult } from '@/features/evm/lib/rag-status';
 import type { EvForecast } from '@/features/project-controls/lib/ev-forecast';

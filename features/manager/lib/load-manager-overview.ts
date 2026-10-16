@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/load-manager-overview.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (load-manager-overview)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/evm/lib/load-project-evm, features/schedule/lib/schedule-alerts-api, features/schedule/lib/float-alerts, features/attendance/lib/service, features/attendance/lib/types, shared/lib/i18n/position-labels, features/manager/lib/format, features/manager/lib/pulse-config, features/manager/lib/period-comparison, features/manager/lib/progress-curve
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadProjectEvm, type ProjectEvmSnapshot } from '@/features/evm/lib/load-project-evm'
 import { listActiveScheduleAlerts } from '@/features/schedule/lib/schedule-alerts-api'

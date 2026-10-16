@@ -1,3 +1,11 @@
+/**
+ * @file features/attendance/lib/types.ts
+ * @purpose تعاریف نوع — حضور و غیاب و چهره (types)
+ * @safe-to-edit YES
+ * @affects حضور و غیاب و چهره
+ * @depends-on nothing
+ */
+
 export type TransitDirection = 'IN' | 'OUT'
 export type TransitSource = 'manual_guard' | 'manual_self' | 'qr' | 'camera' | 'admin'
 export type IdentificationStatus = 'success' | 'failed' | 'unauthorized'

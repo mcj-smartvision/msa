@@ -1,3 +1,11 @@
+/**
+ * @file features/weather/lib/conditions.ts
+ * @purpose منطق دامنه — هوای کارگاه (conditions)
+ * @safe-to-edit CAREFUL
+ * @affects هوای کارگاه
+ * @depends-on features/weather/lib/types
+ */
+
 import type { OutdoorAlert, OutdoorRiskLevel } from '@/features/weather/lib/types'
 
 /** OWM ids: 2xx thunder, 3xx drizzle, 5xx rain, 6xx snow, 7xx atmosphere, 800 clear, 80x clouds. */

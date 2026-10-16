@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/components/cumulative-progress-sheet.tsx
+ * @purpose کامپوننت UI — داشبورد مدیر پروژه و KPI (cumulative-progress-sheet)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on shared/lib/utils, features/manager/lib/format, features/project-controls/lib/cumulative-progress, features/manager/config
+ */
+
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
@@ -5,11 +13,12 @@ import { AlertTriangle, Calculator, Loader2, X } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { faNumber, jalaliDate } from '@/features/manager/lib/format'
 import type { ExplainedCumulativeProgress } from '@/features/project-controls/lib/cumulative-progress'
+import { CUMULATIVE_COPY, MANAGER_PUNCT } from '@/features/manager/config'
 
 type Load = { state: 'loading' } | { state: 'ok'; data: ExplainedCumulativeProgress } | { state: 'error'; message: string }
 
-const pct = (v: number | null, d = 2) => (v == null ? '—' : `${faNumber(v, d)}٪`)
-const toman = (v: number | null) => (v == null ? '—' : `${faNumber(Math.round(v))} تومان`)
+const pct = (v: number | null, d = 2) => (v == null ? '—' : `${faNumber(v, d)}${MANAGER_PUNCT.percent}`)
+const toman = (v: number | null) => (v == null ? '—' : CUMULATIVE_COPY.toman(faNumber(Math.round(v))))
 
 function useCumulativeProgress(projectId: string, asOf: string | null): Load {
   const [load, setLoad] = useState<Load>({ state: 'loading' })
@@ -21,11 +30,11 @@ function useCumulativeProgress(projectId: string, asOf: string | null): Load {
       .then(async (response) => {
         const body = await response.json().catch(() => null)
         if (cancelled) return
-        if (!response.ok || !body || body.error) setLoad({ state: 'error', message: body?.error ?? `خطای ${response.status}` })
+        if (!response.ok || !body || body.error) setLoad({ state: 'error', message: body?.error ?? CUMULATIVE_COPY.httpError(response.status) })
         else setLoad({ state: 'ok', data: body as ExplainedCumulativeProgress })
       })
       .catch((error: unknown) => {
-        if (!cancelled) setLoad({ state: 'error', message: error instanceof Error ? error.message : 'خطای شبکه' })
+        if (!cancelled) setLoad({ state: 'error', message: error instanceof Error ? error.message : CUMULATIVE_COPY.network })
       })
     return () => {
       cancelled = true
@@ -96,20 +105,19 @@ function Body({ data, card }: { data: ExplainedCumulativeProgress; card: { plann
   return (
     <div className="space-y-5">
       <section className="space-y-2">
-        <h3 className="text-[13px] font-bold text-slate-800">الف) فرمول</h3>
+        <h3 className="text-[13px] font-bold text-slate-800">{CUMULATIVE_COPY.sectionFormula}</h3>
         <Formula />
         <p className="text-[11px] leading-5 text-slate-500">
-          W = {byWeight ? 'وزن زمان‌بندی فعالیت برگ (٪ از کل پروژه)' : 'بودجهٔ فعالیت (تومان) — هیچ فعالیتی وزن زمان‌بندی ندارد'} · P(برنامه) = سهم
-          سپری‌شدهٔ بازهٔ مبنا تا تاریخ محاسبه (روز تقویمی) · P(واقعی) = درصد فیزیکی تأییدشده
-          {data.as_of ? ` در ${jalaliDate(data.as_of)}` : ''}.
+          {CUMULATIVE_COPY.weightNote(byWeight ? CUMULATIVE_COPY.weightBySchedule : CUMULATIVE_COPY.weightByBudget)}
+          {data.as_of ? CUMULATIVE_COPY.asOf(jalaliDate(data.as_of)) : ''}.
         </p>
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-[13px] font-bold text-slate-800">ب) جایگذاری اعداد</h3>
+        <h3 className="text-[13px] font-bold text-slate-800">{CUMULATIVE_COPY.sectionNumbers}</h3>
         {[
-          { label: 'پیشرفت تجمعی واقعی', text: data.substitution_text },
-          { label: 'پیشرفت تجمعی برنامه‌ای', text: data.substitution_planned_text },
+          { label: CUMULATIVE_COPY.actualCum, text: data.substitution_text },
+          { label: CUMULATIVE_COPY.plannedCum, text: data.substitution_planned_text },
         ].map((s) => (
           <div key={s.label}>
             <p className="mb-1 text-[11px] font-semibold text-slate-600">{s.label}</p>
@@ -118,18 +126,18 @@ function Body({ data, card }: { data: ExplainedCumulativeProgress; card: { plann
             </p>
           </div>
         ))}
-        <p className="text-[11px] text-slate-500">وزن‌ها نرمال شده‌اند (Wᵢ ÷ ΣW)، پس مخرج 1.00 است. ΣW واقعی = {faNumber(data.total_weight, 2)}.</p>
+        <p className="text-[11px] text-slate-500">{CUMULATIVE_COPY.weightsNormalized(faNumber(data.total_weight, 2))}</p>
       </section>
 
       <section className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <Stat label="پیشرفت تجمعی واقعی" value={pct(data.actual_cum_percent)} highlight />
-        <Stat label="پیشرفت تجمعی برنامه‌ای" value={pct(data.planned_cum_percent)} highlight />
+        <Stat label={CUMULATIVE_COPY.actualCum} value={pct(data.actual_cum_percent)} highlight />
+        <Stat label={CUMULATIVE_COPY.plannedCum} value={pct(data.planned_cum_percent)} highlight />
         <Stat
-          label="انحراف (واقعی − برنامه)"
-          value={gap == null ? '—' : `${gap < 0 ? '−' : '+'}${faNumber(Math.abs(gap), 2)} واحد`}
+          label={CUMULATIVE_COPY.gap}
+          value={gap == null ? '—' : CUMULATIVE_COPY.gapValue(gap < 0 ? '−' : '+', faNumber(Math.abs(gap), 2))}
           tone={gap != null && gap < -0.005 ? 'rose' : 'emerald'}
         />
-        <Stat label="BAC (بودجهٔ کل)" value={data.bac_total > 0 ? toman(data.bac_total) : 'ثبت نشده'} />
+        <Stat label={CUMULATIVE_COPY.bac} value={data.bac_total > 0 ? toman(data.bac_total) : CUMULATIVE_COPY.notRecorded} />
         <Stat label="PV = BAC × Planned%" value={toman(data.pv_value)} />
         <Stat label="EV = BAC × Actual%" value={toman(data.ev_value)} />
       </section>
@@ -140,24 +148,24 @@ function Body({ data, card }: { data: ExplainedCumulativeProgress; card: { plann
       ) : null}
 
       <section className="rounded-xl bg-amber-50/70 px-3 py-2 text-[13px] leading-7 text-slate-800 ring-1 ring-inset ring-amber-200">
-        <span className="font-bold">تحلیل مدیریتی: </span>
+        <span className="font-bold">{CUMULATIVE_COPY.analysis}</span>
         {data.interpretation_fa}
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-[13px] font-bold text-slate-800">ج) ریز محاسبه به تفکیک WBS ({faNumber(data.breakdown_table.length)} ردیف)</h3>
+        <h3 className="text-[13px] font-bold text-slate-800">{CUMULATIVE_COPY.breakdown(faNumber(data.breakdown_table.length))}</h3>
         <div className="overflow-x-auto rounded-xl ring-1 ring-slate-200">
           <table className="w-full min-w-[720px] text-[12px]">
             <thead className="bg-slate-50 text-[11px] text-slate-500">
               <tr className="[&>th]:px-2 [&>th]:py-2 [&>th]:font-semibold">
                 <th className="text-right">WBS</th>
-                <th className="text-right">فعالیت</th>
-                <th className="text-left">{byWeight ? 'وزن (W)' : 'بودجه (W)'}</th>
-                <th className="text-left">سهم وزن</th>
-                <th className="text-left">برنامه٪</th>
-                <th className="text-left">واقعی٪</th>
-                <th className="text-left">سهم برنامه</th>
-                <th className="text-left">سهم واقعی</th>
+                <th className="text-right">{CUMULATIVE_COPY.cols.activity}</th>
+                <th className="text-left">{byWeight ? CUMULATIVE_COPY.cols.weight : CUMULATIVE_COPY.cols.budget}</th>
+                <th className="text-left">{CUMULATIVE_COPY.cols.share}</th>
+                <th className="text-left">{CUMULATIVE_COPY.cols.planPct}</th>
+                <th className="text-left">{CUMULATIVE_COPY.cols.actualPct}</th>
+                <th className="text-left">{CUMULATIVE_COPY.cols.planShare}</th>
+                <th className="text-left">{CUMULATIVE_COPY.cols.actualShare}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -166,8 +174,8 @@ function Body({ data, card }: { data: ExplainedCumulativeProgress; card: { plann
                   <td className="whitespace-nowrap text-right text-slate-500" dir="ltr">{r.wbs_code}</td>
                   <td className="text-right text-slate-800">
                     {r.task_name}
-                    {r.kind === 'package' ? <span className="ms-1 rounded bg-slate-100 px-1 text-[10px] text-slate-500">بسته</span> : null}
-                    {r.actual_source === 'no_record' ? <span className="ms-1 rounded bg-amber-100 px-1 text-[10px] text-amber-800">بدون رکورد</span> : null}
+                    {r.kind === 'package' ? <span className="ms-1 rounded bg-slate-100 px-1 text-[10px] text-slate-500">{CUMULATIVE_COPY.pkg}</span> : null}
+                    {r.actual_source === 'no_record' ? <span className="ms-1 rounded bg-amber-100 px-1 text-[10px] text-amber-800">{CUMULATIVE_COPY.noRecord}</span> : null}
                   </td>
                   <td className="text-left">{faNumber(r.weight, byWeight ? 2 : 0)}</td>
                   <td className="text-left text-slate-600">{pct(r.weight_percentage, 2)}</td>
@@ -182,7 +190,7 @@ function Body({ data, card }: { data: ExplainedCumulativeProgress; card: { plann
             </tbody>
             <tfoot className="border-t-2 border-slate-300 bg-orange-50 font-bold tabular-nums">
               <tr className="[&>td]:px-2 [&>td]:py-2">
-                <td colSpan={2} className="text-right text-slate-800">جمع (= عدد نهایی)</td>
+                <td colSpan={2} className="text-right text-slate-800">{CUMULATIVE_COPY.total}</td>
                 <td className="text-left">{faNumber(data.total_weight, byWeight ? 2 : 0)}</td>
                 <td className="text-left">{pct(totals.share, 2)}</td>
                 <td />
@@ -198,7 +206,7 @@ function Body({ data, card }: { data: ExplainedCumulativeProgress; card: { plann
           </table>
         </div>
         <p className="text-[11px] leading-5 text-slate-500">
-          سهم هر ردیف = (Wᵢ ÷ ΣW) × Pᵢ؛ جمع ستون «سهم واقعی» همان پیشرفت تجمعی واقعی و جمع «سهم برنامه» همان پیشرفت تجمعی برنامه‌ای است.
+          {CUMULATIVE_COPY.shareNote}
         </p>
         {card.actual != null || card.planned != null ? (
           <p
@@ -209,10 +217,10 @@ function Body({ data, card }: { data: ExplainedCumulativeProgress; card: { plann
                 : 'bg-amber-50 text-amber-800'
             )}
           >
-            کارت داشبورد: واقعی {pct(card.actual)} · برنامه {pct(card.planned)} —{' '}
+            {CUMULATIVE_COPY.cardMatch(pct(card.actual), pct(card.planned))}
             {matches(card.actual, data.actual_cum_percent) && matches(card.planned, data.planned_cum_percent)
-              ? 'دقیقاً برابر با جمع ستون‌های بالا.'
-              : 'با تاریخ محاسبهٔ انتخاب‌شده متفاوت است (کارت همیشه امروز را نشان می‌دهد).'}
+              ? CUMULATIVE_COPY.exact
+              : CUMULATIVE_COPY.differs}
           </p>
         ) : null}
       </section>
@@ -270,7 +278,7 @@ export function CumulativeProgressSheet({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="فرآیند محاسبهٔ پیشرفت تجمعی"
+        aria-label={CUMULATIVE_COPY.dialogAria}
         className="flex h-full w-full max-w-4xl flex-col bg-white shadow-2xl motion-safe:animate-in motion-safe:slide-in-from-left"
       >
         <header className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-5 py-3">
@@ -278,11 +286,11 @@ export function CumulativeProgressSheet({
             <Calculator className="h-5 w-5" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-base font-bold text-slate-900">فرآیند محاسبهٔ پیشرفت تجمعی</p>
-            <p className="text-xs text-slate-500">برنامه‌ای و واقعی · میانگین وزنی ردیف‌به‌ردیف · مستقیم از وزن‌ها و پیشرفت ثبت‌شده</p>
+            <p className="text-base font-bold text-slate-900">{CUMULATIVE_COPY.title}</p>
+            <p className="text-xs text-slate-500">{CUMULATIVE_COPY.subtitle}</p>
           </div>
           <label className="flex items-center gap-1.5 text-xs text-slate-600">
-            تاریخ محاسبه
+            {CUMULATIVE_COPY.asOfLabel}
             <input
               type="date"
               dir="ltr"
@@ -292,14 +300,14 @@ export function CumulativeProgressSheet({
               className="h-8 rounded-lg border border-slate-200 px-2 text-xs tabular-nums focus:outline-none focus:ring-2 focus:ring-orange-400/60"
             />
           </label>
-          <button ref={closeRef} type="button" onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="بستن">
+          <button ref={closeRef} type="button" onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label={CUMULATIVE_COPY.close}>
             <X className="h-5 w-5" />
           </button>
         </header>
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {load.state === 'loading' ? (
             <p className="flex items-center gap-2 text-sm text-slate-500">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> در حال محاسبه…
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {CUMULATIVE_COPY.calculating}
             </p>
           ) : load.state === 'error' ? (
             <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{load.message}</p>

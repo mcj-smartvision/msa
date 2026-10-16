@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/components/qc-office-drawings-page.tsx
+ * @purpose کامپوننت UI — کنترل کیفیت و عدم انطباق (qc-office-drawings-page)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on features/admin/components/shared, features/qc/components/qc-drawing-markup, features/qc/components/qc-drawing-thumb, shared/components/ui/alert, shared/components/ui/button, shared/components/ui/label, shared/lib/i18n/qc, shared/components/i18n/locale-provider, features/qc/engine/activity-types, features/qc/engine/drawing-discipline
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'

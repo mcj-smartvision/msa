@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/services/dashboard.ts
+ * @purpose سرویس داده — سرپرست کارگاه و گزارش روزانه (dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/lib/types, shared/types/schedule, features/supervisor/lib/ai-generator, features/schedule/lib/refresh-after-progress, features/supervisor/lib/persist-daily-report-meta, features/weather/lib/report-stamp
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
 AiActionRow,

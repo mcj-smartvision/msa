@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/baseline-template.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (baseline-template)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/dates, shared/types/schedule
+ */
+
 import { toIsoDateOnly } from '@/features/schedule/lib/dates'
 import type { ProjectTask } from '@/shared/types/schedule'
 

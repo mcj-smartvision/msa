@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/components/sections/project-documents.tsx
+ * @purpose کامپوننت UI — راه‌اندازی پروژه (project-documents)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on features/project-init/lib/schema
+ */
+
 'use client'
 
 import { FieldGrid, FileDropzone, SectionHeader, SubsectionTitle, TextareaField } from '../form-fields'

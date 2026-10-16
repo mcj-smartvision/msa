@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/zone-create-panel.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (zone-create-panel)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/components/zone-map-svg, features/supervisor/components/drawing-file-preview, features/supervisor/components/zone-map-editor, features/supervisor/components/zone-lightbox-modal, features/supervisor/components/zone-levels-field, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/textarea, features/supervisor/lib/drawings-zoning-mock
+ */
+
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -18,6 +26,9 @@ pickStructureDrawing,
 ZONE_COLOR_PRESETS,
 } from '@/features/supervisor/lib/drawings-zoning-mock'
 import type { ProjectDrawing } from '@/features/technical-office/lib/drawings-shared'
+import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+
+const t = getSiteSupervisorMessages('fa')
 
 type ZoneCreatePanelProps = {
   drawings: ProjectDrawing[]
@@ -205,7 +216,7 @@ export function ZoneCreatePanel({
     polygon && selectedDrawing
       ? {
           id: 'draft-preview',
-          name: name.trim() || 'پیش‌نمایش',
+          name: name.trim() || t.previewName,
           code: code.trim(),
           contractor: contractor.trim(),
           levels: levels.map((l) => l.trim()).filter(Boolean),
@@ -222,8 +233,8 @@ export function ZoneCreatePanel({
     return (
       <p className="text-sm text-slate-600" dir="rtl" lang="fa">
         {drawingsLoading
-          ? 'در حال بارگذاری نقشه‌ها...'
-          : 'ابتدا دفتر فنی باید نقشه بارگذاری کند.'}
+          ? t.loadingDrawingsDots
+          : t.toMustUploadFirst}
       </p>
     )
   }
@@ -232,11 +243,11 @@ export function ZoneCreatePanel({
 
   return (
     <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/40 p-4" dir="rtl" lang="fa">
-      <p className="text-sm font-semibold text-slate-800">فرم تعریف زون</p>
+      <p className="text-sm font-semibold text-slate-800">{t.zoneFormTitle}</p>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="space-y-1.5">
-          <Label htmlFor="zone-draft-name">نام زون</Label>
+          <Label htmlFor="zone-draft-name">{t.zoneName}</Label>
           <Input
             id="zone-draft-name"
             value={name}
@@ -245,7 +256,7 @@ export function ZoneCreatePanel({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="zone-draft-code">کد زون</Label>
+          <Label htmlFor="zone-draft-code">{t.zoneCode}</Label>
           <Input
             id="zone-draft-code"
             value={code}
@@ -254,7 +265,7 @@ export function ZoneCreatePanel({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="zone-draft-contractor">نام پیمانکار زون</Label>
+          <Label htmlFor="zone-draft-contractor">{t.zoneContractor}</Label>
           <Input
             id="zone-draft-contractor"
             value={contractor}
@@ -267,12 +278,12 @@ export function ZoneCreatePanel({
       <ZoneLevelsField levels={levels} onChange={setLevels} idPrefix="zone-draft-level" />
 
       <div className="space-y-1.5">
-        <Label htmlFor="zone-draft-description">توضیحات</Label>
+        <Label htmlFor="zone-draft-description">{t.description}</Label>
         <Textarea
           id="zone-draft-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="یادداشت یا توضیح تکمیلی درباره این زون..."
+          placeholder={t.zoneNotePlaceholder}
           rows={3}
           className="min-h-[80px] resize-y bg-white text-sm"
         />
@@ -286,10 +297,10 @@ export function ZoneCreatePanel({
           onClick={openMapMarking}
         >
           <MapPinned className="h-4 w-4" aria-hidden="true" />
-          افزودن نقشه زون
+          {t.addZoneMap}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel}>
-          لغو
+          {t.cancel}
         </Button>
       </div>
 
@@ -297,17 +308,17 @@ export function ZoneCreatePanel({
         <section
           ref={mapSectionRef}
           className="space-y-3 rounded-xl border border-sky-200 bg-white p-3 shadow-sm"
-          aria-label="علامت‌گذاری نقشه زون"
+          aria-label={t.markZoneMap}
         >
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
-            <p className="text-sm font-semibold text-slate-800">علامت‌گذاری روی نقشه</p>
+            <p className="text-sm font-semibold text-slate-800">{t.markingOnMap}</p>
             <Button
               type="button"
               size="sm"
               variant="outline"
               onClick={() => setMapOpen(false)}
             >
-              بستن
+              {t.close}
             </Button>
           </div>
 
@@ -337,12 +348,12 @@ export function ZoneCreatePanel({
               disabled={!canConfirmMap}
               onClick={confirmMapMarking}
             >
-              ذخیره نقشه زون
+              {t.saveZoneMap}
             </Button>
             <p className="text-xs text-slate-500">
               {canConfirmMap
-                ? 'محدوده آماده است — «ذخیره نقشه زون» را بزنید.'
-                : 'ابتدا با قلم دور محدوده زون روی نقشه بکشید.'}
+                ? t.rangeReady
+                : t.drawRangeFirst}
             </p>
           </div>
         </section>
@@ -355,7 +366,7 @@ export function ZoneCreatePanel({
               type="button"
               onClick={() => setPreviewOpen(true)}
               className="w-[min(100%,120px)] shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white text-left transition-shadow hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
-              aria-label="بزرگنمایی شمای نقشه زون"
+              aria-label={t.zoomZoneMap}
             >
               <div className="aspect-square w-full pointer-events-none">
                 <ZoneMapCanvas
@@ -366,7 +377,7 @@ export function ZoneCreatePanel({
               </div>
             </button>
             <p className="text-sm text-emerald-900">
-              نقشه زون انتخاب شد — {selectedDrawing.title}
+              {t.zoneMapSelected(selectedDrawing.title)}
             </p>
           </div>
 
@@ -378,15 +389,15 @@ export function ZoneCreatePanel({
               disabled={!canSave}
               onClick={handleSave}
             >
-              ذخیره زون
+              {t.saveZone}
             </Button>
             {!canSave ? (
               <p className="mt-2 text-xs text-slate-600">
-                نام زون، کد زون و نقشه زون را تکمیل کنید.
+                {t.completeZoneFields}
               </p>
             ) : (
               <p className="mt-2 text-xs text-emerald-800">
-                همه اطلاعات آماده است — «ذخیره زون» را بزنید.
+                {t.allReadySaveZone}
               </p>
             )}
           </div>
@@ -416,7 +427,7 @@ export function ZoneCreatePanel({
 
       {!polygon && !mapOpen ? (
         <p className="text-xs text-slate-500">
-          برای تکمیل زون، روی «افزودن نقشه زون» کلیک کنید و محدوده را روی نقشه علامت بزنید.
+          {t.addZoneMapHint}
         </p>
       ) : null}
     </div>

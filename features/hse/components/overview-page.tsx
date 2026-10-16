@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/components/overview-page.tsx
+ * @purpose کامپوننت UI — ایمنی، بهداشت و محیط زیست (overview-page)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on features/hse/components/badges, features/hse/components/format, features/hse/components/ui, features/hse/lib/mock-data, features/hse/lib/nav, features/hse/lib/types, shared/lib/utils, features/hse/config
+ */
+
 'use client'
 
 import Link from 'next/link'
@@ -23,6 +31,7 @@ topRiskZones,
 import { HSE_BASE } from '@/features/hse/lib/nav'
 import type { Severity } from '@/features/hse/lib/types'
 import { cn } from '@/shared/lib/utils'
+import { HSE_OVERVIEW_COPY } from '@/features/hse/config'
 
 const SEVERITY_ORDER: Severity[] = ['critical', 'high', 'medium', 'low']
 
@@ -45,43 +54,43 @@ export function OverviewPage() {
   return (
     <div className="space-y-4" dir="rtl" lang="fa">
       <HsePageHeader
-        title="نمای کلی ایمنی"
-        description="تصویر عملیاتی از حوادث تشخیص‌داده‌شده با دوربین، ریسک زون‌ها، مواجهه پیمانکاران و عملکرد پاسخ."
+        title={HSE_OVERVIEW_COPY.title}
+        description={HSE_OVERVIEW_COPY.description}
       />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
-          label="حوادث فعال"
+          label={HSE_OVERVIEW_COPY.kpiActive}
           value={kpis.activeIncidents}
-          hint={`${kpis.totalIncidents} مورد در مجموعه داده`}
+          hint={HSE_OVERVIEW_COPY.totalHint(kpis.totalIncidents)}
           tone={kpis.activeIncidents > 5 ? 'bad' : 'warn'}
           icon={ShieldAlert}
         />
         <KpiCard
-          label="تخلفات تأییدشده"
+          label={HSE_OVERVIEW_COPY.kpiConfirmed}
           value={kpis.confirmedViolations}
-          hint={`${kpis.falsePositives} مثبت کاذب`}
+          hint={HSE_OVERVIEW_COPY.falsePositiveHint(kpis.falsePositives)}
           tone="bad"
           icon={AlertTriangle}
         />
         <KpiCard
-          label="دوربین‌های آنلاین"
+          label={HSE_OVERVIEW_COPY.kpiCameras}
           value={`${kpis.camerasOnline}/${kpis.camerasTotal}`}
-          hint="ضربان زنده"
+          hint={HSE_OVERVIEW_COPY.livePulse}
           tone={kpis.camerasOnline === kpis.camerasTotal ? 'good' : 'warn'}
           icon={Camera}
         />
         <KpiCard
-          label="میانگین دریافت / بستن"
-          value={`${kpis.avgAckMinutes}د / ${kpis.avgCloseHours}س`}
-          hint="شاخص پاسخ"
+          label={HSE_OVERVIEW_COPY.kpiAckClose}
+          value={HSE_OVERVIEW_COPY.ackCloseValue(kpis.avgAckMinutes, kpis.avgCloseHours)}
+          hint={HSE_OVERVIEW_COPY.responseHint}
           tone="neutral"
           icon={Clock}
         />
       </div>
 
       <div className="grid gap-3 lg:grid-cols-3">
-        <Panel title="تفکیک شدت" description="همه حوادث بر اساس شدت" className="lg:col-span-1">
+        <Panel title={HSE_OVERVIEW_COPY.severityTitle} description={HSE_OVERVIEW_COPY.severityDesc} className="lg:col-span-1">
           <ul className="space-y-2.5">
             {SEVERITY_ORDER.map((s) => {
               const count = severity[s]
@@ -106,9 +115,9 @@ export function OverviewPage() {
           </ul>
         </Panel>
 
-        <Panel title="زون‌های پرریسک" description="بیشترین تعداد حادثه" className="lg:col-span-1">
+        <Panel title={HSE_OVERVIEW_COPY.topZonesTitle} description={HSE_OVERVIEW_COPY.topZonesDesc} className="lg:col-span-1">
           {zones.length === 0 ? (
-            <EmptyRow>فعالیتی در زون ثبت نشده است.</EmptyRow>
+            <EmptyRow>{HSE_OVERVIEW_COPY.emptyZones}</EmptyRow>
           ) : (
             <ul className="divide-y divide-slate-100">
               {zones.map((z, idx) => (
@@ -126,7 +135,7 @@ export function OverviewPage() {
           )}
         </Panel>
 
-        <Panel title="سلامت دوربین‌ها" description="خلاصه وضعیت ناوگان" className="lg:col-span-1">
+        <Panel title={HSE_OVERVIEW_COPY.camerasTitle} description={HSE_OVERVIEW_COPY.camerasDesc} className="lg:col-span-1">
           <div className="grid grid-cols-2 gap-2">
             {(
               [
@@ -149,16 +158,16 @@ export function OverviewPage() {
       </div>
 
       <div className="grid gap-3 xl:grid-cols-2">
-        <Panel title="مقایسه پیمانکاران" description="موارد باز در برابر تخلفات تأییدشده">
+        <Panel title={HSE_OVERVIEW_COPY.contractorsTitle} description={HSE_OVERVIEW_COPY.contractorsDesc}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-[11px] tracking-wide text-slate-500">
-                  <th className="pb-2 pl-3 font-semibold">پیمانکار</th>
-                  <th className="pb-2 pl-3 font-semibold">رشته</th>
-                  <th className="pb-2 pl-3 font-semibold tabular-nums">باز</th>
-                  <th className="pb-2 pl-3 font-semibold tabular-nums">تأییدشده</th>
-                  <th className="pb-2 font-semibold tabular-nums">مثبت کاذب</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_OVERVIEW_COPY.colContractor}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_OVERVIEW_COPY.colTrade}</th>
+                  <th className="pb-2 pl-3 font-semibold tabular-nums">{HSE_OVERVIEW_COPY.colOpen}</th>
+                  <th className="pb-2 pl-3 font-semibold tabular-nums">{HSE_OVERVIEW_COPY.colConfirmed}</th>
+                  <th className="pb-2 font-semibold tabular-nums">{HSE_OVERVIEW_COPY.colFalsePositive}</th>
                 </tr>
               </thead>
               <tbody>
@@ -177,19 +186,19 @@ export function OverviewPage() {
         </Panel>
 
         <Panel
-          title="بحرانی / بالای اخیر"
-          description="جدیدترین تشخیص‌های شدت بالا"
+          title={HSE_OVERVIEW_COPY.recentTitle}
+          description={HSE_OVERVIEW_COPY.recentDesc}
           actions={
             <Link
               href={`${HSE_BASE}/incidents`}
               className="text-xs font-medium text-amber-700 hover:underline"
             >
-              مشاهده همه
+              {HSE_OVERVIEW_COPY.viewAll}
             </Link>
           }
         >
           {critical.length === 0 ? (
-            <EmptyRow>حادثه بحرانی یا بالایی نیست.</EmptyRow>
+            <EmptyRow>{HSE_OVERVIEW_COPY.emptyCritical}</EmptyRow>
           ) : (
             <ul className="divide-y divide-slate-100">
               {critical.map((inc) => (
@@ -217,19 +226,19 @@ export function OverviewPage() {
         </Panel>
       </div>
 
-      <Panel title="عملکرد پاسخ" description="زمان دریافت و بستن چرخه">
+      <Panel title={HSE_OVERVIEW_COPY.responseTitle} description={HSE_OVERVIEW_COPY.responseDesc}>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex items-start gap-3 rounded border border-slate-200 px-3 py-3">
             <Activity className="mt-0.5 h-4 w-4 text-slate-400" />
             <div>
               <p className="text-[11px] font-semibold tracking-wide text-slate-500">
-                میانگین دریافت
+                {HSE_OVERVIEW_COPY.avgAck}
               </p>
               <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">
-                {kpis.avgAckMinutes} دقیقه
+                {kpis.avgAckMinutes} {HSE_OVERVIEW_COPY.minutes}
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
-                زمان از تشخیص تا اولین دریافت انسانی.
+                {HSE_OVERVIEW_COPY.avgAckHint}
               </p>
             </div>
           </div>
@@ -237,13 +246,13 @@ export function OverviewPage() {
             <CheckCircle2 className="mt-0.5 h-4 w-4 text-slate-400" />
             <div>
               <p className="text-[11px] font-semibold tracking-wide text-slate-500">
-                میانگین بستن
+                {HSE_OVERVIEW_COPY.avgClose}
               </p>
               <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">
-                {kpis.avgCloseHours} ساعت
+                {kpis.avgCloseHours} {HSE_OVERVIEW_COPY.hours}
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
-                زمان از تشخیص تا وضعیت بسته‌شده (شامل پیگیری اصلاحی).
+                {HSE_OVERVIEW_COPY.avgCloseHint}
               </p>
             </div>
           </div>

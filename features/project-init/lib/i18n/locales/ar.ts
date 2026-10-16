@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/lib/i18n/locales/ar.ts
+ * @purpose تنظیمات و برچسب‌ها — راه‌اندازی پروژه (ar)
+ * @safe-to-edit YES
+ * @affects راه‌اندازی پروژه
+ * @depends-on nothing
+ */
+
 import { CONSTRUCTION_STANDARDS } from '../../standards-catalog'
 import type { FormDictionary } from '../types'
 

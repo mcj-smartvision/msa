@@ -1,3 +1,11 @@
+/**
+ * @file features/project-controls/lib/cumulative-progress.ts
+ * @purpose منطق دامنه — موتور کنترل پروژه و شاخص‌های توضیح‌پذیر (cumulative-progress)
+ * @safe-to-edit CAREFUL
+ * @affects موتور کنترل پروژه و شاخص‌های توضیح‌پذیر
+ * @depends-on features/evm/lib/load-project-evm, features/evm/lib/metrics, features/manager/lib/format
+ */
+
 import type { ProjectEvmSnapshot } from '@/features/evm/lib/load-project-evm'
 import { progressWeightOf, type EvmBudgetBasis, type EvmProgressBasis } from '@/features/evm/lib/metrics'
 import { jalaliDate } from '@/features/manager/lib/format'

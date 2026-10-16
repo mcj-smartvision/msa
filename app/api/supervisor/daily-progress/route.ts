@@ -1,3 +1,11 @@
+/**
+ * @file app/api/supervisor/daily-progress/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/schedule/lib/refresh-after-progress, features/site-ops/lib/auth, features/supervisor/lib/daily-report-activities, features/supervisor/lib/persist-daily-progress, features/supervisor/lib/persist-daily-report-meta, features/weather/lib/report-stamp, features/workshop/lib/domain, features/workshop/lib/service
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { refreshScheduleAfterProgress } from '@/features/schedule/lib/refresh-after-progress'

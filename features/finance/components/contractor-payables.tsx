@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/components/contractor-payables.tsx
+ * @purpose کامپوننت UI — حسابداری، هزینه،overhead و صورت‌وضعیت (contractor-payables)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on shared/components/i18n/locale-provider, features/schedule/components/formatted-date, features/schedule/components/schedule-date-input, features/admin/components/shared, features/admin/components/stat-card, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/textarea, shared/components/ui/select
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -26,6 +34,7 @@ SelectTrigger,
 SelectValue,
 } from '@/shared/components/ui/select'
 import { ModalOverlay } from '@/shared/components/common/modal-overlay'
+import { CONTRACTOR_PAYABLES_COPY } from '@/features/finance/config'
 import {
 MoneyInput,
 parseMoneyInput,
@@ -244,7 +253,7 @@ export function ContractorPayables({
   }
 
   async function handleCancel(bill: VendorBillRow) {
-    if (!canEdit || !confirm(isFa ? 'این بدهی لغو شود؟' : 'Cancel this payable?')) return
+    if (!canEdit || !confirm(isFa ? CONTRACTOR_PAYABLES_COPY.confirmCancel : 'Cancel this payable?')) return
     setSaving(true)
     try {
       await cancelContractorPayable(supabase, bill.id, initialContext.userId)

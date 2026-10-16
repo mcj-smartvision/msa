@@ -1,4 +1,12 @@
 /**
+ * @file features/compliance/lib/types.ts
+ * @purpose تعاریف نوع — انطباق (types)
+ * @safe-to-edit YES
+ * @affects انطباق
+ * @depends-on nothing
+ */
+
+/**
  * Construction Compliance — core types for the hierarchical compliance engine.
  * Designed so new regions/standards can be added via catalog + DB seed without schema changes.
  */

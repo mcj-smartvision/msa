@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/persist-month-overhead.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (persist-month-overhead)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/monthly-deducted-weight, features/schedule/lib/month-progress-overhead, features/schedule/lib/progress-snapshots, features/schedule/lib/dates
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { enumerateProjectJalaliMonths, projectDateSpan } from '@/features/schedule/lib/monthly-deducted-weight'
 import { buildProgressAndOverhead } from '@/features/schedule/lib/month-progress-overhead'

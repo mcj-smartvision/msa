@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/i18n/app-shell.ts
+ * @purpose تنظیمات و برچسب‌ها — زیرساخت مشترک سامانه (app-shell)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/project-init/lib/i18n/types
+ */
+
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 
 export interface AppShellMessages {

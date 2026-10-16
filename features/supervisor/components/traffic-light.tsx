@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/traffic-light.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (traffic-light)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on shared/lib/utils, features/supervisor/lib/types
+ */
+
 import { cn } from '@/shared/lib/utils';
 import type { ReadinessLevel } from '@/features/supervisor/lib/types';
 

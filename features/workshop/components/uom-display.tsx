@@ -1,6 +1,15 @@
+/**
+ * @file features/workshop/components/uom-display.tsx
+ * @purpose کامپوننت UI — بسته‌های اجرایی و تأیید کارگاه (uom-display)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on features/workshop/config, features/workshop/lib/types, shared/lib/utils
+ */
+
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { WORKSHOP_COPY } from '@/features/workshop/config'
 import { WORKSHOP_UOMS, workshopUomParts } from '@/features/workshop/lib/types'
 import { cn } from '@/shared/lib/utils'
 
@@ -78,7 +87,7 @@ export function UomSelect({
       <button
         type="button"
         disabled={disabled}
-        title="واحد"
+        title={WORKSHOP_COPY.unit}
         className="flex h-full min-h-[28px] w-full items-center justify-center rounded border border-slate-200 bg-white px-0.5 py-0.5 disabled:opacity-50"
         onClick={() => setOpen((current) => !current)}
       >

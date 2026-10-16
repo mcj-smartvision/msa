@@ -1,3 +1,11 @@
+/**
+ * @file app/api/schedule/import-msp/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/admin/lib/access, features/schedule/lib/msp-import
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { isSystemAdmin } from '@/features/admin/lib/access'

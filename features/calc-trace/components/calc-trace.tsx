@@ -1,3 +1,11 @@
+/**
+ * @file features/calc-trace/components/calc-trace.tsx
+ * @purpose کامپوننت UI — دفتر رد محاسبه شاخص‌ها (calc-trace)
+ * @safe-to-edit CAREFUL
+ * @affects دفتر رد محاسبه شاخص‌ها
+ * @depends-on shared/lib/utils, features/manager/lib/format, features/calc-trace/lib/build, features/calc-trace/lib/types
+ */
+
 'use client'
 
 import {
@@ -15,6 +23,7 @@ import { cn } from '@/shared/lib/utils'
 import { faNumber, jalaliDate, jalaliDateTime } from '@/features/manager/lib/format'
 import { formatTraceValue } from '@/features/calc-trace/lib/build'
 import type { CalcTrace, CalcTraceMap, CalcTraceStatus } from '@/features/calc-trace/lib/types'
+import { CALC_TRACE_COPY as copy } from '@/features/calc-trace/config'
 
 interface CalcTraceContextValue {
   traces: CalcTraceMap
@@ -64,8 +73,8 @@ export function CalcTraceTrigger({ metrics, className }: { metrics: string[]; cl
         event.stopPropagation()
         ctx.open(available)
       }}
-      aria-label={`موشن حساب: ${first.label}`}
-      title={`موشن حساب — ${first.label}`}
+      aria-label={copy.motionAria(first.label)}
+      title={copy.motionTitle(first.label)}
       className={cn(
         'pointer-events-auto relative z-10 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 transition-opacity duration-150 hover:bg-orange-50 hover:text-orange-600 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60',
         !ctx.debug && 'md:opacity-0 md:group-hover:opacity-100 md:group-hover/card:opacity-100',
@@ -80,10 +89,10 @@ export function CalcTraceTrigger({ metrics, className }: { metrics: string[]; cl
 /* ------------------------------------------------------------------ Drawer */
 
 const STATUS_META: Record<CalcTraceStatus, { label: string; className: string }> = {
-  ok: { label: 'سالم', className: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
-  warning: { label: 'نیاز به توجه', className: 'bg-amber-50 text-amber-800 ring-amber-200' },
-  critical: { label: 'بحرانی', className: 'bg-rose-50 text-rose-700 ring-rose-200' },
-  insufficient: { label: 'داده کافی نیست', className: 'bg-slate-100 text-slate-600 ring-slate-200' },
+  ok: { label: copy.status.ok, className: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
+  warning: { label: copy.status.warning, className: 'bg-amber-50 text-amber-800 ring-amber-200' },
+  critical: { label: copy.status.critical, className: 'bg-rose-50 text-rose-700 ring-rose-200' },
+  insufficient: { label: copy.status.insufficient, className: 'bg-slate-100 text-slate-600 ring-slate-200' },
 }
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -153,7 +162,7 @@ function CalcTraceDrawer({ traces, onClose }: { traces: CalcTrace[]; onClose: ()
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-200 px-4">
           <h2 id="calc-trace-title" className="flex items-center gap-2 text-sm font-bold text-slate-900">
             <Settings2 className="h-4 w-4 text-orange-600" aria-hidden />
-            موشن حساب
+            {copy.title}
           </h2>
           <div className="flex items-center gap-1" data-calc-noprint>
             <button
@@ -162,13 +171,13 @@ function CalcTraceDrawer({ traces, onClose }: { traces: CalcTrace[]; onClose: ()
               className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
             >
               <Printer className="h-4 w-4" aria-hidden />
-              چاپ
+              {copy.print}
             </button>
             <button
               type="button"
               data-autofocus
               onClick={onClose}
-              aria-label="بستن موشن حساب"
+              aria-label={copy.closeAria}
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
             >
               <X className="h-5 w-5" aria-hidden />
@@ -177,7 +186,7 @@ function CalcTraceDrawer({ traces, onClose }: { traces: CalcTrace[]; onClose: ()
         </div>
 
         {traces.length > 1 ? (
-          <div role="tablist" aria-label="شاخص‌ها" className="flex shrink-0 flex-wrap gap-1.5 border-b border-slate-100 px-4 py-2.5" data-calc-noprint>
+          <div role="tablist" aria-label={copy.metricsAria} className="flex shrink-0 flex-wrap gap-1.5 border-b border-slate-100 px-4 py-2.5" data-calc-noprint>
             {traces.map((t, i) => (
               <button
                 key={t.metric}
@@ -215,11 +224,11 @@ function TraceBody({ trace }: { trace: CalcTrace }) {
           <span className="text-2xl font-bold tabular-nums text-slate-900">{formatTraceValue(trace.result, trace.unit)}</span>
           <span className={cn('rounded-full px-2.5 py-0.5 text-[11px] font-bold ring-1 ring-inset', status.className)}>{status.label}</span>
         </div>
-        <p className="mt-1 text-[11px] text-slate-500">محاسبه: {jalaliDateTime(trace.computedAt)}</p>
+        <p className="mt-1 text-[11px] text-slate-500">{copy.computed} {jalaliDateTime(trace.computedAt)}</p>
       </section>
 
       <section className="space-y-2">
-        <h4 className="text-xs font-bold text-slate-700">فرمول</h4>
+<h4 className="text-xs font-bold text-slate-700">{copy.formula}</h4>
         <p dir="auto" className="rounded-lg bg-slate-50 px-3 py-2 font-mono text-[12px] leading-6 text-slate-800 ring-1 ring-slate-200">
           {trace.formula}
         </p>
@@ -247,17 +256,17 @@ function TraceBody({ trace }: { trace: CalcTrace }) {
       ) : null}
 
       <section className="space-y-2">
-        <h4 className="text-xs font-bold text-slate-700">ورودی‌ها ({faNumber(trace.inputs.length)})</h4>
+        <h4 className="text-xs font-bold text-slate-700">{copy.inputs(faNumber(trace.inputs.length))}</h4>
         {trace.inputs.length === 0 ? (
-          <p className="text-xs text-slate-500">ورودی ثبت‌شده‌ای نیست.</p>
+          <p className="text-xs text-slate-500">{copy.noInputs}</p>
         ) : (
           <div className="overflow-x-auto rounded-lg ring-1 ring-slate-200">
             <table className="w-full text-[12px]">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
-                  <th className="px-2.5 py-2 text-right font-semibold">نام</th>
-                  <th className="px-2.5 py-2 text-left font-semibold">مقدار</th>
-                  <th className="px-2.5 py-2 text-right font-semibold">منبع</th>
+<th className="px-2.5 py-2 text-right font-semibold">{copy.colName}</th>
+<th className="px-2.5 py-2 text-left font-semibold">{copy.colValue}</th>
+<th className="px-2.5 py-2 text-right font-semibold">{copy.colSource}</th>
                 </tr>
               </thead>
               <tbody>
@@ -271,16 +280,16 @@ function TraceBody({ trace }: { trace: CalcTrace }) {
                       {input.source.table ? <span className="block font-mono text-slate-600" dir="ltr">{input.source.table}</span> : null}
                       {input.source.column ? (
                         <span className="block" dir="auto">
-                          ستون: <span className="font-mono">{input.source.column}</span>
+                          {copy.column} <span className="font-mono">{input.source.column}</span>
                         </span>
                       ) : null}
                       {input.source.rowId ? (
                         <span className="block truncate" title={input.source.rowId}>
-                          ردیف: <span className="font-mono" dir="ltr">{input.source.rowId.slice(0, 8)}</span>
+                          {copy.row} <span className="font-mono" dir="ltr">{input.source.rowId.slice(0, 8)}</span>
                         </span>
                       ) : null}
                       {input.source.note ? <span className="block">{input.source.note}</span> : null}
-                      {input.updatedAt ? <span className="block">به‌روزرسانی: {jalaliDate(input.updatedAt)}</span> : null}
+                      {input.updatedAt ? <span className="block">{copy.updated} {jalaliDate(input.updatedAt)}</span> : null}
                     </td>
                   </tr>
                 ))}
@@ -301,10 +310,10 @@ function HistorySection({ trace }: { trace: CalcTrace }) {
   const values = trace.history.map((p) => p.result).filter((x): x is number => x != null)
   return (
     <section className="space-y-2">
-      <h4 className="text-xs font-bold text-slate-700">دورهٔ قبل و روند</h4>
+      <h4 className="text-xs font-bold text-slate-700">{copy.previousTrend}</h4>
       {prev ? (
         <p className="flex flex-wrap items-center gap-2 text-[12px] text-slate-700">
-          دورهٔ قبل: <span className="font-semibold tabular-nums">{formatTraceValue(prev.result, trace.unit)}</span>
+          {copy.previousPeriod} <span className="font-semibold tabular-nums">{formatTraceValue(prev.result, trace.unit)}</span>
           {delta != null ? (
             <span
               className={cn(
@@ -319,7 +328,7 @@ function HistorySection({ trace }: { trace: CalcTrace }) {
           <span className="text-slate-500">({jalaliDate(prev.computedAt)})</span>
         </p>
       ) : (
-        <p className="text-[12px] text-slate-500">مقداری از روزهای قبل ثبت نشده است.</p>
+        <p className="text-[12px] text-slate-500">{copy.noHistory}</p>
       )}
       {values.length >= 2 ? <Sparkline values={values} /> : null}
       {trace.history.length ? (
@@ -345,7 +354,7 @@ function Sparkline({ values }: { values: number[] }) {
   const span = max - min || 1
   const points = values.map((val, i) => `${(i / (values.length - 1)) * w},${h - 4 - ((val - min) / span) * (h - 8)}`).join(' ')
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="h-10 w-full max-w-[240px]" role="img" aria-label="روند مقادیر ثبت‌شده" style={{ direction: 'ltr' }}>
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-10 w-full max-w-[240px]" role="img" aria-label={copy.sparkAria} style={{ direction: 'ltr' }}>
       <polyline points={points} fill="none" stroke="#ea580c" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   )

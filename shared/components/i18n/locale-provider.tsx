@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/i18n/locale-provider.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (locale-provider)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/lib/i18n/app-shell, shared/lib/i18n/locale-cookie, features/project-init/lib/i18n/types, features/project-init/lib/i18n/utils
+ */
+
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'

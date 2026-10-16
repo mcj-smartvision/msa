@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/components/site-supervisor-dashboard.tsx
+ * @purpose کامپوننت UI — زمان‌بندی، WBS و گانت (site-supervisor-dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/components/i18n/locale-provider, features/admin/components/shared, features/supervisor/components/supervisor-drawings-zoning-panel, features/supervisor/components/daily-report-panel, features/supervisor/components/daily-report-background-panel, features/project-store/components/store-inspector, features/holidays/components/holidays-panel, features/schedule/components/schedule-date-input, features/supervisor/components/supervisor-overview-panel, features/supervisor/components/today-activities-table
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -137,7 +145,7 @@ export function SiteSupervisorDashboard({
   // Form fields for action dialogs
   const [purchaseMaterial, setPurchaseMaterial] = useState('')
   const [purchaseQty, setPurchaseQty] = useState('1')
-  const [purchaseUnit, setPurchaseUnit] = useState('عدد')
+  const [purchaseUnit, setPurchaseUnit] = useState(t.purchaseUnitDefault)
   const [purchaseDate, setPurchaseDate] = useState(viewDate)
   const [purchaseReason, setPurchaseReason] = useState('')
   const [pmCategory, setPmCategory] = useState('general')
@@ -269,7 +277,7 @@ export function SiteSupervisorDashboard({
       setGeneratedAction(draft)
       setAiDrafts((prev) => [draft, ...prev])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'اقدام ناموفق بود')
+      setError(err instanceof Error ? err.message : t.actionFailed)
     } finally {
       setActionLoading(false)
     }
@@ -279,7 +287,7 @@ export function SiteSupervisorDashboard({
     return (
       <EmptyState
         title={t.title}
-        description="از ادمین پروژه بخواهید شما را با سمت سرپرست کارگاه منصوب کند."
+        description={t.assignSupervisorHint}
       />
     )
   }
@@ -301,41 +309,41 @@ export function SiteSupervisorDashboard({
         items={[
           {
             id: 'daily-report',
-            label: 'ثبت گزارش روزانه',
-            hint: 'ثبت درصد پیشرفت روزانه فعالیت‌ها',
+            label: t.navDailyReport,
+            hint: t.navDailyReportHint,
           },
           {
             id: 'report-background',
-            label: 'بک‌گراند گزارش‌های روزانه',
-            hint: 'همه درصدهای ثبت‌شده به تفکیک روز — مشاهده و ویرایش',
+            label: t.navReportBackground,
+            hint: t.navReportBackgroundHint,
           },
           {
             id: 'store',
-            label: 'جدول داده‌ها (Store)',
-            hint: 'پیشرفت، تعهد هفته و PPC هر فعالیت از منبع مشترک',
+            label: t.navStore,
+            hint: t.navStoreHint,
           },
           {
             id: 'holidays',
-            label: 'تعطیلات',
-            hint: 'تعطیلات هفتگی، رسمی و سازمانی — در تقویم و پیش‌بینی برنامه اثر دارد',
+            label: t.navHolidays,
+            hint: t.navHolidaysHint,
           },
           {
             id: 'safety',
-            label: 'ایمنی و اخطارها',
-            hint: 'اعلان‌های تأییدشده برای اقدام میدانی',
+            label: t.navSafety,
+            hint: t.navSafetyHint,
             badge: safetyBadge,
             badgeTone: 'danger',
             badgeTitle: openSafetyAlertsTitle(safetyBadge),
           },
           {
             id: 'overview',
-            label: 'خلاصه وضعیت',
-            hint: 'شاخص‌های روزانه کارگاه',
+            label: t.navOverview,
+            hint: t.navOverviewHint,
           },
           {
             id: 'drawings',
-            label: 'نقشه و زون‌بندی پروژه',
-            hint: 'نقشه‌های بارگذاری‌شده توسط دفتر فنی — به تفکیک رشته و زون‌های عملیاتی',
+            label: t.navDrawings,
+            hint: t.navDrawingsHint,
           },
           {
             id: 'inspection',
@@ -344,35 +352,35 @@ export function SiteSupervisorDashboard({
           },
           {
             id: 'today',
-            label: 'فعالیت‌های امروز',
-            hint: 'گزارش سریع و دستور کار',
+            label: t.todayActivities,
+            hint: t.navTodayHint,
           },
           {
             id: 'lookahead',
-            label: 'نگاه به جلو',
-            hint: 'فعالیت‌های روزهای آینده',
+            label: t.navLookahead,
+            hint: t.navLookaheadHint,
           },
           {
             id: 'issues',
-            label: 'مسائل و هشدارها',
-            hint: 'مشکلات ثبت‌شده کارگاه',
+            label: t.issuesAlerts,
+            hint: t.navIssuesHint,
             badge: issues.filter((i) => i.status === 'open').length || undefined,
           },
           {
             id: 'resources',
-            label: 'منابع و مصالح',
-            hint: 'موجودی و درخواست خرید',
+            label: t.navResources,
+            hint: t.navResourcesHint,
           },
           {
             id: 'ai',
-            label: 'اقدامات هوشمند',
-            hint: 'پیش‌نویس‌های در انتظار تأیید',
+            label: t.navAi,
+            hint: t.navAiHint,
             badge: aiDrafts.length || undefined,
           },
           {
             id: 'workshop',
-            label: 'لیست‌های کارگاه',
-            hint: 'دفتر فنی و وضعیت تأیید مدیر پروژه',
+            label: t.navWorkshop,
+            hint: t.navWorkshopHint,
           },
         ]}
       >
@@ -405,37 +413,33 @@ export function SiteSupervisorDashboard({
               drawingsHref={inspectionDrawingsHref}
             />
           ) : (
-            <p className="text-sm text-muted-foreground">ابتدا یک پروژه انتخاب کنید.</p>
+            <p className="text-sm text-muted-foreground">{t.selectProjectFirst}</p>
           )
         ) : null}
 
         {activeSection === 'workshop' ? (
           projectId ? (
             <div className="space-y-3">
-              <p className="text-sm text-slate-600">
-                {isRtl
-                  ? 'ببینید دفتر فنی چه نوشته، مدیر تأیید کرده یا نه، و کامنت بگذارید.'
-                  : 'See TO items, PM approval status, and leave comments.'}
-              </p>
+              <p className="text-sm text-slate-600">{t.workshopIntro}</p>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" size="sm" asChild>
                   <Link
                     href={`/dashboard/technical-office?section=schedule&workshopTab=prepared&projectId=${projectId}&as=supervisor`}
                   >
-                    {isRtl ? 'لیست‌های کارگاه' : 'Workshop lists'}
+                    {t.workshopListsCta}
                   </Link>
                 </Button>
                 <Button type="button" size="sm" variant="outline" asChild>
                   <Link
                     href={`/dashboard/technical-office?section=schedule&workshopTab=schedule&projectId=${projectId}&as=supervisor`}
                   >
-                    {isRtl ? 'مشاهده برنامه (فقط خواندنی)' : 'View schedule (read-only)'}
+                    {t.viewScheduleReadOnly}
                   </Link>
                 </Button>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">ابتدا یک پروژه انتخاب کنید.</p>
+            <p className="text-sm text-muted-foreground">{t.selectProjectFirst}</p>
           )
         ) : null}
 
@@ -625,26 +629,26 @@ export function SiteSupervisorDashboard({
             {actionDialog === 'purchase' ? (
               <>
                 <div className="space-y-2">
-                  <Label>{isRtl ? 'مصالح' : 'Material'}</Label>
+                  <Label>{t.material}</Label>
                   <Input value={purchaseMaterial} onChange={(e) => setPurchaseMaterial(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label>{isRtl ? 'تعداد' : 'Qty'}</Label>
+                    <Label>{t.qty}</Label>
                     <Input type="number" value={purchaseQty} onChange={(e) => setPurchaseQty(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <Label>{isRtl ? 'واحد' : 'Unit'}</Label>
+                    <Label>{t.unit}</Label>
                     <Input value={purchaseUnit} onChange={(e) => setPurchaseUnit(e.target.value)} />
                   </div>
                 </div>
                 <ScheduleDateInput
-                  label={isRtl ? 'تاریخ نیاز' : 'Needed date'}
+                  label={t.neededDate}
                   valueIso={purchaseDate}
                   onChangeIso={setPurchaseDate}
                 />
                 <div className="space-y-2">
-                  <Label>{isRtl ? 'دلیل' : 'Reason'}</Label>
+                  <Label>{t.reason}</Label>
                   <Textarea rows={3} value={purchaseReason} onChange={(e) => setPurchaseReason(e.target.value)} />
                 </div>
               </>
@@ -652,16 +656,16 @@ export function SiteSupervisorDashboard({
             {actionDialog === 'pm_comment' ? (
               <>
                 <div className="space-y-2">
-                  <Label>{isRtl ? 'دسته' : 'Category'}</Label>
+                  <Label>{t.category}</Label>
                   <Select value={pmCategory} onValueChange={setPmCategory}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="delay">{isRtl ? 'ریسک تأخیر' : 'Delay risk'}</SelectItem>
-                      <SelectItem value="resource">{isRtl ? 'منابع' : 'Resource'}</SelectItem>
-                      <SelectItem value="coordination">{isRtl ? 'هماهنگی' : 'Coordination'}</SelectItem>
-                      <SelectItem value="general">{isRtl ? 'عمومی' : 'General'}</SelectItem>
+                      <SelectItem value="delay">{t.delayRisk}</SelectItem>
+                      <SelectItem value="resource">{t.resourceCategory}</SelectItem>
+                      <SelectItem value="coordination">{t.coordination}</SelectItem>
+                      <SelectItem value="general">{t.general}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -675,9 +679,9 @@ export function SiteSupervisorDashboard({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="info">{isRtl ? 'اطلاع' : 'Info'}</SelectItem>
-                    <SelectItem value="warning">{isRtl ? 'هشدار' : 'Warning'}</SelectItem>
-                    <SelectItem value="critical">{isRtl ? 'بحرانی' : 'Critical'}</SelectItem>
+                    <SelectItem value="info">{t.info}</SelectItem>
+                    <SelectItem value="warning">{t.warning}</SelectItem>
+                    <SelectItem value="critical">{t.critical}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Textarea rows={4} value={hseDesc} onChange={(e) => setHseDesc(e.target.value)} />
@@ -686,9 +690,7 @@ export function SiteSupervisorDashboard({
             {actionDialog === 'instruction' ? (
               <div className="space-y-3">
                 <p className="text-xs text-muted-foreground leading-relaxed rounded-md border bg-muted/30 px-3 py-2">
-                  {isFa
-                    ? 'این دکمه «دستور کار» برای پیمانکار/اجراکننده همان فعالیت است. متن پیش‌نویس AI ساخته می‌شود؛ بعد از تأیید شما به مدیر پروژه می‌رود. ابلاغ نهایی فقط وقتی ممکن است که مدیر پروژه پیمانکار را قبلاً معرفی کرده باشد.'
-                    : 'Work instruction for the subcontractor/crew. After you approve, it goes to the Project Manager. Final release requires a registered subcontractor.'}
+                  {t.instructionHelp}
                 </p>
                 <div className="flex justify-end">
                   <VoiceToTextButton
@@ -701,11 +703,7 @@ export function SiteSupervisorDashboard({
                   rows={5}
                   value={instructionText}
                   onChange={(e) => setInstructionText(e.target.value)}
-                  placeholder={
-                    isFa
-                      ? 'جزئیات دستور به پیمانکار (اختیاری — صدا یا تایپ)…'
-                      : 'Instruction details (optional — voice or type)…'
-                  }
+                  placeholder={t.instructionPlaceholder}
                 />
               </div>
             ) : null}

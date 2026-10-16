@@ -1,3 +1,11 @@
+/**
+ * @file features/landing/components/landing-page.tsx
+ * @purpose کامپوننت UI — صفحه فرود (landing-page)
+ * @safe-to-edit CAREFUL
+ * @affects صفحه فرود
+ * @depends-on shared/components/ui/button, shared/lib/brand, shared/components/brand/brand-logo
+ */
+
 'use client'
 
 import Link from 'next/link'
@@ -13,29 +21,9 @@ Users,
 import { Button } from '@/shared/components/ui/button'
 import { APP_NAME, APP_TAGLINE } from '@/shared/lib/brand'
 import { BrandLogo } from '@/shared/components/brand/brand-logo'
+import { LANDING_COPY } from '@/features/landing/config'
 
-const benefits = [
-  {
-    icon: BarChart3,
-    title: 'تحلیل واقعی، نه فقط گزارش',
-    text: 'شاخص‌های WSI، MRS و CSI ریسک‌های پنهان اجرا را قبل از تأخیر نشان می‌دهند.',
-  },
-  {
-    icon: Users,
-    title: 'هماهنگی بین نقش‌ها',
-    text: 'سرپرست کارگاه، انبار، QC، HSE و تدارکات در یک جریان تصمیم‌گیری.',
-  },
-  {
-    icon: Shield,
-    title: 'ایمنی و کیفیت',
-    text: 'هشدارها و NCRها با تأیید انسانی — بدون ارسال خودکار AI.',
-  },
-  {
-    icon: Sparkles,
-    title: 'هوش مصنوعی کنترل‌شده',
-    text: 'پیش‌نویس AI فقط بعد از تأیید شما به تیم ارسال می‌شود.',
-  },
-]
+const benefitIcons = [BarChart3, Users, Shield, Sparkles] as const
 
 export function LandingPage() {
   return (
@@ -46,7 +34,7 @@ export function LandingPage() {
             <BrandLogo size="md" />
           </div>
           <Button asChild variant="outline" size="sm">
-            <Link href="/login">ورود</Link>
+            <Link href="/login">{LANDING_COPY.login}</Link>
           </Button>
         </div>
       </header>
@@ -58,22 +46,21 @@ export function LandingPage() {
             <div className="max-w-2xl space-y-6">
               <p className="text-sm font-semibold text-primary">{APP_TAGLINE}</p>
               <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-tight">
-                مرکز کنترل پروژه‌های ساختمانی
+                {LANDING_COPY.headline}
               </h1>
               <p className="text-lg text-muted-foreground leading-relaxed">
-                سلام مجتبی — {APP_NAME} برای مدیران پروژه‌ای طراحی شده که می‌خواهند{' '}
-                <strong>وضعیت واقعی کارگاه</strong> را ببینند، نه فقط اعداد خام. از تأخیر پنهان تا
-                کمبود نیرو و مصالح — همه در یک داشبورد قابل فهم.
+                {LANDING_COPY.introLead} {APP_NAME} {LANDING_COPY.introMid}{' '}
+                <strong>{LANDING_COPY.introStrong}</strong> {LANDING_COPY.introTail}
               </p>
               <div className="flex flex-wrap gap-3 pt-2">
                 <Button asChild size="lg" className="gap-2">
                   <Link href="/login">
-                    ورود به برنامه
+                    {LANDING_COPY.enter}
                     <ArrowLeft className="h-4 w-4" />
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
-                  <Link href="/login?redirect=/dashboard/project-manager">مشاهده داشبورد</Link>
+                  <Link href="/login?redirect=/dashboard/project-manager">{LANDING_COPY.viewDashboard}</Link>
                 </Button>
               </div>
             </div>
@@ -86,41 +73,43 @@ export function LandingPage() {
               <Building2 className="h-8 w-8" />
             </div>
             <div className="space-y-3">
-              <h2 className="text-2xl font-bold">این سیستم چیست؟</h2>
+              <h2 className="text-2xl font-bold">{LANDING_COPY.whatTitle}</h2>
               <p className="text-muted-foreground leading-relaxed max-w-2xl">
-                {APP_NAME} یک پلتفرم آمادگی کنترل و مدیریت کارگاه ساختمانی است: زمان‌بندی MSP، گزارش
-                روزانه، انبار، QC، HSE، تدارکات — با لایه مدیریتی که می‌گوید{' '}
-                <em>الان باید چه کار کنید</em> نه فقط «وضعیت چیست».
+                {APP_NAME} {LANDING_COPY.whatBodyBefore}{' '}
+                <em>{LANDING_COPY.whatBodyEm}</em> {LANDING_COPY.whatBodyAfter}
               </p>
             </div>
           </div>
         </section>
 
         <section className="mx-auto max-w-6xl px-4 pb-16">
-          <h2 className="text-2xl font-bold mb-8 text-center">چرا {APP_NAME}؟</h2>
+          <h2 className="text-2xl font-bold mb-8 text-center">{LANDING_COPY.whyTitle(APP_NAME)}</h2>
           <div className="grid gap-6 sm:grid-cols-2">
-            {benefits.map((b) => (
+            {LANDING_COPY.benefits.map((b, i) => {
+              const Icon = benefitIcons[i]
+              return (
               <div
                 key={b.title}
                 className="rounded-2xl border bg-card p-6 shadow-sm hover:shadow-md transition-shadow"
               >
-                <b.icon className="h-8 w-8 text-primary mb-4" />
+                <Icon className="h-8 w-8 text-primary mb-4" />
                 <h3 className="font-semibold text-lg mb-2">{b.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{b.text}</p>
               </div>
-            ))}
+              )
+            })}
           </div>
         </section>
 
         <section className="border-t bg-slate-900 text-white py-16">
           <div className="mx-auto max-w-6xl px-4 text-center space-y-6">
             <CheckCircle2 className="h-12 w-12 mx-auto text-orange-400" />
-            <h2 className="text-2xl font-bold">آماده شروع هستید؟</h2>
+            <h2 className="text-2xl font-bold">{LANDING_COPY.ctaTitle}</h2>
             <p className="text-slate-300 max-w-lg mx-auto">
-              وارد شوید و داشبورد مدیر پروژه را با شاخص‌های WSI، MRS و CSI ببینید.
+              {LANDING_COPY.ctaBody}
             </p>
             <Button asChild size="lg" className="bg-orange-600 hover:bg-orange-700">
-              <Link href="/login">ورود به برنامه</Link>
+              <Link href="/login">{LANDING_COPY.enter}</Link>
             </Button>
           </div>
         </section>

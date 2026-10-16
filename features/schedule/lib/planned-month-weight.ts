@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/planned-month-weight.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (planned-month-weight)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/monthly-deducted-weight, features/schedule/lib/dates
+ */
+
 import type { DeductedWeightMonth } from '@/features/schedule/lib/monthly-deducted-weight'
 import { toIsoDateOnly } from '@/features/schedule/lib/dates'
 

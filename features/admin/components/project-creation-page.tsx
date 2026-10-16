@@ -1,4 +1,14 @@
+/**
+ * @file features/admin/components/project-creation-page.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (project-creation-page)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on features/admin/components/shared, features/admin/components/project-form, shared/components/ui/button, features/admin/components/control-center-details-context, shared/lib/project/project-cookie, shared/lib/utils, shared/types/admin
+ */
+
+
 'use client'
+import { ADMIN_PROJECT_CREATE_COPY } from '@/features/admin/config'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -37,7 +47,7 @@ export function ProjectCreationPage() {
     })
     const json = (await res.json().catch(() => ({}))) as { project?: { id?: string }; error?: string }
     if (!res.ok || !json.project?.id) {
-      throw new Error(json.error || 'ذخیره پروژه ناموفق بود')
+      throw new Error(json.error || ADMIN_PROJECT_CREATE_COPY.saveFailed)
     }
     writeProjectCookie(json.project.id)
     setAdminScope?.(json.project.id)
@@ -56,8 +66,8 @@ export function ProjectCreationPage() {
     >
       {!expanded ? (
         <PageHeader
-          title="ایجاد پروژه جدید"
-          description="مشخصات پایه پروژه را وارد کنید. پس از ایجاد می‌توانید اعضا و سمت‌ها را مدیریت کنید."
+          title={ADMIN_PROJECT_CREATE_COPY.title}
+          description={ADMIN_PROJECT_CREATE_COPY.description}
           actions={
             <Button
               asChild
@@ -67,7 +77,7 @@ export function ProjectCreationPage() {
             >
               <Link href="/admin">
                 <ArrowRight className="h-4 w-4" />
-                بازگشت
+                {ADMIN_PROJECT_CREATE_COPY.back}
               </Link>
             </Button>
           }
@@ -82,9 +92,9 @@ export function ProjectCreationPage() {
       >
         <header className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E4E7EC] px-4 py-4 sm:px-6">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-[#17202A]">فرم ایجاد پروژه</h2>
+            <h2 className="text-lg font-semibold text-[#17202A]">{ADMIN_PROJECT_CREATE_COPY.formTitle}</h2>
             <p className="mt-1 text-sm text-[#667085]">
-              کارفرما، پیمانکار، مدیر پروژه، آدرس و تاریخ‌های قرارداد را تکمیل کنید.
+              {ADMIN_PROJECT_CREATE_COPY.formHint}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -94,10 +104,14 @@ export function ProjectCreationPage() {
               size="sm"
               className="border-[#E4E7EC] bg-white text-slate-800"
               onClick={() => setExpanded((current) => !current)}
-              aria-label={expanded ? 'خروج از حالت تمام‌صفحه' : 'بزرگ‌نمایی فرم'}
+              aria-label={
+                expanded
+                  ? ADMIN_PROJECT_CREATE_COPY.exitFullscreen
+                  : ADMIN_PROJECT_CREATE_COPY.expandForm
+              }
             >
               {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              {expanded ? 'کوچک‌کردن' : 'بزرگ‌نمایی'}
+              {expanded ? ADMIN_PROJECT_CREATE_COPY.collapse : ADMIN_PROJECT_CREATE_COPY.expand}
             </Button>
             {expanded ? (
               <Button
@@ -108,7 +122,7 @@ export function ProjectCreationPage() {
               >
                 <Link href="/admin">
                   <ArrowRight className="h-4 w-4" />
-                  بازگشت
+                  {ADMIN_PROJECT_CREATE_COPY.back}
                 </Link>
               </Button>
             ) : null}
@@ -119,7 +133,7 @@ export function ProjectCreationPage() {
           <ProjectForm
             key={formKey}
             variant="page"
-            submitLabel="ایجاد پروژه"
+            submitLabel={ADMIN_PROJECT_CREATE_COPY.submit}
             onSubmit={handleCreate}
             onCancel={() => router.push('/admin')}
           />

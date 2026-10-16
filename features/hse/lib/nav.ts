@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/lib/nav.ts
+ * @purpose منطق دامنه — ایمنی، بهداشت و محیط زیست (nav)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on nothing
+ */
+
 import type { LucideIcon } from 'lucide-react'
 import {
 Activity,

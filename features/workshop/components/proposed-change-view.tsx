@@ -1,12 +1,22 @@
+/**
+ * @file features/workshop/components/proposed-change-view.tsx
+ * @purpose کامپوننت UI — بسته‌های اجرایی و تأیید کارگاه (proposed-change-view)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on nothing
+ */
+
 'use client'
 
+import { WORKSHOP_COPY } from '@/features/workshop/lib/ui-copy'
+
 const FIELD_LABELS_FA: Record<string, string> = {
-  name: 'نام',
-  location: 'محل',
-  quantity: 'مقدار',
-  uom: 'واحد',
-  crew: 'گروه کاری',
-  note: 'یادداشت',
+  name: WORKSHOP_COPY.proposed.name,
+  location: WORKSHOP_COPY.proposed.location,
+  quantity: WORKSHOP_COPY.proposed.quantity,
+  uom: WORKSHOP_COPY.proposed.uom,
+  crew: WORKSHOP_COPY.proposed.crew,
+  note: WORKSHOP_COPY.proposed.note,
 }
 
 const FIELD_LABELS_EN: Record<string, string> = {
@@ -44,15 +54,15 @@ export function ProposedChangeView({
   return (
     <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm space-y-2" dir="rtl">
       <p className="font-medium text-amber-950">
-        {isFa ? 'تغییر پیشنهادی' : 'Proposed change'}
+        {isFa ? WORKSHOP_COPY.proposed.title : 'Proposed change'}
       </p>
       <div className="overflow-hidden rounded-md border border-amber-100 bg-white">
         <table className="w-full text-xs">
           <thead className="bg-amber-50/80 text-amber-900/80">
             <tr className="text-right">
-              <th className="px-2 py-1.5 font-medium">{isFa ? 'فیلد' : 'Field'}</th>
-              <th className="px-2 py-1.5 font-medium">{isFa ? 'فعلی' : 'Current'}</th>
-              <th className="px-2 py-1.5 font-medium">{isFa ? 'پیشنهادی' : 'Proposed'}</th>
+              <th className="px-2 py-1.5 font-medium">{isFa ? WORKSHOP_COPY.proposed.field : 'Field'}</th>
+              <th className="px-2 py-1.5 font-medium">{isFa ? WORKSHOP_COPY.proposed.current : 'Current'}</th>
+              <th className="px-2 py-1.5 font-medium">{isFa ? WORKSHOP_COPY.proposed.proposed : 'Proposed'}</th>
             </tr>
           </thead>
           <tbody>

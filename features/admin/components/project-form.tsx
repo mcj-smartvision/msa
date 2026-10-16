@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/components/project-form.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (project-form)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/textarea, shared/components/ui/checkbox, shared/components/ui/card, features/schedule/components/schedule-date-input, shared/lib/utils, shared/types/admin, features/admin/config
+ */
+
 'use client'
 
 import { useState } from 'react'
@@ -10,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { ScheduleDateInput } from '@/features/schedule/components/schedule-date-input'
 import { cn } from '@/shared/lib/utils'
 import type { CreateProjectInput } from '@/shared/types/admin'
+import { ADMIN_PROJECT_FORM_COPY as copy } from '@/features/admin/config'
 
 interface ProjectFormProps {
   initial?: Partial<CreateProjectInput>
@@ -76,7 +85,7 @@ export function ProjectForm({
         is_active: isActive,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ذخیره پروژه ناموفق بود')
+      setError(err instanceof Error ? err.message : copy.saveFailed)
     } finally {
       setLoading(false)
     }
@@ -85,10 +94,10 @@ export function ProjectForm({
   const form = (
     <form onSubmit={handleSubmit} className={cn('space-y-6', isPage && 'space-y-8')} autoComplete="off">
       <section className="space-y-4">
-        {isPage ? <SectionTitle>مشخصات پایه</SectionTitle> : null}
+        {isPage ? <SectionTitle>{copy.sectionBasics}</SectionTitle> : null}
         <div className={gridClass}>
           <div className="space-y-2">
-            <Label htmlFor="project-name">نام پروژه</Label>
+            <Label htmlFor="project-name">{copy.name}</Label>
             <Input
               id="project-name"
               name="new-project-name"
@@ -99,18 +108,18 @@ export function ProjectForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="project-code">کد پروژه</Label>
+            <Label htmlFor="project-code">{copy.code}</Label>
             <Input
               id="project-code"
               name="new-project-code"
               autoComplete="off"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="به‌صورت خودکار از نام ساخته می‌شود"
+              placeholder={copy.codePlaceholder}
             />
           </div>
           <div className={cn('space-y-2', isPage && 'sm:col-span-2 lg:col-span-3')}>
-            <Label htmlFor="project-description">توضیحات</Label>
+            <Label htmlFor="project-description">{copy.description}</Label>
             <Textarea
               id="project-description"
               name="new-project-description"
@@ -121,27 +130,27 @@ export function ProjectForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="project-status">وضعیت</Label>
+            <Label htmlFor="project-status">{copy.status}</Label>
             <select
               id="project-status"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               className="msa-field flex h-10 w-full rounded-md border border-input px-3 py-2 text-sm"
             >
-              <option value="planning">در حال برنامه‌ریزی</option>
-              <option value="active">فعال</option>
-              <option value="completed">تکمیل‌شده</option>
-              <option value="suspended">متوقف</option>
+              <option value="planning">{copy.statusPlanning}</option>
+              <option value="active">{copy.statusActive}</option>
+              <option value="completed">{copy.statusCompleted}</option>
+              <option value="suspended">{copy.statusSuspended}</option>
             </select>
           </div>
         </div>
       </section>
 
       <section className="space-y-4">
-        {isPage ? <SectionTitle>طرف‌های قرارداد</SectionTitle> : null}
+        {isPage ? <SectionTitle>{copy.sectionParties}</SectionTitle> : null}
         <div className={gridClass}>
           <div className="space-y-2">
-            <Label htmlFor="project-client">کارفرما</Label>
+            <Label htmlFor="project-client">{copy.client}</Label>
             <Input
               id="project-client"
               name="new-project-client"
@@ -152,7 +161,7 @@ export function ProjectForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="project-contractor">پیمانکار اصلی</Label>
+            <Label htmlFor="project-contractor">{copy.contractor}</Label>
             <Input
               id="project-contractor"
               name="new-project-contractor"
@@ -163,7 +172,7 @@ export function ProjectForm({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="project-manager">مدیر پروژه</Label>
+            <Label htmlFor="project-manager">{copy.manager}</Label>
             <Input
               id="project-manager"
               name="new-project-manager"
@@ -177,9 +186,9 @@ export function ProjectForm({
       </section>
 
       <section className="space-y-4">
-        {isPage ? <SectionTitle>موقعیت</SectionTitle> : null}
+        {isPage ? <SectionTitle>{copy.sectionLocation}</SectionTitle> : null}
         <div className="space-y-2">
-          <Label htmlFor="project-address">آدرس و موقعیت مکانی</Label>
+          <Label htmlFor="project-address">{copy.address}</Label>
           <Textarea
             id="project-address"
             name="new-project-address"
@@ -187,25 +196,25 @@ export function ProjectForm({
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             rows={isPage ? 4 : 3}
-            placeholder="آدرس کامل، شهر، منطقه یا مختصات"
+            placeholder={copy.addressPlaceholder}
             required
           />
         </div>
       </section>
 
       <section className="space-y-4">
-        {isPage ? <SectionTitle>زمان‌بندی قرارداد</SectionTitle> : null}
+        {isPage ? <SectionTitle>{copy.sectionDates}</SectionTitle> : null}
         <div className={gridClass}>
           <ScheduleDateInput
             id="project-start-date"
-            label="تاریخ شروع پروژه"
+            label={copy.startDate}
             valueIso={startDate}
             onChangeIso={setStartDate}
             required
           />
           <ScheduleDateInput
             id="project-end-date"
-            label="تاریخ پایان قرارداد"
+            label={copy.endDate}
             valueIso={endDate}
             onChangeIso={setEndDate}
             required
@@ -215,7 +224,7 @@ export function ProjectForm({
 
       <Checkbox
         id="project-active"
-        label="پروژه فعال"
+        label={copy.active}
         checked={isActive}
         onChange={(e) => setIsActive(e.target.checked)}
       />
@@ -231,11 +240,11 @@ export function ProjectForm({
             onClick={onCancel}
             disabled={loading}
           >
-            انصراف
+            {copy.cancel}
           </Button>
         ) : null}
         <Button type="submit" disabled={loading} className="bg-[#C96A1B] hover:bg-[#A95312]">
-          {loading ? 'در حال ذخیره...' : submitLabel}
+          {loading ? copy.saving : submitLabel}
         </Button>
       </div>
     </form>

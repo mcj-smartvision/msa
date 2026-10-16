@@ -1,3 +1,11 @@
+/**
+ * @file features/procurement/components/procurement-dashboard.tsx
+ * @purpose کامپوننت UI — تدارکات (procurement-dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects تدارکات
+ * @depends-on shared/components/i18n/locale-provider, features/admin/components/shared, features/admin/components/stat-card, shared/components/common/ai-draft-viewer, shared/components/common/modal-overlay, shared/components/ui/button, shared/components/ui/badge, features/schedule/components/formatted-date, shared/hooks/use-supabase, shared/hooks/use-synced-project-id
+ */
+
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
@@ -105,7 +113,7 @@ export function ProcurementDashboard({
     return (
       <EmptyState
         title={t.title}
-        description="از ادمین بخواهید شما را به‌عنوان مسئول تدارکات روی یک پروژه منصوب کند."
+        description={t.emptyAssign}
       />
     )
   }

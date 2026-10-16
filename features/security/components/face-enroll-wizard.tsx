@@ -1,3 +1,11 @@
+/**
+ * @file features/security/components/face-enroll-wizard.tsx
+ * @purpose کامپوننت UI — امنیت و ثبت چهره (face-enroll-wizard)
+ * @safe-to-edit CAREFUL
+ * @affects امنیت و ثبت چهره
+ * @depends-on features/admin/components/shared, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/badge, shared/components/ui/select, features/attendance/lib/camera, features/attendance/lib/face-detect, features/attendance/lib/face-embed.client, features/attendance/lib/face-match, features/security/config
+ */
+
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -47,6 +55,7 @@ poseLabel,
 } from '@/features/attendance/lib/enroll-poses'
 import type { AttendanceEnrollment } from '@/features/attendance/lib/types'
 import { cn } from '@/shared/lib/utils'
+import { FACE_ENROLL_COPY as copy } from '@/features/security/config'
 
 type MemberOption = { userId: string; fullName: string; email: string | null }
 
@@ -169,7 +178,7 @@ export function FaceEnrollWizardPage({
       `/api/attendance/enrollments?projectId=${encodeURIComponent(projectId)}`
     )
     const json = await res.json()
-    if (!res.ok) throw new Error(json.error || 'بارگذاری ثبت‌نام‌ها ناموفق بود')
+    if (!res.ok) throw new Error(json.error || copy.loadEnrollmentsFailed)
     setEnrollments(json.enrollments as AttendanceEnrollment[])
   }, [projectId])
 
@@ -195,7 +204,7 @@ export function FaceEnrollWizardPage({
 
   useEffect(() => {
     void loadEnrollments().catch((e) =>
-      setError(e instanceof Error ? e.message : 'خطای بارگذاری')
+      setError(e instanceof Error ? e.message : copy.loadError)
     )
     void warmFaceEmbedder().catch(() => undefined)
     void listBrowserCameras()
@@ -232,10 +241,10 @@ export function FaceEnrollWizardPage({
 
   async function saveCapturedSamples(samples: CapturedSample[]) {
     if (!userId || samples.length < ENROLL_MIN_SAMPLES) {
-      throw new Error(`حداقل ${ENROLL_MIN_SAMPLES} نمونه متنوع لازم است`)
+      throw new Error(copy.minSamplesNeeded(ENROLL_MIN_SAMPLES))
     }
     setPhase('saving')
-    setStatus('ذخیره بیومتریک…')
+    setStatus(copy.savingBiometric)
     setError(null)
 
     const res = await fetch('/api/attendance/enrollments', {
@@ -261,14 +270,14 @@ export function FaceEnrollWizardPage({
     } catch {
       throw new Error(
         res.status === 413
-          ? 'حجم عکس‌ها زیاد بود — تلاش مجدد ذخیره را بزنید'
-          : `پاسخ نامعتبر از سرور (HTTP ${res.status})`
+          ? copy.photosTooLarge
+          : copy.invalidServerResponse(res.status)
       )
     }
-    if (!res.ok) throw new Error(json.error || `ذخیره ناموفق (HTTP ${res.status})`)
+    if (!res.ok) throw new Error(json.error || copy.saveFailedHttp(res.status))
 
     setPhase('done')
-    setStatus(`ثبت «${selectedMember?.fullName}» با ${samples.length} نمونه متنوع انجام شد`)
+    setStatus(copy.enrolledWithSamples(selectedMember?.fullName, samples.length))
     await loadEnrollments()
     stopCamera()
   }
@@ -319,7 +328,7 @@ export function FaceEnrollWizardPage({
 
   async function runFreeScan() {
     if (!userId) {
-      setError('ابتدا نام فرد را انتخاب کنید')
+      setError(copy.pickPersonFirst)
       return
     }
     setError(null)
@@ -328,7 +337,7 @@ export function FaceEnrollWizardPage({
     setPhase('running')
     setSecondsLeft(Math.ceil(ENROLL_SESSION_MS / 1000))
     setLiveTip(ENROLL_LIVE_TIPS_FA[0])
-    setStatus('آماده‌سازی مدل FaceNet (محلی)…')
+    setStatus(copy.warmingFacenet)
 
     const samples: CapturedSample[] = []
     let failStreak = { no_face: 0, embed_fail: 0, not_diverse: 0 }
@@ -336,7 +345,7 @@ export function FaceEnrollWizardPage({
       await warmFaceEmbedder()
       if (!previewOn) await startCamera(deviceId || undefined)
 
-      setStatus('صورت را در قاب نگه دار و سر را آرام بچرخان')
+      setStatus(copy.holdFaceTurnHead)
       const started = performance.now()
       let tipIdx = 0
       let lastTipAt = started
@@ -365,21 +374,21 @@ export function FaceEnrollWizardPage({
               samples.push(sample)
               setCaptured([...samples])
               failStreak = { no_face: 0, embed_fail: 0, not_diverse: 0 }
-              setStatus(`نمونه ${samples.length}/${ENROLL_MAX_SAMPLES} ثبت شد`)
+              setStatus(copy.sampleRecorded(samples.length, ENROLL_MAX_SAMPLES))
             } else if (reason === 'no_face' || reason === 'embed_fail') {
               if (reason === 'no_face') failStreak.no_face++
               else failStreak.embed_fail++
               if (samples.length === 0) {
                 setStatus(
                   failStreak.embed_fail > failStreak.no_face
-                    ? 'چهره پیدا شد ولی استخراج بیومتریک نشد — نور را بهتر کن، روبه‌رو بایست'
-                    : 'صورت در قاب دیده نمی‌شود — نزدیک‌تر و روبه‌روی دوربین بایست'
+                    ? copy.embedFailedHint
+                    : copy.noFaceHint
                 )
               }
             } else if (reason === 'not_diverse') {
               failStreak.not_diverse++
               setStatus(
-                `نمونه ${samples.length}/${ENROLL_MAX_SAMPLES} — سر را کمی بیشتر بچرخان تا زاویه جدید ثبت شود`
+                copy.needMorePose(samples.length, ENROLL_MAX_SAMPLES)
               )
             }
           } finally {
@@ -390,21 +399,21 @@ export function FaceEnrollWizardPage({
         await sleep(60)
       }
 
-      if (abortRef.current) throw new Error('لغو شد')
+      if (abortRef.current) throw new Error(copy.cancelled)
 
       if (samples.length < ENROLL_MIN_SAMPLES) {
         setCaptured(samples)
         setPhase('setup')
         const hint =
           samples.length === 0
-            ? 'هیچ نمونه‌ای ثبت نشد. نور محیط را بیشتر کن، صورت را کامل در قاب بگذار و صفحه را یک‌بار رفرش کن.'
-            : `فقط ${samples.length} نمونه متنوع گرفته شد (حداقل ${ENROLL_MIN_SAMPLES}). سر را بیشتر بچرخان و دوباره شروع کن.`
+            ? copy.noSamplesHint
+            : copy.tooFewSamples(samples.length, ENROLL_MIN_SAMPLES)
         throw new Error(hint)
       }
 
       await saveCapturedSamples(samples)
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'ثبت ناموفق'
+      const message = e instanceof Error ? e.message : copy.enrollFailed
       setError(message)
       setStatus(null)
       if (samples.length >= ENROLL_MIN_SAMPLES) {
@@ -420,7 +429,7 @@ export function FaceEnrollWizardPage({
 
   async function retrySave() {
     if (captured.length < ENROLL_MIN_SAMPLES) {
-      setError('نمونه‌ای برای ذخیره نمانده — دوباره شروع کنید')
+      setError(copy.noSamplesToSave)
       setPhase('setup')
       return
     }
@@ -428,7 +437,7 @@ export function FaceEnrollWizardPage({
       await saveCapturedSamples(captured)
     } catch (e) {
       setPhase('retry')
-      setError(e instanceof Error ? e.message : 'ذخیره ناموفق')
+      setError(e instanceof Error ? e.message : copy.saveFailed)
       setStatus(null)
     }
   }
@@ -437,12 +446,12 @@ export function FaceEnrollWizardPage({
     abortRef.current = true
     setPhase('setup')
     setSecondsLeft(0)
-    setStatus('لغو شد')
+    setStatus(copy.cancelled)
     stopCamera()
   }
 
   async function removePerson(enrollment: AttendanceEnrollment) {
-    if (!confirm(`حذف کامل ثبت بیومتریک «${enrollment.personName}»؟`)) return
+    if (!confirm(copy.confirmDeletePerson(enrollment.personName))) return
     setBusyId(enrollment.id)
     try {
       const qs = new URLSearchParams({
@@ -451,17 +460,17 @@ export function FaceEnrollWizardPage({
       })
       const res = await fetch(`/api/attendance/enrollments?${qs}`, { method: 'DELETE' })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'حذف ناموفق')
+      if (!res.ok) throw new Error(json.error || copy.deleteFailed)
       await loadEnrollments()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'حذف ناموفق')
+      setError(e instanceof Error ? e.message : copy.deleteFailed)
     } finally {
       setBusyId(null)
     }
   }
 
   async function removeSample(enrollment: AttendanceEnrollment, sampleId: string) {
-    if (!confirm('حذف این عکس نمونه؟')) return
+    if (!confirm(copy.confirmDeleteSample)) return
     setBusyId(`${enrollment.id}:${sampleId}`)
     try {
       const qs = new URLSearchParams({
@@ -471,10 +480,10 @@ export function FaceEnrollWizardPage({
       })
       const res = await fetch(`/api/attendance/enrollments?${qs}`, { method: 'DELETE' })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'حذف نمونه ناموفق')
+      if (!res.ok) throw new Error(json.error || copy.deleteSampleFailed)
       await loadEnrollments()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'حذف نمونه ناموفق')
+      setError(e instanceof Error ? e.message : copy.deleteSampleFailed)
     } finally {
       setBusyId(null)
     }
@@ -486,13 +495,13 @@ export function FaceEnrollWizardPage({
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageHeader
-          title="ثبت بیومتریک افراد"
-          description={`${projectName} — اسکن 30 ثانیه‌ای خودکار؛ سر را آزادانه بچرخان`}
+          title={copy.title}
+          description={copy.scanDescription(projectName)}
         />
         <Button asChild variant="outline">
           <Link href="/dashboard/security">
             <ArrowRight className="h-4 w-4 ml-1" />
-            بازگشت به گیت
+            {copy.backToGate}
           </Link>
         </Button>
       </div>
@@ -504,29 +513,29 @@ export function FaceEnrollWizardPage({
       ) : null}
 
       <SectionCard
-        title="ثبت فرد جدید"
-        description="نام را انتخاب کن و شروع را بزن. حدود 30 ثانیه مستقیم نگاه کن و سر را بالا/پایین/چپ/راست بچرخان — سیستم خودش نمونه‌های متنوع را برمی‌دارد."
+        title={copy.newPersonTitle}
+        description={copy.newPersonDescription}
       >
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>جستجوی نام</Label>
+              <Label>{copy.searchName}</Label>
               <Input
                 value={memberQuery}
                 onChange={(e) => setMemberQuery(e.target.value)}
-                placeholder="نام عضو…"
+                placeholder={copy.memberPlaceholder}
                 disabled={isRunning}
               />
             </div>
             <div className="space-y-2">
-              <Label>فرد برای ثبت</Label>
+              <Label>{copy.personToEnroll}</Label>
               <Select
                 value={userId || undefined}
                 onValueChange={setUserId}
                 disabled={isRunning}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="انتخاب عضو پروژه" />
+                  <SelectValue placeholder={copy.pickProjectMember} />
                 </SelectTrigger>
                 <SelectContent>
                   {filteredMembers.map((m) => {
@@ -535,9 +544,9 @@ export function FaceEnrollWizardPage({
                       <SelectItem key={m.userId} value={m.userId}>
                         {m.fullName}
                         {enrolled?.hasEmbedding
-                          ? ' (ثبت‌شده — بازنویسی)'
+                          ? copy.enrolledOverwrite
                           : enrolled
-                            ? ' (ناقص)'
+                            ? copy.incomplete
                             : ''}
                       </SelectItem>
                     )
@@ -549,14 +558,14 @@ export function FaceEnrollWizardPage({
 
           {cameras.length > 1 ? (
             <div className="space-y-2">
-              <Label>دوربین</Label>
+              <Label>{copy.camera}</Label>
               <Select
                 value={deviceId || undefined}
                 onValueChange={setDeviceId}
                 disabled={isRunning}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="انتخاب دوربین" />
+                  <SelectValue placeholder={copy.pickCamera} />
                 </SelectTrigger>
                 <SelectContent>
                   {cameras.map((c) => (
@@ -578,7 +587,7 @@ export function FaceEnrollWizardPage({
                 onClick={() => void runFreeScan()}
               >
                 <Play className="h-4 w-4 ml-1" />
-                شروع اسکن 30 ثانیه‌ای
+                {copy.startScan}
               </Button>
             ) : null}
             {phase === 'retry' ? (
@@ -588,7 +597,7 @@ export function FaceEnrollWizardPage({
                   className="bg-emerald-700 hover:bg-emerald-800"
                   onClick={() => void retrySave()}
                 >
-                  تلاش مجدد ذخیره ({captured.length} نمونه)
+                  {copy.retrySave(captured.length)}
                 </Button>
                 <Button
                   type="button"
@@ -599,7 +608,7 @@ export function FaceEnrollWizardPage({
                     setError(null)
                   }}
                 >
-                  شروع از اول
+                  {copy.startOver}
                 </Button>
               </>
             ) : null}
@@ -610,7 +619,7 @@ export function FaceEnrollWizardPage({
                 onClick={cancelRunning}
                 disabled={phase === 'saving'}
               >
-                لغو
+                {copy.cancel}
               </Button>
             ) : null}
             {selectedMember ? (
@@ -640,8 +649,8 @@ export function FaceEnrollWizardPage({
                   <div className="rounded-xl bg-black/55 px-3 py-2 text-white max-w-[60%]">
                     <p className="text-sm font-semibold text-emerald-300">{liveTip}</p>
                     <p className="text-[11px] text-white/75 mt-0.5">
-                      {captured.length}/{ENROLL_MAX_SAMPLES} نمونه
-                      {captured.length >= ENROLL_MIN_SAMPLES ? ' · آماده ذخیره' : ''}
+                      {copy.sampleProgress(captured.length, ENROLL_MAX_SAMPLES)}
+                      {captured.length >= ENROLL_MIN_SAMPLES ? copy.readyToSave : ''}
                     </p>
                   </div>
                   <EnrollProgressRing
@@ -657,14 +666,14 @@ export function FaceEnrollWizardPage({
             {phase === 'saving' ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/55 text-white">
                 <Loader2 className="h-8 w-8 animate-spin" />
-                <span>در حال ذخیره…</span>
+                <span>{copy.saving}</span>
               </div>
             ) : null}
 
             {phase === 'setup' && !previewOn ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/70 text-sm px-6 text-center">
                 <Camera className="h-8 w-8" />
-                <span>نام را انتخاب کن و «شروع اسکن 30 ثانیه‌ای» را بزن</span>
+                <span>{copy.startHint}</span>
               </div>
             ) : null}
 
@@ -676,7 +685,7 @@ export function FaceEnrollWizardPage({
                   secondsLeft={0}
                   complete
                 />
-                <span className="font-semibold">ثبت کامل شد</span>
+                <span className="font-semibold">{copy.enrollComplete}</span>
               </div>
             ) : null}
           </div>
@@ -707,12 +716,12 @@ export function FaceEnrollWizardPage({
       </SectionCard>
 
       <SectionCard
-        title="افراد ثبت‌شده"
-        description="نام و عکس‌های نمونه‌ها را ببینید؛ می‌توانید یک عکس یا کل فرد را حذف کنید"
+        title={copy.enrolledPeople}
+        description={copy.enrolledPeopleDescription}
       >
         {enrollments.length === 0 ? (
           <p className="text-sm text-muted-foreground py-6 text-center">
-            هنوز کسی ثبت نشده — از بخش بالا شروع کنید
+            {copy.nobodyEnrolled}
           </p>
         ) : (
           <ul className="space-y-4">
@@ -725,8 +734,8 @@ export function FaceEnrollWizardPage({
                       <p className="font-semibold truncate">{e.personName || e.userId}</p>
                       <p className="text-xs text-muted-foreground">
                         {e.hasEmbedding
-                          ? `${e.samples?.length ?? e.sampleCount ?? 0} نمونه · بیومتریک فعال`
-                          : 'بیومتریک ناقص — دوباره ثبت کنید'}
+                          ? copy.activeBiometric(e.samples?.length ?? e.sampleCount ?? 0)
+                          : copy.incompleteBiometric}
                       </p>
                     </div>
                     <Button
@@ -741,7 +750,7 @@ export function FaceEnrollWizardPage({
                       ) : (
                         <Trash2 className="h-3.5 w-3.5 ml-1" />
                       )}
-                      حذف فرد
+                      {copy.deletePerson}
                     </Button>
                   </div>
 
@@ -753,8 +762,8 @@ export function FaceEnrollWizardPage({
                             {
                               id: 'primary',
                               pose: 'straight',
-                              labelFa: 'اصلی',
-                              labelEn: 'اصلی',
+                              labelFa: copy.primarySample,
+                              labelEn: copy.primarySample,
                               imageUrl: e.imageUrl,
                             },
                           ]
@@ -783,7 +792,7 @@ export function FaceEnrollWizardPage({
                                 type="button"
                                 className="text-rose-600 hover:text-rose-800 p-0.5"
                                 disabled={sampleBusy || isRunning}
-                                title="حذف این عکس"
+                                title={copy.deleteThisPhoto}
                                 onClick={() => void removeSample(e, sample.id)}
                               >
                                 {sampleBusy ? (

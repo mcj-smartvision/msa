@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/update-schedule-task-fields.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (update-schedule-task-fields)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/dates, features/schedule/lib/cascade-successors, features/schedule/lib/gantt-parent-expand, features/schedule/lib/predecessor-format, shared/types/schedule, features/site-ops/lib/auth, features/workshop/lib/service, features/workshop/lib/domain, features/schedule/lib/weight-consistency
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { toIsoDateOnly } from '@/features/schedule/lib/dates'
 import {

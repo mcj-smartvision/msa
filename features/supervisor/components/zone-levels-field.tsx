@@ -1,9 +1,21 @@
+/**
+ * @file features/supervisor/components/zone-levels-field.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (zone-levels-field)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on shared/components/ui/button, shared/components/ui/input, shared/components/ui/label
+ */
+
 'use client'
 
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
+import { SUPERVISOR_PUNCT } from '@/features/supervisor/config'
+import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+
+const t = getSiteSupervisorMessages('fa')
 
 type ZoneLevelsFieldProps = {
   levels: string[]
@@ -30,7 +42,7 @@ export function ZoneLevelsField({ levels, onChange, idPrefix = 'zone-level' }: Z
 
   return (
     <div className="space-y-2" dir="rtl" lang="fa">
-      <Label className="text-sm font-medium text-slate-700">تراز زون</Label>
+      <Label className="text-sm font-medium text-slate-700">{t.zoneLevel}</Label>
       <div className="space-y-2">
         {levels.map((level, index) => {
           const isLast = index === levels.length - 1
@@ -42,7 +54,7 @@ export function ZoneLevelsField({ levels, onChange, idPrefix = 'zone-level' }: Z
                 id={`${idPrefix}-${index}`}
                 value={level}
                 onChange={(e) => updateLevel(index, e.target.value)}
-                placeholder="مثلاً 0.00 تا 3.0"
+                placeholder={t.levelExample}
                 className="h-10 w-[3cm] min-w-[3cm] max-w-[3cm] shrink-0 bg-white"
               />
               {isLast ? (
@@ -54,17 +66,17 @@ export function ZoneLevelsField({ levels, onChange, idPrefix = 'zone-level' }: Z
                   onClick={addLevel}
                 >
                   <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-                  افزودن تراز
+                  {t.addLevel}
                 </Button>
               ) : null}
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                title="حذف این تراز"
+                title={t.removeThisLevel}
                 className="h-10 w-10 shrink-0 border-rose-200 bg-rose-50/80 text-rose-600 hover:bg-rose-100 hover:text-rose-700 hover:border-rose-300"
                 onClick={() => removeLevel(index)}
-                aria-label="حذف تراز"
+                aria-label={t.removeLevel}
                 disabled={!canRemove}
               >
                 <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -80,5 +92,5 @@ export function ZoneLevelsField({ levels, onChange, idPrefix = 'zone-level' }: Z
 export function formatZoneLevels(levels?: string[]): string {
   const trimmed = (levels ?? []).map((l) => l.trim()).filter(Boolean)
   if (trimmed.length === 0) return '—'
-  return trimmed.join('، ')
+  return trimmed.join(SUPERVISOR_PUNCT.listSep)
 }

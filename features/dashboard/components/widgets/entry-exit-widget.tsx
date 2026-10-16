@@ -1,3 +1,11 @@
+/**
+ * @file features/dashboard/components/widgets/entry-exit-widget.tsx
+ * @purpose کامپوننت UI — داشبورد نقش‌ها و ویجت‌ها (entry-exit-widget)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد نقش‌ها و ویجت‌ها
+ * @depends-on shared/types/dashboard, features/dashboard/components/widgets/widget-shell, shared/components/ui/button, features/attendance/lib/types
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -6,6 +14,8 @@ import { WidgetShell } from '@/features/dashboard/components/widgets/widget-shel
 import { Button } from '@/shared/components/ui/button'
 import Link from 'next/link'
 import type { AttendanceTransit } from '@/features/attendance/lib/types'
+import { ENTRY_EXIT_COPY } from '@/features/dashboard/config'
+import { COMMON_UI } from '@/shared/lib/i18n/common-ui'
 
 export function EntryExitWidget({ context }: { context: WidgetRenderContext }) {
   const [logs, setLogs] = useState<AttendanceTransit[]>([])
@@ -23,11 +33,11 @@ export function EntryExitWidget({ context }: { context: WidgetRenderContext }) {
     fetch(`/api/attendance/transit?projectId=${encodeURIComponent(context.projectId)}&limit=8`)
       .then(async (res) => {
         const json = await res.json()
-        if (!res.ok) throw new Error(json.error || 'بارگذاری ناموفق بود')
+        if (!res.ok) throw new Error(json.error || COMMON_UI.loadingFailed)
         if (!cancelled) setLogs(json.transits as AttendanceTransit[])
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'خطا')
+        if (!cancelled) setError(e instanceof Error ? e.message : COMMON_UI.error)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -39,22 +49,22 @@ export function EntryExitWidget({ context }: { context: WidgetRenderContext }) {
 
   return (
     <WidgetShell
-      title="ثبت ورود / خروج"
-      description="تردد گیت امروز"
+      title={ENTRY_EXIT_COPY.title}
+      description={ENTRY_EXIT_COPY.description}
       action={
         <Button size="sm" variant="outline" asChild>
-          <Link href="/dashboard/security">باز کردن گیت</Link>
+          <Link href="/dashboard/security">{ENTRY_EXIT_COPY.openGate}</Link>
         </Button>
       }
     >
       {!context.projectId ? (
-        <p className="text-sm text-muted-foreground">پروژه‌ای انتخاب نشده است.</p>
+        <p className="text-sm text-muted-foreground">{ENTRY_EXIT_COPY.noProject}</p>
       ) : loading ? (
-        <p className="text-sm text-muted-foreground">در حال بارگذاری…</p>
+        <p className="text-sm text-muted-foreground">{ENTRY_EXIT_COPY.loading}</p>
       ) : error ? (
         <p className="text-sm text-destructive">{error}</p>
       ) : logs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">هنوز ترددی ثبت نشده است.</p>
+        <p className="text-sm text-muted-foreground">{ENTRY_EXIT_COPY.empty}</p>
       ) : (
         <ul className="space-y-2">
           {logs.map((log) => (
@@ -74,7 +84,7 @@ export function EntryExitWidget({ context }: { context: WidgetRenderContext }) {
                       : 'text-amber-600 font-medium'
                   }
                 >
-                  {log.direction === 'IN' ? 'ورود' : log.direction === 'OUT' ? 'خروج' : log.direction}
+                  {log.direction === 'IN' ? ENTRY_EXIT_COPY.in : log.direction === 'OUT' ? ENTRY_EXIT_COPY.out : log.direction}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {new Date(log.occurredAt).toLocaleTimeString([], {

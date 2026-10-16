@@ -1,3 +1,11 @@
+/**
+ * @file app/api/technical-office/drawings/[id]/meta/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, shared/lib/dashboard/user-context, features/technical-office/lib/drawings
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { fetchDashboardUserContext } from '@/shared/lib/dashboard/user-context'

@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/components/choose-accountant-shell-client.tsx
+ * @purpose کامپوننت UI — حسابداری، هزینه،overhead و صورت‌وضعیت (choose-accountant-shell-client)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on shared/components/i18n/locale-provider, shared/lib/dashboard/accountant-shell, shared/components/brand/brand-logo, shared/lib/utils
+ */
+
 'use client'
 
 import { useRouter } from 'next/navigation'
@@ -8,6 +16,7 @@ ACCOUNTANT_DESKTOP_PATH,
 ACCOUNTANT_MOBILE_PATH,
 } from '@/shared/lib/dashboard/accountant-shell'
 import { BrandLogo } from '@/shared/components/brand/brand-logo'
+import { ACCOUNTANT_SHELL_COPY } from '@/features/finance/config'
 import { cn } from '@/shared/lib/utils'
 
 export function ChooseAccountantShellClient() {
@@ -16,15 +25,7 @@ export function ChooseAccountantShellClient() {
   const isFa = locale === 'fa' || locale === 'ar'
 
   const copy = isFa
-    ? {
-        title: 'نحوه ورود را انتخاب کنید',
-        subtitle: 'حساب شما حسابدار است. با کدام نسخه وارد می‌شوید؟',
-        mobileTitle: 'نسخه موبایل',
-        mobileDesc: 'داشبورد لمسی بهینه‌شده برای گوشی و تبلت',
-        desktopTitle: 'نسخه ویندوز',
-        desktopDesc: 'داشبورد کامل دسکتاپ برای کار با مانیتور و کیبورد',
-        continue: 'ادامه',
-      }
+    ? ACCOUNTANT_SHELL_COPY
     : {
         title: 'Choose how to continue',
         subtitle: 'Your account is an accountant. Which version do you want?',
@@ -33,6 +34,7 @@ export function ChooseAccountantShellClient() {
         desktopTitle: 'Windows version',
         desktopDesc: 'Full desktop dashboard for monitor and keyboard',
         continue: 'Continue',
+        switchLater: 'You can switch versions later from the app.',
       }
 
   function go(path: string) {
@@ -91,11 +93,7 @@ export function ChooseAccountantShellClient() {
           </button>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground">
-          {isFa
-            ? 'بعداً هم می‌توانید از منو بین نسخه‌ها جابه‌جا شوید.'
-            : 'You can switch versions later from the app.'}
-        </p>
+        <p className="text-center text-xs text-muted-foreground">{copy.switchLater}</p>
       </div>
     </div>
   )

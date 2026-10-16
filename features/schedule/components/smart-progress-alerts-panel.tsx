@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/components/smart-progress-alerts-panel.tsx
+ * @purpose کامپوننت UI — زمان‌بندی، WBS و گانت (smart-progress-alerts-panel)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/lib/utils, features/project-store/use-store-progress
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -14,6 +22,7 @@ Settings2,
 } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { storePercentOf, useStoreProgress } from '@/features/project-store/use-store-progress'
+import { SCHEDULE_ALERTS_COPY } from '@/features/schedule/config'
 
 type PaceStatus = 'good' | 'warning' | 'bad'
 type AlertQuadrant = 'urgent' | 'normal_watch' | 'soft_notice' | 'no_display'
@@ -77,8 +86,8 @@ function rowBg(q: AlertQuadrant | null, physicalPercent?: number): string {
 }
 
 function quadrantBadgeClass(q: AlertQuadrant | null, label?: string): string {
-  if (label === 'شروع‌نشده') return 'bg-slate-200 text-slate-700 border-slate-300'
-  if (label === 'تمام‌شده') return 'bg-emerald-100 text-emerald-900 border-emerald-300'
+  if (label === SCHEDULE_ALERTS_COPY.notStarted) return 'bg-slate-200 text-slate-700 border-slate-300'
+  if (label === SCHEDULE_ALERTS_COPY.finished) return 'bg-emerald-100 text-emerald-900 border-emerald-300'
   if (q === 'urgent') return 'bg-rose-600 text-white border-rose-700'
   if (q === 'normal_watch') return 'bg-sky-200 text-sky-950 border-sky-400'
   if (q === 'soft_notice') return 'bg-amber-200 text-amber-950 border-amber-400'
@@ -99,23 +108,25 @@ function ganttTaskHref(projectId: string, taskId: string, asSupervisor: boolean)
 function CompactLegend() {
   return (
     <div className="rounded-lg border border-slate-200 bg-white px-2 py-2">
-      <div className="mb-1.5 text-[11px] font-bold text-slate-800">رنگ فعالیت = شناوری CPM × نرخ پیشروی</div>
+      <div className="mb-1.5 text-[11px] font-bold text-slate-800">
+        {SCHEDULE_ALERTS_COPY.legendTitle}
+      </div>
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         <div className="rounded border border-rose-400 bg-rose-100 px-2 py-1.5 text-[10px] text-rose-950">
-          <div className="font-bold">قرمز · فوری</div>
-          <div>بحرانی + کند</div>
+          <div className="font-bold">{SCHEDULE_ALERTS_COPY.redUrgent}</div>
+          <div>{SCHEDULE_ALERTS_COPY.redHint}</div>
         </div>
         <div className="rounded border border-sky-300 bg-sky-50 px-2 py-1.5 text-[10px] text-sky-950">
-          <div className="font-bold">آبی · رصد عادی</div>
-          <div>بحرانی + خوب</div>
+          <div className="font-bold">{SCHEDULE_ALERTS_COPY.blueWatch}</div>
+          <div>{SCHEDULE_ALERTS_COPY.blueHint}</div>
         </div>
         <div className="rounded border border-amber-400 bg-amber-50 px-2 py-1.5 text-[10px] text-amber-950">
-          <div className="font-bold">زرد · اطلاع ملایم</div>
-          <div>شناوری زیاد + کند</div>
+          <div className="font-bold">{SCHEDULE_ALERTS_COPY.yellowSoft}</div>
+          <div>{SCHEDULE_ALERTS_COPY.yellowHint}</div>
         </div>
         <div className="rounded border border-emerald-300 bg-emerald-50/80 px-2 py-1.5 text-[10px] text-emerald-900">
-          <div className="font-bold">سبز · عادی</div>
-          <div>شناوری زیاد + خوب</div>
+          <div className="font-bold">{SCHEDULE_ALERTS_COPY.greenNormal}</div>
+          <div>{SCHEDULE_ALERTS_COPY.greenHint}</div>
         </div>
       </div>
     </div>
@@ -164,11 +175,11 @@ function ProgressAlertSettingsForm({
         }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'ذخیره ناموفق بود')
+      if (!res.ok) throw new Error(json.error || SCHEDULE_ALERTS_COPY.saveFailed)
       onSaved()
       setOpen(false)
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'خطا')
+      setErr(e instanceof Error ? e.message : SCHEDULE_ALERTS_COPY.error)
     } finally {
       setSaving(false)
     }
@@ -183,11 +194,14 @@ function ProgressAlertSettingsForm({
       >
         <span className="inline-flex items-center gap-2">
           <Settings2 className="h-4 w-4 text-slate-600" />
-          آستانه‌ها
+          {SCHEDULE_ALERTS_COPY.thresholds}
           {settings ? (
             <span className="text-[10px] font-normal text-slate-500 tabular-nums">
-              خوب≥{settings.paceGoodThreshold} · هشدار≥{settings.paceWarningThreshold} ·
-              نزدیک‌بحرانی≤{settings.nearCriticalDays}روز
+              {SCHEDULE_ALERTS_COPY.thresholdSummary(
+                settings.paceGoodThreshold,
+                settings.paceWarningThreshold,
+                settings.nearCriticalDays
+              )}
             </span>
           ) : null}
         </span>
@@ -241,7 +255,7 @@ function ProgressAlertSettingsForm({
             disabled={disabled || saving}
             className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-white disabled:opacity-40"
           >
-            {saving ? '…' : 'ذخیره'}
+            {saving ? SCHEDULE_ALERTS_COPY.savingDots : SCHEDULE_ALERTS_COPY.save}
           </button>
         </form>
       ) : null}
@@ -267,7 +281,7 @@ function ColoredActivityTable({
   if (visible.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
-        سر‌تیتری در برنامه زمان‌بندی پیدا نشد.
+        {SCHEDULE_ALERTS_COPY.emptyHeaders}
       </div>
     )
   }
@@ -277,14 +291,14 @@ function ColoredActivityTable({
       <table className="min-w-full text-sm">
         <thead>
           <tr className="sticky top-0 z-10 border-b bg-slate-100 text-[11px] text-slate-700">
-            <th className="px-2 py-2 text-center font-semibold">رنگ / دسته</th>
+            <th className="px-2 py-2 text-center font-semibold">{SCHEDULE_ALERTS_COPY.colColor}</th>
             <th className="px-2 py-2 text-center font-semibold">WBS</th>
-            <th className="px-2 py-2 text-right font-semibold">سر‌تیتر / مادر</th>
-            <th className="px-2 py-2 text-center font-semibold">پیشرفت %</th>
-            <th className="px-2 py-2 text-center font-semibold">شناوری (CPM)</th>
-            <th className="px-2 py-2 text-center font-semibold">نرخ پیشروی</th>
-            <th className="px-2 py-2 text-center font-semibold">شروع واقعی</th>
-            <th className="px-2 py-2 text-center font-semibold">گانت</th>
+            <th className="px-2 py-2 text-right font-semibold">{SCHEDULE_ALERTS_COPY.colHeader}</th>
+            <th className="px-2 py-2 text-center font-semibold">{SCHEDULE_ALERTS_COPY.colProgress}</th>
+            <th className="px-2 py-2 text-center font-semibold">{SCHEDULE_ALERTS_COPY.colFloat}</th>
+            <th className="px-2 py-2 text-center font-semibold">{SCHEDULE_ALERTS_COPY.colPace}</th>
+            <th className="px-2 py-2 text-center font-semibold">{SCHEDULE_ALERTS_COPY.colActualStart}</th>
+            <th className="px-2 py-2 text-center font-semibold">{SCHEDULE_ALERTS_COPY.colGantt}</th>
           </tr>
         </thead>
         <tbody>
@@ -310,7 +324,7 @@ function ColoredActivityTable({
                 <span className="font-semibold text-slate-900">{row.name}</span>
                 {row.isCritical ? (
                   <span className="ms-1 rounded bg-rose-700 px-1 py-0.5 text-[9px] text-white">
-                    بحرانی
+                    {SCHEDULE_ALERTS_COPY.critical}
                   </span>
                 ) : null}
               </td>
@@ -332,7 +346,7 @@ function ColoredActivityTable({
                   className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white/80 px-2 py-1 text-[11px] font-medium hover:bg-white"
                 >
                   <ExternalLink className="h-3 w-3" />
-                  گانت
+                  {SCHEDULE_ALERTS_COPY.gantt}
                 </Link>
               </td>
             </tr>
@@ -364,10 +378,10 @@ export function SmartProgressAlertsPanel({ projectId }: { projectId: string }) {
         { cache: 'no-store' }
       )
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'بارگذاری ناموفق بود')
+      if (!res.ok) throw new Error(json.error || SCHEDULE_ALERTS_COPY.loadFailed)
       setData(json)
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'خطا')
+      setMessage(e instanceof Error ? e.message : SCHEDULE_ALERTS_COPY.error)
       setData(null)
     } finally {
       setLoading(false)
@@ -390,19 +404,17 @@ export function SmartProgressAlertsPanel({ projectId }: { projectId: string }) {
       if (res.ok) {
         const urgent = json.urgentAlertsCreated ?? 0
         setMessage(
-          `فعالیت‌های دارای پیشرفت رنگ‌بندی شدند: ${json.inProgress ?? 0} در حال اجرا` +
-            (urgent > 0 ? ` · ${urgent} هشدار فوری` : '')
+          SCHEDULE_ALERTS_COPY.colored(json.inProgress ?? 0) +
+            (urgent > 0 ? SCHEDULE_ALERTS_COPY.urgentAlerts(urgent) : '')
         )
         await load()
       } else if (typeof json.error === 'string' && /pace_ratio|does not exist/i.test(json.error)) {
-        setMessage(
-          'لیست از درصد پیشرفت زنده بارگذاری شد. برای ذخیره ستون‌های نرخ، مایگریشن 77 و 78 را اجرا کنید.'
-        )
+        setMessage(SCHEDULE_ALERTS_COPY.liveListHint)
       } else if (json.error) {
         setMessage(String(json.error))
       }
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'خطا')
+      setMessage(e instanceof Error ? e.message : SCHEDULE_ALERTS_COPY.error)
     } finally {
       setRecomputing(false)
     }
@@ -447,14 +459,15 @@ export function SmartProgressAlertsPanel({ projectId }: { projectId: string }) {
     <div className="space-y-3 w-full" dir="rtl">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">هشدار هوشمند پیشرفت</h2>
+          <h2 className="text-lg font-bold text-slate-900">{SCHEDULE_ALERTS_COPY.title}</h2>
           <p className="mt-1 max-w-2xl text-sm text-slate-600 leading-relaxed">
-            <strong className="font-semibold">همهٔ سر‌تیترها / مادرهای</strong> برنامه زمان‌بندی
-            اینجا می‌آیند (بدون فرزندان برگ). رنگ هر ردیف از ترکیب شناوری CPM و نرخ پیشروی همان
-            سر‌تیتر است.
+            <strong className="font-semibold">{SCHEDULE_ALERTS_COPY.descriptionLead}</strong>
+            {SCHEDULE_ALERTS_COPY.descriptionRest}
           </p>
           {data?.statusDate ? (
-            <p className="mt-1 text-xs text-slate-500 tabular-nums">تاریخ وضعیت: {data.statusDate}</p>
+            <p className="mt-1 text-xs text-slate-500 tabular-nums">
+              {SCHEDULE_ALERTS_COPY.statusDate(data.statusDate)}
+            </p>
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -465,7 +478,7 @@ export function SmartProgressAlertsPanel({ projectId }: { projectId: string }) {
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:opacity-40"
           >
             <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
-            بروزرسانی
+            {SCHEDULE_ALERTS_COPY.refresh}
           </button>
           <button
             type="button"
@@ -474,7 +487,7 @@ export function SmartProgressAlertsPanel({ projectId }: { projectId: string }) {
             className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-40"
           >
             {recomputing ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
-            همگام با برنامهٔ ویرایش‌شده
+            {SCHEDULE_ALERTS_COPY.syncEdited}
           </button>
         </div>
       </div>
@@ -484,29 +497,30 @@ export function SmartProgressAlertsPanel({ projectId }: { projectId: string }) {
       {counts ? (
         <div className="flex flex-wrap gap-2 text-[11px]">
           <span className="rounded-full border border-rose-300 bg-rose-100 px-2.5 py-1 font-semibold text-rose-950">
-            فوری {counts.urgent ?? 0}
+            {SCHEDULE_ALERTS_COPY.urgentCount(counts.urgent ?? 0)}
           </span>
           <span className="rounded-full border border-sky-300 bg-sky-50 px-2.5 py-1 font-semibold text-sky-950">
-            رصد عادی {counts.normalWatch ?? 0}
+            {SCHEDULE_ALERTS_COPY.watchCount(counts.normalWatch ?? 0)}
           </span>
           <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 font-semibold text-amber-950">
-            اطلاع ملایم {counts.softNotice ?? 0}
+            {SCHEDULE_ALERTS_COPY.softCount(counts.softNotice ?? 0)}
           </span>
           <span className="rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-900">
-            عادی {counts.noDisplay ?? 0}
+            {SCHEDULE_ALERTS_COPY.normalCount(counts.noDisplay ?? 0)}
           </span>
           <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-700">
-            کل سر‌تیتر {counts.total}
+            {SCHEDULE_ALERTS_COPY.totalHeaders(counts.total)}
           </span>
         </div>
       ) : null}
 
       {message && /pace_ratio|does not exist/i.test(message) ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-          برای ذخیره دائم ستون‌های نرخ، در Supabase فایل‌های{' '}
-          <code className="text-xs">database/77-progress-pace.sql</code> و{' '}
-          <code className="text-xs">database/78-progress-alert-quadrant.sql</code> را اجرا کنید. لیست
-          فعالیت‌ها بدون آن‌ها هم از درصد پیشرفت زنده محاسبه می‌شود — «بروزرسانی» را بزنید.
+          {SCHEDULE_ALERTS_COPY.migrationBefore}{' '}
+          <code className="text-xs">database/77-progress-pace.sql</code>{' '}
+          {SCHEDULE_ALERTS_COPY.migrationAnd}{' '}
+          <code className="text-xs">database/78-progress-alert-quadrant.sql</code>
+          {SCHEDULE_ALERTS_COPY.migrationAfter}
         </div>
       ) : message ? (
         <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950">
@@ -516,21 +530,21 @@ export function SmartProgressAlertsPanel({ projectId }: { projectId: string }) {
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-slate-900">
-          همهٔ سر‌تیترها / مادرها ({coloredRows.length})
+          {SCHEDULE_ALERTS_COPY.allHeaders(coloredRows.length)}
         </h3>
         <button
           type="button"
           onClick={() => setExceptionsOnly((v) => !v)}
           className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-800 hover:bg-slate-50"
         >
-          {exceptionsOnly ? 'نمایش همه‌ی رنگ‌ها' : 'فقط استثناها (فوری + ملایم)'}
+          {exceptionsOnly ? SCHEDULE_ALERTS_COPY.showAllColors : SCHEDULE_ALERTS_COPY.exceptionsOnly}
         </button>
       </div>
 
       {loading && !data ? (
         <div className="flex items-center justify-center gap-2 py-12 text-slate-500">
           <Loader2 className="h-5 w-5 animate-spin" />
-          در حال بارگذاری…
+          {SCHEDULE_ALERTS_COPY.loading}
         </div>
       ) : (
         <ColoredActivityTable

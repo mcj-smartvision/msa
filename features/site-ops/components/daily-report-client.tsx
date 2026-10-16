@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/components/daily-report-client.tsx
+ * @purpose کامپوننت UI — عملیات کارگاه، دستورکار و برنامه روزانه (daily-report-client)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on shared/components/i18n/locale-provider, shared/lib/i18n/site-ops, features/site-ops/components/summary-cards, features/site-ops/config
+ */
+
 'use client'
 
 import { useSearchParams } from 'next/navigation'
@@ -5,6 +13,7 @@ import { useEffect, useState } from 'react'
 import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { getSiteOpsMessages } from '@/shared/lib/i18n/site-ops'
 import { SiteOpsSummaryCards } from '@/features/site-ops/components/summary-cards'
+import { SITE_OPS_COPY } from '@/features/site-ops/config'
 
 export function DailyReportClient() {
   const { locale } = useLocale()
@@ -81,7 +90,7 @@ export function DailyReportClient() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-slate-500">
-                <th className="py-2">فعالیت</th>
+                <th className="py-2">{SITE_OPS_COPY.colActivity}</th>
                 <th className="py-2">{t.planned}</th>
                 <th className="py-2">{t.actual}</th>
                 <th className="py-2">{t.variance}</th>

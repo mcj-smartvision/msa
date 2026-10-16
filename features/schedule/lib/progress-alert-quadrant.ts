@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/progress-alert-quadrant.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (progress-alert-quadrant)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/progress-pace
+ */
+
 import type { PaceStatus } from '@/features/schedule/lib/progress-pace'
 
 export type AlertQuadrant = 'urgent' | 'normal_watch' | 'soft_notice' | 'no_display'

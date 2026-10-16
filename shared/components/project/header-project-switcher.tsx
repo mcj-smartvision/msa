@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/project/header-project-switcher.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (header-project-switcher)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/hooks/use-supabase, features/admin/lib/defaults, shared/lib/project/project-cookie, shared/lib/project/resolve-active-project, features/admin/components/control-center-details-context, shared/components/i18n/locale-provider, shared/components/ui/select, shared/components/layout/header-chip, shared/lib/utils, shared/lib/i18n/chrome
+ */
+
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
@@ -23,6 +31,7 @@ SelectTrigger,
 SelectValue,
 } from '@/shared/components/ui/select'
 import { HEADER_CHIP } from '@/shared/components/layout/header-chip'
+import { getChromeMessages } from '@/shared/lib/i18n/chrome'
 import { cn } from '@/shared/lib/utils'
 
 interface ProjectOption {
@@ -61,7 +70,7 @@ export function HeaderProjectSwitcher({
   initialProjects = [],
 }: {
   className?: string
-  /** Control-center only: includes «همه پروژه‌ها» and uses admin scope context. */
+  /** Control-center only: includes the all-projects scope and uses admin scope context. */
   allowAll?: boolean
   /** Server-provided list — shown immediately and kept when client refresh fails. */
   initialProjects?: ProjectOption[]
@@ -70,13 +79,13 @@ export function HeaderProjectSwitcher({
   const router = useRouter()
   const pathname = usePathname()
   const { locale } = useLocale()
-  const fa = locale === 'fa'
+  const chrome = getChromeMessages(locale)
   const adminCtx = useControlCenterDetailsOptional()
   const [projects, setProjects] = useState<ProjectOption[]>(initialProjects)
   const [selected, setSelected] = useState<string | null>(null)
   const [loading, setLoading] = useState(initialProjects.length === 0)
 
-  const allLabel = fa ? 'همه پروژه‌ها' : 'All Projects'
+  const allLabel = chrome.allProjects
   const inControlCenter = allowAll && adminCtx?.setScope && adminCtx?.projects
 
   const adminScope = adminCtx?.scope
@@ -225,7 +234,7 @@ export function HeaderProjectSwitcher({
       <div
         className={cn(HEADER_CHIP, 'inline-flex w-[128px] items-center justify-center', className)}
         aria-busy="true"
-        aria-label={fa ? 'بارگذاری پروژه‌ها' : 'Loading projects'}
+        aria-label={chrome.loadingProjects}
       >
         <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500" />
       </div>
@@ -237,14 +246,14 @@ export function HeaderProjectSwitcher({
 
   const current = projects.find((p) => p.id === selected)
   const display =
-    selected === ALL_PROJECTS_SCOPE ? allLabel : current?.name ?? (fa ? 'پروژه' : 'Project')
+    selected === ALL_PROJECTS_SCOPE ? allLabel : current?.name ?? chrome.project
 
   return (
     <div className={className}>
       <Select value={selected ?? projects[0]?.id ?? ALL_PROJECTS_SCOPE} onValueChange={handleChange}>
         <SelectTrigger
           className={cn(HEADER_CHIP, 'w-[min(100%,160px)] sm:w-[180px]')}
-          aria-label={fa ? 'انتخاب پروژه' : 'Select project'}
+          aria-label={chrome.selectProject}
         >
           {selected === ALL_PROJECTS_SCOPE ? (
             <Layers className="h-3.5 w-3.5 shrink-0 text-slate-500" />

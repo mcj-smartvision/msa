@@ -1,4 +1,14 @@
+/**
+ * @file features/admin/components/add-member-page.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (add-member-page)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/hooks/use-supabase, features/admin/services/admin, features/admin/components/member-form, features/admin/components/shared, shared/components/ui/button, shared/components/ui/badge, shared/components/ui/select, features/admin/components/control-center-details-context, features/admin/lib/resolve-admin-project, shared/lib/project/project-cookie
+ */
+
+
 'use client'
+import { ADMIN_ADD_MEMBER_COPY } from '@/features/admin/config'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -68,7 +78,7 @@ export function AddMemberPage() {
         let data = await fetchPositions(supabase, targetProjectId)
         const hse = data.find((p) => p.key === 'hse_officer')
         const needsHseSeed =
-          !hse || (hse.name_fa !== 'مسئول ایمنی' && hse.title !== 'مسئول ایمنی')
+          !hse || (hse.name_fa !== ADMIN_ADD_MEMBER_COPY.hseTitle && hse.title !== ADMIN_ADD_MEMBER_COPY.hseTitle)
         if (needsHseSeed) {
           data = await seedPositionsForProject(targetProjectId)
         }
@@ -113,7 +123,7 @@ export function AddMemberPage() {
         setError(null)
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'بارگذاری اطلاعات عضو ناموفق بود')
+          setError(err instanceof Error ? err.message : ADMIN_ADD_MEMBER_COPY.loadFailed)
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -160,7 +170,7 @@ export function AddMemberPage() {
     })
 
     const data = await response.json()
-    if (!response.ok) throw new Error(data.error || 'ایجاد عضو ناموفق بود')
+    if (!response.ok) throw new Error(data.error || ADMIN_ADD_MEMBER_COPY.createFailed)
 
     adminCtx?.setScope(projectId)
     router.push(`/admin/members?projectId=${encodeURIComponent(projectId)}`)
@@ -183,7 +193,7 @@ export function AddMemberPage() {
   return (
     <div className="space-y-6 max-w-[900px]">
       <PageHeader
-        title={preferredRoleKey === 'hse_officer' ? 'افزودن مسئول ایمنی' : t.addMember}
+        title={preferredRoleKey === 'hse_officer' ? ADMIN_ADD_MEMBER_COPY.addHse : t.addMember}
         description={t.memberManagementDesc}
         actions={
           <Button asChild variant="outline" size="sm">
@@ -227,7 +237,7 @@ export function AddMemberPage() {
           positionsLoading={positionsLoading}
           onSeedPositions={handleSeedPositions}
           preferredPositionKey={preferredRoleKey}
-          submitLabel={preferredRoleKey === 'hse_officer' ? 'افزودن مسئول ایمنی' : t.addMember}
+          submitLabel={preferredRoleKey === 'hse_officer' ? ADMIN_ADD_MEMBER_COPY.addHse : t.addMember}
           onSubmit={handleCreateMember}
         />
       ) : (

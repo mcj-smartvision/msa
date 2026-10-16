@@ -1,3 +1,11 @@
+/**
+ * @file app/(dashboard)/dashboard/technical-office/page.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (page)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, shared/lib/dashboard/load-role-page, features/schedule/lib/access, features/technical-office/components/technical-office-dashboard, features/technical-office/components/schedule-send-section
+ */
+
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/shared/lib/supabase/server'
@@ -5,13 +13,14 @@ import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'
 import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
 import { TechnicalOfficeDashboard } from '@/features/technical-office/components/technical-office-dashboard'
 import { ScheduleSendSection } from '@/features/technical-office/components/schedule-send-section'
+import { COMMON_UI } from '@/shared/lib/i18n/common-ui'
 
 export const dynamic = 'force-dynamic'
 
 function TechnicalOfficeDashboardFallback() {
   return (
     <div className="py-16 text-center text-sm text-slate-600" dir="rtl" lang="fa">
-      در حال بارگذاری…
+      {COMMON_UI.loading}
     </div>
   )
 }

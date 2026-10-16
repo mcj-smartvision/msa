@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/lib/auth.ts
+ * @purpose منطق دامنه — عملیات کارگاه، دستورکار و برنامه روزانه (auth)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on features/admin/lib/access, features/site-ops/domain, features/site-ops/domain/errors
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isSystemAdmin } from '@/features/admin/lib/access'
 import {

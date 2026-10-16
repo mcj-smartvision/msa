@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/services/invoices.ts
+ * @purpose سرویس داده — حسابداری، هزینه،overhead و صورت‌وضعیت (invoices)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/finance/lib/invoice-types
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
 AccountantKpis,

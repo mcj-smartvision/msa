@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/maps/geocoding.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (geocoding)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 /** Default map centers by ISO country code (form `country` field values) */
 export const COUNTRY_MAP_CENTERS: Record<string, { lat: number; lng: number; zoom: number }> = {
   IR: { lat: 35.6892, lng: 51.389, zoom: 11 },

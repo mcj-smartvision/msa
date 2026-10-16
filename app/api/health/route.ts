@@ -1,3 +1,11 @@
+/**
+ * @file app/api/health/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/env/public, shared/lib/supabase/service
+ */
+
 import { NextResponse } from 'next/server'
 import { getPublicEnvStatus } from '@/shared/lib/env/public'
 import { createServiceClient } from '@/shared/lib/supabase/service'

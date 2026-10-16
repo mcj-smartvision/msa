@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/lib/control-center.ts
+ * @purpose منطق دامنه — کنترل سنتر و مدیریت اعضا/پروژه (control-center)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on features/attendance/lib/domain, features/attendance/lib/types, shared/types/admin
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildPresence } from '@/features/attendance/lib/domain'
 import type { AttendanceTransit, TransitDirection } from '@/features/attendance/lib/types'

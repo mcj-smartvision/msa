@@ -1,3 +1,11 @@
+/**
+ * @file shared/types/schedule.ts
+ * @purpose تعاریف نوع — زیرساخت مشترک سامانه (schedule)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/weather/lib/types
+ */
+
 import type { DailyWeatherSnapshot } from '@/features/weather/lib/types'
 
 /** MSP schedule + daily report domain types (tables from migration 24+). */

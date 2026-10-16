@@ -1,4 +1,14 @@
+/**
+ * @file features/admin/components/widget-visibility-editor.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (widget-visibility-editor)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/components/ui/card, shared/components/ui/checkbox, shared/components/ui/label, shared/types/admin
+ */
+
+
 'use client'
+import { ADMIN_WIDGET_COPY } from '@/features/admin/config'
 
 import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
@@ -56,11 +66,11 @@ export function WidgetVisibilityEditor({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>نمایش ویجت بر اساس سمت</CardTitle>
+          <CardTitle>{ADMIN_WIDGET_COPY.titleByPosition}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2 max-w-md">
-            <Label htmlFor="widget-position">سمت</Label>
+            <Label htmlFor="widget-position">{ADMIN_WIDGET_COPY.position}</Label>
             <select
               id="widget-position"
               value={positionId}
@@ -81,7 +91,7 @@ export function WidgetVisibilityEditor({
                 </div>
                 <Checkbox
                   id={`widget-${widget.id}`}
-                  label="قابل‌نمایش"
+                  label={ADMIN_WIDGET_COPY.visible}
                   checked={isVisible(widget)}
                   disabled={loadingKey === `${positionId}:${widget.id}`}
                   onChange={(e) => toggleWidget(widget, e.target.checked)}
@@ -94,13 +104,13 @@ export function WidgetVisibilityEditor({
 
       <Card>
         <CardHeader>
-          <CardTitle>ماتریس نمایش</CardTitle>
+          <CardTitle>{ADMIN_WIDGET_COPY.matrix}</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b text-left">
-                <th className="py-2 pr-4">ویجت</th>
+                <th className="py-2 pr-4">{ADMIN_WIDGET_COPY.widget}</th>
                 {positions.map((position) => (
                   <th key={position.id} className="py-2 px-2 whitespace-nowrap">{position.title}</th>
                 ))}
@@ -115,7 +125,7 @@ export function WidgetVisibilityEditor({
                     const visible = existing ? existing.is_visible : widget.default_visible
                     return (
                       <td key={position.id} className="py-2 px-2 text-center">
-                        {visible ? 'بله' : 'خیر'}
+                        {visible ? ADMIN_WIDGET_COPY.yes : ADMIN_WIDGET_COPY.no}
                       </td>
                     )
                   })}

@@ -1,3 +1,11 @@
+/**
+ * @file shared/types/dashboard.ts
+ * @purpose تعاریف نوع — زیرساخت مشترک سامانه (dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/types/admin, shared/lib/dashboard/roles
+ */
+
 import type { AdminProject, MemberPositionSummary } from '@/shared/types/admin'
 import type { SiteRoleKey } from '@/shared/lib/dashboard/roles'
 

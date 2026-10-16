@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/i18n/accountant.ts
+ * @purpose تنظیمات و برچسب‌ها — زیرساخت مشترک سامانه (accountant)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/project-init/lib/i18n/types, features/finance/lib/invoice-types, shared/lib/i18n/payables
+ */
+
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import type { FinancialInvoiceStatus, VendorBillStatus } from '@/features/finance/lib/invoice-types'
 import { getPayableStatusLabel } from '@/shared/lib/i18n/payables'

@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/components/actual-start-panel.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (actual-start-panel)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/components/ui/button, shared/components/ui/card, features/schedule/components/schedule-date-input, features/schedule/components/formatted-date, shared/components/i18n/locale-provider, features/schedule/lib/apply-actual-start, shared/types/schedule, features/admin/config
+ */
+
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
@@ -9,6 +17,7 @@ import { useLocale } from '@/shared/components/i18n/locale-provider'
 import type { ScheduleStartAnalysis } from '@/features/schedule/lib/apply-actual-start'
 import type { ProjectTask } from '@/shared/types/schedule'
 import { CalendarClock, CheckCircle2, Loader2 } from 'lucide-react'
+import { ADMIN_ACTUAL_START_COPY, pickAdminLocale } from '@/features/admin/config'
 
 interface ActualStartPanelProps {
   projectId: string
@@ -35,6 +44,7 @@ export function ActualStartPanel({
 }: ActualStartPanelProps) {
   const { locale } = useLocale()
   const fa = locale === 'fa'
+  const copy = pickAdminLocale(fa, ADMIN_ACTUAL_START_COPY)
 
   const defaultStart = initialActualStart ?? baselineStart ?? new Date().toISOString().slice(0, 10)
   const [actualStart, setActualStart] = useState(defaultStart)
@@ -81,7 +91,7 @@ export function ActualStartPanel({
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'زمان‌بندی مجدد ناموفق بود')
+      if (!response.ok) throw new Error(data.error || copy.rescheduleFailed)
 
       const newStart = data.actual_start ?? actualStart
       setAppliedStart(newStart)
@@ -93,7 +103,7 @@ export function ActualStartPanel({
         analysis: data.analysis,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'زمان‌بندی مجدد ناموفق بود')
+      setError(err instanceof Error ? err.message : copy.rescheduleFailed)
     } finally {
       setLoading(false)
     }
@@ -107,12 +117,10 @@ export function ActualStartPanel({
       <CardHeader className="border-b bg-primary/5 pb-4">
         <CardTitle className="text-base flex items-center gap-2">
           <CalendarClock className="h-4 w-4 text-primary" />
-          {fa ? 'تاریخ شروع واقعی پروژه' : 'Actual Project Start Date'}
+          {copy.title}
         </CardTitle>
         <CardDescription>
-          {fa
-            ? 'تاریخ جدید را وارد کنید: همهٔ تسک‌ها به‌اندازهٔ همان فاصله از baseline MSP جابه‌جا می‌شوند (بدون تغییر مدت).'
-            : 'Enter the new start: every task shifts by the same day offset from the MSP baseline (durations unchanged).'}
+          {copy.description}
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-5 space-y-4">
@@ -120,7 +128,7 @@ export function ActualStartPanel({
           {baselineStart ? (
             <div className="text-sm">
               <p className="text-xs text-muted-foreground mb-1">
-                {fa ? 'Baseline MSP' : 'MSP baseline'}
+                {copy.baseline}
               </p>
               <p className="font-medium tabular-nums">
                 <FormattedDate value={baselineStart} />
@@ -131,7 +139,7 @@ export function ActualStartPanel({
           {appliedStart ? (
             <div className="text-sm">
               <p className="text-xs text-muted-foreground mb-1">
-                {fa ? 'شروع واقعی فعال' : 'Active actual start'}
+                {copy.activeStart}
               </p>
               <p className="font-semibold text-primary tabular-nums">
                 <FormattedDate value={appliedStart} />
@@ -141,7 +149,7 @@ export function ActualStartPanel({
 
           <ScheduleDateInput
             id="actual-project-start"
-            label={fa ? 'تاریخ شروع واقعی' : 'Actual start date'}
+            label={copy.dateLabel}
             valueIso={actualStart}
             onChangeIso={handleDateChange}
             className="min-w-[200px]"
@@ -152,12 +160,10 @@ export function ActualStartPanel({
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                {fa ? 'در حال بازمحاسبه…' : 'Rescheduling…'}
+                {copy.rescheduling}
               </>
-            ) : fa ? (
-              'بازمحاسبه سراسری'
             ) : (
-              'Apply global reschedule'
+              copy.apply
             )}
           </Button>
         </div>
@@ -169,27 +175,15 @@ export function ActualStartPanel({
           >
             <p className="flex items-center gap-2 font-medium">
               <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-              {fa ? 'بازمحاسبه سراسری انجام شد' : 'Global reschedule completed'}
+              {copy.completed}
             </p>
             <p className="text-emerald-700 ps-6">
-              {fa
-                ? `${updatedCount} از ${totalTasks} تسک به‌روزرسانی شد · شروع جدید: `
-                : `${updatedCount} of ${totalTasks} tasks updated · new start: `}
+              {copy.updatedPrefix(updatedCount, totalTasks)}
               <FormattedDate value={lastSuccess.actual_start} className="font-semibold" />
-              {lastSuccess.delta_days != null ? (
-                fa
-                  ? ` · جابه‌جایی: ${lastSuccess.delta_days} روز`
-                  : ` · shift: ${lastSuccess.delta_days} day(s)`
-              ) : null}
-              {lastSuccess.anchor_wbs ? (
-                fa
-                  ? ` · لنگر: WBS ${lastSuccess.anchor_wbs}`
-                  : ` · anchor: WBS ${lastSuccess.anchor_wbs}`
-              ) : null}
+              {lastSuccess.delta_days != null ? copy.shift(lastSuccess.delta_days) : null}
+              {lastSuccess.anchor_wbs ? copy.anchor(lastSuccess.anchor_wbs) : null}
               {lastSuccess.baseline_backfilled
-                ? fa
-                  ? ` · ${lastSuccess.baseline_backfilled} baseline ذخیره شد`
-                  : ` · ${lastSuccess.baseline_backfilled} baselines snapshotted`
+                ? copy.baselineSaved(lastSuccess.baseline_backfilled)
                 : null}
             </p>
           </div>

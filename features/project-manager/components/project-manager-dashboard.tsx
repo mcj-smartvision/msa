@@ -1,3 +1,11 @@
+/**
+ * @file features/project-manager/components/project-manager-dashboard.tsx
+ * @purpose کامپوننت UI — اتاق فرمان مدیر پروژه و کارتابل (project-manager-dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects اتاق فرمان مدیر پروژه و کارتابل
+ * @depends-on shared/components/i18n/locale-provider, features/admin/components/shared, shared/lib/i18n/project-manager, shared/types/dashboard, features/evm/lib/load-project-evm, shared/hooks/use-synced-project-id, shared/lib/utils, features/project-store/use-project-store, features/project-store/use-store-progress, features/weather/components/outdoor-weather-alert
+ */
+
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
@@ -24,6 +32,8 @@ interface ProjectManagerDashboardProps {
 }
 
 function useProjectEvm(projectId: string | null) {
+  const { locale } = useLocale()
+  const t = getProjectManagerMessages(locale)
   const [snapshot, setSnapshot] = useState<ProjectEvmSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,14 +48,14 @@ function useProjectEvm(projectId: string | null) {
         { cache: 'no-store' }
       )
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'بارگذاری شاخص‌های EVM ناموفق بود')
+      if (!response.ok) throw new Error(data.error || t.evmLoadFailed)
       setSnapshot(data as ProjectEvmSnapshot)
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'بارگذاری شاخص‌های EVM ناموفق بود')
+      setError(loadError instanceof Error ? loadError.message : t.evmLoadFailed)
     } finally {
       setLoading(false)
     }
-  }, [projectId])
+  }, [projectId, t.evmLoadFailed])
 
   useEffect(() => {
     setSnapshot(null)
@@ -100,11 +110,7 @@ export function ProjectManagerDashboard({
     return (
       <EmptyState
         title={t.title}
-        description={
-          locale === 'fa' || locale === 'ar'
-            ? 'از ادمین بخواهید شما را به‌عنوان مدیر پروژه روی یک پروژه منصوب کند.'
-            : 'Ask an admin to assign you as Project Manager on a project.'
-        }
+        description={t.emptyAssign}
       />
     )
   }

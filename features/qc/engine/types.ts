@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/engine/types.ts
+ * @purpose تعاریف نوع — کنترل کیفیت و عدم انطباق (types)
+ * @safe-to-edit YES
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on nothing
+ */
+
 export type QcRequestStatus =
   | 'draft'
   | 'submitted'

@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/drawings-zoning-mock.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (drawings-zoning-mock)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/technical-office/lib/drawings-shared
+ */
+
 import type { DrawingDiscipline } from '@/features/technical-office/lib/drawings-shared';
 import type { ProjectDrawing } from '@/features/technical-office/lib/drawings-shared';
 

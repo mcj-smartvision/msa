@@ -1,3 +1,11 @@
+/**
+ * @file features/weather/lib/types.ts
+ * @purpose تعاریف نوع — هوای کارگاه (types)
+ * @safe-to-edit YES
+ * @affects هوای کارگاه
+ * @depends-on nothing
+ */
+
 export type OutdoorRiskLevel = 'ok' | 'caution' | 'severe'
 
 export interface OutdoorAlert {

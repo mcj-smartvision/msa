@@ -1,3 +1,11 @@
+/**
+ * @file app/(dashboard)/layout.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (layout)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/admin/lib/access, shared/lib/dashboard/user-context, shared/lib/dashboard/load-role-page, shared/lib/dashboard/role-nav, shared/lib/project/project-cookie, shared/components/layout/dashboard-layout-shell
+ */
+
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createClient } from '@/shared/lib/supabase/server'

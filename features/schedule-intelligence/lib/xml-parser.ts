@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule-intelligence/lib/xml-parser.ts
+ * @purpose منطق دامنه — تحلیل کیفیت برنامه و آپلود MSP (xml-parser)
+ * @safe-to-edit CAREFUL
+ * @affects تحلیل کیفیت برنامه و آپلود MSP
+ * @depends-on shared/types/schedule-intelligence, features/schedule-intelligence/lib/date-utils, features/schedule-intelligence/lib/duration-utils, features/schedule-intelligence/lib/config
+ */
+
 import { XMLParser } from 'fast-xml-parser'
 import type {
 NormalizedSchedule,
@@ -8,7 +16,7 @@ ScheduleWarning,
 } from '@/shared/types/schedule-intelligence'
 import { isoOrNull } from '@/features/schedule-intelligence/lib/date-utils'
 import { durationDaysFromMinutes, parseIsoDurationMinutes, parseMspLagMinutes } from '@/features/schedule-intelligence/lib/duration-utils'
-import { DEFAULT_SCHEDULE_CONFIG } from '@/features/schedule-intelligence/lib/config'
+import { DEFAULT_SCHEDULE_CONFIG, SCHEDULE_LIB_COPY as L } from '@/features/schedule-intelligence/lib/config'
 
 function asArray<T>(value: T | T[] | null | undefined): T[] {
   if (value == null) return []
@@ -51,7 +59,7 @@ function mapLinkType(raw: unknown, warnings: ScheduleWarning[]): RelationType {
     warnings.push({
       code: 'UNKNOWN_LINK_TYPE',
       severity: 'warning',
-      message: `نوع رابطه ناشناخته (${num}) — FS به‌عنوان پیش‌فرض استفاده شد`,
+      message: L.unknownLinkType(num),
       details: String(raw),
     })
     return 'FS'
@@ -72,7 +80,7 @@ export function parseMicrosoftProjectXml(
   const invalidRecords: ScheduleWarning[] = []
 
   if (!xmlContent.trim()) {
-    throw new Error('فایل XML خالی است')
+    throw new Error(L.emptyXml)
   }
 
   const parser = new XMLParser({
@@ -87,12 +95,12 @@ export function parseMicrosoftProjectXml(
   try {
     doc = parser.parse(xmlContent)
   } catch {
-    throw new Error('XML نامعتبر — از Microsoft Project به‌صورت XML ذخیره کنید')
+    throw new Error(L.invalidXml)
   }
 
   const project = (doc as { Project?: Record<string, unknown> })?.Project
   if (!project) {
-    throw new Error('فایل MSP XML معتبر نیست (ریشه Project وجود ندارد)')
+    throw new Error(L.notMspProject)
   }
 
   const minutesPerDay = numValue(project.MinutesPerDay, DEFAULT_SCHEDULE_CONFIG.minutesPerDay) || 480
@@ -121,7 +129,7 @@ export function parseMicrosoftProjectXml(
       invalidRecords.push({
         code: 'MISSING_UID',
         severity: 'error',
-        message: 'فعالیت بدون UID معتبر',
+        message: L.missingUid,
         details: JSON.stringify(task).slice(0, 200),
       })
       continue
@@ -132,7 +140,7 @@ export function parseMicrosoftProjectXml(
       warnings.push({
         code: 'DUPLICATE_UID',
         severity: 'error',
-        message: `UID تکراری: ${uid}`,
+        message: L.duplicateUid(uid),
         taskUid: uid,
       })
       continue
@@ -145,7 +153,7 @@ export function parseMicrosoftProjectXml(
       warnings.push({
         code: 'MISSING_NAME',
         severity: 'warning',
-        message: 'فعالیت بدون نام',
+        message: L.missingName,
         taskUid: uid,
       })
     }
@@ -170,7 +178,7 @@ export function parseMicrosoftProjectXml(
     const scheduleTask: ScheduleTask = {
       uid,
       id: numValue(task.ID, 0) > 0 ? numValue(task.ID) : null,
-      name: name || `فعالیت ${uid}`,
+      name: name || L.activityFallback(uid),
       wbs: textValue(task.WBS) || null,
       outlineNumber: textValue(task.OutlineNumber) || null,
       outlineLevel: numValue(task.OutlineLevel, 0) > 0 ? numValue(task.OutlineLevel) : null,
@@ -226,7 +234,7 @@ export function parseMicrosoftProjectXml(
         warnings.push({
           code: 'SELF_DEPENDENCY',
           severity: 'error',
-          message: 'وابستگی به خود',
+          message: L.selfDependency,
           taskUid: uid,
           taskName: scheduleTask.name,
         })
@@ -243,7 +251,7 @@ export function parseMicrosoftProjectXml(
         warnings.push({
           code: 'NEGATIVE_LAG',
           severity: 'warning',
-          message: 'Lag منفی',
+          message: L.negativeLag,
           taskUid: uid,
           taskName: scheduleTask.name,
         })
@@ -274,7 +282,7 @@ export function parseMicrosoftProjectXml(
       warnings.push({
         code: 'ORPHAN_PREDECESSOR',
         severity: 'error',
-        message: `پیش‌نیاز ناشناخته UID=${dep.predecessorUid}`,
+        message: L.orphanPredecessor(dep.predecessorUid),
         taskUid: dep.successorUid,
       })
       continue
@@ -308,12 +316,12 @@ export function parseMicrosoftProjectXml(
     warnings.push({
       code: 'MISSING_PROJECT_DATES',
       severity: 'warning',
-      message: 'تاریخ شروع یا پایان پروژه در XML موجود نیست',
+      message: L.missingProjectDates,
     })
   }
 
   if (tasks.length === 0) {
-    throw new Error('هیچ فعالیتی در XML پیدا نشد')
+    throw new Error(L.noTasks)
   }
 
   return { schedule, invalidRecords }

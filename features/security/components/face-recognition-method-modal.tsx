@@ -1,3 +1,11 @@
+/**
+ * @file features/security/components/face-recognition-method-modal.tsx
+ * @purpose کامپوننت UI — امنیت و ثبت چهره (face-recognition-method-modal)
+ * @safe-to-edit CAREFUL
+ * @affects امنیت و ثبت چهره
+ * @depends-on shared/components/common/modal-overlay, features/attendance/lib/face-recognition-method-copy
+ */
+
 'use client'
 
 import { ModalOverlay } from '@/shared/components/common/modal-overlay'

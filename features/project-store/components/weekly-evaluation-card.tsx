@@ -1,3 +1,11 @@
+/**
+ * @file features/project-store/components/weekly-evaluation-card.tsx
+ * @purpose کامپوننت UI — ذخیره پیشرفت و overlay اعداد داشبورد (weekly-evaluation-card)
+ * @safe-to-edit CAREFUL
+ * @affects ذخیره پیشرفت و overlay اعداد داشبورد
+ * @depends-on shared/components/ui/button, shared/components/ui/input, features/project-store/use-project-store, features/project-store/lib/weekly-engine, features/wwp/lib/policy, features/manager/lib/format, shared/lib/utils
+ */
+
 'use client'
 
 import { useMemo, useState } from 'react'
@@ -9,6 +17,7 @@ import { addDays, SITE_WEEK_DAYS } from '@/features/project-store/lib/weekly-eng
 import { ROOT_CAUSE_CATEGORIES, ROOT_CAUSE_FA, type RootCauseCategory } from '@/features/wwp/lib/policy'
 import { faNumber, jalaliDate } from '@/features/manager/lib/format'
 import { cn } from '@/shared/lib/utils'
+import { WEEKLY_EVAL_COPY as copy } from '@/features/project-store/config'
 
 type RowDraft = { category: RootCauseCategory | ''; note: string }
 
@@ -50,7 +59,7 @@ export function WeeklyEvaluationCard({ projectId }: { projectId: string | null }
     const draft = drafts[id]
     if (!draft?.category || !evalWeek) return
     if (draft.category === 'other' && !draft.note.trim()) {
-      setError('برای علت «سایر» توضیح لازم است')
+      setError(copy.otherNoteRequired)
       return
     }
     setSavingId(id)
@@ -63,7 +72,7 @@ export function WeeklyEvaluationCard({ projectId }: { projectId: string | null }
         return next
       })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'ثبت علت ناموفق بود')
+      setError(e instanceof Error ? e.message : copy.saveFailed)
     } finally {
       setSavingId(null)
     }
@@ -77,31 +86,31 @@ export function WeeklyEvaluationCard({ projectId }: { projectId: string | null }
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900">
           <ClipboardCheck className="h-4 w-4 text-slate-500" aria-hidden />
-          تعهدات هفتگی ({jalaliDate(weekStart)} تا {jalaliDate(weekEnd)})
+          {copy.title(jalaliDate(weekStart), jalaliDate(weekEnd))}
         </h3>
         <span
           className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700"
-          title="تعهدات هر هفته شنبه ساعت 00:00 از برنامهٔ پیش‌بینی‌شدهٔ همان لحظه ثابت می‌شوند."
+title={copy.lockedTitle}
         >
           <Lock className="h-3 w-3" aria-hidden />
-          تعهدات قفل شد
+          {copy.locked}
         </span>
       </div>
       <p className="text-xs leading-6 text-slate-600">
-        {faNumber(ppc.committed)} فعالیت در این هفته سهم برنامه دارند؛{' '}
+        {copy.committedLead(faNumber(ppc.committed))}
         {ppc.provisional
-          ? `تا این لحظه ${faNumber(ppc.completed)} فعالیت سهم هفته را کامل کرده‌اند. ارزیابی پنج‌شنبه ساعت 16:00 باز می‌شود.`
-          : `${faNumber(ppc.completed)} فعالیت سهم هفته را کامل کردند (PPC ${ppc.ppc == null ? '—' : `${faNumber(Math.round(ppc.ppc))}٪`}).`}
+          ? copy.provisional(faNumber(ppc.completed))
+          : copy.closed(faNumber(ppc.completed), ppc.ppc == null ? '—' : copy.ppcPct(faNumber(Math.round(ppc.ppc))))}
       </p>
 
       {evalWeek && missed.length > 0 ? (
         <div className="space-y-2 border-t border-slate-100 pt-3">
           <p className="text-xs font-semibold text-slate-800">
-            علت عدم تحقق — هفتهٔ {jalaliDate(evalWeek)} ({faNumber(open.length)} مورد بدون علت از {faNumber(missed.length)})
+            {copy.missedTitle(jalaliDate(evalWeek), faNumber(open.length), faNumber(missed.length))}
           </p>
           {snapshot.rncMissing ? (
             <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              ثبت علت هنوز فعال نیست؛ مدیر سیستم باید فایل database/108-weekly-commitment-rnc.sql را اجرا کند.
+              {copy.rncMissing}
             </p>
           ) : null}
           {error ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p> : null}
@@ -117,23 +126,23 @@ export function WeeklyEvaluationCard({ projectId }: { projectId: string | null }
                       {task?.title ?? id}
                     </b>
                     <span className="tabular-nums text-rose-700">
-                      {faNumber(week.actualSum, 2)} از {faNumber(week.target, 2)} واحد سهم هفته
+                      {copy.share(faNumber(week.actualSum, 2), faNumber(week.target, 2))}
                     </span>
                   </div>
                   {done ? (
                     <p className="mt-1 text-slate-600">
-                      علت ثبت‌شده: <b>{ROOT_CAUSE_FA[done.category as RootCauseCategory] ?? done.category}</b>
+                      {copy.recordedCause}<b>{ROOT_CAUSE_FA[done.category as RootCauseCategory] ?? done.category}</b>
                       {done.note ? ` — ${done.note}` : ''}
                     </p>
                   ) : snapshot.rncMissing ? null : (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <select
-                        aria-label="علت عدم تحقق"
+                        aria-label={copy.causeAria}
                         className="h-11 rounded-md border border-slate-300 bg-white px-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                         value={draft.category}
                         onChange={(e) => setDrafts((prev) => ({ ...prev, [id]: { ...draft, category: e.target.value as RootCauseCategory | '' } }))}
                       >
-                        <option value="">انتخاب علت…</option>
+<option value="">{copy.pickCause}</option>
                         {ROOT_CAUSE_CATEGORIES.map((c) => (
                           <option key={c} value={c}>
                             {ROOT_CAUSE_FA[c]}
@@ -144,7 +153,7 @@ export function WeeklyEvaluationCard({ projectId }: { projectId: string | null }
                         value={draft.note}
                         maxLength={500}
                         onChange={(e) => setDrafts((prev) => ({ ...prev, [id]: { ...draft, note: e.target.value } }))}
-                        placeholder={draft.category === 'other' ? 'توضیح (الزامی)' : 'توضیح (اختیاری)'}
+                        placeholder={draft.category === 'other' ? copy.noteRequired : copy.noteOptional}
                         className="h-11 min-w-[12rem] flex-1 text-xs"
                       />
                       <Button
@@ -154,7 +163,7 @@ export function WeeklyEvaluationCard({ projectId }: { projectId: string | null }
                         disabled={!draft.category || savingId != null}
                         onClick={() => void save(id)}
                       >
-                        {savingId === id ? 'در حال ثبت…' : 'ثبت علت'}
+                        {savingId === id ? copy.saving : copy.saveCause}
                       </Button>
                     </div>
                   )}

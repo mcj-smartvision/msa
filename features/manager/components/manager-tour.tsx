@@ -1,8 +1,17 @@
+/**
+ * @file features/manager/components/manager-tour.tsx
+ * @purpose کامپوننت UI — داشبورد مدیر پروژه و KPI (manager-tour)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/manager/lib/format, features/manager/config
+ */
+
 'use client'
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { faNumber } from '@/features/manager/lib/format'
+import { MANAGER_TOUR_COPY, MANAGER_UI_NUMBERS } from '@/features/manager/config'
 
 export interface ManagerTourStep {
   /** Matches `data-tour` on the target; the first visible match is used. */
@@ -38,8 +47,8 @@ function findTarget(target: string): HTMLElement | null {
   return null
 }
 
-const CARD_WIDTH = 340
-const PAD = 6
+const CARD_WIDTH = MANAGER_UI_NUMBERS.tourCardWidth
+const PAD = MANAGER_UI_NUMBERS.tourPad
 
 export function ManagerTour({
   open,
@@ -74,7 +83,7 @@ export function ManagerTour({
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     el?.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' })
     measure()
-    const timer = window.setTimeout(measure, reduced ? 0 : 350)
+    const timer = window.setTimeout(measure, reduced ? 0 : MANAGER_UI_NUMBERS.tourMeasureDelayMs)
     window.addEventListener('resize', measure)
     window.addEventListener('scroll', measure, true)
     return () => {
@@ -158,7 +167,7 @@ export function ManagerTour({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] font-medium text-primary">
-              مرحلهٔ {faNumber(index + 1)} از {faNumber(steps.length)}
+              {MANAGER_TOUR_COPY.stepOf(faNumber(index + 1), faNumber(steps.length))}
             </p>
             <h2 id="manager-tour-title" className="mt-0.5 text-sm font-bold text-slate-900">
               {step.title}
@@ -167,7 +176,7 @@ export function ManagerTour({
           <button
             type="button"
             onClick={() => onClose(false)}
-            aria-label="بستن تور"
+            aria-label={MANAGER_TOUR_COPY.close}
             className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
           >
             <X className="h-4 w-4" aria-hidden />
@@ -192,7 +201,7 @@ export function ManagerTour({
             onClick={() => onClose(false)}
             className="rounded-md px-2 py-1.5 text-xs text-slate-500 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
           >
-            رد کردن
+            {MANAGER_TOUR_COPY.skip}
           </button>
           <div className="flex items-center gap-2">
             <button
@@ -202,7 +211,7 @@ export function ManagerTour({
               className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
             >
               <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-              قبلی
+              {MANAGER_TOUR_COPY.prev}
             </button>
             {last ? (
               <button
@@ -210,7 +219,7 @@ export function ManagerTour({
                 onClick={() => onClose(true)}
                 className="rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-1"
               >
-                پایان
+                {MANAGER_TOUR_COPY.end}
               </button>
             ) : (
               <button
@@ -218,7 +227,7 @@ export function ManagerTour({
                 onClick={() => setIndex((i) => i + 1)}
                 className="inline-flex items-center gap-1 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-1"
               >
-                بعدی
+                {MANAGER_TOUR_COPY.next}
                 <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
               </button>
             )}

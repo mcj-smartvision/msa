@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/services/expense-ai.ts
+ * @purpose سرویس داده — حسابداری، هزینه،overhead و صورت‌وضعیت (expense-ai)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/finance/lib/expense-ai-types, features/finance/lib/types, features/finance/services/expenses
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ExpenseAiExtraction } from '@/features/finance/lib/expense-ai-types'
 import { FINANCIAL_COST_TYPES, type FinancialCostType } from '@/features/finance/lib/types'

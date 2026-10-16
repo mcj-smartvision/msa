@@ -1,3 +1,11 @@
+/**
+ * @file app/(dashboard)/dashboard/hse/layout.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (layout)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, shared/lib/dashboard/load-role-page, features/schedule/lib/access, features/hse/components/hse-shell
+ */
+
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { createClient } from '@/shared/lib/supabase/server'

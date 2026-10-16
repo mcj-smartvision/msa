@@ -1,4 +1,12 @@
 /**
+ * @file features/attendance/lib/face-match.ts
+ * @purpose منطق دامنه — حضور و غیاب و چهره (face-match)
+ * @safe-to-edit CAREFUL
+ * @affects حضور و غیاب و چهره
+ * @depends-on nothing
+ */
+
+/**
  * Server-side biometric match for FaceNet-style descriptors.
  * Same pattern used by commercial gate terminals:
  * detect → embed → 1:N distance → absolute threshold + ambiguity margin.

@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/dashboard/role-nav.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (role-nav)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/types/dashboard, shared/lib/dashboard/roles
+ */
+
 import type { DashboardUserContext } from '@/shared/types/dashboard'
 import { SITE_ROLE_LABELS, type SiteRoleKey } from '@/shared/lib/dashboard/roles'
 

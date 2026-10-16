@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/components/qc-engine-panels.tsx
+ * @purpose کامپوننت UI — کنترل کیفیت و عدم انطباق (qc-engine-panels)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on features/admin/components/shared, shared/components/common/modal-overlay, shared/components/ui/alert, shared/components/ui/badge, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/textarea, features/qc/components/qc-drawing-markup, shared/components/common/voice-to-text-button
+ */
+
 'use client'
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -52,6 +60,7 @@ type QcRequestStatus,
 type QcVerdict,
 } from '@/features/qc/engine/types'
 import { cn } from '@/shared/lib/utils'
+import { QC_COPY } from '@/features/qc/config'
 
 const REQUEST_LABEL: Record<QcRequestStatus, keyof QcMessages> = {
   draft: 'requestDraft',
@@ -163,7 +172,7 @@ function uniqueMarkedForSelection(rows: LocalMarkedDrawing[], selectedIds: strin
 }
 
 function inspectorWhisperPrompt() {
-  return 'یادداشت بازرس کنترل کیفیت به فارسی. جمله‌های کامل و درست. کلمه‌هایی مثل عدم رعایت استاندارد، قابل قبول نیست، لطفاً اصلاح کنید، فاصله خاموت، قالب‌بندی، جوش، قبول، رد.'
+  return QC_COPY.inspectorWhisper
 }
 
 function requestDrawingFileUrl(drawing: QcRequestDrawing, officeId?: string | null) {
@@ -481,8 +490,8 @@ function fileMediaKind(file: File): 'image' | 'video' {
 }
 
 function inspectorVerdictFromText(text: string): 'approved' | 'rejected' | null {
-  if (/رد(?:\s*شد)?|قابل\s*قبول\s*نیست|عدم\s*قبول/i.test(text)) return 'rejected'
-  if (/تأیید|تایید|قبول\s*شد/i.test(text)) return 'approved'
+  if (QC_COPY.rejectPattern.test(text)) return 'rejected'
+  if (QC_COPY.approvePattern.test(text)) return 'approved'
   return null
 }
 
@@ -1327,7 +1336,7 @@ export function QcEnginePanels({
     const verdict = inspectorVerdictFromText(text)
     let summary = formatSpeechSummary(parsed)
     if (verdict) {
-      const verdictLine = verdict === 'rejected' ? 'نتیجه: رد' : 'نتیجه: تأیید'
+      const verdictLine = verdict === 'rejected' ? QC_COPY.verdictRejected : QC_COPY.verdictApproved
       summary = summary ? `${verdictLine}\n${summary}` : verdictLine
     }
     if (summary) setInspectorClassified(summary)
@@ -2037,7 +2046,7 @@ export function QcEnginePanels({
                 const verdict = effectiveInspectorVerdict(row)
                 const attachmentHint = [
                   attachedCount ? `${attachedCount} ${t.attachedDrawings}` : '',
-                  visibleCodes.length ? visibleCodes.join('، ') : '',
+                  visibleCodes.length ? visibleCodes.join(QC_COPY.listSep) : '',
                 ]
                   .filter(Boolean)
                   .join(' · ')
@@ -2659,7 +2668,7 @@ export function QcEnginePanels({
                           </span>
                         </div>
                         {entry.itemCodes.length ? (
-                          <p className="mt-1 font-medium text-slate-900">{entry.itemCodes.join('، ')}</p>
+                          <p className="mt-1 font-medium text-slate-900">{entry.itemCodes.join(QC_COPY.listSep)}</p>
                         ) : null}
                         {entry.floor ? <p className="text-[11px] text-slate-600">{t.floor}: {entry.floor}</p> : null}
                         {entry.requestNotes ? <p className="mt-1 text-slate-700">{entry.requestNotes}</p> : null}

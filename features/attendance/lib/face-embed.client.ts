@@ -1,4 +1,12 @@
 /**
+ * @file features/attendance/lib/face-embed.client.ts
+ * @purpose منطق دامنه — حضور و غیاب و چهره (face-embed.client)
+ * @safe-to-edit CAREFUL
+ * @affects حضور و غیاب و چهره
+ * @depends-on features/attendance/lib/face-match
+ */
+
+/**
  * Browser-only FaceNet descriptor extraction (@vladmandic/face-api).
  * Models are served locally from /public/models/face-api (no CDN dependency).
  */

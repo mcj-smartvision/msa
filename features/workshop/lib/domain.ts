@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/lib/domain.ts
+ * @purpose منطق دامنه — بسته‌های اجرایی و تأیید کارگاه (domain)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on nothing
+ */
+
 import type { CreatePackageInput, ReviewReasonCode } from './types'
 import { WORKSHOP_UOMS } from './types'
 

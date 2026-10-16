@@ -1,4 +1,14 @@
+/**
+ * @file features/admin/components/position-form.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (position-form)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/textarea, shared/components/ui/checkbox, shared/components/ui/card, features/admin/lib/access, shared/types/admin
+ */
+
+
 'use client'
+import { ADMIN_POSITION_FORM_COPY } from '@/features/admin/config'
 
 import { useState } from 'react'
 import { Button } from '@/shared/components/ui/button'
@@ -42,7 +52,7 @@ export function PositionForm({ initial, submitLabel, onSubmit }: PositionFormPro
         setIsActive(true)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ذخیره سمت ناموفق بود')
+      setError(err instanceof Error ? err.message : ADMIN_POSITION_FORM_COPY.saveFailed)
     } finally {
       setLoading(false)
     }
@@ -57,21 +67,21 @@ export function PositionForm({ initial, submitLabel, onSubmit }: PositionFormPro
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="position-title">عنوان</Label>
+              <Label htmlFor="position-title">{ADMIN_POSITION_FORM_COPY.title}</Label>
               <Input id="position-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="position-key">کلید</Label>
+              <Label htmlFor="position-key">{ADMIN_POSITION_FORM_COPY.key}</Label>
               <Input id="position-key" value={key} onChange={(e) => setKey(e.target.value)} placeholder="site_supervisor" />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="position-description">توضیحات</Label>
+            <Label htmlFor="position-description">{ADMIN_POSITION_FORM_COPY.description}</Label>
             <Textarea id="position-description" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
           </div>
-          <Checkbox id="position-active" label="سمت فعال" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+          <Checkbox id="position-active" label={ADMIN_POSITION_FORM_COPY.active} checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          <Button type="submit" disabled={loading}>{loading ? 'در حال ذخیره...' : submitLabel}</Button>
+          <Button type="submit" disabled={loading}>{loading ? ADMIN_POSITION_FORM_COPY.saving : submitLabel}</Button>
         </form>
       </CardContent>
     </Card>

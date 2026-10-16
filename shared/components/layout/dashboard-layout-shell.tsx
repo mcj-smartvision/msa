@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/layout/dashboard-layout-shell.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (dashboard-layout-shell)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/components/layout/dashboard-header, shared/lib/dashboard/role-nav
+ */
+
 'use client'
 
 import { usePathname } from 'next/navigation'

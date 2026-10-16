@@ -1,3 +1,11 @@
+/**
+ * @file features/holidays/lib/work-calendar.ts
+ * @purpose منطق دامنه — تقویم تعطیلات (work-calendar)
+ * @safe-to-edit CAREFUL
+ * @affects تقویم تعطیلات
+ * @depends-on features/holidays/lib/types
+ */
+
 import type { HolidayRule } from '@/features/holidays/lib/types'
 
 /** Whether a civil day (YYYY-MM-DD) is a working day. */

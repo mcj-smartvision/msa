@@ -1,10 +1,18 @@
+/**
+ * @file features/account/components/header-user-menu.tsx
+ * @purpose کامپوننت UI — حساب کاربری (header-user-menu)
+ * @safe-to-edit CAREFUL
+ * @affects حساب کاربری
+ * @depends-on shared/components/i18n/locale-provider, shared/lib/auth/login-identifier, features/account/lib/copy, features/account/lib/open-account-page, shared/lib/utils
+ */
+
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, KeyRound, LogOut, Pencil, UserRound } from 'lucide-react'
 import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { formatLoginDisplay } from '@/shared/lib/auth/login-identifier'
-import { accountCopy } from '@/features/account/lib/copy'
+import { accountCopy } from '@/features/account/config'
 import { openAccountPage } from '@/features/account/lib/open-account-page'
 import { cn } from '@/shared/lib/utils'
 
@@ -18,7 +26,7 @@ export function HeaderUserMenu({
   const { locale } = useLocale()
   const fa = locale === 'fa'
   const copy = accountCopy(fa)
-  const username = email ? formatLoginDisplay(email) : fa ? 'کاربر' : 'User'
+  const username = email ? formatLoginDisplay(email) : copy.user
   const initial = username.trim().charAt(0).toUpperCase() || 'U'
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)

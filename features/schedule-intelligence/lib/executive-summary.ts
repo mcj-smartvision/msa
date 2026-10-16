@@ -1,5 +1,14 @@
+/**
+ * @file features/schedule-intelligence/lib/executive-summary.ts
+ * @purpose منطق دامنه — تحلیل کیفیت برنامه و آپلود MSP (executive-summary)
+ * @safe-to-edit CAREFUL
+ * @affects تحلیل کیفیت برنامه و آپلود MSP
+ * @depends-on shared/types/schedule-intelligence, features/schedule-intelligence/lib/schedule-metrics
+ */
+
 import type { CpmResult, NormalizedSchedule, PhaseSummary, ProjectKpis } from '@/shared/types/schedule-intelligence'
 import { topActivitiesBy } from '@/features/schedule-intelligence/lib/schedule-metrics'
+import { SCHEDULE_LIB_COPY as L } from '@/features/schedule-intelligence/lib/config'
 
 export function generateExecutiveSummaryFa(
   schedule: NormalizedSchedule,
@@ -12,52 +21,56 @@ export function generateExecutiveSummaryFa(
   const duration = kpis.calculatedProjectDurationDays.toLocaleString('fa-IR-u-nu-latn')
   const start = schedule.projectStart
     ? new Date(schedule.projectStart).toLocaleDateString('fa-IR-u-nu-latn')
-    : 'نامشخص'
+    : L.unknown
   const finish = schedule.projectFinish
     ? new Date(schedule.projectFinish).toLocaleDateString('fa-IR-u-nu-latn')
-    : 'نامشخص'
+    : L.unknown
   const criticalCount = kpis.criticalCount
 
   const highestRiskPhase =
-    phases.sort((a, b) => b.highRiskCount - a.highRiskCount)[0]?.name ?? 'نامشخص'
+    phases.sort((a, b) => b.highRiskCount - a.highRiskCount)[0]?.name ?? L.unknown
 
   const topRisks = topActivitiesBy(schedule.tasks, 'riskScore', 3)
     .map((t) => t.name)
-    .join('، ')
+    .join(L.listSep)
 
   const qualityParts: string[] = []
   if (kpis.validationErrorCount > 0) {
-    qualityParts.push(`${kpis.validationErrorCount.toLocaleString('fa-IR-u-nu-latn')} خطای اعتبارسنجی`)
+    qualityParts.push(L.validationErrors(kpis.validationErrorCount.toLocaleString('fa-IR-u-nu-latn')))
   }
   if (kpis.validationWarningCount > 0) {
-    qualityParts.push(`${kpis.validationWarningCount.toLocaleString('fa-IR-u-nu-latn')} هشدار`)
+    qualityParts.push(L.validationWarnings(kpis.validationWarningCount.toLocaleString('fa-IR-u-nu-latn')))
   }
   const qualityWarningText =
     qualityParts.length > 0
-      ? `توجه: ${qualityParts.join(' و ')} در داده‌ها ثبت شد.`
-      : 'کیفیت داده‌ها برای تحلیل قابل قبول است.'
+      ? L.qualityAttention(qualityParts.join(L.andSep))
+      : L.qualityOk
 
   const calendarNote =
     schedule.calendars.length === 0
-      ? ' محاسبه روز کاری با تقویم پیش‌فرض انجام شده و ممکن است با تقویم واقعی پروژه متفاوت باشد.'
+      ? L.calendarNote
       : ''
 
   if (!cpm.success) {
     return (
-      `تحلیل CPM به‌دلیل خطا در شبکه وابستگی (مثلاً حلقه) انجام نشد. ` +
-      `فایل شامل ${activityCount.toLocaleString('fa-IR-u-nu-latn')} فعالیت و ${depCount.toLocaleString('fa-IR-u-nu-latn')} رابطه است. ` +
-      qualityWarningText
+      L.cpmFailed(
+        activityCount.toLocaleString('fa-IR-u-nu-latn'),
+        depCount.toLocaleString('fa-IR-u-nu-latn')
+      ) + qualityWarningText
     )
   }
 
   return (
-    `این برنامه شامل ${activityCount.toLocaleString('fa-IR-u-nu-latn')} فعالیت اجرایی و ${depCount.toLocaleString('fa-IR-u-nu-latn')} رابطه است. ` +
-    `مدت شبکه محاسبه‌شده پروژه ${duration} روز است و بازه برنامه از ${start} تا ${finish} ادامه دارد. ` +
-    `تعداد ${criticalCount.toLocaleString('fa-IR-u-nu-latn')} فعالیت در مسیر بحرانی محاسبه‌شده قرار گرفته‌اند. ` +
-    `بیشترین تمرکز ریسک در فاز «${highestRiskPhase}» مشاهده شد. ` +
-    (topRisks
-      ? `مهم‌ترین فعالیت‌های قابل پیگیری: ${topRisks}. `
-      : '') +
+    L.summaryBody({
+      activities: activityCount.toLocaleString('fa-IR-u-nu-latn'),
+      deps: depCount.toLocaleString('fa-IR-u-nu-latn'),
+      duration,
+      start,
+      finish,
+      critical: criticalCount.toLocaleString('fa-IR-u-nu-latn'),
+      phase: highestRiskPhase,
+    }) +
+    (topRisks ? L.topRisks(topRisks) : '') +
     qualityWarningText +
     calendarNote
   )

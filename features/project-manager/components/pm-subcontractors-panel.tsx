@@ -1,3 +1,11 @@
+/**
+ * @file features/project-manager/components/pm-subcontractors-panel.tsx
+ * @purpose کامپوننت UI — اتاق فرمان مدیر پروژه و کارتابل (pm-subcontractors-panel)
+ * @safe-to-edit CAREFUL
+ * @affects اتاق فرمان مدیر پروژه و کارتابل
+ * @depends-on shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/textarea, shared/components/ui/badge, shared/components/common/voice-to-text-button, features/schedule/components/schedule-date-input, features/finance/components/money-input, shared/components/i18n/locale-provider, features/schedule/hooks/use-schedule-calendar, features/project-manager/config
+ */
+
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
@@ -17,6 +25,7 @@ import { useSupabase } from '@/shared/hooks/use-supabase'
 import { buildSubcontractHtml } from '@/features/project-manager/lib/contract-export'
 import type { ProjectSubcontractor } from '@/features/project-manager/lib/subcontractor-types'
 import { openPrintableHtml } from '@/features/finance/lib/expense-export'
+import { PM_SUBCONTRACTORS_COPY } from '@/features/project-manager/config'
 import {
 createSubcontractor,
 createSubcontractorContract,
@@ -41,6 +50,7 @@ export function PmSubcontractorsPanel({
   const { locale } = useLocale()
   const { calendar } = useScheduleCalendar()
   const fa = locale === 'fa' || locale === 'ar'
+  const t = fa ? PM_SUBCONTRACTORS_COPY.fa : PM_SUBCONTRACTORS_COPY.en
 
   const [rows, setRows] = useState<ProjectSubcontractor[]>([])
   const [loading, setLoading] = useState(true)
@@ -57,11 +67,7 @@ export function PmSubcontractorsPanel({
   const [value, setValue] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [standards, setStandards] = useState(
-    fa
-      ? 'رعایت نقشه‌ها، مشخصات فنی، HSE کارگاه و برنامه زمان‌بندی ابلاغی.'
-      : 'Follow drawings, specs, site HSE, and issued schedule.'
-  )
+  const [standards, setStandards] = useState(t.standardsDefault)
   const [file, setFile] = useState<File | null>(null)
 
   const load = useCallback(async () => {
@@ -74,14 +80,12 @@ export function PmSubcontractorsPanel({
       setError(
         err instanceof Error
           ? err.message
-          : fa
-            ? 'بارگذاری پیمانکاران ناموفق بود. آیا migration 42 اجرا شده؟'
-            : 'Failed to load subcontractors. Run migration 42?'
+          : t.loadFailed
       )
     } finally {
       setLoading(false)
     }
-  }, [supabase, projectId, fa])
+  }, [supabase, projectId, t.loadFailed])
 
   useEffect(() => {
     void load()
@@ -105,7 +109,7 @@ export function PmSubcontractorsPanel({
         projectId,
         subcontractorId: sub.id,
         contractNo,
-        title: fa ? `قرارداد ${name}` : `Contract — ${name}`,
+        title: t.contractTitle(name),
         scopeSummary: scope,
         contractValue: parseMoneyInput(value) ?? undefined,
         startDate: startDate || undefined,
@@ -132,7 +136,7 @@ export function PmSubcontractorsPanel({
       setFile(null)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : fa ? 'ذخیره ناموفق بود' : 'Save failed')
+      setError(err instanceof Error ? err.message : t.saveFailed)
     } finally {
       setSaving(false)
     }
@@ -151,17 +155,15 @@ export function PmSubcontractorsPanel({
         <div>
           <h3 className="font-semibold flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
-            {fa ? 'پیمانکاران پروژه' : 'Project subcontractors'}
+            {t.title}
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
-            {fa
-              ? 'معرفی پیمانکار، ضمیمه قرارداد و خروجی استاندارد — قبل از ابلاغ دستور لازم است.'
-              : 'Register subcontractors, attach contracts, export standard summary — required before releasing instructions.'}
+            {t.hint}
           </p>
         </div>
         <Button type="button" size="sm" onClick={() => setShowForm((v) => !v)}>
           <Plus className="h-4 w-4 me-1" />
-          {fa ? 'پیمانکار جدید' : 'Add subcontractor'}
+          {t.add}
         </Button>
       </div>
 
@@ -170,9 +172,7 @@ export function PmSubcontractorsPanel({
           <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive space-y-1">
             <p>{error}</p>
             <p className="text-muted-foreground">
-              {fa
-                ? 'اگر جدول وجود ندارد: فایل database/42-project-subcontractors.sql را در Supabase اجرا کنید.'
-                : 'If tables are missing: run database/42-project-subcontractors.sql in Supabase.'}
+              {t.missingTables}
             </p>
           </div>
         ) : null}
@@ -181,47 +181,47 @@ export function PmSubcontractorsPanel({
           <div className="rounded-xl border bg-muted/20 p-4 space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>{fa ? 'نام پیمانکار *' : 'Name *'}</Label>
+                <Label>{t.name}</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label>{fa ? 'رشته / تخصص' : 'Trade'}</Label>
+                <Label>{t.trade}</Label>
                 <Input
                   value={trade}
                   onChange={(e) => setTrade(e.target.value)}
-                  placeholder={fa ? 'مثلاً سرامیک، اسکلت، تأسیسات' : 'e.g. tiling, structure'}
+                  placeholder={t.tradePlaceholder}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>{fa ? 'نماینده' : 'Contact'}</Label>
+                <Label>{t.contact}</Label>
                 <Input value={contact} onChange={(e) => setContact(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label>{fa ? 'تلفن' : 'Phone'}</Label>
+                <Label>{t.phone}</Label>
                 <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label>{fa ? 'شماره قرارداد' : 'Contract no.'}</Label>
+                <Label>{t.contractNo}</Label>
                 <Input value={contractNo} onChange={(e) => setContractNo(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label>{fa ? 'مبلغ قرارداد (ریال)' : 'Contract value'}</Label>
+                <Label>{t.contractValue}</Label>
                 <MoneyInput value={value} onChange={setValue} />
               </div>
               <ScheduleDateInput
-                label={fa ? 'شروع قرارداد' : 'Start'}
+                label={t.start}
                 valueIso={startDate}
                 onChangeIso={setStartDate}
               />
               <ScheduleDateInput
-                label={fa ? 'پایان قرارداد' : 'End'}
+                label={t.end}
                 valueIso={endDate}
                 onChangeIso={setEndDate}
               />
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
-                <Label>{fa ? 'محدوده کار / کلیات' : 'Scope summary'}</Label>
+                <Label>{t.scope}</Label>
                 <VoiceToTextButton
                   onTranscript={(text) =>
                     setScope((prev) => (prev ? `${prev}\n${text}` : text))
@@ -232,7 +232,7 @@ export function PmSubcontractorsPanel({
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
-                <Label>{fa ? 'استانداردها و الزامات' : 'Standards'}</Label>
+                <Label>{t.standards}</Label>
                 <VoiceToTextButton
                   onTranscript={(text) =>
                     setStandards((prev) => (prev ? `${prev}\n${text}` : text))
@@ -242,7 +242,7 @@ export function PmSubcontractorsPanel({
               <Textarea rows={2} value={standards} onChange={(e) => setStandards(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>{fa ? 'ضمیمه قرارداد (PDF/تصویر)' : 'Attach contract file'}</Label>
+              <Label>{t.attach}</Label>
               <Input
                 type="file"
                 accept=".pdf,image/*"
@@ -251,18 +251,16 @@ export function PmSubcontractorsPanel({
             </div>
             <Button type="button" disabled={saving || !name.trim()} onClick={() => void handleCreate()}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin me-1" /> : <Upload className="h-4 w-4 me-1" />}
-              {fa ? 'ثبت پیمانکار و قرارداد' : 'Save subcontractor & contract'}
+              {t.save}
             </Button>
           </div>
         ) : null}
 
         {loading ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">{fa ? 'در حال بارگذاری…' : 'Loading…'}</p>
+          <p className="text-sm text-muted-foreground py-4 text-center">{t.loading}</p>
         ) : rows.length === 0 ? (
           <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
-            {fa
-              ? 'هنوز هیچ پیمانکاری معرفی نشده. تا وقتی پیمانکار ثبت نشود، نمی‌توان دستور کار را «ارسال به پیمانکار» کرد.'
-              : 'No subcontractors registered yet. You cannot “send to subcontractor” until one is registered.'}
+            {t.empty}
           </p>
         ) : (
           <ul className={compact ? 'space-y-2 max-h-64 overflow-y-auto' : 'space-y-3'}>
@@ -295,7 +293,7 @@ export function PmSubcontractorsPanel({
                     {contract ? (
                       <Button type="button" size="sm" variant="outline" onClick={() => exportContract(sub)}>
                         <FileText className="h-3.5 w-3.5 me-1" />
-                        {fa ? 'خروجی استاندارد' : 'Export'}
+                        {t.export}
                       </Button>
                     ) : null}
                   </div>
@@ -307,21 +305,10 @@ export function PmSubcontractorsPanel({
 
         {!compact ? (
           <p className="text-[11px] text-muted-foreground">
-            {fa ? (
-              <>
-                صفحه کامل:{' '}
-                <Link href="/project/subcontractors" className="text-primary underline">
-                  مدیریت پیمانکاران
-                </Link>
-              </>
-            ) : (
-              <>
-                Full page:{' '}
-                <Link href="/project/subcontractors" className="text-primary underline">
-                  Subcontractors
-                </Link>
-              </>
-            )}
+            {t.fullPagePrefix}{' '}
+            <Link href="/project/subcontractors" className="text-primary underline">
+              {t.fullPageLink}
+            </Link>
           </p>
         ) : null}
       </div>

@@ -1,0 +1,43 @@
+---
+description: File header and JSDoc so any AI can edit a file in isolation
+globs: "{features,shared,app,tests}/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# File headers and JSDoc
+
+New or substantially edited modules get a header. JSDoc every exported function.
+
+```ts
+/**
+ * @file features/evm/lib/metrics.ts
+ * @purpose Earned-value formulas (CPI, SPI, EAC)
+ * @safe-to-edit CAREFUL
+ * @affects manager dashboard, reports, S-curve
+ * @depends-on features/evm/lib/rag-status.ts
+ * @test-after-change npm run test:schedule
+ */
+
+/**
+ * CPI = EV ÷ AC. Above 1 is favorable. Null when AC is not recorded.
+ */
+export function calculateCpi(ev: number, ac: number): number | null {
+  if (!(ac > 0)) return null
+  return ev / ac
+}
+```
+
+`@safe-to-edit YES` only when changing the file cannot break others (pure config/labels).
+
+Types for public data (no `any` on domain objects):
+
+```ts
+export interface EvmMetrics {
+  bac: number
+  pv: number
+  ev: number
+  ac: number
+  cpi: number | null
+  spi: number | null
+}
+```

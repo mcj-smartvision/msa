@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/supervisor-today-service.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (supervisor-today-service)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/site-ops/lib/auth, features/supervisor/lib/build-today-activities, features/schedule/services/schedule, features/storekeeper/services/inventory, features/workshop/lib/service
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'
 import { buildSupervisorTodayActivities } from '@/features/supervisor/lib/build-today-activities'

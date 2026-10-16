@@ -1,3 +1,11 @@
+/**
+ * @file app/api/manager/cost-estimate/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, shared/lib/supabase/service, features/site-ops/lib/auth, features/site-ops/domain/errors, features/admin/lib/access, features/manager/lib/access, features/manager/lib/load-cost-estimate, features/finance/lib/load-live-cost-inputs, features/manager/lib/cost-estimate, features/calc-trace/lib/history
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { createServiceClient } from '@/shared/lib/supabase/service'

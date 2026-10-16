@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/lib/schema.ts
+ * @purpose منطق دامنه — راه‌اندازی پروژه (schema)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on features/compliance/lib/engine, features/compliance/lib/types
+ */
+
 import { z } from 'zod'
 import { resolveComplianceProfile } from '@/features/compliance/lib/engine'
 import type { CustomStandardEntry } from '@/features/compliance/lib/types'

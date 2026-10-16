@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/cost-estimate.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (cost-estimate)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/schedule/lib/dates, features/schedule/lib/monthly-deducted-weight, features/evm/lib/metrics, features/schedule/lib/access
+ */
+
 import { toIsoDateOnly } from '@/features/schedule/lib/dates'
 import { enumerateProjectJalaliMonths, inclusiveDayCount } from '@/features/schedule/lib/monthly-deducted-weight'
 import type { EvmBudgetBasis } from '@/features/evm/lib/metrics'

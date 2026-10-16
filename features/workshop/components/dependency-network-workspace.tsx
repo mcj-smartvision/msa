@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/components/dependency-network-workspace.tsx
+ * @purpose کامپوننت UI — بسته‌های اجرایی و تأیید کارگاه (dependency-network-workspace)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on features/schedule/lib/dates, features/schedule/lib/dependency-network, features/schedule/lib/dependency-network-layout, shared/lib/utils
+ */
+
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
@@ -10,6 +18,7 @@ type DependencyNetwork,
 } from '@/features/schedule/lib/dependency-network'
 import { DEP_AXIS_H, layoutDependencyNetwork } from '@/features/schedule/lib/dependency-network-layout'
 import { cn } from '@/shared/lib/utils'
+import { WORKSHOP_COPY } from '@/features/workshop/lib/ui-copy'
 
 export function DependencyNetworkWorkspace() {
   const searchParams = useSearchParams()
@@ -31,10 +40,10 @@ export function DependencyNetworkWorkspace() {
         cache: 'no-store',
       })
       const data = (await res.json()) as DependencyNetwork & { error?: string }
-      if (!res.ok) throw new Error(data.error || 'خواندن شبکه وابستگی ممکن نشد')
+      if (!res.ok) throw new Error(data.error || WORKSHOP_COPY.network.loadFailed)
       setNetwork(buildDependencyNetwork(data.nodes, data.links))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'خطا در خواندن وابستگی‌ها')
+      setError(err instanceof Error ? err.message : WORKSHOP_COPY.network.readFailed)
     } finally {
       setLoading(false)
     }
@@ -77,7 +86,7 @@ export function DependencyNetworkWorkspace() {
 
   if (!projectId) {
     return (
-      <p className="text-sm text-slate-500">برای دیدن شبکه وابستگی، پروژه را انتخاب کنید.</p>
+      <p className="text-sm text-slate-500">{WORKSHOP_COPY.network.pickProject}</p>
     )
   }
 
@@ -87,10 +96,10 @@ export function DependencyNetworkWorkspace() {
         <div>
           <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
             <GitBranch className="h-4 w-4" />
-            شبکه وابستگی فعالیت‌ها
+            {WORKSHOP_COPY.network.title}
           </h3>
           <p className="mt-1 text-xs leading-relaxed text-slate-600">
-            ستون‌ها از راست به چپ مسیر پیش‌نیاز → پس‌نیاز است. فعالیت بدون پیوند پایین صفحه جدا می‌ماند.
+            {WORKSHOP_COPY.network.description}
           </p>
         </div>
         <button
@@ -99,7 +108,7 @@ export function DependencyNetworkWorkspace() {
           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
         >
           <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
-          نوسازی
+          {WORKSHOP_COPY.network.refresh}
         </button>
       </div>
 
@@ -111,7 +120,7 @@ export function DependencyNetworkWorkspace() {
 
       {network && network.isolatedIds.length > 0 ? (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          {network.isolatedIds.length} فعالیت هنوز به شبکه وصل نشده‌اند (بدون پیش‌نیاز و پس‌نیاز).
+          {WORKSHOP_COPY.network.isolatedCount(network.isolatedIds.length)}
         </p>
       ) : null}
 
@@ -120,34 +129,34 @@ export function DependencyNetworkWorkspace() {
           <span className="font-semibold">{selected.wbs ? `${selected.wbs} — ` : ''}</span>
           {selected.name}
           <span className="mx-2 text-slate-400">|</span>
-          شروع {formatScheduleDate(selected.start, 'jalali')}
+          {WORKSHOP_COPY.network.start} {formatScheduleDate(selected.start, 'jalali')}
           <span className="mx-2 text-slate-400">|</span>
-          پایان {formatScheduleDate(selected.finish, 'jalali')}
+          {WORKSHOP_COPY.network.finish} {formatScheduleDate(selected.finish, 'jalali')}
           <span className="mx-2 text-slate-400">|</span>
-          {selected.predCount} پیش‌نیاز · {selected.succCount} پس‌نیاز
+          {WORKSHOP_COPY.network.predSucc(selected.predCount, selected.succCount)}
         </div>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600">
         <span className="inline-flex items-center gap-1">
-          <span className="h-3 w-5 rounded border-2 border-rose-600 bg-rose-50" /> بحرانی
+          <span className="h-3 w-5 rounded border-2 border-rose-600 bg-rose-50" /> {WORKSHOP_COPY.network.critical}
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-3 w-5 rounded border border-slate-300 bg-white" /> عادی
+          <span className="h-3 w-5 rounded border border-slate-300 bg-white" /> {WORKSHOP_COPY.network.normal}
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-3 w-5 rounded border border-amber-500 bg-amber-50" /> بدون وابستگی
+          <span className="h-3 w-5 rounded border border-amber-500 bg-amber-50" /> {WORKSHOP_COPY.network.isolated}
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-0.5 w-5 bg-rose-600" /> پیوند روی مسیر بحرانی
+          <span className="h-0.5 w-5 bg-rose-600" /> {WORKSHOP_COPY.network.criticalLink}
         </span>
       </div>
 
       <div className="overflow-auto rounded-xl border border-slate-200 bg-white">
         {loading && !layout ? (
-          <p className="p-6 text-sm text-slate-500">در حال بارگذاری شبکه…</p>
+          <p className="p-6 text-sm text-slate-500">{WORKSHOP_COPY.network.loadingNetwork}</p>
         ) : !layout || layout.boxes.length === 0 ? (
-          <p className="p-6 text-sm text-slate-500">فعالیت برگی برای رسم شبکه نیست.</p>
+          <p className="p-6 text-sm text-slate-500">{WORKSHOP_COPY.network.noLeaves}</p>
         ) : (
           <div className="min-w-full" style={{ width: layout.width, height: layout.height }}>
             <svg
@@ -196,7 +205,7 @@ export function DependencyNetworkWorkspace() {
                   className="fill-amber-800"
                   style={{ fontSize: 12, fontWeight: 600 }}
                 >
-                  فعالیت‌های بدون پیوند
+                  {WORKSHOP_COPY.network.isolatedBand}
                 </text>
               ) : null}
 
@@ -254,7 +263,7 @@ export function DependencyNetworkWorkspace() {
                 const dim = Boolean(selectedId) && !related.has(box.id)
                 const activeBox = selectedId === box.id
                 const critical = box.node.critical
-                const fullName = `${box.node.wbs ? `${box.node.wbs} — ` : ''}${box.node.name}${critical ? ' (بحرانی)' : ''}`
+                const fullName = `${box.node.wbs ? `${box.node.wbs} — ` : ''}${box.node.name}${critical ? WORKSHOP_COPY.network.criticalSuffix : ''}`
                 return (
                   <g
                     key={box.id}

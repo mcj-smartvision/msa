@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/progress-snapshots.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (progress-snapshots)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/lib/time/tehran
+ */
+
 import { toGregorian, toJalaali } from 'jalaali-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { todayTehranIso } from '@/shared/lib/time/tehran'

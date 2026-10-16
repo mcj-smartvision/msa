@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/components/expense-status-badge.tsx
+ * @purpose کامپوننت UI — حسابداری، هزینه،overhead و صورت‌وضعیت (expense-status-badge)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on shared/lib/utils, features/finance/lib/expense-types, shared/lib/i18n/expenses, features/project-init/lib/i18n/types
+ */
+
 'use client'
 
 import { Lock } from 'lucide-react'

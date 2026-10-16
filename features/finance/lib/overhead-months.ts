@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/overhead-months.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (overhead-months)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/finance/lib/overhead-schedule-months, features/finance/lib/live-workshop-cost
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { deductedMonthFromLabel } from '@/features/finance/lib/overhead-schedule-months'
 import { TOMAN_SCALE, type OverheadMonthAmount } from '@/features/finance/lib/live-workshop-cost'

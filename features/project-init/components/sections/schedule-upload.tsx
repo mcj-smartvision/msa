@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/components/sections/schedule-upload.tsx
+ * @purpose کامپوننت UI — راه‌اندازی پروژه (schedule-upload)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on shared/components/ui/badge, features/project-init/lib/schema
+ */
+
 'use client'
 
 import { Badge } from '@/shared/components/ui/badge'

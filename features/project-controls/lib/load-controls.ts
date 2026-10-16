@@ -1,3 +1,11 @@
+/**
+ * @file features/project-controls/lib/load-controls.ts
+ * @purpose منطق دامنه — موتور کنترل پروژه و شاخص‌های توضیح‌پذیر (load-controls)
+ * @safe-to-edit CAREFUL
+ * @affects موتور کنترل پروژه و شاخص‌های توضیح‌پذیر
+ * @depends-on shared/types/project-controls, features/project-controls/server/get-controls-snapshot
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ControlsSnapshot, ExplainedKpi } from '@/shared/types/project-controls'
 import { getControlsSnapshot } from '@/features/project-controls/server/get-controls-snapshot'

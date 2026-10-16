@@ -1,3 +1,11 @@
+/**
+ * @file app/api/finance/contractor-costs/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/site-ops/lib/auth, features/workshop/lib/domain, features/workshop/lib/service, features/workshop/lib/package-commercial, features/schedule/lib/physical-progress, features/schedule/lib/dates, features/schedule/lib/monthly-deducted-weight, features/finance/lib/contractor-monthly-cost
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'

@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/components/costs-dashboard.tsx
+ * @purpose کامپوننت UI — حسابداری، هزینه،overhead و صورت‌وضعیت (costs-dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/admin/components/shared, features/admin/components/stat-card, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/textarea, shared/components/ui/select, features/schedule/components/formatted-date, features/schedule/components/schedule-date-input, features/finance/components/money-input
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -34,6 +42,7 @@ deleteFinancialCost,
 fetchFinancialCosts,
 } from '@/features/finance/services/costs'
 import { cn } from '@/shared/lib/utils'
+import { COSTS_DASHBOARD_COPY as copy } from '@/features/finance/config'
 
 interface CostsDashboardProps {
   initialContext: DashboardUserContext
@@ -89,7 +98,7 @@ export function CostsDashboard({
       })
       setRows(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'بارگذاری هزینه‌ها ناموفق بود')
+      setError(err instanceof Error ? err.message : copy.loadFailed)
     } finally {
       setLoading(false)
     }
@@ -106,7 +115,7 @@ export function CostsDashboard({
     if (!projectId || !canEdit) return
     const amount = parseMoneyInput(formAmount)
     if (!Number.isFinite(amount) || amount <= 0) {
-      setError('مبلغ باید بیشتر از صفر باشد.')
+      setError(copy.amountPositive)
       return
     }
     setSaving(true)
@@ -129,28 +138,28 @@ export function CostsDashboard({
       setShowForm(false)
       await loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ذخیره هزینه ناموفق بود')
+      setError(err instanceof Error ? err.message : copy.saveFailed)
     } finally {
       setSaving(false)
     }
   }
 
   async function handleDelete(id: string) {
-    if (!canEdit || !confirm('این رکورد هزینه حذف شود؟')) return
+    if (!canEdit || !confirm(copy.confirmDelete)) return
     setError(null)
     try {
       await deleteFinancialCost(supabase, id)
       await loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'حذف ناموفق بود')
+      setError(err instanceof Error ? err.message : copy.deleteFailed)
     }
   }
 
   if (projectOptions.length === 0) {
     return (
       <EmptyState
-        title="داشبورد هزینه‌ها"
-        description="از ادمین بخواهید شما را به‌عنوان حسابدار پروژه روی یک پروژه منصوب کند."
+        title={copy.title}
+        description={copy.emptyAssign}
       />
     )
   }
@@ -161,14 +170,14 @@ export function CostsDashboard({
   return (
     <div className="space-y-8">
       <PageHeader
-        title="داشبورد هزینه‌ها"
-        description="ثبت و بررسی هزینه‌های واقعی پروژه (AC) — مصالح، نیروی کار، تجهیزات، پیمانکاران، سربار."
+        title={copy.title}
+        description={copy.description}
       />
 
       {error ? <ErrorBlock message={error} onRetry={() => void loadData()} /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard label="جمع AC" value={formatMoney(summary.totalAc)} icon={DollarSign} />
+        <StatCard label={copy.totalAc} value={formatMoney(summary.totalAc)} icon={DollarSign} />
         {FINANCIAL_COST_TYPES.map((type) => (
           <StatCard
             key={type}
@@ -180,25 +189,25 @@ export function CostsDashboard({
       </div>
 
       <SectionCard
-        title="فیلترها"
+        title={copy.filters}
         action={
           canEdit ? (
             <Button type="button" size="sm" onClick={() => setShowForm((v) => !v)}>
               <Plus className="h-4 w-4 me-1" />
-              {showForm ? 'بستن فرم' : 'افزودن هزینه'}
+              {showForm ? copy.closeForm : copy.addCost}
             </Button>
           ) : null
         }
       >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 p-4">
           <div className="space-y-2">
-            <Label>نوع</Label>
+            <Label>{copy.type}</Label>
             <Select value={filterType} onValueChange={(v) => setFilterType(v as FinancialCostType | 'all')}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">همه انواع</SelectItem>
+                <SelectItem value="all">{copy.allTypes}</SelectItem>
                 {FINANCIAL_COST_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>
                     {FINANCIAL_COST_TYPE_LABELS[t]}
@@ -208,23 +217,23 @@ export function CostsDashboard({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>کد آیتم</Label>
+            <Label>{copy.itemCode}</Label>
             <Input
               value={filterItemCode}
               onChange={(e) => setFilterItemCode(e.target.value)}
-              placeholder="مثلاً ELEV-01"
+              placeholder={copy.itemCodePlaceholder}
             />
           </div>
           <div className="space-y-2">
             <ScheduleDateInput
-              label="از تاریخ"
+              label={copy.dateFrom}
               valueIso={filterDateFrom}
               onChangeIso={setFilterDateFrom}
             />
           </div>
           <div className="space-y-2">
             <ScheduleDateInput
-              label="تا تاریخ"
+              label={copy.dateTo}
               valueIso={filterDateTo}
               onChangeIso={setFilterDateTo}
             />
@@ -233,18 +242,18 @@ export function CostsDashboard({
 
         {showForm && canEdit ? (
           <form onSubmit={(e) => void handleSubmit(e)} className="border-t p-4 space-y-4 bg-muted/20">
-            <p className="text-sm font-semibold">رکورد هزینه جدید</p>
+            <p className="text-sm font-semibold">{copy.newRecord}</p>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-2">
                 <ScheduleDateInput
-                  label="تاریخ"
+                  label={copy.date}
                   valueIso={formDate}
                   onChangeIso={setFormDate}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label>نوع</Label>
+                <Label>{copy.type}</Label>
                 <Select value={formType} onValueChange={(v) => setFormType(v as FinancialCostType)}>
                   <SelectTrigger>
                     <SelectValue />
@@ -259,46 +268,46 @@ export function CostsDashboard({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>مبلغ</Label>
+                <Label>{copy.amount}</Label>
                 <MoneyInput value={formAmount} onChange={setFormAmount} required />
               </div>
               <div className="space-y-2">
-                <Label>کد آیتم</Label>
+                <Label>{copy.itemCode}</Label>
                 <Input value={formItemCode} onChange={(e) => setFormItemCode(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>شماره فاکتور</Label>
+                <Label>{copy.invoice}</Label>
                 <Input value={formInvoiceRef} onChange={(e) => setFormInvoiceRef(e.target.value)} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>شرح</Label>
+              <Label>{copy.descriptionLabel}</Label>
               <Textarea rows={2} value={formDescription} onChange={(e) => setFormDescription(e.target.value)} />
             </div>
             <Button type="submit" disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin me-2" /> : null}
-              ذخیره هزینه
+              {copy.saveCost}
             </Button>
           </form>
         ) : null}
       </SectionCard>
 
-      <SectionCard title="آخرین رکوردهای هزینه">
+      <SectionCard title={copy.latest}>
         {loading ? (
-          <LoadingBlock label="در حال بارگذاری هزینه‌ها…" />
+          <LoadingBlock label={copy.loading} />
         ) : rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">هنوز رکورد هزینه‌ای ثبت نشده است.</p>
+          <p className="text-sm text-muted-foreground py-8 text-center">{copy.empty}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-muted-foreground text-start">
-                  <th className="py-2 px-3">تاریخ</th>
-                  <th className="py-2 px-3">نوع</th>
-                  <th className="py-2 px-3">آیتم</th>
-                  <th className="py-2 px-3 text-end">مبلغ</th>
-                  <th className="py-2 px-3">شرح</th>
-                  <th className="py-2 px-3">فاکتور</th>
+                  <th className="py-2 px-3">{copy.date}</th>
+                  <th className="py-2 px-3">{copy.type}</th>
+                  <th className="py-2 px-3">{copy.item}</th>
+                  <th className="py-2 px-3 text-end">{copy.amount}</th>
+                  <th className="py-2 px-3">{copy.descriptionLabel}</th>
+                  <th className="py-2 px-3">{copy.invoiceCol}</th>
                   {canEdit ? <th className="py-2 px-3 w-12" /> : null}
                 </tr>
               </thead>
@@ -323,7 +332,7 @@ export function CostsDashboard({
                           type="button"
                           variant="ghost"
                           size="icon"
-                          aria-label="حذف"
+                          aria-label={copy.deleteAria}
                           onClick={() => void handleDelete(row.id)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />

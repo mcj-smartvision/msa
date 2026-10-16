@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/hooks/use-schedule-view-date.ts
+ * @purpose هوک — زمان‌بندی، WBS و گانت (use-schedule-view-date)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/view-date-preference
+ */
+
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'

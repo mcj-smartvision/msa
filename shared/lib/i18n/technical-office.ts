@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/i18n/technical-office.ts
+ * @purpose تنظیمات و برچسب‌ها — زیرساخت مشترک سامانه (technical-office)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/project-init/lib/i18n/types
+ */
+
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 
 const EN = {
@@ -25,6 +33,14 @@ const EN = {
   loading: 'Loading…',
   saved: 'Saved.',
   error: 'Something went wrong.',
+  tabContractors: 'Contractor',
+  tabDrawings: 'Drawings',
+  tabSendSchedule: 'Send schedule',
+  tabEditSchedule: 'Edit schedule',
+  tabSmartProgress: 'Smart progress alerts',
+  supervisorTitle: 'Workshop schedule view',
+  supervisorHint: 'Supervisor view — read-only schedule and lists.',
+  pickProject: 'Select a project first.',
 }
 
 const FA: typeof EN = {
@@ -52,6 +68,14 @@ const FA: typeof EN = {
   loading: 'در حال بارگذاری…',
   saved: 'ذخیره شد.',
   error: 'خطایی رخ داد.',
+  tabContractors: 'پیمانکار',
+  tabDrawings: 'نقشه‌ها',
+  tabSendSchedule: 'ارسال برنامه زمانبندی',
+  tabEditSchedule: 'ویرایش برنامه زمانبندی',
+  tabSmartProgress: 'هشدار هوشمند پیشرفت',
+  supervisorTitle: 'مشاهده برنامه کارگاه',
+  supervisorHint: 'نمای سرپرست — فقط مشاهده برنامه و لیست‌های دفتر فنی.',
+  pickProject: 'ابتدا یک پروژه انتخاب کنید.',
 }
 
 export function getTechnicalOfficeMessages(locale: FormLocale | string) {

@@ -1,4 +1,13 @@
+/**
+ * @file features/schedule-intelligence/lib/risk-analyzer.ts
+ * @purpose منطق دامنه — تحلیل کیفیت برنامه و آپلود MSP (risk-analyzer)
+ * @safe-to-edit CAREFUL
+ * @affects تحلیل کیفیت برنامه و آپلود MSP
+ * @depends-on shared/types/schedule-intelligence
+ */
+
 import type {
+import { SCHEDULE_LIB_COPY as L } from '@/features/schedule-intelligence/lib/config'
 RiskLevel,
 ScheduleAnalysisConfig,
 ScheduleTask,
@@ -34,10 +43,10 @@ export function analyzeActivityRisk(
   // A. Criticality
   if (task.calculatedCritical) {
     score += w.criticality
-    reasons.push('فعالیت روی مسیر بحرانی محاسبه‌شده قرار دارد.')
+    reasons.push(L.riskOnCritical)
   } else if (task.nearCritical) {
     score += w.criticality * 0.6
-    reasons.push('فعالیت نزدیک به بحرانی (شناوری کم) است.')
+    reasons.push(L.riskNearCritical)
   }
 
   // B. Float
@@ -46,16 +55,16 @@ export function analyzeActivityRisk(
   if (tf != null) {
     if (tf < 0) {
       score += w.float
-      reasons.push('فعالیت دارای شناوری منفی است.')
+      reasons.push(L.riskNegativeFloat)
     } else if (tf <= 0) {
       score += w.float * 0.95
-      reasons.push('شناوری کل فعالیت صفر است.')
+      reasons.push(L.riskZeroFloat)
     } else if (tf <= 5 * config.minutesPerDay) {
       score += w.float * 0.75
-      reasons.push('شناوری کل کمتر از 5 روز کاری است.')
+      reasons.push(L.riskFloatUnder5)
     } else if (tf <= nearMin) {
       score += w.float * 0.45
-      reasons.push('شناوری کل در محدوده نزدیک به بحرانی است.')
+      reasons.push(L.riskFloatNear)
     }
   }
 
@@ -64,33 +73,33 @@ export function analyzeActivityRisk(
     const pct = percentileRank(allLeafDurations, task.durationMinutes)
     if (pct >= 90) {
       score += w.duration
-      reasons.push('مدت فعالیت در صدک 90 یا بالاتر قرار دارد.')
+      reasons.push(L.riskDurationP90)
     } else if (pct >= 75) {
       score += w.duration * 0.6
-      reasons.push('مدت فعالیت در صدک 75 یا بالاتر قرار دارد.')
+      reasons.push(L.riskDurationP75)
     }
   }
 
   // D. Dependency centrality
   if (maxOutdegree > 0 && task.outdegree >= maxOutdegree * 0.8 && task.outdegree >= 3) {
     score += w.dependency * 0.8
-    reasons.push('این فعالیت به تعداد زیادی فعالیت بعدی وابسته است.')
+    reasons.push(L.riskManySuccessors)
   }
   if (maxDownstream > 0 && task.downstreamReach >= maxDownstream * 0.7 && task.downstreamReach >= 5) {
     score += w.dependency * 0.6
-    reasons.push('تعداد زیادی فعالیت پایین‌دست از این فعالیت تأثیر می‌گیرند.')
+    reasons.push(L.riskManyDownstream)
   }
 
   // E. Status / slippage
   if (task.startTimingLabel === 'overdue' && task.status === 'not-started') {
     score += w.status
-    reasons.push('فعالیت باید شروع شده باشد اما هنوز شروع نشده است.')
+    reasons.push(L.riskShouldHaveStarted)
   }
   if (task.status === 'in-progress' && task.finish) {
     const finishMs = new Date(task.finish).getTime()
     if (finishMs < Date.now() && task.percentComplete < 100) {
       score += w.status * 0.85
-      reasons.push('فعالیت در حال انجام است اما از تاریخ پایان برنامه عبور کرده.')
+      reasons.push(L.riskPastFinish)
     }
   }
 
@@ -98,12 +107,12 @@ export function analyzeActivityRisk(
   const dataIssues = taskWarnings.filter((w) => w.taskUid === task.uid)
   if (dataIssues.some((w) => w.severity === 'error')) {
     score += w.dataQuality
-    reasons.push('فعالیت دارای خطای اعتبارسنجی داده است.')
+    reasons.push(L.riskValidationError)
   }
 
   if (!task.start || !task.finish) {
     score += w.dataQuality * 0.5
-    reasons.push('تاریخ شروع یا پایان فعالیت ناقص است.')
+    reasons.push(L.riskMissingDates)
   }
 
   const capped = Math.min(100, Math.round(score))

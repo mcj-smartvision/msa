@@ -1,3 +1,11 @@
+/**
+ * @file features/project-controls/lib/controls-snapshot.ts
+ * @purpose منطق دامنه — موتور کنترل پروژه و شاخص‌های توضیح‌پذیر (controls-snapshot)
+ * @safe-to-edit CAREFUL
+ * @affects موتور کنترل پروژه و شاخص‌های توضیح‌پذیر
+ * @depends-on features/evm/lib/load-project-evm, shared/types/project-controls, features/project-controls/lib/earned-schedule, features/project-controls/lib/pv-curve, shared/lib/time/tehran
+ */
+
 import type { ProjectEvmSnapshot } from '@/features/evm/lib/load-project-evm'
 import type { ControlsSnapshot, PVCurvePoint, SnapshotField, WeeklyPlanCounts } from '@/shared/types/project-controls'
 import { DAYS_PER_UNIT, solveEarnedSchedule } from '@/features/project-controls/lib/earned-schedule'

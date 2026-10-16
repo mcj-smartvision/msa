@@ -1,3 +1,11 @@
+/**
+ * @file features/holidays/lib/service.ts
+ * @purpose منطق دامنه — تقویم تعطیلات (service)
+ * @safe-to-edit CAREFUL
+ * @affects تقویم تعطیلات
+ * @depends-on features/site-ops/domain/errors, features/holidays/lib/holiday-form, features/holidays/lib/load-holidays, features/holidays/lib/types, features/schedule/lib/persist-progress-forecast, shared/lib/supabase/service
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { SiteOpsError } from '@/features/site-ops/domain/errors'
 import { END_BEFORE_START_ERROR } from '@/features/holidays/lib/holiday-form'

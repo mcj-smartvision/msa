@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/domain/report.ts
+ * @purpose منطق دامنه — عملیات کارگاه، دستورکار و برنامه روزانه (report)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on nothing
+ */
+
 import { calcVariances } from './actuals'
 
 export interface DailyReportLine {

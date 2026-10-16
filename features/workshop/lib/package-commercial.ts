@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/lib/package-commercial.ts
+ * @purpose منطق دامنه — بسته‌های اجرایی و تأیید کارگاه (package-commercial)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on nothing
+ */
+
 /** Persist commercial fields when DB columns (unit_price / quantity_certainty) are missing. */
 
 const PRICE_META = /\[\[unit_price:([0-9]+(?:\.[0-9]+)?)\]\](?:\n|$)/g

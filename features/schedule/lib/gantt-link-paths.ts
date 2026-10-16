@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/gantt-link-paths.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (gantt-link-paths)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule, features/schedule/lib/dependency-explain
+ */
+
 import type { TaskRelationType } from '@/shared/types/schedule'
 import { explainDependencyLink } from '@/features/schedule/lib/dependency-explain'
 

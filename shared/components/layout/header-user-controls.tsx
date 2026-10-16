@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/layout/header-user-controls.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (header-user-controls)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/components/project/header-project-switcher, features/account/components/header-user-menu, shared/components/i18n/header-language-switcher, shared/components/layout/PersianCalendar, features/weather/components/header-weather
+ */
+
 'use client'
 
 import { HeaderProjectSwitcher } from '@/shared/components/project/header-project-switcher'

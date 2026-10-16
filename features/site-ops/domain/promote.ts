@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/domain/promote.ts
+ * @purpose منطق دامنه — عملیات کارگاه، دستورکار و برنامه روزانه (promote)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on features/cre-contract/lib
+ */
+
 import type { CreControlReadyRow, CreGate, CrePhase1Export } from '@/features/cre-contract/lib'
 import { SiteOpsError } from './errors'
 import { assertPermission, type SiteOpsRole } from './permissions'

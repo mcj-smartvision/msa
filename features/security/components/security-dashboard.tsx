@@ -1,3 +1,11 @@
+/**
+ * @file features/security/components/security-dashboard.tsx
+ * @purpose کامپوننت UI — امنیت و ثبت چهره (security-dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects امنیت و ثبت چهره
+ * @depends-on features/admin/components/shared, features/admin/components/stat-card, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/badge, shared/components/ui/select, features/attendance/lib/domain, features/attendance/lib/types, shared/hooks/use-synced-project-id, features/security/config
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -35,6 +43,7 @@ import { useSyncedProjectId } from '@/shared/hooks/use-synced-project-id'
 import type { DashboardUserContext } from '@/shared/types/dashboard'
 import { cn } from '@/shared/lib/utils'
 import { GateCameraPanel } from '@/features/security/components/gate-camera-panel'
+import { SECURITY_COPY as copy } from '@/features/security/config'
 
 interface SecurityDashboardProps {
   initialContext: DashboardUserContext
@@ -76,15 +85,15 @@ function PresenceList({
                 <p className="font-medium truncate">{p.fullName}</p>
                 <p className="text-xs text-muted-foreground">
                   {p.officialEntryAt
-                    ? `ورود اول: ${timeFa(p.officialEntryAt)}`
-                    : 'بدون ورود رسمی'}
+                    ? copy.firstEntry(timeFa(p.officialEntryAt))
+                    : copy.noOfficialEntry}
                   {p.status === 'outside' && p.outsideMsToday > 0
-                    ? ` · بیرون: ${formatDurationFa(p.outsideMsToday)}`
+                    ? copy.outsideDur(formatDurationFa(p.outsideMsToday))
                     : ''}
                 </p>
               </div>
               <Badge variant="outline" className={cn('shrink-0', accent)}>
-                {p.status === 'inside' ? 'داخل' : p.status === 'outside' ? 'بیرون' : 'غایب'}
+                {p.status === 'inside' ? copy.inside : p.status === 'outside' ? copy.outside : copy.absent}
               </Badge>
             </li>
           ))}
@@ -114,7 +123,7 @@ export function SecurityDashboard({
   const [newCameraLabel, setNewCameraLabel] = useState('')
 
   const projectName = useMemo(
-    () => projectOptions.find((p) => p.id === projectId)?.name ?? 'پروژه',
+    () => projectOptions.find((p) => p.id === projectId)?.name ?? copy.fallbackProject,
     [projectOptions, projectId]
   )
 
@@ -138,14 +147,14 @@ export function SecurityDashboard({
       ])
       const dashJson = await dashRes.json()
       const memJson = await memRes.json()
-      if (!dashRes.ok) throw new Error(dashJson.error || 'خطا در بارگذاری داشبورد')
-      if (!memRes.ok) throw new Error(memJson.error || 'خطا در بارگذاری اعضا')
+      if (!dashRes.ok) throw new Error(dashJson.error || copy.loadDashFailed)
+      if (!memRes.ok) throw new Error(memJson.error || copy.loadMembersFailed)
       setSnapshot(dashJson.snapshot as AttendanceDashboardSnapshot)
       setMembers(memJson.members as MemberOption[])
       const gates = (dashJson.snapshot as AttendanceDashboardSnapshot).gates
       setSelectedGateId((prev) => prev || gates.find((g) => g.isActive)?.id || gates[0]?.id || '')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'خطای ناشناخته')
+      setError(e instanceof Error ? e.message : copy.unknownError)
       setSnapshot(null)
     } finally {
       setLoading(false)
@@ -177,7 +186,7 @@ export function SecurityDashboard({
   }) {
     if (!projectId) return
     if ((opts?.identificationStatus ?? 'success') === 'success' && !selectedUserId) {
-      setError('ابتدا فرد را انتخاب کنید')
+      setError(copy.pickPerson)
       return
     }
     setBusy(true)
@@ -197,12 +206,12 @@ export function SecurityDashboard({
         }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'ثبت ناموفق')
+      if (!res.ok) throw new Error(json.error || copy.saveFailed)
       const transit = json.transit as AttendanceTransit
       setFlash(transit)
       await load(projectId)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'ثبت ناموفق')
+      setError(e instanceof Error ? e.message : copy.saveFailed)
     } finally {
       setBusy(false)
     }
@@ -223,13 +232,13 @@ export function SecurityDashboard({
         }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'ایجاد گیت ناموفق')
+      if (!res.ok) throw new Error(json.error || copy.gateFailed)
       setNewGateName('')
       setNewCameraLabel('')
       setSelectedGateId(json.gate.id)
       await load(projectId)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'ایجاد گیت ناموفق')
+      setError(e instanceof Error ? e.message : copy.gateFailed)
     } finally {
       setBusy(false)
     }
@@ -238,8 +247,8 @@ export function SecurityDashboard({
   return (
     <div className="space-y-6" dir="rtl">
         <PageHeader
-          title="حراست و حضور"
-          description={`${projectName} — ثبت تردد، افراد داخل، و تأیید لحظه‌ای`}
+          title={copy.title}
+          description={copy.dashDescription(projectName)}
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -250,16 +259,16 @@ export function SecurityDashboard({
                 onClick={() => projectId && void load(projectId)}
               >
                 <RefreshCw className="h-4 w-4 ml-1" />
-                به‌روزرسانی
+                {copy.refresh}
               </Button>
             </div>
           }
         />
 
         {!projectId ? (
-          <ErrorBlock message="پروژه‌ای انتخاب نشده است." />
+          <ErrorBlock message={copy.noProject} />
         ) : loading && !snapshot ? (
-          <LoadingBlock label="در حال بارگذاری حضور و غیاب..." />
+          <LoadingBlock label={copy.loading} />
         ) : error && !snapshot ? (
           <ErrorBlock message={error} onRetry={() => void load(projectId)} />
         ) : snapshot ? (
@@ -284,23 +293,23 @@ export function SecurityDashboard({
                   <p className="font-semibold">
                     {flash.identificationStatus === 'success'
                       ? flash.direction === 'IN'
-                        ? 'ورود ثبت شد'
-                        : 'خروج ثبت شد'
-                      : 'شناسایی ناموفق ثبت شد'}
+                        ? copy.inRecorded
+                        : copy.outRecorded
+                      : copy.failRecorded}
                     {' — '}
-                    {flash.personName || 'نامشخص'}
+                    {flash.personName || copy.unnamed}
                   </p>
                   <p className="text-sm opacity-80">
                     {timeFa(flash.occurredAt)}
                     {flash.gateName ? ` · ${flash.gateName}` : ''}
                     {flash.identificationStatus === 'success'
                       ? flash.emailStatus === 'sent'
-                        ? ' · ایمیل ارسال شد'
+                        ? copy.emailSentHint
                         : flash.emailStatus === 'skipped'
-                          ? ' · اعلان داخل‌سامانه‌ای ثبت شد (ایمیل پیکربندی نشده)'
+                          ? copy.emailSkippedHint
                           : flash.emailStatus === 'failed'
-                            ? ' · ارسال ایمیل ناموفق'
-                            : ' · در صف ایمیل'
+                            ? copy.emailFailedHint
+                            : copy.emailQueuedHint
                       : ''}
                   </p>
                 </div>
@@ -308,11 +317,11 @@ export function SecurityDashboard({
             ) : null}
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                <StatCard label="داخل کارگاه" value={String(snapshot.kpis.insideCount)} icon={Users} />
-                <StatCard label="بیرون‌رفته امروز" value={String(snapshot.kpis.outsideCount)} icon={LogOut} />
-                <StatCard label="غایب" value={String(snapshot.kpis.absentCount)} icon={UserX} />
-                <StatCard label="تردد امروز" value={String(snapshot.kpis.transitCountToday)} icon={LogIn} />
-                <StatCard label="ناموفق" value={String(snapshot.kpis.failedCountToday)} icon={Shield} />
+                <StatCard label={copy.kpiInside} value={String(snapshot.kpis.insideCount)} icon={Users} />
+                <StatCard label={copy.kpiOutside} value={String(snapshot.kpis.outsideCount)} icon={LogOut} />
+                <StatCard label={copy.kpiAbsent} value={String(snapshot.kpis.absentCount)} icon={UserX} />
+                <StatCard label={copy.kpiTransit} value={String(snapshot.kpis.transitCountToday)} icon={LogIn} />
+                <StatCard label={copy.kpiFailed} value={String(snapshot.kpis.failedCountToday)} icon={Shield} />
               </div>
 
             <div className="grid gap-6 lg:grid-cols-5">
@@ -331,13 +340,13 @@ export function SecurityDashboard({
                     }}
                   />
 
-                  <SectionCard title="ثبت دستی تردد">
+                  <SectionCard title={copy.manualTransit}>
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label>گیت / دوربین</Label>
+                        <Label>{copy.gateCamera}</Label>
                         <Select value={selectedGateId || undefined} onValueChange={setSelectedGateId}>
                           <SelectTrigger>
-                            <SelectValue placeholder="انتخاب گیت" />
+                            <SelectValue placeholder={copy.pickGate} />
                           </SelectTrigger>
                           <SelectContent>
                             {snapshot.gates.map((g) => (
@@ -351,19 +360,19 @@ export function SecurityDashboard({
                       </div>
 
                       <div className="space-y-2">
-                        <Label>جستجوی فرد (بر اساس نام)</Label>
+                        <Label>{copy.searchByName}</Label>
                         <Input
                           value={memberQuery}
                           onChange={(e) => setMemberQuery(e.target.value)}
-                          placeholder="مثلاً جیمی..."
+                          placeholder={copy.searchPlaceholder}
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label>فرد شناسایی‌شده</Label>
+                        <Label>{copy.identifiedPerson}</Label>
                         <Select value={selectedUserId || undefined} onValueChange={setSelectedUserId}>
                           <SelectTrigger>
-                            <SelectValue placeholder="انتخاب از لیست اعضا" />
+                            <SelectValue placeholder={copy.pickMember} />
                           </SelectTrigger>
                           <SelectContent>
                             {filteredMembers.map((m) => (
@@ -374,7 +383,7 @@ export function SecurityDashboard({
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-muted-foreground">
-                          جهت به‌صورت خودکار از آخرین وضعیت (داخل/بیرون) تعیین می‌شود.
+                          {copy.autoDirectionHint}
                         </p>
                       </div>
 
@@ -390,7 +399,7 @@ export function SecurityDashboard({
                           ) : (
                             <CheckCircle2 className="h-4 w-4 ml-1" />
                           )}
-                          ثبت تردد
+                          {copy.recordTransit}
                         </Button>
                         <Button
                           type="button"
@@ -399,7 +408,7 @@ export function SecurityDashboard({
                           onClick={() => void submitTransit({ direction: 'IN' })}
                         >
                           <LogIn className="h-4 w-4 ml-1" />
-                          اجبار ورود
+                          {copy.forceIn}
                         </Button>
                         <Button
                           type="button"
@@ -408,7 +417,7 @@ export function SecurityDashboard({
                           onClick={() => void submitTransit({ direction: 'OUT' })}
                         >
                           <LogOut className="h-4 w-4 ml-1" />
-                          اجبار خروج
+                          {copy.forceOut}
                         </Button>
                         <Button
                           type="button"
@@ -419,26 +428,26 @@ export function SecurityDashboard({
                           }
                         >
                           <UserX className="h-4 w-4 ml-1" />
-                          شناسایی نشد
+                          {copy.notIdentified}
                         </Button>
                       </div>
 
                       <div className="border-t pt-4 space-y-2">
-                        <Label className="text-muted-foreground">افزودن گیت / برچسب دوربین</Label>
+                        <Label className="text-muted-foreground">{copy.addGateCamera}</Label>
                         <div className="flex flex-col sm:flex-row gap-2">
                           <Input
                             value={newGateName}
                             onChange={(e) => setNewGateName(e.target.value)}
-                            placeholder="نام گیت"
+                            placeholder={copy.gateName}
                           />
                           <Input
                             value={newCameraLabel}
                             onChange={(e) => setNewCameraLabel(e.target.value)}
-                            placeholder="برچسب دوربین (اختیاری)"
+                            placeholder={copy.cameraOptional}
                           />
                           <Button type="button" variant="outline" disabled={busy} onClick={() => void addGate()}>
                             <Plus className="h-4 w-4 ml-1" />
-                            افزودن
+                            {copy.add}
                           </Button>
                         </div>
                       </div>
@@ -449,41 +458,41 @@ export function SecurityDashboard({
               <div className="lg:col-span-3 space-y-6">
                   <div className="grid gap-4 md:grid-cols-3">
                     <PresenceList
-                      title="الان داخل"
+                      title={copy.nowInside}
                       people={snapshot.inside}
-                      empty="کسی داخل نیست."
+                      empty={copy.emptyInside}
                       accent="border-emerald-300 text-emerald-800"
                     />
                     <PresenceList
-                      title="امروز بیرون رفته"
+                      title={copy.leftToday}
                       people={snapshot.outsideToday}
-                      empty="کسی با وضعیت بیرون نیست."
+                      empty={copy.emptyOutside}
                       accent="border-amber-300 text-amber-800"
                     />
                     <PresenceList
-                      title="غایب امروز"
+                      title={copy.absentToday}
                       people={snapshot.absent}
-                      empty="غایبی نیست."
+                      empty={copy.emptyAbsent}
                       accent="border-slate-300 text-slate-700"
                     />
                   </div>
 
-                  <SectionCard title="آخرین ترددها">
+                  <SectionCard title={copy.latest}>
                     {snapshot.recentTransits.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-4">هنوز ترددی ثبت نشده.</p>
+                      <p className="text-sm text-muted-foreground py-4">{copy.noTransits}</p>
                     ) : (
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="text-right text-muted-foreground border-b">
-                              <th className="py-2 font-medium">ساعت</th>
-                              <th className="py-2 font-medium">نام</th>
-                              <th className="py-2 font-medium">کد پرسنلی</th>
-                              <th className="py-2 font-medium">جهت</th>
-                              <th className="py-2 font-medium">گیت</th>
-                              <th className="py-2 font-medium">وضعیت</th>
-                              <th className="py-2 font-medium">ایمیل ثبت‌شده</th>
-                              <th className="py-2 font-medium">ارسال</th>
+                              <th className="py-2 font-medium">{copy.colTime}</th>
+                              <th className="py-2 font-medium">{copy.colName}</th>
+                              <th className="py-2 font-medium">{copy.colPersonnel}</th>
+                              <th className="py-2 font-medium">{copy.colDirection}</th>
+                              <th className="py-2 font-medium">{copy.colGate}</th>
+                              <th className="py-2 font-medium">{copy.colStatus}</th>
+                              <th className="py-2 font-medium">{copy.colEmail}</th>
+                              <th className="py-2 font-medium">{copy.colSend}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -499,29 +508,29 @@ export function SecurityDashboard({
                                       t.direction === 'IN' ? 'text-emerald-700' : 'text-amber-700'
                                     )}
                                   >
-                                    {t.direction === 'IN' ? 'ورود' : 'خروج'}
+                                    {t.direction === 'IN' ? copy.in : copy.out}
                                   </span>
                                 </td>
                                 <td className="py-2">{t.gateName || '—'}</td>
                                 <td className="py-2">
                                   {t.identificationStatus === 'success'
-                                    ? 'موفق'
+                                    ? copy.success
                                     : t.identificationStatus === 'unauthorized'
-                                      ? 'غیرمجاز'
-                                      : 'ناموفق'}
+                                      ? copy.unauthorized
+                                      : copy.failed}
                                 </td>
                                 <td className="py-2 text-xs" title={t.emailError || undefined}>
                                   {t.personEmail || (
-                                    <span className="text-muted-foreground">ثبت نشده</span>
+                                    <span className="text-muted-foreground">{copy.emailNotSet}</span>
                                   )}
                                 </td>
                                 <td className="py-2 text-xs text-muted-foreground" title={t.emailError || undefined}>
                                   {t.emailStatus === 'sent'
-                                    ? 'ارسال شد'
+                                    ? copy.emailSent
                                     : t.emailStatus === 'skipped'
-                                      ? 'رد شد (سرویس/آدرس)'
+                                      ? copy.emailSkipped
                                       : t.emailStatus === 'failed'
-                                        ? 'خطا'
+                                        ? copy.emailError
                                         : '—'}
                                 </td>
                               </tr>

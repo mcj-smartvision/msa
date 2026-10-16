@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/dashboard/load-role-page.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (load-role-page)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/lib/dashboard/user-context, shared/lib/project/project-cookie, shared/lib/project/resolve-active-project, shared/types/dashboard
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { fetchDashboardUserContext } from '@/shared/lib/dashboard/user-context'

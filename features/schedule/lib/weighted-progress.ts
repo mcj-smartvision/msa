@@ -1,4 +1,12 @@
 /**
+ * @file features/schedule/lib/weighted-progress.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (weighted-progress)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on nothing
+ */
+
+/**
  * Weighted project progress: Σ(progress × weight) / Σ(weight)
  *
  * MSP «وزن» in this project is stored as percent-points (e.g. 0.06, 1.85, … summing ≈ 100).

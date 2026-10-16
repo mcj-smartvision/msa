@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/payable-types.ts
+ * @purpose تعاریف نوع — حسابداری، هزینه،overhead و صورت‌وضعیت (payable-types)
+ * @safe-to-edit YES
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on nothing
+ */
+
 /** Contractor / vendor payables — expense ≠ cash payment. */
 
 export const PAYABLE_TYPES = ['payable', 'check_payable', 'accrued_expense'] as const

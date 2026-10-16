@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/components/work-order-client.tsx
+ * @purpose کامپوننت UI — عملیات کارگاه، دستورکار و برنامه روزانه (work-order-client)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on shared/components/i18n/locale-provider, shared/lib/i18n/site-ops, features/workshop/components/uom-display
+ */
+
 'use client'
 
 import { useParams, useSearchParams } from 'next/navigation'

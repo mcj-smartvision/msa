@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/lib/i18n/utils.ts
+ * @purpose تنظیمات و برچسب‌ها — راه‌اندازی پروژه (utils)
+ * @safe-to-edit YES
+ * @affects راه‌اندازی پروژه
+ * @depends-on nothing
+ */
+
 import type { FormDictionary, FormLocale, OptionMap } from './types'
 import { en } from './locales/en'
 import { de } from './locales/de'

@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/components/today-workspace.tsx
+ * @purpose کامپوننت UI — بسته‌های اجرایی و تأیید کارگاه (today-workspace)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on features/admin/components/shared, shared/components/common/voice-to-text-button, features/workshop/components/uom-display
+ */
+
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
@@ -5,6 +13,7 @@ import { useSearchParams } from 'next/navigation'
 import { PageHeader } from '@/features/admin/components/shared'
 import { VoiceToTextButton } from '@/shared/components/common/voice-to-text-button'
 import { QtyWithUom } from '@/features/workshop/components/uom-display'
+import { WORKSHOP_COPY } from '@/features/workshop/lib/ui-copy'
 
 export function TodayWorkspace({ showBanner = true }: { showBanner?: boolean }) {
   const projectId = useSearchParams().get('projectId') ?? ''
@@ -18,7 +27,7 @@ export function TodayWorkspace({ showBanner = true }: { showBanner?: boolean }) 
     const res = await fetch(`/api/workshop/today?projectId=${projectId}&date=${date}`)
     const data = await res.json()
     if (!res.ok) {
-      setMessage(data.error || 'خطا')
+      setMessage(data.error || WORKSHOP_COPY.genericError)
       return
     }
     setItems(data.items ?? [])
@@ -41,24 +50,24 @@ export function TodayWorkspace({ showBanner = true }: { showBanner?: boolean }) 
     })
     const data = await res.json()
     if (!res.ok) {
-      setMessage(data.error || 'ثبت نشد')
+      setMessage(data.error || WORKSHOP_COPY.today.notSaved)
       return
     }
-    setMessage('عملکرد ثبت شد')
+    setMessage(WORKSHOP_COPY.today.actualSaved)
     await load()
   }
 
-  if (!projectId) return <p className="text-sm">پروژه را انتخاب کنید.</p>
+  if (!projectId) return <p className="text-sm">{WORKSHOP_COPY.selectProject}</p>
 
   return (
     <div className="space-y-4" dir="rtl">
       <PageHeader
         showBanner={showBanner}
-        title="امروز"
-        description="کارهای ارسال‌شده به امروز و ثبت عملکرد"
+        title={WORKSHOP_COPY.today.title}
+        description={WORKSHOP_COPY.today.description}
         actions={
           <label className="text-sm">
-            تاریخ
+            {WORKSHOP_COPY.today.date}
             <input
               type="date"
               className="mt-1 block rounded-lg border px-3 py-2"
@@ -72,7 +81,7 @@ export function TodayWorkspace({ showBanner = true }: { showBanner?: boolean }) 
 
       {items.length === 0 ? (
         <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-sm text-slate-600">
-          هنوز چیزی برای امروز نیست. از صفحه «برنامه» یک زیرمجموعه را به امروز بفرستید.
+          {WORKSHOP_COPY.today.empty}
         </div>
       ) : (
         <ul className="space-y-3">
@@ -90,13 +99,13 @@ export function TodayWorkspace({ showBanner = true }: { showBanner?: boolean }) 
                 <div>
                   <p className="font-semibold">{pkg?.name}</p>
                   <p className="text-xs text-slate-500 mt-1">
-                    محل: {pkg?.location ?? '—'} · برنامه امروز:{' '}
+                    {WORKSHOP_COPY.today.locationToday(pkg?.location ?? '—')}{' '}
                     <QtyWithUom qty={String(item.planned_qty)} uom={typeof pkg?.uom === 'string' ? pkg.uom : null} />
                   </p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-3">
                   <label className="text-sm">
-                    مقدار واقعی
+                    {WORKSHOP_COPY.today.actualQty}
                     <input
                       type="number"
                       className="mt-1 w-full rounded-lg border px-3 py-2"
@@ -107,7 +116,7 @@ export function TodayWorkspace({ showBanner = true }: { showBanner?: boolean }) 
                     />
                   </label>
                   <label className="text-sm">
-                    وضعیت
+                    {WORKSHOP_COPY.today.status}
                     <select
                       className="mt-1 w-full rounded-lg border px-3 py-2"
                       value={form.status}
@@ -115,13 +124,13 @@ export function TodayWorkspace({ showBanner = true }: { showBanner?: boolean }) 
                         setActualForms((f) => ({ ...f, [id]: { ...form, status: e.target.value } }))
                       }
                     >
-                      <option value="done">انجام شد</option>
-                      <option value="partial">ناقص</option>
-                      <option value="blocked">مسدود</option>
+                      <option value="done">{WORKSHOP_COPY.today.done}</option>
+                      <option value="partial">{WORKSHOP_COPY.today.partial}</option>
+                      <option value="blocked">{WORKSHOP_COPY.today.blocked}</option>
                     </select>
                   </label>
                   <label className="text-sm">
-                    یادداشت
+                    {WORKSHOP_COPY.today.note}
                     <div className="mt-1 flex gap-2">
                       <input
                         className="w-full rounded-lg border px-3 py-2"
@@ -146,7 +155,7 @@ export function TodayWorkspace({ showBanner = true }: { showBanner?: boolean }) 
                   onClick={() => void saveActual(id)}
                   className="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white"
                 >
-                  ثبت عملکرد
+                  {WORKSHOP_COPY.today.saveActual}
                 </button>
               </li>
             )

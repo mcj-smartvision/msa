@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/apply-actual-start.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (apply-actual-start)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/lib/time/tehran, features/schedule/lib/baseline-template, features/schedule/lib/dates, features/schedule/lib/reschedule-engine, features/schedule/lib/weighted-progress, shared/types/schedule
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { todayTehranIso } from '@/shared/lib/time/tehran'
 import {

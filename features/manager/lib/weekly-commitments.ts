@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/weekly-commitments.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (weekly-commitments)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/project-controls/lib/earned-schedule, features/wwp/lib/policy, shared/types/project-controls
+ */
+
 import { solveEarnedSchedule } from '@/features/project-controls/lib/earned-schedule'
 import { ROOT_CAUSE_CATEGORIES, ROOT_CAUSE_FA, type RootCauseCategory } from '@/features/wwp/lib/policy'
 import type { PVCurvePoint } from '@/shared/types/project-controls'

@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/workshop-cost-curve.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (workshop-cost-curve)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/schedule/lib/dates, features/schedule/lib/month-progress-overhead, features/evm/lib/metrics, features/finance/lib/live-workshop-cost, features/finance/lib/employer-purchases
+ */
+
 import { toIsoDateOnly } from '@/features/schedule/lib/dates'
 import { allocateOverhead } from '@/features/schedule/lib/month-progress-overhead'
 import {

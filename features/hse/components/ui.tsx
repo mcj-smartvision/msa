@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/components/ui.tsx
+ * @purpose کامپوننت UI — ایمنی، بهداشت و محیط زیست (ui)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on shared/lib/utils, features/admin/components/shared
+ */
+
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { PageHeader } from '@/features/admin/components/shared'

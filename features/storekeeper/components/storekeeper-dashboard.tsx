@@ -1,3 +1,11 @@
+/**
+ * @file features/storekeeper/components/storekeeper-dashboard.tsx
+ * @purpose کامپوننت UI — انبار، موجودی و حواله مصالح (storekeeper-dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects انبار، موجودی و حواله مصالح
+ * @depends-on shared/components/i18n/locale-provider, features/schedule/components/formatted-date, features/schedule/components/schedule-date-input, features/admin/components/shared, features/admin/components/stat-card, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/card, shared/components/ui/badge
+ */
+
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -55,7 +63,7 @@ function newExtractedRow(): ExtractedInvoiceLine {
     id: crypto.randomUUID(),
     name: '',
     quantity: 1,
-    unit: 'عدد',
+    unit: getStorekeeperMessages('fa').defaultUnit,
   }
 }
 
@@ -204,7 +212,7 @@ export function StorekeeperDashboard({
           id: crypto.randomUUID(),
           name: row.name,
           quantity: Number(row.quantity),
-          unit: row.unit || 'عدد',
+          unit: row.unit || t.defaultUnit,
         }))
       )
 
@@ -229,7 +237,7 @@ export function StorekeeperDashboard({
       .map((row) => ({
         name: row.name.trim(),
         quantity: Number(row.quantity),
-        unit: row.unit.trim() || 'عدد',
+        unit: row.unit.trim() || t.defaultUnit,
       }))
       .filter((row) => row.name && row.quantity > 0)
 
@@ -244,11 +252,11 @@ export function StorekeeperDashboard({
     const note =
       entryMode === 'manual'
         ? transactionType === 'IN'
-          ? 'ثبت دستی فاکتور'
-          : 'ثبت دستی خروج'
+          ? t.manualInvoiceNote
+          : t.manualDispatchNote
         : transactionType === 'IN'
-          ? 'رسید فاکتور با هوش مصنوعی'
-          : 'سند خروج با هوش مصنوعی'
+          ? t.aiReceiptNote
+          : t.aiDispatchNote
 
     try {
       const save = transactionType === 'IN' ? confirmInventoryReceipt : confirmInventoryDispatch
@@ -591,7 +599,7 @@ export function StorekeeperDashboard({
               {scanPreview ? (
                 <div className="rounded-xl border overflow-hidden bg-muted/30 w-full max-w-md mx-auto sm:mx-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={scanPreview} alt="پیش‌نمایش فاکتور" className="w-full max-h-64 object-contain" />
+                  <img src={scanPreview} alt={t.invoicePreviewAlt} className="w-full max-h-64 object-contain" />
                 </div>
               ) : null}
 

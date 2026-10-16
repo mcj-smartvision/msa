@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/engine/drawing-file.ts
+ * @purpose منطق دامنه — کنترل کیفیت و عدم انطباق (drawing-file)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on nothing
+ */
+
 export type DrawingPreviewKind = 'pdf' | 'image' | 'unsupported'
 
 export function sniffDrawingKind(bytes: Uint8Array, fileName = '', contentType = ''): DrawingPreviewKind {

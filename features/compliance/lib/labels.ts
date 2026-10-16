@@ -1,4 +1,12 @@
 /**
+ * @file features/compliance/lib/labels.ts
+ * @purpose منطق دامنه — انطباق (labels)
+ * @safe-to-edit CAREFUL
+ * @affects انطباق
+ * @depends-on nothing
+ */
+
+/**
  * Localized standard labels — code + name per locale.
  * Fallback chain: requested locale → en → catalog default.
  */

@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/persist-earned-weights.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (persist-earned-weights)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/earned-month-weight
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { earnedMonthlyWeights } from '@/features/schedule/lib/earned-month-weight'
 

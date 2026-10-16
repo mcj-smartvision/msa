@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/components/cost-performance-section.tsx
+ * @purpose کامپوننت UI — داشبورد مدیر پروژه و KPI (cost-performance-section)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on shared/lib/utils, features/manager/lib/format, features/manager/lib/cost-performance, features/manager/lib/overview-types, features/manager/config
+ */
+
 'use client'
 
 import Link from 'next/link'
@@ -15,6 +23,7 @@ type CostTone,
 } from '@/features/manager/lib/cost-performance'
 import type { ManagerEvmSummary, SectionResult } from '@/features/manager/lib/overview-types'
 import { EmptyNote, SectionBody, SectionCard } from './manager-ui'
+import { COST_PERF_COPY, MANAGER_PUNCT, MANAGER_UI_NUMBERS } from '@/features/manager/config'
 
 const COLOR = {
   ac: '#d9601a',
@@ -42,15 +51,10 @@ const BANNER: Record<CostTone, string> = {
   neutral: 'border-slate-200 bg-slate-50 text-slate-700',
 }
 
-const CPI_LABEL: Record<CostTone, string> = { good: 'سالم', warn: 'نیازمند توجه', bad: 'بحرانی', neutral: '' }
-const TCPI_LABEL: Record<CostTone, string> = {
-  neutral: 'نیاز به بهبود ندارد',
-  warn: 'نیازمند تلاش',
-  bad: 'دور از دسترس',
-  good: '',
-}
+const CPI_LABEL: Record<CostTone, string> = COST_PERF_COPY.cpiLabel
+const TCPI_LABEL: Record<CostTone, string> = COST_PERF_COPY.tcpiLabel
 
-const GAUGE_MAX = 1.5
+const GAUGE_MAX = MANAGER_UI_NUMBERS.gaugeMax
 const CPI_BANDS: Array<[number, number, string]> = [
   [0, CPI_ZONES.critical, COLOR.bad],
   [CPI_ZONES.critical, CPI_ZONES.healthy, COLOR.amber],
@@ -62,7 +66,7 @@ const TCPI_BANDS: Array<[number, number, string]> = [
   [TCPI_ZONES.stretch, GAUGE_MAX, COLOR.bad],
 ]
 
-const pct = (value: number) => `${faNumber(Math.round(value))}٪`
+const pct = (value: number) => `${faNumber(Math.round(value))}${MANAGER_PUNCT.percent}`
 
 function Gauge({ value, bands, label }: { value: number | null; bands: Array<[number, number, string]>; label: string }) {
   const cx = 150
@@ -204,8 +208,8 @@ function CostPerformanceBody({ evm, costHref }: { evm: ManagerEvmSummary; costHr
   if (model.status === 'no_budget') {
     return (
       <EmptyNote
-        title="بودجهٔ پروژه (BAC) تعریف نشده است"
-        description="ستون هزینهٔ برنامهٔ دفتر فنی، مبلغ قرارداد یا بودجهٔ پروژه را ثبت کنید تا CPI و TCPI محاسبه شوند."
+        title={COST_PERF_COPY.noBudgetTitle}
+        description={COST_PERF_COPY.noBudgetBody}
       />
     )
   }
@@ -223,41 +227,41 @@ function CostPerformanceBody({ evm, costHref }: { evm: ManagerEvmSummary; costHr
 
   const cpiValue = ready?.cpi ?? null
   const tcpiValue = ready ? ready.tcpi : null
-  const missing = 'ثبت نشده'
+  const missing = COST_PERF_COPY.missing
 
   let banner: { tone: CostTone; text: string }
   if (!ready) {
     banner = {
       tone: 'warn',
-      text: 'هزینهٔ واقعی (AC) هنوز برای این پروژه ثبت نشده است؛ CPI، TCPI و پیش‌بینی هزینهٔ نهایی پس از ثبت هزینه محاسبه می‌شوند.',
+      text: COST_PERF_COPY.noAc,
     }
   } else if (ready.eac == null || ready.vac == null || ready.overrunPercent == null) {
-    banner = { tone: 'bad', text: 'هزینه ثبت شده ولی هنوز ارزش کسب‌شده‌ای وجود ندارد؛ پیش‌بینی هزینهٔ نهایی ممکن نیست.' }
+    banner = { tone: 'bad', text: COST_PERF_COPY.noEv }
   } else if (ready.vac >= 0) {
-    banner = { tone: 'good', text: `با روند فعلی، پروژه در بودجه تمام می‌شود (هزینهٔ نهایی پیش‌بینی‌شده ${n(ready.eac)} ${unit}).` }
+    banner = { tone: 'good', text: COST_PERF_COPY.inBudget(n(ready.eac), unit) }
   } else {
     banner = {
       tone: ready.bannerTone,
-      text: `با روند فعلی، هزینهٔ نهایی پروژه ${n(ready.eac)} ${unit} می‌شود: ${n(-ready.vac)} ${unit} (${pct(ready.overrunPercent)}) بیش از بودجه.`,
+      text: COST_PERF_COPY.overrun(n(ready.eac), unit, n(-ready.vac), pct(ready.overrunPercent)),
     }
   }
 
   const tcpiSentence = !ready
-    ? 'با ثبت هزینهٔ واقعی، کارایی لازم برای ماندن در بودجه نمایش داده می‌شود.'
+    ? COST_PERF_COPY.tcpiNeedData
     : ready.tcpi == null
-      ? 'بودجهٔ مصوب تمام شده در حالی که هنوز کار باقی مانده است؛ تکمیل در سقف بودجه ممکن نیست.'
+      ? COST_PERF_COPY.budgetExhausted
       : ready.tcpi <= TCPI_ZONES.reachable
-        ? 'با همین سطح کارایی هم به بودجه می‌رسیم.'
-        : `برای رسیدن به بودجه، از امروز باید به‌ازای هر 100 واحد هزینه، ${faNumber(Math.round(ready.tcpi * 100))} واحد کار انجام شود. تا امروز ${faNumber(Math.round(ready.cpi * 100))} بوده است.`
+        ? COST_PERF_COPY.tcpiOk
+        : COST_PERF_COPY.tcpiStretch(faNumber(Math.round(ready.tcpi * 100)), faNumber(Math.round(ready.cpi * 100)))
 
   return (
     <div className="space-y-3.5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-slate-500">
-          همهٔ شاخص‌ها از سه عدد بودجه (BAC)، هزینهٔ واقعی (AC) و ارزش کار انجام‌شده (EV) محاسبه می‌شوند
+          {COST_PERF_COPY.intro}
         </p>
         <span className="rounded-full border border-slate-200 bg-white px-3.5 py-1 text-[11.5px] text-slate-500">
-          آخرین به‌روزرسانی: {jalaliDate(evm.asOf)}
+          {COST_PERF_COPY.lastUpdate(jalaliDate(evm.asOf))}
         </span>
       </div>
 
@@ -269,31 +273,31 @@ function CostPerformanceBody({ evm, costHref }: { evm: ManagerEvmSummary; costHr
             className="inline-flex items-center gap-1 rounded-xl bg-orange-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400/60"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden />
-            ثبت هزینه
+            {COST_PERF_COPY.addCost}
           </Link>
         ) : null}
       </div>
 
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         <GaugeCard
-          title="CPI · کارایی هزینه"
-          subtitle="تا امروز، به‌ازای هر هزینه چقدر کار انجام شده"
-          chip={ready ? { tone: ready.cpiTone, label: CPI_LABEL[ready.cpiTone] } : { tone: 'neutral', label: 'بدون داده' }}
-          gauge={<Gauge value={cpiValue} bands={CPI_BANDS} label="گیج CPI" />}
+          title={COST_PERF_COPY.cpiTitle}
+          subtitle={COST_PERF_COPY.cpiSub}
+          chip={ready ? { tone: ready.cpiTone, label: CPI_LABEL[ready.cpiTone] } : { tone: 'neutral', label: COST_PERF_COPY.noData }}
+          gauge={<Gauge value={cpiValue} bands={CPI_BANDS} label={COST_PERF_COPY.cpiGauge} />}
           big={cpiValue == null ? '—' : faNumber(cpiValue, 2)}
           bigColor={cpiValue == null ? COLOR.mute : COLOR.ac}
           sentence={
             ready
-              ? `به‌ازای هر 100 واحد هزینه، ${faNumber(Math.round(ready.cpi * 100))} واحد کار انجام شده است.`
-              : 'با ثبت هزینهٔ واقعی، کارایی هزینه نمایش داده می‌شود.'
+              ? COST_PERF_COPY.cpiSentence(faNumber(Math.round(ready.cpi * 100)))
+              : COST_PERF_COPY.cpiNeedData
           }
           formula={ready ? `CPI = EV ÷ AC = ${n(ready.ev)} ÷ ${n(ready.ac)}` : 'CPI = EV ÷ AC'}
         />
         <GaugeCard
-          title="TCPI · کارایی لازم"
-          subtitle="برای رسیدن به بودجه، از امروز چقدر باید کارآمد باشیم"
-          chip={ready ? { tone: ready.tcpiTone, label: TCPI_LABEL[ready.tcpiTone] } : { tone: 'neutral', label: 'بدون داده' }}
-          gauge={<Gauge value={ready ? (tcpiValue ?? GAUGE_MAX) : null} bands={TCPI_BANDS} label="گیج TCPI" />}
+          title={COST_PERF_COPY.tcpiTitle}
+          subtitle={COST_PERF_COPY.tcpiSub}
+          chip={ready ? { tone: ready.tcpiTone, label: TCPI_LABEL[ready.tcpiTone] } : { tone: 'neutral', label: COST_PERF_COPY.noData }}
+          gauge={<Gauge value={ready ? (tcpiValue ?? GAUGE_MAX) : null} bands={TCPI_BANDS} label={COST_PERF_COPY.tcpiGauge} />}
           big={!ready ? '—' : tcpiValue == null ? '∞' : faNumber(tcpiValue, 2)}
           bigColor={!ready ? COLOR.mute : '#3b4a63'}
           sentence={tcpiSentence}
@@ -307,30 +311,30 @@ function CostPerformanceBody({ evm, costHref }: { evm: ManagerEvmSummary; costHr
 
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[1.45fr_1fr]">
         <div className="rounded-2xl border border-[#1e2a5e]/45 bg-white px-5 py-4">
-          <p className="text-sm font-bold text-slate-800">بودجه، هزینه و کار انجام‌شده</p>
-          <p className="mb-3.5 mt-0.5 text-[11.5px] text-slate-500">همهٔ میله‌ها روی یک مقیاس‌اند ({unit}). خط‌چین، سقف بودجه است.</p>
+          <p className="text-sm font-bold text-slate-800">{COST_PERF_COPY.barsTitle}</p>
+          <p className="mb-3.5 mt-0.5 text-[11.5px] text-slate-500">{COST_PERF_COPY.barsSub(unit)}</p>
           <div className="pt-3.5">
-            <BarRow label="بودجه کل (BAC)" sub={`${n(model.bac)} ${unit}`} budgetAt={budgetAt}>
+            <BarRow label={COST_PERF_COPY.bac} sub={`${n(model.bac)} ${unit}`} budgetAt={budgetAt}>
               <Bar width={w(model.bac)} color={COLOR.budget} />
               <em
                 className="absolute -top-[17px] translate-x-1/2 text-[9.5px] not-italic text-slate-500"
                 style={{ insetInlineStart: `${budgetAt}%` }}
               >
-                بودجه
+                {COST_PERF_COPY.budgetMark}
               </em>
             </BarRow>
             <BarRow
-              label="هزینه‌شده (AC)"
-              sub={ready ? `${n(ready.ac)} ${unit} · ${pct(ready.acPercent)} بودجه` : missing}
+              label={COST_PERF_COPY.ac}
+              sub={ready ? COST_PERF_COPY.acSub(n(ready.ac), unit, pct(ready.acPercent)) : missing}
               budgetAt={budgetAt}
             >
               {ready ? <Bar width={w(ready.ac)} color={COLOR.ac} /> : null}
             </BarRow>
-            <BarRow label="کار انجام‌شده (EV)" sub={`${n(model.ev)} ${unit} · ${pct(model.evPercent)} پیشرفت ارزشی`} budgetAt={budgetAt}>
+            <BarRow label={COST_PERF_COPY.ev} sub={COST_PERF_COPY.evSub(n(model.ev), unit, pct(model.evPercent))} budgetAt={budgetAt}>
               <Bar width={w(model.ev)} color={COLOR.ev} />
             </BarRow>
             <BarRow
-              label="اختلاف هزینه و کار"
+              label={COST_PERF_COPY.gap}
               sub={
                 ready ? (
                   <span className={ready.cv < 0 ? 'text-rose-700' : 'text-emerald-700'}>
@@ -345,8 +349,8 @@ function CostPerformanceBody({ evm, costHref }: { evm: ManagerEvmSummary; costHr
               {ready && ready.cv < 0 ? <Bar from={w(ready.ev)} width={w(ready.ac - ready.ev)} color={COLOR.bad} className="rounded-[3px]" /> : null}
             </BarRow>
             <BarRow
-              label="پیش‌بینی هزینهٔ نهایی (EAC)"
-              sub={ready?.eac != null ? `${n(ready.eac)} ${unit} · با روند فعلی` : missing}
+              label={COST_PERF_COPY.eac}
+              sub={ready?.eac != null ? COST_PERF_COPY.eacSub(n(ready.eac), unit) : missing}
               budgetAt={budgetAt}
             >
               {ready?.eac != null ? (
@@ -363,51 +367,51 @@ function CostPerformanceBody({ evm, costHref }: { evm: ManagerEvmSummary; costHr
         </div>
 
         <div className="rounded-2xl border border-[#1e2a5e]/45 bg-white px-5 py-4">
-          <p className="text-sm font-bold text-slate-800">اعداد کلیدی</p>
+          <p className="text-sm font-bold text-slate-800">{COST_PERF_COPY.keysTitle}</p>
           <p className="mb-3.5 mt-0.5 text-[11.5px] text-slate-500">{unit}</p>
           <div className="grid grid-cols-2 gap-2">
-            <Tile label="بودجه کل (BAC)" value={n(model.bac)} sub="سقف هزینهٔ پروژه" title="بودجهٔ مصوب پروژه" />
+            <Tile label={COST_PERF_COPY.bac} value={n(model.bac)} sub={COST_PERF_COPY.bacHint} title={COST_PERF_COPY.bacTitle} />
             <Tile
-              label="هزینه‌شده (AC)"
+              label={COST_PERF_COPY.ac}
               value={ready ? n(ready.ac) : '—'}
-              sub={ready ? `${pct(ready.acPercent)} بودجه` : missing}
+              sub={ready ? COST_PERF_COPY.acHint(pct(ready.acPercent)) : missing}
               color={ready ? COLOR.ac : undefined}
-              title="هزینهٔ واقعی تا امروز"
+              title={COST_PERF_COPY.acTitle}
             />
             <Tile
-              label="مانده بودجه"
+              label={COST_PERF_COPY.remainingBudget}
               value={ready ? n(ready.remainingBudget) : '—'}
-              sub={ready ? `${pct((ready.remainingBudget / ready.bac) * 100)} بودجه` : missing}
+              sub={ready ? COST_PERF_COPY.acHint(pct((ready.remainingBudget / ready.bac) * 100)) : missing}
               title="BAC − AC"
             />
-            <Tile label="کار انجام‌شده (EV)" value={n(model.ev)} sub={`${pct(model.evPercent)} پیشرفت ارزشی`} color={COLOR.ev} title="ارزش کار انجام‌شده تا امروز" />
+            <Tile label={COST_PERF_COPY.ev} value={n(model.ev)} sub={COST_PERF_COPY.evProgress(pct(model.evPercent))} color={COLOR.ev} title={COST_PERF_COPY.evTitle} />
             <Tile
-              label="کار باقی‌مانده"
+              label={COST_PERF_COPY.remainingWork}
               value={n(model.remainingWork)}
-              sub={`${pct((model.remainingWork / model.bac) * 100)} کار`}
+              sub={COST_PERF_COPY.workPct(pct((model.remainingWork / model.bac) * 100))}
               title="BAC − EV"
             />
             <Tile
-              label="انحراف هزینه (CV)"
+              label={COST_PERF_COPY.cv}
               value={ready ? n(ready.cv) : '—'}
-              sub={ready ? (ready.cv < 0 ? 'هزینه بیش از کار انجام‌شده' : 'صرفه‌جویی') : missing}
+              sub={ready ? (ready.cv < 0 ? COST_PERF_COPY.overWork : COST_PERF_COPY.saving) : missing}
               color={ready ? (ready.cv < 0 ? '#b42327' : '#0b7a50') : undefined}
               title="CV = EV − AC"
             />
             <Tile
-              label="هزینهٔ نهایی (EAC)"
+              label={COST_PERF_COPY.eacTile}
               value={ready?.eac != null ? n(ready.eac) : '—'}
-              sub={ready?.eac != null ? 'با روند فعلی' : missing}
+              sub={ready?.eac != null ? COST_PERF_COPY.trend : missing}
               title="EAC = BAC ÷ CPI"
             />
             <Tile
-              label="انحراف در پایان (VAC)"
+              label={COST_PERF_COPY.vac}
               value={ready?.vac != null ? n(ready.vac) : '—'}
               sub={
                 ready?.vac != null && ready.overrunPercent != null
                   ? ready.vac < 0
-                    ? `${pct(ready.overrunPercent)} بیش از بودجه`
-                    : 'در بودجه'
+                    ? COST_PERF_COPY.overBudget(pct(ready.overrunPercent))
+                    : COST_PERF_COPY.inBudgetShort
                   : missing
               }
               color={ready?.vac != null ? (ready.vac < 0 ? '#b42327' : '#0b7a50') : undefined}
@@ -418,7 +422,7 @@ function CostPerformanceBody({ evm, costHref }: { evm: ManagerEvmSummary; costHr
       </div>
 
       <p className="text-[11px] text-slate-500">
-        CPI = EV ÷ AC، TCPI = (BAC − EV) ÷ (BAC − AC)، EAC = BAC ÷ CPI (پیش‌بینی هزینهٔ نهایی با روند فعلی). EV ریالی = Σ(بودجهٔ فعالیت × پیشرفت فیزیکی تأییدشده).
+        {COST_PERF_COPY.footer}
       </p>
     </div>
   )
@@ -438,9 +442,9 @@ export function CostPerformanceSection({
   return (
     <SectionCard
       className={cn('border-2 border-[#1e2a5e] bg-[#fdf8ec]', className)}
-      title="وضعیت مالی و کارایی هزینهٔ پروژه"
+      title={COST_PERF_COPY.title}
       icon={<Wallet className="h-4 w-4" aria-hidden />}
-      hint="CPI نشان می‌دهد تا امروز به‌ازای هر واحد هزینه چقدر کار انجام شده؛ TCPI نشان می‌دهد از امروز چقدر باید کارآمد باشیم تا در سقف بودجه تمام شود. اعداد از بودجهٔ برنامهٔ دفتر فنی، هزینه‌های ثبت‌شده و پیشرفت تأییدشدهٔ پروژه می‌آیند."
+      hint={COST_PERF_COPY.hint}
     >
       <SectionBody result={result} loading={loading} rows={6}>
         {(evm) => <CostPerformanceBody evm={evm} costHref={costHref} />}

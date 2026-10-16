@@ -1,3 +1,11 @@
+/**
+ * @file features/technical-office/lib/drawings.ts
+ * @purpose منطق دامنه — دفتر فنی (drawings)
+ * @safe-to-edit CAREFUL
+ * @affects دفتر فنی
+ * @depends-on shared/lib/supabase/service, shared/types/dashboard, features/technical-office/lib/drawings-shared, features/technical-office/lib/drawing-discipline
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/shared/lib/supabase/service'
 import type { DashboardUserContext } from '@/shared/types/dashboard'

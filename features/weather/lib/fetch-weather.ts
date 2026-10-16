@@ -1,3 +1,11 @@
+/**
+ * @file features/weather/lib/fetch-weather.ts
+ * @purpose منطق دامنه — هوای کارگاه (fetch-weather)
+ * @safe-to-edit CAREFUL
+ * @affects هوای کارگاه
+ * @depends-on features/weather/lib/conditions, features/weather/lib/api-key, features/weather/lib/resolve-location, features/weather/lib/types, features/weather/lib/window, shared/lib/time/tehran, features/workshop/lib/domain
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   classifyOutdoorRisk,

@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/format-currency.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (format-currency)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/project-init/lib/i18n/types
+ */
+
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 
 /** Format monetary values in Persian Rial (ریال). */

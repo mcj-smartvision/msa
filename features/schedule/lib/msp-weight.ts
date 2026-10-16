@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/msp-weight.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (msp-weight)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on nothing
+ */
+
 /** Stable FieldID for round-trip MSP export/import of activity weight (وزن / Number4). */
 export const MSP_SCHEDULE_WEIGHT_FIELD_ID = '188743770'
 export const MSP_SCHEDULE_WEIGHT_FIELD_NAME = 'وزن'

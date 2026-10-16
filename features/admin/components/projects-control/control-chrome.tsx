@@ -1,4 +1,14 @@
+/**
+ * @file features/admin/components/projects-control/control-chrome.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (control-chrome)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/lib/utils, features/admin/components/shared
+ */
+
+
 'use client'
+import { ADMIN_CONTROL_CHROME_COPY } from '@/features/admin/config'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CircleHelp, type LucideIcon } from 'lucide-react'
@@ -75,7 +85,7 @@ export function ControlKpiCard({
           type="button"
           onClick={() => setHelpOpen((open) => !open)}
           className="absolute top-1.5 start-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[#98A2B3] hover:bg-slate-100 hover:text-[#344054]"
-          aria-label={`راهنمای ${label}`}
+          aria-label={ADMIN_CONTROL_CHROME_COPY.helpAria(label)}
           aria-expanded={helpOpen}
         >
           <CircleHelp className="h-3.5 w-3.5" />

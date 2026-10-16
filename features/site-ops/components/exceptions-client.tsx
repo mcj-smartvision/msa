@@ -1,9 +1,18 @@
+/**
+ * @file features/site-ops/components/exceptions-client.tsx
+ * @purpose کامپوننت UI — عملیات کارگاه، دستورکار و برنامه روزانه (exceptions-client)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on shared/components/i18n/locale-provider, shared/lib/i18n/technical-office, features/site-ops/config
+ */
+
 'use client'
 
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { getTechnicalOfficeMessages } from '@/shared/lib/i18n/technical-office'
+import { SITE_OPS_COPY } from '@/features/site-ops/config'
 
 export function ExceptionsClient() {
   const { locale } = useLocale()
@@ -35,7 +44,7 @@ export function ExceptionsClient() {
     const res = await fetch(`/api/site-ops/packages/${id}/acknowledge`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ note: 'مدیر پروژه ریسک پرداخت/محدوده را تأیید کرد' }),
+      body: JSON.stringify({ note: SITE_OPS_COPY.acknowledgeNote }),
     })
     const body = await res.json()
     if (!res.ok) {
@@ -46,7 +55,7 @@ export function ExceptionsClient() {
     load()
   }
 
-  if (!projectId) return <p className="text-sm text-muted-foreground">یک پروژه انتخاب کنید.</p>
+  if (!projectId) return <p className="text-sm text-muted-foreground">{SITE_OPS_COPY.pickProject}</p>
   if (!data) return <p className="text-sm text-muted-foreground">{t.loading}</p>
 
   return (
@@ -54,15 +63,15 @@ export function ExceptionsClient() {
       <div>
         <h2 className="text-xl font-semibold">{t.exceptions}</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          مدیر پروژه / کنترل پروژه — فقط شکاف‌های حساس مقدار/پرداخت را تأیید کنید.
+          {SITE_OPS_COPY.exceptionsIntro}
         </p>
       </div>
       {message && <p className="text-sm">{message}</p>}
 
       <section className="rounded-2xl border bg-white p-5 space-y-3">
-        <h3 className="font-medium">ریسک پرداخت / مقدار</h3>
+        <h3 className="font-medium">{SITE_OPS_COPY.paymentRiskTitle}</h3>
         {(data.paymentRiskPackages ?? []).length === 0 ? (
-          <p className="text-sm text-muted-foreground">پرچم باز ریسک پرداخت وجود ندارد.</p>
+          <p className="text-sm text-muted-foreground">{SITE_OPS_COPY.noPaymentRisk}</p>
         ) : (
           <ul className="space-y-2">
             {data.paymentRiskPackages.map((pkg) => (
@@ -74,7 +83,7 @@ export function ExceptionsClient() {
                     <p className="text-muted-foreground mt-1">{String(pkg.payment_flag_reason)}</p>
                   ) : null}
                   {pkg.pm_risk_acknowledged ? (
-                    <p className="text-emerald-700 text-xs mt-1">ریسک تأیید شد</p>
+                    <p className="text-emerald-700 text-xs mt-1">{SITE_OPS_COPY.riskAcknowledged}</p>
                   ) : null}
                 </div>
                 {!pkg.pm_risk_acknowledged && (
@@ -93,9 +102,9 @@ export function ExceptionsClient() {
       </section>
 
       <section className="rounded-2xl border bg-white p-5 space-y-3">
-        <h3 className="font-medium">موانع باز</h3>
+        <h3 className="font-medium">{SITE_OPS_COPY.openBlockers}</h3>
         {(data.openBlockers ?? []).length === 0 ? (
-          <p className="text-sm text-muted-foreground">مانع بازی وجود ندارد.</p>
+          <p className="text-sm text-muted-foreground">{SITE_OPS_COPY.noOpenBlockers}</p>
         ) : (
           <ul className="space-y-2 text-sm">
             {data.openBlockers.map((b) => {

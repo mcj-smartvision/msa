@@ -1,3 +1,11 @@
+/**
+ * @file features/weather/hooks/use-weather.ts
+ * @purpose هوک — هوای کارگاه (use-weather)
+ * @safe-to-edit CAREFUL
+ * @affects هوای کارگاه
+ * @depends-on features/weather/lib/types
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'

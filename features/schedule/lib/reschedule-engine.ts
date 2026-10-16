@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/reschedule-engine.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (reschedule-engine)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/dates, features/schedule/lib/baseline-template, features/schedule/lib/wbs-utils, shared/types/schedule
+ */
+
 import { addDaysIso, diffDaysIso, toIsoDateOnly } from '@/features/schedule/lib/dates'
 import {
 getImmutableBaselineDates,

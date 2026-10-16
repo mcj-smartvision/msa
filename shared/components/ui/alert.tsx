@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/ui/alert.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (alert)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/lib/utils
+ */
+
 import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/shared/lib/utils'

@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/i18n/payables.ts
+ * @purpose تنظیمات و برچسب‌ها — زیرساخت مشترک سامانه (payables)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/project-init/lib/i18n/types, features/finance/lib/payable-types
+ */
+
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import type { PayableStatus, PayableType, PaymentMethod } from '@/features/finance/lib/payable-types'
 

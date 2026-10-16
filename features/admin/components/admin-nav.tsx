@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/components/admin-nav.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (admin-nav)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/components/brand/brand-logo, shared/lib/utils, shared/components/auth/logout-button, shared/components/i18n/locale-provider, shared/components/layout/header-user-controls, features/admin/components/control-center-details-context, features/admin/lib/role-dashboard-routes, shared/lib/i18n/position-labels, shared/lib/project/project-cookie, features/admin/config
+ */
+
 'use client'
 
 import Link from 'next/link'
@@ -32,6 +40,7 @@ memberWorkspaceHref,
 } from '@/features/admin/lib/role-dashboard-routes'
 import { getPositionLabel } from '@/shared/lib/i18n/position-labels'
 import { isAllProjectsScope, writeProjectCookie } from '@/shared/lib/project/project-cookie'
+import { ADMIN_NAV_COPY } from '@/features/admin/config'
 
 const NAV_ROW =
   'flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13px] font-medium transition-colors text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -59,7 +68,7 @@ function AdminShellFrame({ children, email }: { children: ReactNode; email?: str
         </nav>
 
         <div className="border-t border-slate-100 p-3">
-          <LogoutButton label="خروج" className="w-full h-9 rounded-[10px]" />
+          <LogoutButton label={ADMIN_NAV_COPY.logout} className="w-full h-9 rounded-[10px]" />
         </div>
       </aside>
 
@@ -95,6 +104,7 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
   const ctx = useControlCenterDetailsOptional()
   const { locale } = useLocale()
   const fa = locale === 'fa'
+  const loc = fa ? ADMIN_NAV_COPY.fa : ADMIN_NAV_COPY.en
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ dashboards: true })
 
   const openDetail = ctx?.openDetail ?? null
@@ -145,19 +155,19 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
   return (
     <div className={cn(compact ? 'flex flex-wrap gap-1' : 'space-y-1')}>
       <FlatAction
-        label={fa ? 'کنترل سنتر' : 'Control Center'}
+        label={loc.controlCenter}
         icon={LayoutDashboard}
         active={pathname === '/admin' && openDetail === null}
         onClick={goControlCenter}
       />
       <FlatLink
         href="/dashboard/manager"
-        label={fa ? 'مدیر' : 'Manager'}
+        label={loc.manager}
         icon={Briefcase}
         active={linkActive('/dashboard/manager')}
       />
       <NavGroup
-        label={fa ? 'پروژه‌ها' : 'Projects'}
+        label={loc.projects}
         icon={FolderKanban}
         count={scopedProjects.length}
         active={linkActive('/admin/projects')}
@@ -174,24 +184,24 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
         ))}
         <NestedLink
           href="/admin/projects"
-          label={fa ? 'همه پروژه‌ها' : 'All projects'}
+          label={loc.allProjects}
           active={pathname === '/admin/projects'}
         />
       </NavGroup>
       <FlatLink
         href="/dashboard/qc"
-        label={fa ? 'کنترل کیفیت' : 'Quality Control'}
+        label={loc.qualityControl}
         icon={ClipboardCheck}
         active={linkActive('/dashboard/qc')}
       />
       <FlatLink
         href="/dashboard/schedule-intelligence"
-        label={fa ? 'تحلیل زمان‌بندی' : 'Schedule Intelligence'}
+        label={loc.scheduleIntelligence}
         icon={CalendarRange}
         active={linkActive('/dashboard/schedule-intelligence')}
       />
       <NavGroup
-        label={fa ? 'داشبورد اعضا' : 'Member Dashboards'}
+        label={loc.memberDashboards}
         icon={Users}
         count={scopedMembers.length}
         active={openDetail === 'dashboards' || roleGroups.some((g) => linkActive(g.href))}
@@ -232,18 +242,18 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
           onClick={() => selectDetail('dashboards')}
           className={cn(NESTED_ROW, openDetail === 'dashboards' && 'bg-slate-100 font-semibold text-slate-900')}
         >
-          {fa ? 'فهرست کامل اعضا' : 'Full member list'}
+          {loc.fullMemberList}
         </button>
       </NavGroup>
       <FlatAction
-        label={fa ? 'ساپورت و پیام‌ها' : 'Support & Messages'}
+        label={loc.supportMessages}
         icon={MessageSquare}
         count={feeds?.tickets.length}
         active={openDetail === 'messages'}
         onClick={() => selectDetail('messages')}
       />
       <FlatAction
-        label={fa ? 'هشدارهای بحرانی' : 'Critical Alerts'}
+        label={loc.criticalAlerts}
         icon={AlertCircle}
         count={feeds?.alerts.length}
         warn={(feeds?.alerts.length ?? 0) > 0}
@@ -252,7 +262,7 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
       />
       <FlatLink
         href="/settings"
-        label={fa ? 'تنظیمات' : 'Settings'}
+        label={loc.settings}
         icon={Settings}
         active={linkActive('/settings')}
       />
@@ -410,16 +420,16 @@ export function ProjectAdminNav({ projectId, projectName }: ProjectNavProps) {
   const base = `/admin/projects/${projectId}`
 
   const items = [
-    { href: `${base}/members`, label: 'اعضا' },
-    { href: `${base}/positions`, label: 'سمت‌ها' },
-    { href: `${base}/routing`, label: 'اعلان‌ها' },
-    { href: `${base}/widgets`, label: 'نمایش' },
+    { href: `${base}/members`, label: ADMIN_NAV_COPY.members },
+    { href: `${base}/positions`, label: ADMIN_NAV_COPY.positions },
+    { href: `${base}/routing`, label: ADMIN_NAV_COPY.routing },
+    { href: `${base}/widgets`, label: ADMIN_NAV_COPY.widgets },
   ]
 
   return (
     <div className="rounded-[12px] border border-slate-200 bg-white p-4 space-y-3">
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">پروژه</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{ADMIN_NAV_COPY.project}</p>
         <h2 className="text-base font-semibold mt-0.5">{projectName}</h2>
       </div>
       <nav className="flex flex-wrap gap-1.5">

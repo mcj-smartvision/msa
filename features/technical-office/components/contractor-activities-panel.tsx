@@ -1,3 +1,11 @@
+/**
+ * @file features/technical-office/components/contractor-activities-panel.tsx
+ * @purpose کامپوننت UI — دفتر فنی (contractor-activities-panel)
+ * @safe-to-edit CAREFUL
+ * @affects دفتر فنی
+ * @depends-on shared/components/ui/button, features/workshop/components/uom-display, features/project-store/use-project-store, features/project-store/use-project-store-sync, shared/lib/utils
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -7,6 +15,11 @@ import { UomStack } from '@/features/workshop/components/uom-display'
 import { useProjectStore } from '@/features/project-store/use-project-store'
 import { useProjectStoreSync } from '@/features/project-store/use-project-store-sync'
 import { cn } from '@/shared/lib/utils'
+import {
+  CONTRACTOR_ACTIVITIES_COPY as copy,
+  CONTRACTOR_QTY_KIND,
+  type ContractorQtyKind,
+} from '@/features/technical-office/config'
 
 /** Statement and reported physical progress may differ by less than this (percentage points). */
 const PROGRESS_MISMATCH_POINTS = 1
@@ -25,7 +38,7 @@ type ContractorActivity = {
   wbs: string | null
   title: string
   estimatedQty: number
-  qtyKind: 'حدودی' | 'قطعی'
+  qtyKind: ContractorQtyKind
   uom: string
   unitPrice: number
   progressPercent: number
@@ -57,10 +70,10 @@ export function ContractorActivitiesPanel({
         { cache: 'no-store' }
       )
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'بارگذاری فعالیت‌ها ناموفق بود')
+      if (!response.ok) throw new Error(data.error || copy.loadFailed)
       setActivities((data.activities ?? []) as ContractorActivity[])
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'بارگذاری فعالیت‌ها ناموفق بود')
+      setError(loadError instanceof Error ? loadError.message : copy.loadFailed)
     } finally {
       setLoading(false)
     }
@@ -109,14 +122,14 @@ export function ContractorActivitiesPanel({
     >
       <div className="flex items-center justify-between gap-3 border-b border-orange-100 bg-gradient-to-l from-orange-50 to-white px-4 py-3">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">فعالیت‌ها — {contractorName}</h3>
+          <h3 className="text-sm font-bold text-slate-900">{copy.title(contractorName)}</h3>
           <p className="mt-0.5 text-[11px] text-slate-500">
-            فقط مشاهده — از برنامه زمان‌بندی؛ قابل ویرایش نیست
+            {copy.readOnly}
           </p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={onClose}>
           <X className="me-1 h-4 w-4" />
-          بستن
+          {copy.close}
         </Button>
       </div>
 
@@ -124,18 +137,17 @@ export function ContractorActivitiesPanel({
       {!loading && mismatchCount > 0 ? (
         <p className="mx-4 mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs leading-5 text-amber-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          درصد صورت‌وضعیت {mismatchCount.toLocaleString('en-US')} فعالیت با پیشرفت فیزیکی گزارش روزانه فرق دارد. مبلغ کارکرد با همان درصد صورت‌وضعیت حساب
-          می‌شود.
+          {copy.mismatch(mismatchCount.toLocaleString('en-US'))}
         </p>
       ) : null}
       {loading ? (
         <p className="flex items-center gap-2 px-4 py-8 text-sm text-slate-500">
           <Loader2 className="h-4 w-4 animate-spin" />
-          در حال بارگذاری فعالیت‌ها...
+          {copy.loading}
         </p>
       ) : rows.length === 0 ? (
         <p className="px-4 py-10 text-center text-sm text-slate-500">
-          فعالیت تخصیص‌یافته‌ای برای این پیمانکار وجود ندارد.
+          {copy.empty}
         </p>
       ) : (
         <div className="overflow-x-auto">
@@ -143,16 +155,16 @@ export function ContractorActivitiesPanel({
             <thead>
               <tr className="bg-slate-800 text-[11px] font-semibold text-white">
                 <th className="px-3 py-2.5 text-center">WBS</th>
-                <th className="px-3 py-2.5 text-right">شرح آیتم</th>
-                <th className="px-3 py-2.5 text-center">مقدار</th>
-                <th className="px-3 py-2.5 text-center">وضعیت مقدار</th>
-                <th className="px-3 py-2.5 text-center">واحد</th>
-                <th className="px-3 py-2.5 text-center">قیمت واحد</th>
-                <th className="px-3 py-2.5 text-center">پیشرفت صورت‌وضعیت</th>
-                <th className="px-3 py-2.5 text-center" title="آخرین درصد تجمعی ثبت‌شدهٔ سرپرست کارگاه">
-                  پیشرفت فیزیکی
+<th className="px-3 py-2.5 text-right">{copy.colItem}</th>
+<th className="px-3 py-2.5 text-center">{copy.colQty}</th>
+<th className="px-3 py-2.5 text-center">{copy.colQtyStatus}</th>
+<th className="px-3 py-2.5 text-center">{copy.colUnit}</th>
+<th className="px-3 py-2.5 text-center">{copy.colUnitPrice}</th>
+<th className="px-3 py-2.5 text-center">{copy.colStatement}</th>
+                <th className="px-3 py-2.5 text-center" title={copy.physicalTitle}>
+                  {copy.colPhysical}
                 </th>
-                <th className="px-3 py-2.5 text-center">کارکرد</th>
+<th className="px-3 py-2.5 text-center">{copy.colExecuted}</th>
               </tr>
             </thead>
             <tbody>
@@ -175,7 +187,7 @@ export function ContractorActivitiesPanel({
                     <span
                       className={cn(
                         'inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                        row.qtyKind === 'قطعی'
+                        row.qtyKind === CONTRACTOR_QTY_KIND.final
                           ? 'bg-emerald-50 text-emerald-700'
                           : 'bg-amber-50 text-amber-700'
                       )}
@@ -211,7 +223,7 @@ export function ContractorActivitiesPanel({
                           'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums',
                           row.mismatch ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-700'
                         )}
-                        title={row.mismatch ? 'با درصد صورت‌وضعیت فرق دارد' : undefined}
+                        title={row.mismatch ? copy.mismatchTitle : undefined}
                         dir="ltr"
                       >
                         {row.mismatch ? <AlertTriangle className="h-3 w-3" aria-hidden /> : null}
@@ -228,10 +240,10 @@ export function ContractorActivitiesPanel({
             <tfoot>
               <tr className="bg-orange-50 text-sm font-bold text-slate-900">
                 <td className="px-3 py-3" colSpan={6}>
-                  جمع
+                  {copy.total}
                 </td>
                 <td className="px-3 py-3 text-center text-[11px] font-medium text-slate-600" colSpan={2}>
-                  مبلغ قرارداد {formatMoney(totals.amount)}
+                  {copy.contractAmount(formatMoney(totals.amount))}
                 </td>
                 <td className="px-3 py-3 text-center tabular-nums" dir="ltr">
                   {formatMoney(totals.executed)}

@@ -1,4 +1,12 @@
 /**
+ * @file features/schedule/lib/weight-consistency.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (weight-consistency)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on nothing
+ */
+
+/**
  * Absolute package weights: a package's weight is in the same project-level units as its parent
  * (an MSP leaf task or a parent package), so the children's weights must sum to the parent's.
  *

@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/services/admin.ts
+ * @purpose سرویس داده — کنترل سنتر و مدیریت اعضا/پروژه (admin)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/types/admin, features/admin/lib/access
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
 AdminProject,

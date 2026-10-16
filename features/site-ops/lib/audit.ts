@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/lib/audit.ts
+ * @purpose منطق دامنه — عملیات کارگاه، دستورکار و برنامه روزانه (audit)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on nothing
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function writeSiteOpsAudit(

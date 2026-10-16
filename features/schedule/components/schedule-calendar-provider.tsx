@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/components/schedule-calendar-provider.tsx
+ * @purpose کامپوننت UI — زمان‌بندی، WBS و گانت (schedule-calendar-provider)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/calendar-preference
+ */
+
 'use client'
 
 import {

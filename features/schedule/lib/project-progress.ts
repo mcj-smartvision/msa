@@ -1,4 +1,12 @@
 /**
+ * @file features/schedule/lib/project-progress.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (project-progress)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/weighted-progress
+ */
+
+/**
  * Project-wide progress rollup (پیشرفت کل پروژه)
  *
  * Rules:

@@ -1,3 +1,11 @@
+/**
+ * @file features/cre-contract/lib/schema.ts
+ * @purpose منطق دامنه — قرارداد و پیمانکاران (schema)
+ * @safe-to-edit CAREFUL
+ * @affects قرارداد و پیمانکاران
+ * @depends-on nothing
+ */
+
 import { z } from 'zod'
 import type { CrePhase1Export } from './types'
 

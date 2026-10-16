@@ -1,3 +1,11 @@
+/**
+ * @file features/procurement/lib/types.ts
+ * @purpose تعاریف نوع — تدارکات (types)
+ * @safe-to-edit YES
+ * @affects تدارکات
+ * @depends-on features/supervisor/lib/types
+ */
+
 import type { PurchaseRequestPayload } from '@/features/supervisor/lib/types'
 
 export type ProcurementStatus =

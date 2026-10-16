@@ -1,3 +1,11 @@
+/**
+ * @file app/(dashboard)/settings/page.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (page)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/client, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/card, shared/components/ui/alert, features/admin/components/shared, features/schedule/components/header-calendar-switcher
+ */
+
 'use client'
 
 import { useState } from 'react'
@@ -10,8 +18,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { PageHeader } from '@/features/admin/components/shared'
 import { HeaderCalendarSwitcher } from '@/features/schedule/components/header-calendar-switcher'
+import { accountCopy, SETTINGS_PAGE_COPY } from '@/features/account/lib/copy'
 
 export default function SettingsPage() {
+  const t = accountCopy(true)
+  const page = SETTINGS_PAGE_COPY
   const router = useRouter()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -26,12 +37,12 @@ export default function SettingsPage() {
     setMessage(null)
 
     if (newPassword !== confirmPassword) {
-      setError('رمزهای جدید یکسان نیستند.')
+      setError(t.passwordMismatch)
       return
     }
 
     if (newPassword.length < 6) {
-      setError('رمز عبور باید حداقل 6 کاراکتر باشد.')
+      setError(t.passwordShort)
       return
     }
 
@@ -42,7 +53,7 @@ export default function SettingsPage() {
     } = await supabase.auth.getUser()
 
     if (!user?.email) {
-      setError('باید وارد شده باشید.')
+      setError(t.mustLogin)
       setLoading(false)
       return
     }
@@ -53,7 +64,7 @@ export default function SettingsPage() {
     })
 
     if (verifyError) {
-      setError('رمز فعلی نادرست است.')
+      setError(t.wrongPassword)
       setLoading(false)
       return
     }
@@ -73,7 +84,7 @@ export default function SettingsPage() {
 
     await supabase.from('profiles').update({ is_first_login: false }).eq('id', user.id)
 
-    setMessage('رمز عبور با موفقیت به‌روزرسانی شد.')
+    setMessage(t.passwordUpdated)
     setCurrentPassword('')
     setNewPassword('')
     setConfirmPassword('')
@@ -84,14 +95,14 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-xl">
       <PageHeader
-        title="تنظیمات حساب"
-        description="رمز ورود خود را تغییر دهید. ادمین همچنان آخرین رمزی را که برای شما تنظیم کرده می‌بیند."
+        title={page.title}
+        description={page.description}
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>تقویم</CardTitle>
-          <CardDescription>تقویم نمایش تاریخ را از اینجا تغییر دهید.</CardDescription>
+          <CardTitle>{page.calendar}</CardTitle>
+          <CardDescription>{page.calendarHint}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-center gap-3">
           <HeaderCalendarSwitcher />
@@ -100,13 +111,13 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>تغییر رمز عبور</CardTitle>
-          <CardDescription>رمز فعلی را وارد کنید، سپس رمز جدید را تنظیم کنید.</CardDescription>
+          <CardTitle>{t.passwordTitle}</CardTitle>
+          <CardDescription>{t.passwordHint}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="current-password">رمز فعلی</Label>
+              <Label htmlFor="current-password">{t.currentPassword}</Label>
               <Input
                 id="current-password"
                 type="password"
@@ -116,7 +127,7 @@ export default function SettingsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="new-password">رمز جدید</Label>
+              <Label htmlFor="new-password">{t.newPassword}</Label>
               <Input
                 id="new-password"
                 type="password"
@@ -127,7 +138,7 @@ export default function SettingsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">تأیید رمز جدید</Label>
+              <Label htmlFor="confirm-password">{t.confirmPassword}</Label>
               <Input
                 id="confirm-password"
                 type="password"
@@ -148,7 +159,7 @@ export default function SettingsPage() {
               </Alert>
             ) : null}
             <Button type="submit" disabled={loading}>
-              {loading ? 'در حال ذخیره...' : 'به‌روزرسانی رمز عبور'}
+              {loading ? t.saving : t.updatePassword}
             </Button>
           </form>
         </CardContent>

@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/invoice-weekday.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (invoice-weekday)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on nothing
+ */
+
 /** Weekday name for an ISO date string (local calendar day). */
 
 const WEEKDAY_FA = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه']

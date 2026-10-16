@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/parent-progress-rollup.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (parent-progress-rollup)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/weighted-progress, features/schedule/lib/wbs-utils
+ */
+
 import { weightedProgressPercent } from '@/features/schedule/lib/weighted-progress'
 import { wbsDepth } from '@/features/schedule/lib/wbs-utils'
 

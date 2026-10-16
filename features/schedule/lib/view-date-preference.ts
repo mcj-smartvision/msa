@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/view-date-preference.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (view-date-preference)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on nothing
+ */
+
 export const SCHEDULE_VIEW_DATE_KEY = 'sitepilot_schedule_view_date'
 
 export function readScheduleViewDate(): string {

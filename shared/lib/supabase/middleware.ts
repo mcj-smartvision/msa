@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/supabase/middleware.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (middleware)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 

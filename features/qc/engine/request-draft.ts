@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/engine/request-draft.ts
+ * @purpose منطق دامنه — کنترل کیفیت و عدم انطباق (request-draft)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on features/qc/engine/activity-types, features/qc/engine/types
+ */
+
 import { isQcActivityType, type QcActivityType } from '@/features/qc/engine/activity-types'
 import { parseQcRequestPriority, type QcRequestPriority } from '@/features/qc/engine/types'
 

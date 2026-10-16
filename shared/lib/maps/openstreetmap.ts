@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/maps/openstreetmap.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (openstreetmap)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 /** OpenStreetMap tiles + Nominatim geocoding (no API key required) */
 
 import type { Map as LeafletMapType, Marker as LeafletMarkerType } from 'leaflet'

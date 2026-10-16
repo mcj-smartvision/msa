@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/lib/types.ts
+ * @purpose تعاریف نوع — کنترل کیفیت و عدم انطباق (types)
+ * @safe-to-edit YES
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on shared/types/schedule
+ */
+
 import type { ProjectTask } from '@/shared/types/schedule'
 
 export type InspectionStatus = 'pending' | 'passed' | 'passed_with_comments' | 'failed'

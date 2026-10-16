@@ -1,8 +1,16 @@
+/**
+ * @file features/account/components/account-password-form.tsx
+ * @purpose کامپوننت UI — حساب کاربری (account-password-form)
+ * @safe-to-edit CAREFUL
+ * @affects حساب کاربری
+ * @depends-on shared/lib/supabase/client, features/account/lib/copy, shared/components/i18n/locale-provider, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/alert
+ */
+
 'use client'
 
 import { useState } from 'react'
 import { createClient } from '@/shared/lib/supabase/client'
-import { accountCopy } from '@/features/account/lib/copy'
+import { accountCopy } from '@/features/account/config'
 import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'

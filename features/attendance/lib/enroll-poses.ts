@@ -1,3 +1,11 @@
+/**
+ * @file features/attendance/lib/enroll-poses.ts
+ * @purpose منطق دامنه — حضور و غیاب و چهره (enroll-poses)
+ * @safe-to-edit CAREFUL
+ * @affects حضور و غیاب و چهره
+ * @depends-on nothing
+ */
+
 /** Freeform enroll session + labels for stored auto samples. */
 
 export const ENROLL_SESSION_MS = 30_000

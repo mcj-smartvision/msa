@@ -1,3 +1,11 @@
+/**
+ * @file app/(dashboard)/admin/projects/[projectId]/routing/page.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (page)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/hooks/use-supabase, features/admin/services/admin, features/admin/components/shared, features/admin/components/notification-route-editor, shared/types/admin
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -12,6 +20,7 @@ upsertNotificationRoute,
 import { PageHeader, LoadingBlock, ErrorBlock } from '@/features/admin/components/shared'
 import { NotificationRouteEditor } from '@/features/admin/components/notification-route-editor'
 import type { EventType, NotificationRoute, Position } from '@/shared/types/admin'
+import { ADMIN_COPY } from '@/features/admin/config'
 
 export default function ProjectRoutingPage({ params }: { params: { projectId: string } }) {
   const supabase = useSupabase()
@@ -39,7 +48,7 @@ export default function ProjectRoutingPage({ params }: { params: { projectId: st
         setLoading(true)
         await loadData()
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری مسیریابی ناموفق بود')
+        if (!cancelled) setError(err instanceof Error ? err.message : ADMIN_COPY.loadRoutingFailed)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -49,14 +58,14 @@ export default function ProjectRoutingPage({ params }: { params: { projectId: st
     }
   }, [supabase, params.projectId])
 
-  if (loading) return <LoadingBlock label="در حال بارگذاری مسیریابی اعلان‌ها..." />
+  if (loading) return <LoadingBlock label={ADMIN_COPY.loadingRouting} />
   if (error) return <ErrorBlock message={error} onRetry={() => window.location.reload()} />
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="مسیریابی اعلان‌ها"
-        description="اعلان‌های رویداد را به سمت‌ها هدایت کنید. اعضا مجموع اعلان‌های همه سمت‌های اختصاص‌یافته را دریافت می‌کنند."
+        title={ADMIN_COPY.routingTitle}
+        description={ADMIN_COPY.routingHint}
       />
 
       <NotificationRouteEditor

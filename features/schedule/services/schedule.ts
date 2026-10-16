@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/services/schedule.ts
+ * @purpose سرویس داده — زمان‌بندی، WBS و گانت (schedule)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule, features/schedule/lib/weighted-progress
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
 CreateDailyReportInput,

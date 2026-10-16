@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/lib/projects-ops.ts
+ * @purpose منطق دامنه — کنترل سنتر و مدیریت اعضا/پروژه (projects-ops)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/types/admin
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AdminOpsMetrics, AuthActivityUser, ProjectMember } from '@/shared/types/admin';
 

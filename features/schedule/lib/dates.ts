@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/dates.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (dates)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/calendar-preference
+ */
+
 import { toJalaali, toGregorian } from 'jalaali-js'
 import type { ScheduleCalendar } from '@/features/schedule/lib/calendar-preference'
 

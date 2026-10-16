@@ -1,3 +1,11 @@
+/**
+ * @file features/project-controls/lib/ev-forecast.ts
+ * @purpose منطق دامنه — موتور کنترل پروژه و شاخص‌های توضیح‌پذیر (ev-forecast)
+ * @safe-to-edit CAREFUL
+ * @affects موتور کنترل پروژه و شاخص‌های توضیح‌پذیر
+ * @depends-on shared/types/project-controls, features/project-controls/lib/kpis
+ */
+
 import type { ControlsSnapshot, ExplainedKpi, PVCurvePoint } from '@/shared/types/project-controls'
 import type { EarnedScheduleKpiKey } from '@/features/project-controls/lib/kpis'
 

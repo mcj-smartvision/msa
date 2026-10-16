@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/components/custom-standards-editor.tsx
+ * @purpose کامپوننت UI — راه‌اندازی پروژه (custom-standards-editor)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on shared/components/ui/input, shared/components/ui/label, shared/components/ui/button, features/compliance/lib/custom-standards, features/compliance/lib/types, features/project-init/lib/schema, shared/lib/utils
+ */
+
 'use client'
 
 import { useState } from 'react'

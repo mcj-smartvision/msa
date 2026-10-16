@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/weekly-activity-progress.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (weekly-activity-progress)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/lib/daily-report-activities
+ */
+
 import { dailyReportActivityLookupIds, type DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
 
 /** Saturday → Thursday; Friday is the weekly day off. */

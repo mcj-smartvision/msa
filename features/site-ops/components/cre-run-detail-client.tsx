@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/components/cre-run-detail-client.tsx
+ * @purpose کامپوننت UI — عملیات کارگاه، دستورکار و برنامه روزانه (cre-run-detail-client)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on shared/components/i18n/locale-provider, shared/lib/i18n/site-ops, features/site-ops/components/summary-cards, features/site-ops/components/field-state-badge, features/site-ops/config
+ */
+
 'use client'
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
@@ -6,6 +14,7 @@ import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { getSiteOpsMessages } from '@/shared/lib/i18n/site-ops'
 import { SiteOpsSummaryCards } from '@/features/site-ops/components/summary-cards'
 import { FieldStateBadge } from '@/features/site-ops/components/field-state-badge'
+import { SITE_OPS_COPY } from '@/features/site-ops/config'
 
 export function CreRunDetailClient() {
   const { locale } = useLocale()
@@ -130,7 +139,7 @@ export function CreRunDetailClient() {
             <tr className="border-b text-left text-slate-500">
               <th className="py-2 pr-2">UID</th>
               <th className="py-2 pr-2">WBS</th>
-              <th className="py-2 pr-2">نام</th>
+              <th className="py-2 pr-2">{SITE_OPS_COPY.colName}</th>
               <th className="py-2 pr-2">{t.status}</th>
               <th className="py-2 pr-2">{t.quantity}</th>
               <th className="py-2 pr-2">UOM</th>

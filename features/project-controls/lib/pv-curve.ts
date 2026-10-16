@@ -1,3 +1,11 @@
+/**
+ * @file features/project-controls/lib/pv-curve.ts
+ * @purpose منطق دامنه — موتور کنترل پروژه و شاخص‌های توضیح‌پذیر (pv-curve)
+ * @safe-to-edit CAREFUL
+ * @affects موتور کنترل پروژه و شاخص‌های توضیح‌پذیر
+ * @depends-on shared/types/project-controls, features/schedule/lib/planned-progress, shared/lib/time/tehran
+ */
+
 import type { PVCurvePoint } from '@/shared/types/project-controls'
 import { CALENDAR_DAYS, plannedPercentInWindow, type WorkCalendar } from '@/features/schedule/lib/planned-progress'
 import { toTehranDateOnly } from '@/shared/lib/time/tehran'

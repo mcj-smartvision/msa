@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/daily-report-activities.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (daily-report-activities)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/schedule/lib/leaf-activities, features/schedule/lib/planned-progress, features/schedule/lib/wbs-utils, features/schedule/lib/weighted-progress, features/schedule/lib/weight-consistency, features/workshop/lib/approvals, features/workshop/lib/types
+ */
+
 import { taskBaselineDates } from '@/features/schedule/lib/leaf-activities'
 import { plannedPercentInWindow } from '@/features/schedule/lib/planned-progress'
 import { compareWbs } from '@/features/schedule/lib/wbs-utils'

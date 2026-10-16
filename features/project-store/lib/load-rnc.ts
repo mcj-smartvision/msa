@@ -1,3 +1,11 @@
+/**
+ * @file features/project-store/lib/load-rnc.ts
+ * @purpose منطق دامنه — ذخیره پیشرفت و overlay اعداد داشبورد (load-rnc)
+ * @safe-to-edit CAREFUL
+ * @affects ذخیره پیشرفت و overlay اعداد داشبورد
+ * @depends-on features/manager/lib/schedule-commitments
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { rncKey, type CommitmentRnc } from '@/features/manager/lib/schedule-commitments'
 

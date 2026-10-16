@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/i18n/expenses.ts
+ * @purpose تنظیمات و برچسب‌ها — زیرساخت مشترک سامانه (expenses)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/project-init/lib/i18n/types, features/finance/lib/expense-types
+ */
+
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import type { AccountingDocumentStatus } from '@/features/finance/lib/expense-types'
 

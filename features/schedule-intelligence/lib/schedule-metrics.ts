@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule-intelligence/lib/schedule-metrics.ts
+ * @purpose منطق دامنه — تحلیل کیفیت برنامه و آپلود MSP (schedule-metrics)
+ * @safe-to-edit CAREFUL
+ * @affects تحلیل کیفیت برنامه و آپلود MSP
+ * @depends-on shared/types/schedule-intelligence, features/schedule-intelligence/lib/duration-utils
+ */
+
 import type {
 CpmResult,
 NormalizedSchedule,
@@ -7,6 +15,7 @@ ScheduleAnalysisConfig,
 ScheduleTask,
 } from '@/shared/types/schedule-intelligence'
 import { durationDaysFromMinutes } from '@/features/schedule-intelligence/lib/duration-utils'
+import { SCHEDULE_LIB_COPY as L } from '@/features/schedule-intelligence/lib/config'
 
 function leafTasks(tasks: ScheduleTask[]): ScheduleTask[] {
   return tasks.filter((t) => !t.isSummary)
@@ -157,7 +166,7 @@ export function buildPhaseSummaries(
   if (phases.length === 0 && leaves.length > 0) {
     phases.push({
       wbs: 'ALL',
-      name: schedule.projectName ?? 'پروژه',
+      name: schedule.projectName ?? L.projectFallback,
       activityCount: leaves.length,
       totalDurationMinutes: totalLeafDuration,
       remainingDurationMinutes: leaves.reduce(

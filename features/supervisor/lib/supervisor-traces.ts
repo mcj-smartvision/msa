@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/supervisor-traces.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (supervisor-traces)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/calc-trace/lib/build, features/calc-trace/lib/types, features/manager/lib/format, features/schedule/lib/parent-progress-rollup
+ */
+
 import { makeTrace, traceInput, v, warnProgressGap } from '@/features/calc-trace/lib/build'
 import { CALC_TRACE_HISTORY_LIMIT, type CalcTrace } from '@/features/calc-trace/lib/types'
 import { faNumber, jalaliDate } from '@/features/manager/lib/format'

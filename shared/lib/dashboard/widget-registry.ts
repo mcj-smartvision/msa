@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/dashboard/widget-registry.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (widget-registry)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/types/dashboard, features/dashboard/components/widgets/overview-stats-widget, features/dashboard/components/widgets/progress-widget, features/dashboard/components/widgets/inventory-widget, features/dashboard/components/widgets/report-widget, features/dashboard/components/widgets/daily-report-widget, features/dashboard/components/widgets/security-alerts-widget, features/dashboard/components/widgets/entry-exit-widget, features/dashboard/components/widgets/schedule-widget, features/dashboard/components/widgets/safety-widget
+ */
+
 import type { ComponentType } from 'react'
 import type { WidgetRenderContext } from '@/shared/types/dashboard'
 import { OverviewStatsWidget } from '@/features/dashboard/components/widgets/overview-stats-widget'

@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/components/schedule-gantt-workspace.tsx
+ * @purpose کامپوننت UI — زمان‌بندی، WBS و گانت (schedule-gantt-workspace)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/dates, shared/lib/time/jalali-month, features/schedule/lib/gantt-parent-expand, features/schedule/lib/gantt-tone, features/schedule/lib/gantt-service, features/schedule/lib/gantt-link-paths, features/schedule/lib/schedule-view-sync, shared/lib/utils, features/project-store/use-store-progress, features/schedule/config
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -31,6 +39,7 @@ useScheduleViewSync,
 } from '@/features/schedule/lib/schedule-view-sync'
 import { cn } from '@/shared/lib/utils'
 import { storePercentOf, useStoreProgress } from '@/features/project-store/use-store-progress'
+import { GANTT_COPY } from '@/features/schedule/config'
 
 const DAY_PX = 14
 const FIT_MIN_DAY_PX = 4
@@ -40,7 +49,7 @@ const ZOOM_MAX_DAY_PX = 56
 const ZOOM_STEP = 1.5
 const ROW_H = 32
 const LABEL_W = 280
-const RECALC_TOAST = 'برای اعمال روی مسیر بحرانی، محاسبه‌ی مجدد را اجرا کنید'
+const RECALC_TOAST = GANTT_COPY.recalcToast
 
 type DragMode = 'move' | 'resize-start' | 'resize-finish'
 
@@ -107,13 +116,13 @@ export function ScheduleGanttWorkspace() {
     try {
       const res = await fetch(`/api/schedule/gantt?projectId=${projectId}`, { cache: 'no-store' })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'بارگذاری گانت ناموفق بود')
+      if (!res.ok) throw new Error(data.error || GANTT_COPY.loadFailed)
       setRows(data.rows ?? [])
       setLinks(Array.isArray(data.links) ? data.links : [])
       setReadOnly(forceReadOnly || Boolean(data.readOnly))
       setDraft({})
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'خطا در بارگذاری')
+      setError(e instanceof Error ? e.message : GANTT_COPY.loadError)
     } finally {
       setLoading(false)
     }
@@ -271,7 +280,7 @@ export function ScheduleGanttWorkspace() {
       body: JSON.stringify({ projectId, taskId, startDate, finishDate }),
     })
     const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'ذخیره تاریخ ناموفق بود')
+    if (!res.ok) throw new Error(data.error || GANTT_COPY.dateSaveFailed)
 
     const updated = (data.updated ?? []) as Array<{
       id: string
@@ -298,7 +307,7 @@ export function ScheduleGanttWorkspace() {
     if (!projectId || readOnly) return
     const entries = Object.entries(draft)
     if (entries.length === 0) {
-      setToast('تغییر جدیدی برای ثبت نیست')
+      setToast(GANTT_COPY.noNewChanges)
       return
     }
     setSaving(true)
@@ -315,19 +324,17 @@ export function ScheduleGanttWorkspace() {
         )
         const cpmData = await cpmRes.json()
         if (cpmRes.ok) {
-          setToast(
-            `ثبت نهایی شد — شناوری‌ها به‌روز شد (مدت پروژه ${cpmData.projectDurationDays} روز)`
-          )
+          setToast(GANTT_COPY.finalSavedCpm(cpmData.projectDurationDays))
         } else {
-          setToast('ثبت نهایی شد — تاریخ‌ها ذخیره شد · ' + RECALC_TOAST)
+          setToast(GANTT_COPY.finalSavedDates(RECALC_TOAST))
         }
       } catch {
-        setToast('ثبت نهایی شد — تاریخ‌ها ذخیره شد · ' + RECALC_TOAST)
+        setToast(GANTT_COPY.finalSavedDates(RECALC_TOAST))
       }
       publishScheduleViewSync(projectId)
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'خطا در ثبت نهایی')
+      setError(e instanceof Error ? e.message : GANTT_COPY.finalSaveError)
       await load()
     } finally {
       setSaving(false)
@@ -341,14 +348,12 @@ export function ScheduleGanttWorkspace() {
     try {
       const res = await fetch(`/api/schedule/calculate?projectId=${projectId}`)
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'محاسبه CPM ناموفق بود')
+      if (!res.ok) throw new Error(data.error || GANTT_COPY.cpmFailed)
       publishScheduleViewSync(projectId)
-      setToast(
-        `محاسبه انجام شد — طول پروژه ${data.projectDurationDays} روز، هشدار: ${data.saved?.alertsCreated ?? 0}`
-      )
+      setToast(GANTT_COPY.cpmDone(data.projectDurationDays, data.saved?.alertsCreated ?? 0))
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'خطا در محاسبه')
+      setError(e instanceof Error ? e.message : GANTT_COPY.calcError)
     } finally {
       setCalculating(false)
     }
@@ -483,7 +488,7 @@ export function ScheduleGanttWorkspace() {
   if (!projectId) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        ابتدا یک پروژه را انتخاب کنید.
+        {GANTT_COPY.pickProject}
       </div>
     )
   }
@@ -498,7 +503,7 @@ export function ScheduleGanttWorkspace() {
           className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           <CheckCircle2 className="h-4 w-4" />
-          ثبت نهایی
+          {GANTT_COPY.commitFinal}
           {Object.keys(draft).length > 0 ? (
             <span className="rounded-full bg-white/20 px-1.5 text-[10px]">
               {Object.keys(draft).length}
@@ -512,7 +517,7 @@ export function ScheduleGanttWorkspace() {
           className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
         >
           <Calculator className="h-4 w-4" />
-          {calculating ? 'در حال محاسبه…' : 'محاسبه مسیر بحرانی'}
+          {calculating ? GANTT_COPY.calculating : GANTT_COPY.calcCritical}
         </button>
         <button
           type="button"
@@ -521,7 +526,7 @@ export function ScheduleGanttWorkspace() {
           className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
         >
           <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
-          بروزرسانی
+          {GANTT_COPY.refresh}
         </button>
         <button
           type="button"
@@ -529,10 +534,10 @@ export function ScheduleGanttWorkspace() {
           disabled={links.length === 0}
           title={
             links.length === 0
-              ? 'پیوند وابستگی‌ای برای این پروژه نیست'
+              ? GANTT_COPY.noLinks
               : showDependencies
-                ? 'مخفی کردن خطوط وابستگی'
-                : 'نمایش خطوط وابستگی مثل MSP'
+                ? GANTT_COPY.hideLinkLines
+                : GANTT_COPY.showLinkLines
           }
           className={cn(
             'inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50',
@@ -542,7 +547,7 @@ export function ScheduleGanttWorkspace() {
           )}
         >
           <GitBranch className="h-4 w-4" />
-          {showDependencies ? 'مخفی کردن وابستگی‌ها' : 'فعال کردن وابستگی‌ها'}
+          {showDependencies ? GANTT_COPY.hideDeps : GANTT_COPY.enableDeps}
           {links.length > 0 ? (
             <span
               className={cn(
@@ -559,8 +564,8 @@ export function ScheduleGanttWorkspace() {
             type="button"
             onClick={() => zoomBy(1 / ZOOM_STEP)}
             disabled={dayPx <= ZOOM_MIN_DAY_PX}
-            title="کوچک‌نمایی"
-            aria-label="کوچک‌نمایی"
+            title={GANTT_COPY.zoomOut}
+            aria-label={GANTT_COPY.zoomOut}
             className="px-2 py-1.5 hover:bg-slate-50 disabled:opacity-50"
           >
             <Minus className="h-4 w-4" />
@@ -568,8 +573,8 @@ export function ScheduleGanttWorkspace() {
           <button
             type="button"
             onClick={() => setManualDayPx(null)}
-            title="نمایش کل بازه پروژه در عرض صفحه"
-            aria-label="نمایش کل بازه پروژه"
+            title={GANTT_COPY.fitTitle}
+            aria-label={GANTT_COPY.fitAria}
             aria-pressed={manualDayPx == null}
             className={cn(
               'inline-flex items-center gap-1 border-x border-slate-300 px-2 py-1.5 text-xs',
@@ -577,31 +582,31 @@ export function ScheduleGanttWorkspace() {
             )}
           >
             <Maximize2 className="h-3.5 w-3.5" />
-            کل بازه
+            {GANTT_COPY.fitAll}
           </button>
           <button
             type="button"
             onClick={() => zoomBy(ZOOM_STEP)}
             disabled={dayPx >= ZOOM_MAX_DAY_PX}
-            title="بزرگ‌نمایی"
-            aria-label="بزرگ‌نمایی"
+            title={GANTT_COPY.zoomIn}
+            aria-label={GANTT_COPY.zoomIn}
             className="px-2 py-1.5 hover:bg-slate-50 disabled:opacity-50"
           >
             <Plus className="h-4 w-4" />
           </button>
         </div>
-        {saving ? <span className="text-xs text-slate-500">در حال ثبت…</span> : null}
+        {saving ? <span className="text-xs text-slate-500">{GANTT_COPY.saving}</span> : null}
         <span className="text-xs text-slate-500">
-          {displayRows.length} فعالیت
-          {links.length > 0 ? ` · ${links.length} پیوند` : ''}
-          {missingDates > 0 ? ` · ${missingDates} بدون تاریخ` : ''}
+          {GANTT_COPY.activityCount(displayRows.length)}
+          {links.length > 0 ? GANTT_COPY.linksCount(links.length) : ''}
+          {missingDates > 0 ? GANTT_COPY.missingDatesCount(missingDates) : ''}
         </span>
         {readOnly ? (
-          <span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600">فقط مشاهده</span>
-        ) : (
-          <span className="text-xs text-slate-500">
-            کشیدن میله = جابه‌جایی · لبه = تغییر مدت · سپس «ثبت نهایی»
+          <span className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600">
+            {GANTT_COPY.viewOnly}
           </span>
+        ) : (
+          <span className="text-xs text-slate-500">{GANTT_COPY.dragHint}</span>
         )}
       </div>
 
@@ -630,7 +635,7 @@ export function ScheduleGanttWorkspace() {
             className="shrink-0 border-l border-slate-200 px-3 py-2 text-xs font-medium text-slate-600"
             style={{ width: LABEL_W }}
           >
-            فعالیت
+            {GANTT_COPY.activity}
           </div>
           <div
             ref={headerScrollRef}
@@ -683,7 +688,7 @@ export function ScheduleGanttWorkspace() {
             onScroll={() => syncVertical('label')}
           >
             {loading && rows.length === 0 ? (
-              <div className="px-3 py-6 text-sm text-slate-500">در حال بارگذاری…</div>
+              <div className="px-3 py-6 text-sm text-slate-500">{GANTT_COPY.loading}</div>
             ) : (
               displayRows.map((row) => (
                 <div
@@ -724,7 +729,7 @@ export function ScheduleGanttWorkspace() {
             }}
           >
             {displayRows.length === 0 && !loading ? (
-              <div className="px-4 py-8 text-sm text-slate-500">فعالیتی نیست.</div>
+              <div className="px-4 py-8 text-sm text-slate-500">{GANTT_COPY.noActivities}</div>
             ) : (
               <div className="relative" style={{ width: timeline.widthPx, height: chartHeight }}>
                 <div className="pointer-events-none absolute inset-0" aria-hidden>
@@ -825,7 +830,7 @@ export function ScheduleGanttWorkspace() {
                   const editable = !readOnly && !row.isSummary && hasDates && row.kind !== 'package'
                   const asMilestone = Boolean(row.isMilestone || span === 0)
                   const percent = row.percentComplete ?? 0
-                  const percentLabel = `پیشرفت ${formatPercent(percent)}%`
+                  const percentLabel = GANTT_COPY.progressLabel(formatPercent(percent))
 
                   return (
                     <div
@@ -838,7 +843,7 @@ export function ScheduleGanttWorkspace() {
                     >
                       {!hasDates ? (
                         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">
-                          بدون تاریخ
+                          {GANTT_COPY.noDate}
                         </span>
                       ) : null}
 
@@ -860,7 +865,11 @@ export function ScheduleGanttWorkspace() {
                             editable ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
                           )}
                           style={{ left: dateToX(finish) }}
-                          title={`${row.name} · مایلستون · ${formatScheduleDate(finish, 'jalali')} · ${percentLabel}`}
+                          title={GANTT_COPY.milestoneTitle(
+                            row.name,
+                            formatScheduleDate(finish, 'jalali'),
+                            percentLabel
+                          )}
                           onPointerDown={(e) =>
                             onPointerDown(e, { ...row, startDate: start!, finishDate: finish! }, 'move')
                           }
@@ -882,7 +891,13 @@ export function ScheduleGanttWorkspace() {
                               editable && 'cursor-grab active:cursor-grabbing'
                             )}
                             style={{ width: widthPx }}
-                            title={`${row.name}\n${formatScheduleDate(start, 'jalali')} → ${formatScheduleDate(finish, 'jalali')}\n${row.durationDays} روز · ${percentLabel}`}
+                            title={GANTT_COPY.barTitle(
+                              row.name,
+                              formatScheduleDate(start, 'jalali'),
+                              formatScheduleDate(finish, 'jalali'),
+                              row.durationDays,
+                              percentLabel
+                            )}
                             aria-label={`${row.name} · ${percentLabel}`}
                             onPointerDown={(e) =>
                               onPointerDown(e, { ...row, startDate: start!, finishDate: finish! }, 'move')
@@ -924,7 +939,7 @@ export function ScheduleGanttWorkspace() {
                             <div
                               className="absolute top-1/2 h-px -translate-y-1/2 bg-slate-300"
                               style={{ left: widthPx, width: floatW }}
-                              title={`شناوری ${rawFloat} روز`}
+                              title={GANTT_COPY.floatTitle(rawFloat)}
                             />
                           ) : null}
                         </div>
@@ -940,28 +955,29 @@ export function ScheduleGanttWorkspace() {
 
       <div className="flex flex-wrap gap-3 text-[11px] text-slate-600">
         <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-4 rounded bg-rose-500" /> بحرانی / منفی
+          <span className="h-2.5 w-4 rounded bg-rose-500" /> {GANTT_COPY.legendCritical}
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-4 rounded bg-amber-400" /> نزدیک‌بحرانی
+          <span className="h-2.5 w-4 rounded bg-amber-400" /> {GANTT_COPY.legendNear}
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-4 rounded bg-orange-500" /> مصرف سریع / پیشرفت ملایم
+          <span className="h-2.5 w-4 rounded bg-orange-500" /> {GANTT_COPY.legendFast}
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-4 rounded bg-sky-400" /> پایش پیشرفت (بحرانی + نرخ خوب)
+          <span className="h-2.5 w-4 rounded bg-sky-400" /> {GANTT_COPY.legendWatch}
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-4 rounded bg-slate-400" /> غیربحرانی (عادی)
+          <span className="h-2.5 w-4 rounded bg-slate-400" /> {GANTT_COPY.legendNormal}
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-4 rounded border border-emerald-700 bg-emerald-500" /> تکمیل‌شده (100%)
+          <span className="h-2.5 w-4 rounded border border-emerald-700 bg-emerald-500" />{' '}
+          {GANTT_COPY.legendDone}
         </span>
         <span className="inline-flex items-center gap-1">
           <span className="relative h-2.5 w-6 overflow-hidden rounded border border-slate-500 bg-slate-400" dir="ltr">
             <span className="absolute inset-y-0 left-0 w-1/2 bg-slate-700/70" />
           </span>
-          بخش تیره = درصد پیشرفت
+          {GANTT_COPY.legendProgress}
         </span>
         <span className="inline-flex items-center gap-1">
           <svg width="18" height="8" aria-hidden>
@@ -972,12 +988,12 @@ export function ScheduleGanttWorkspace() {
             </defs>
             <line x1="0" y1="4" x2="14" y2="4" stroke="#334155" strokeWidth="1.5" markerEnd="url(#legend-arrow)" />
           </svg>
-          پیوند وابستگی — موس را روی فلش نگه دارید
+          {GANTT_COPY.legendLink}
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-0.5 w-6 bg-slate-300" /> شناوری (حداکثر {GANTT_FLOAT_DISPLAY_CAP_DAYS} روز نمایشی)
+          <span className="h-0.5 w-6 bg-slate-300" /> {GANTT_COPY.legendFloat(GANTT_FLOAT_DISPLAY_CAP_DAYS)}
         </span>
-        <span>◆ مایلستون</span>
+        <span>{GANTT_COPY.legendMilestone}</span>
       </div>
 
       {depTooltip ? (

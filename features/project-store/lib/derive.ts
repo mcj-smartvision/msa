@@ -1,3 +1,11 @@
+/**
+ * @file features/project-store/lib/derive.ts
+ * @purpose منطق دامنه — ذخیره پیشرفت و overlay اعداد داشبورد (derive)
+ * @safe-to-edit CAREFUL
+ * @affects ذخیره پیشرفت و overlay اعداد داشبورد
+ * @depends-on features/evm/lib/metrics, features/holidays/lib/work-calendar, features/manager/lib/cost-performance, features/manager/lib/progress-curve, features/schedule/lib/week-commitment-windows, features/supervisor/lib/daily-report-activities, features/supervisor/lib/weekly-activity-progress
+ */
+
 import { breakdownActivities, computeEvmMetrics, plannedPercentAsOf, type EvmBudgetBasis } from '@/features/evm/lib/metrics'
 import { siteWorkCalendar } from '@/features/holidays/lib/work-calendar'
 import { buildCostPerformance, type CostPerformance } from '@/features/manager/lib/cost-performance'

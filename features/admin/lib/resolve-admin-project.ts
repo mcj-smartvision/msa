@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/lib/resolve-admin-project.ts
+ * @purpose منطق دامنه — کنترل سنتر و مدیریت اعضا/پروژه (resolve-admin-project)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/lib/project/project-cookie, shared/types/admin
+ */
+
 import { ALL_PROJECTS_SCOPE, readProjectCookie } from '@/shared/lib/project/project-cookie'
 import type { AdminProject } from '@/shared/types/admin'
 

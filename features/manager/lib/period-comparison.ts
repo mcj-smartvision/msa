@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/period-comparison.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (period-comparison)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/evm/lib/metrics, features/manager/lib/format, shared/lib/time/tehran, features/manager/lib/overview-types
+ */
+
 import { toGregorian, toJalaali } from 'jalaali-js'
 import { plannedPercentAsOf, safeRatio } from '@/features/evm/lib/metrics'
 import { latinDigits, faNumber } from '@/features/manager/lib/format'

@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/lookahead-panel.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (lookahead-panel)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/admin/components/shared, shared/components/ui/badge, features/schedule/components/formatted-date, features/schedule/components/task-status-badge, features/supervisor/components/traffic-light, features/supervisor/lib/types, shared/lib/i18n/site-supervisor, shared/lib/utils
+ */
+
 'use client'
 
 import { SectionCard } from '@/features/admin/components/shared'

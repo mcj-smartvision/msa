@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/i18n/locale-cookie.ts
+ * @purpose تنظیمات و برچسب‌ها — زیرساخت مشترک سامانه (locale-cookie)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/project-init/lib/i18n/types, features/project-init/lib/i18n/utils
+ */
+
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import { normalizeLocale } from '@/features/project-init/lib/i18n/utils'
 

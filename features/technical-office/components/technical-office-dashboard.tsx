@@ -1,3 +1,11 @@
+/**
+ * @file features/technical-office/components/technical-office-dashboard.tsx
+ * @purpose کامپوننت UI — دفتر فنی (technical-office-dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects دفتر فنی
+ * @depends-on shared/components/i18n/locale-provider, shared/lib/i18n/technical-office, shared/types/dashboard, features/admin/components/shared, features/technical-office/components/technical-office-legacy-panel, features/technical-office/components/contractors-section, features/workshop/components/workshop-ops-panel, features/schedule/components/smart-progress-alerts-panel, shared/hooks/use-synced-project-id, shared/lib/utils
+ */
+
 'use client'
 
 import { useEffect } from 'react'
@@ -20,17 +28,17 @@ type OfficeSection =
   | 'schedule'
   | 'smart-progress'
 
-const SECTIONS: { id: OfficeSection; labelFa: string; labelEn: string }[] = [
-  { id: 'contractors', labelFa: 'پیمانکار', labelEn: 'Contractor' },
-  { id: 'office', labelFa: 'نقشه‌ها', labelEn: 'Drawings' },
-  { id: 'send-schedule', labelFa: 'ارسال برنامه زمانبندی', labelEn: 'Send schedule' },
-  { id: 'schedule', labelFa: 'ویرایش برنامه زمانبندی', labelEn: 'Edit schedule' },
-  {
-    id: 'smart-progress',
-    labelFa: 'هشدار هوشمند پیشرفت',
-    labelEn: 'Smart progress alerts',
-  },
-]
+function officeSections() {
+  const fa = getTechnicalOfficeMessages('fa')
+  const en = getTechnicalOfficeMessages('en')
+  return [
+    { id: 'contractors' as const, labelFa: fa.tabContractors, labelEn: en.tabContractors },
+    { id: 'office' as const, labelFa: fa.tabDrawings, labelEn: en.tabDrawings },
+    { id: 'send-schedule' as const, labelFa: fa.tabSendSchedule, labelEn: en.tabSendSchedule },
+    { id: 'schedule' as const, labelFa: fa.tabEditSchedule, labelEn: en.tabEditSchedule },
+    { id: 'smart-progress' as const, labelFa: fa.tabSmartProgress, labelEn: en.tabSmartProgress },
+  ]
+}
 
 export function TechnicalOfficeDashboard({
   initialProjectId,
@@ -66,8 +74,8 @@ export function TechnicalOfficeDashboard({
                 : 'office'
 
   const visibleSections = asSupervisor
-    ? SECTIONS.filter((s) => s.id === 'schedule')
-    : SECTIONS
+    ? officeSections().filter((s) => s.id === 'schedule')
+    : officeSections()
 
   useEffect(() => {
     if (!projectId) return
@@ -108,14 +116,8 @@ export function TechnicalOfficeDashboard({
       dir={dir}
     >
       <PageHeader
-        title={asSupervisor ? (fa ? 'مشاهده برنامه کارگاه' : 'Workshop schedule view') : t.title}
-        description={
-          asSupervisor
-            ? fa
-              ? 'نمای سرپرست — فقط مشاهده برنامه و لیست‌های دفتر فنی.'
-              : 'Supervisor view — read-only schedule and lists.'
-            : t.subtitle
-        }
+        title={asSupervisor ? t.supervisorTitle : t.title}
+        description={asSupervisor ? t.supervisorHint : t.subtitle}
       />
 
       <nav className="flex flex-wrap gap-2 pb-1">
@@ -141,7 +143,7 @@ export function TechnicalOfficeDashboard({
 
       {!projectId ? (
         <p className="text-sm text-muted-foreground">
-          {fa ? 'ابتدا یک پروژه انتخاب کنید.' : 'Select a project first.'}
+          {t.pickProject}
         </p>
       ) : section === 'schedule' ? (
         <WorkshopOpsPanel />

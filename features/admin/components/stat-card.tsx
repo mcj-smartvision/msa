@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/components/stat-card.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (stat-card)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/lib/utils
+ */
+
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 

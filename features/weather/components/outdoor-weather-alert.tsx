@@ -1,9 +1,18 @@
+/**
+ * @file features/weather/components/outdoor-weather-alert.tsx
+ * @purpose کامپوننت UI — هوای کارگاه (outdoor-weather-alert)
+ * @safe-to-edit CAREFUL
+ * @affects هوای کارگاه
+ * @depends-on features/weather/hooks/use-weather, features/manager/lib/format, shared/lib/utils, features/weather/config
+ */
+
 'use client'
 
 import { AlertTriangle, CloudSun } from 'lucide-react'
 import { useWeather } from '@/features/weather/hooks/use-weather'
 import { faNumber } from '@/features/manager/lib/format'
 import { cn } from '@/shared/lib/utils'
+import { WEATHER_COPY } from '@/features/weather/config'
 
 export function OutdoorWeatherAlert({ projectId }: { projectId: string | null }) {
   const { data } = useWeather(projectId)
@@ -33,7 +42,9 @@ export function OutdoorWeatherAlert({ projectId }: { projectId: string | null })
         <p className="font-semibold">{risk.title}</p>
         <p className="text-[13px]">
           {data.location.name} · {data.current.description} · {temp}° — {risk.message}
-          {risk.reasons.length ? ` (${risk.reasons.join('، ')})` : ''}
+          {risk.reasons.length
+            ? WEATHER_COPY.reasonsSuffix(risk.reasons.join(WEATHER_COPY.listSep))
+            : ''}
         </p>
       </div>
     </div>

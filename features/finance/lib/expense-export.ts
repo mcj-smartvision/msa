@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/expense-export.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (expense-export)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/finance/lib/expense-types, features/finance/lib/invoice-weekday, features/finance/lib/persian-amount-words, features/schedule/lib/calendar-preference, features/schedule/lib/dates
+ */
+
 import type { AccountingDocument, ExpenseItem } from '@/features/finance/lib/expense-types'
 import { formatInvoiceNumber, getInvoiceWeekday } from '@/features/finance/lib/invoice-weekday'
 import { rialToToman, tomanAmountToPersianWords } from '@/features/finance/lib/persian-amount-words'

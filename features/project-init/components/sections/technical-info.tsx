@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/components/sections/technical-info.tsx
+ * @purpose کامپوننت UI — راه‌اندازی پروژه (technical-info)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on features/project-init/lib/schema
+ */
+
 'use client'
 
 import { FieldGrid, NumberField, SectionHeader, SelectField, SubsectionTitle, TextField } from '../form-fields'

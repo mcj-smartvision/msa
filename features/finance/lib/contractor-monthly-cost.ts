@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/contractor-monthly-cost.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (contractor-monthly-cost)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/schedule/lib/planned-month-weight, features/schedule/lib/monthly-deducted-weight
+ */
+
 import { plannedWeightsOnMonths } from '@/features/schedule/lib/planned-month-weight'
 import type { DeductedWeightMonth } from '@/features/schedule/lib/monthly-deducted-weight'
 

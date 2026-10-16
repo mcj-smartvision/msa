@@ -1,3 +1,11 @@
+/**
+ * @file features/project-controls/lib/kpis.ts
+ * @purpose منطق دامنه — موتور کنترل پروژه و شاخص‌های توضیح‌پذیر (kpis)
+ * @safe-to-edit CAREFUL
+ * @affects موتور کنترل پروژه و شاخص‌های توضیح‌پذیر
+ * @depends-on shared/types/project-controls, features/evm/lib/rag-status, features/project-controls/lib/earned-schedule, features/project-controls/lib/explained-metric, features/project-controls/lib/tcpi-ppc
+ */
+
 import type { ControlsSnapshot, ExplainedKpi, ExplainedMetric, KpiStatus } from '@/shared/types/project-controls'
 import { DEFAULT_RAG_THRESHOLDS } from '@/features/evm/lib/rag-status'
 import { computeEarnedSchedule } from '@/features/project-controls/lib/earned-schedule'

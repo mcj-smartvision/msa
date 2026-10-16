@@ -1,3 +1,11 @@
+/**
+ * @file app/(dashboard)/finance/expenses/page.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (page)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, shared/lib/dashboard/load-role-page, features/schedule/lib/access, features/finance/components/expense-management
+ */
+
 import { redirect } from 'next/navigation'
 import { createClient } from '@/shared/lib/supabase/server'
 import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'

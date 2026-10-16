@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/types.ts
+ * @purpose تعاریف نوع — حسابداری، هزینه،overhead و صورت‌وضعیت (types)
+ * @safe-to-edit YES
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/finance/lib/invoice-types, features/finance/lib/expense-types
+ */
+
 export const FINANCIAL_COST_TYPES = [
   'materials',
   'labor',

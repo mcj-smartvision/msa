@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/wbs-utils.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (wbs-utils)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on nothing
+ */
+
 /** WBS hierarchy helpers for schedule table indentation. */
 
 export function wbsDepth(wbsCode: string | null | undefined): number {

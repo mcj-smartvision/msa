@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/planned-progress.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (planned-progress)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/lib/time/tehran
+ */
+
 import { toTehranDateOnly } from '@/shared/lib/time/tehran'
 
 /**

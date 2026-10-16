@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/month-progress-overhead.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (month-progress-overhead)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/monthly-deducted-weight, features/schedule/lib/planned-month-weight
+ */
+
 import type { DeductedWeightMonth } from '@/features/schedule/lib/monthly-deducted-weight'
 import { plannedMonthlyWeights } from '@/features/schedule/lib/planned-month-weight'
 

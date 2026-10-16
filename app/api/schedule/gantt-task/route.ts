@@ -1,3 +1,11 @@
+/**
+ * @file app/api/schedule/gantt-task/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/schedule/lib/gantt-service, features/workshop/lib/service
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { updateGanttTaskDates } from '@/features/schedule/lib/gantt-service'

@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/lib/role-dashboard-routes.ts
+ * @purpose منطق دامنه — کنترل سنتر و مدیریت اعضا/پروژه (role-dashboard-routes)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on nothing
+ */
+
 export const ROLE_DASHBOARD_ORDER = [
   'project_manager',
   'site_supervisor',

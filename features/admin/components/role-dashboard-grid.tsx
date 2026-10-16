@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/components/role-dashboard-grid.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (role-dashboard-grid)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on features/admin/lib/role-dashboard-routes, shared/lib/project/project-cookie, shared/lib/i18n/position-labels, shared/types/admin, shared/lib/utils
+ */
+
 'use client'
 
 import Link from 'next/link'
@@ -13,6 +21,7 @@ import { writeProjectCookie } from '@/shared/lib/project/project-cookie'
 import { getPositionLabel } from '@/shared/lib/i18n/position-labels'
 import type { ProjectMember } from '@/shared/types/admin'
 import { cn } from '@/shared/lib/utils'
+import { ADMIN_ROLE_GRID_COPY as copy } from '@/features/admin/config'
 
 type View = 'members' | 'positions'
 
@@ -60,11 +69,11 @@ export function RoleDashboardGrid({
 
   return (
     <div className="space-y-4">
-      <div role="tablist" aria-label="نحوهٔ نمایش" className="inline-flex rounded-xl bg-slate-100 p-1">
+      <div role="tablist" aria-label={copy.viewAria} className="inline-flex rounded-xl bg-slate-100 p-1">
         {(
           [
-            ['members', 'بر اساس اعضا'],
-            ['positions', 'بر اساس سمت'],
+            ['members', copy.byMembers],
+            ['positions', copy.byPositions],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -99,14 +108,14 @@ function MemberList({ members, projectNames }: { members: ProjectMember[]; proje
   const multiProject = new Set(rows.map((m) => m.project_id)).size > 1
 
   if (rows.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">هنوز عضوی تعریف نشده است.</p>
+    return <p className="py-8 text-center text-sm text-muted-foreground">{copy.noMembers}</p>
   }
 
   return (
     <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
       {rows.map((member) => {
         const roleTitles =
-          (member.positions ?? []).map((p) => getPositionLabel(p, 'fa')).join(' · ') || 'سمت تعریف نشده'
+          (member.positions ?? []).map((p) => getPositionLabel(p, 'fa')).join(' · ') || copy.noPosition
         const projectName = multiProject ? projectNames?.get(member.project_id) : undefined
         return (
           <li key={member.id}>
@@ -129,7 +138,7 @@ function MemberList({ members, projectNames }: { members: ProjectMember[]; proje
               </div>
               {!member.is_active ? (
                 <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
-                  غیرفعال
+                  {copy.inactive}
                 </span>
               ) : null}
               <RowArrow />
@@ -160,7 +169,7 @@ function PositionList({ members, projectId }: { members: ProjectMember[]; projec
   })
 
   const rows = [
-    { key: 'manager', title: 'مدیر', href: '/dashboard/manager', names: null as string[] | null },
+    { key: 'manager', title: copy.manager, href: '/dashboard/manager', names: null as string[] | null },
     ...roles.map((key) => {
       const href = ROLE_DASHBOARD_ROUTES[key]
       return { key, title: roleTitleFa(key), href, names: holders.get(href) ?? [] }
@@ -179,10 +188,10 @@ function PositionList({ members, projectId }: { members: ProjectMember[]; projec
               <p className="truncate text-sm font-semibold text-slate-900">{row.title}</p>
               <p className="mt-0.5 truncate text-xs text-slate-500">
                 {row.names == null
-                  ? 'داشبورد مدیریتی پروژه'
+                  ? copy.managerHint
                   : row.names.length > 0
-                    ? row.names.join('، ')
-                    : 'هنوز فردی برای این سمت تعریف نشده'}
+                    ? row.names.join(copy.nameListJoin)
+                    : copy.noOneForRole}
               </p>
             </div>
             {row.names != null ? (
@@ -192,7 +201,7 @@ function PositionList({ members, projectId }: { members: ProjectMember[]; projec
                   row.names.length > 0 ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-700'
                 )}
               >
-                {row.names.length > 0 ? `${row.names.length.toLocaleString('fa-IR-u-nu-latn')} نفر` : 'بدون عضو'}
+                {row.names.length > 0 ? copy.peopleCount(row.names.length) : copy.noMember}
               </span>
             ) : null}
             <RowArrow />

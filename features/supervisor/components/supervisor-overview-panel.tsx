@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/supervisor-overview-panel.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (supervisor-overview-panel)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on app/app-font, shared/lib/utils, features/supervisor/lib/daily-progress-storage, features/project-store/use-store-progress, features/supervisor/lib/daily-report-activities, features/workshop/lib/types
+ */
+
 'use client'
 
 import type { ReactNode } from 'react'
@@ -36,6 +44,10 @@ type DailyReportActivity,
 type ProjectProgressSeriesPoint,
 } from '@/features/supervisor/lib/daily-report-activities'
 import type { ScheduleTreeNode, WorkshopPackageNode } from '@/features/workshop/lib/types'
+import { SUPERVISOR_COPY } from '@/features/supervisor/config'
+import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+
+const t = getSiteSupervisorMessages('fa')
 
 ChartJS.register(
   ArcElement,
@@ -58,9 +70,9 @@ function faNum(value: number): string {
 type RiskLevel = 'low' | 'medium' | 'high'
 
 const RISK_LABEL: Record<RiskLevel, string> = {
-  low: 'پایین',
-  medium: 'متوسط',
-  high: 'بالا',
+  low: t.riskLow,
+  medium: t.riskMedium,
+  high: t.riskHigh,
 }
 
 const RISK_CLASS: Record<RiskLevel, string> = {
@@ -76,12 +88,12 @@ const HEALTH_BANNER: Record<
   { message: string; bar: string; icon: string }
 > = {
   normal: {
-    message: 'پروژه در شرایط نرمال',
+    message: t.healthNormal,
     bar: 'border-emerald-200 bg-emerald-50/90 text-emerald-950',
     icon: 'text-emerald-600',
   },
   at_risk: {
-    message: 'پروژه در ریسک بالا — 4 روز عقب از برنامه و 9 فعالیت بحرانی باز',
+    message: t.healthAtRisk,
     bar: 'border-rose-200 bg-rose-50/90 text-rose-950',
     icon: 'text-rose-600',
   },
@@ -101,7 +113,7 @@ const MOCK = {
     needsReview: 3,
     solved: 4,
   },
-  chartDays: ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'],
+  chartDays: [t.weekdaySat, t.weekdaySun, t.weekdayMon, t.weekdayTue, t.weekdayWed, t.weekdayThu, t.weekdayFri],
   chartPlanned: [61, 62, 63, 64, 65, 66, 67],
 }
 
@@ -146,15 +158,15 @@ function OverviewKpiCard({
 
 function progressTone(percent: number): { fill: string; track: string; label: string } {
   if (percent >= 75) {
-    return { fill: '#059669', track: '#d1fae5', label: 'پیشرفت خوب' }
+    return { fill: '#059669', track: '#d1fae5', label: t.progressGood }
   }
   if (percent >= 40) {
-    return { fill: '#1e3a5f', track: '#e2e8f0', label: 'در مسیر اجرا' }
+    return { fill: '#1e3a5f', track: '#e2e8f0', label: t.onTrackExec }
   }
   if (percent >= 15) {
-    return { fill: '#d97706', track: '#fef3c7', label: 'نیاز به شتاب' }
+    return { fill: '#d97706', track: '#fef3c7', label: t.needsSpeed }
   }
-  return { fill: '#e11d48', track: '#ffe4e6', label: 'پیشرفت پایین' }
+  return { fill: '#e11d48', track: '#ffe4e6', label: t.progressLow }
 }
 
 function ProgressDonut({ percent }: { percent: number }) {
@@ -163,7 +175,7 @@ function ProgressDonut({ percent }: { percent: number }) {
   const tone = progressTone(clamped)
 
   const data = {
-    labels: ['پیشرفت‌یافته', 'باقی‌مانده'],
+    labels: [t.progressed, t.remaining],
     datasets: [
       {
         data: [clamped, remaining],
@@ -186,7 +198,7 @@ function ProgressDonut({ percent }: { percent: number }) {
         bodyFont: { family: appFontFamily },
         callbacks: {
           label: (ctx: { label?: string; parsed: number }) =>
-            `${ctx.label ?? ''}: ${faNum(ctx.parsed)}٪`,
+            SUPERVISOR_COPY.labeledPct(ctx.label ?? '', faNum(ctx.parsed)),
         },
       },
     },
@@ -198,14 +210,14 @@ function ProgressDonut({ percent }: { percent: number }) {
         <Doughnut data={data} options={options} />
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-3xl font-bold tabular-nums" style={{ color: tone.fill }}>
-            {faNum(clamped)}٪
+            {SUPERVISOR_COPY.pct(faNum(clamped))}
           </span>
-          <span className="mt-0.5 text-[11px] font-medium text-slate-500">پیشرفت کل</span>
+          <span className="mt-0.5 text-[11px] font-medium text-slate-500">{t.totalProgress}</span>
         </div>
       </div>
       <div className="space-y-2 text-center sm:text-right">
-        <p className="text-sm font-bold text-slate-900">نمای سریع پیشرفت پروژه</p>
-        <p className="text-xs text-slate-500">همان میانگین وزنی منحنی بالا تا امروز</p>
+        <p className="text-sm font-bold text-slate-900">{t.quickProgressTitle}</p>
+        <p className="text-xs text-slate-500">{t.sameWeightedHint}</p>
         <span
           className="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold text-white"
           style={{ backgroundColor: tone.fill }}
@@ -215,11 +227,11 @@ function ProgressDonut({ percent }: { percent: number }) {
         <div className="flex flex-wrap items-center justify-center gap-3 pt-1 text-[11px] text-slate-600 sm:justify-start">
           <span className="inline-flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: tone.fill }} />
-            انجام‌شده {faNum(clamped)}٪
+            {t.doneLabel} {SUPERVISOR_COPY.pct(faNum(clamped))}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: tone.track }} />
-            باقی‌مانده {faNum(remaining)}٪
+            {t.remaining} {SUPERVISOR_COPY.pct(faNum(remaining))}
           </span>
         </div>
       </div>
@@ -243,7 +255,7 @@ function ProgressSparkline({ series }: { series: ProjectProgressSeriesPoint[] })
     labels,
     datasets: [
       {
-        label: 'پیشرفت واقعی',
+        label: t.actualProgressShort,
         data: actualData,
         borderColor: '#1e3a5f',
         backgroundColor: 'rgba(30, 58, 95, 0.08)',
@@ -256,7 +268,7 @@ function ProgressSparkline({ series }: { series: ProjectProgressSeriesPoint[] })
         spanGaps: false,
       },
       {
-        label: 'برنامه',
+        label: t.planned,
         data: plannedData,
         borderColor: '#94a3b8',
         borderDash: [6, 4],
@@ -302,7 +314,7 @@ function ProgressSparkline({ series }: { series: ProjectProgressSeriesPoint[] })
             parsed: { y: number | null }
           }) => {
             if (ctx.parsed.y == null || !Number.isFinite(ctx.parsed.y)) return undefined
-            return `${ctx.dataset.label ?? ''}: ${faNum(ctx.parsed.y)}٪`
+            return SUPERVISOR_COPY.labeledPct(ctx.dataset.label ?? '', faNum(ctx.parsed.y))
           },
         },
       },
@@ -343,7 +355,7 @@ function ProgressSparkline({ series }: { series: ProjectProgressSeriesPoint[] })
         },
         ticks: {
           stepSize: 5,
-          callback: (v: string | number) => `${faNum(Number(v))}٪`,
+          callback: (v: string | number) => SUPERVISOR_COPY.pct(faNum(Number(v))),
           font: {
             family: appFontFamily,
             size: 12,
@@ -525,10 +537,10 @@ export function SupervisorOverviewPanel({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <OverviewKpiCard label="پیشرفت واقعی در برابر برنامه">
+        <OverviewKpiCard label={t.kpiProgressVsPlan}>
           <div className="flex items-end gap-2">
             <span className={cn('text-3xl font-bold tabular-nums', SITE_NAVY)}>
-              {faNum(progressActual)}٪
+              {SUPERVISOR_COPY.pct(faNum(progressActual))}
             </span>
             <span
               className={cn(
@@ -541,38 +553,38 @@ export function SupervisorOverviewPanel({
               ) : (
                 <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
               )}
-              {faNum(Math.abs(delta))}٪
+              {SUPERVISOR_COPY.pct(faNum(Math.abs(delta)))}
             </span>
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            میانگین وزنی · آخرین درصد ثبت‌شده (گزارش یا برنامه) · نسبت به دیروز
+            {t.weightedAvgHint}
           </p>
         </OverviewKpiCard>
 
-        <OverviewKpiCard label="فعالیت‌های بحرانی امروز">
+        <OverviewKpiCard label={t.kpiCriticalToday}>
           <div className="flex items-baseline gap-1.5">
             <span className="text-3xl font-bold tabular-nums text-rose-700">
               {faNum(MOCK.criticalToday)}
             </span>
             <span className="text-sm text-slate-500">
-              از {faNum(overviewKpis.activitiesTotal)} فعالیت
+              {t.ofActivities(faNum(overviewKpis.activitiesTotal))}
             </span>
           </div>
         </OverviewKpiCard>
 
-        <OverviewKpiCard label="تأخیر تجمعی پروژه">
+        <OverviewKpiCard label={t.kpiDelay}>
           <div className="flex items-center gap-2">
             <CalendarClock className="h-5 w-5 text-slate-400" aria-hidden="true" />
             <span className="text-3xl font-bold tabular-nums text-slate-900">
-              {faNum(MOCK.delayDays)} روز
+              {faNum(MOCK.delayDays)} {t.daysUnit}
             </span>
           </div>
         </OverviewKpiCard>
 
-        <OverviewKpiCard label="آمادگی اجرای امروز">
+        <OverviewKpiCard label={t.kpiReadinessToday}>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-3xl font-bold tabular-nums text-slate-900">
-              {faNum(MOCK.readinessPercent)}٪
+              {SUPERVISOR_COPY.pct(faNum(MOCK.readinessPercent))}
             </span>
             <span
               className={cn(
@@ -580,7 +592,7 @@ export function SupervisorOverviewPanel({
                 RISK_CLASS[MOCK.readinessRisk]
               )}
             >
-              ریسک {RISK_LABEL[MOCK.readinessRisk]}
+              {t.riskPrefix} {RISK_LABEL[MOCK.readinessRisk]}
             </span>
           </div>
         </OverviewKpiCard>
@@ -590,7 +602,7 @@ export function SupervisorOverviewPanel({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-[#1e3a5f]" aria-hidden="true" />
-            <h2 className="text-sm font-bold text-slate-900">وضعیت ایمنی امروز</h2>
+            <h2 className="text-sm font-bold text-slate-900">{t.safetyToday}</h2>
           </div>
           {onViewSafety ? (
             <button
@@ -598,24 +610,24 @@ export function SupervisorOverviewPanel({
               onClick={onViewSafety}
               className="text-sm font-medium text-[#1e3a5f] underline-offset-2 hover:underline"
             >
-              مشاهده همه
+              {t.viewAll}
             </button>
           ) : null}
         </div>
         <div className="mt-4 flex flex-wrap gap-6">
           <SafetyDot
             color="bg-rose-500"
-            label="بحرانی"
+            label={t.critical}
             value={MOCK.safety.critical}
           />
           <SafetyDot
             color="bg-amber-400"
-            label="نیازمند بررسی"
+            label={t.needsReview}
             value={MOCK.safety.needsReview}
           />
           <SafetyDot
             color="bg-emerald-500"
-            label="حل‌شده"
+            label={t.solved}
             value={MOCK.safety.solved}
           />
         </div>
@@ -626,10 +638,9 @@ export function SupervisorOverviewPanel({
           <div className="mb-3 flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-slate-500" aria-hidden="true" />
             <div>
-              <h2 className="text-sm font-bold text-slate-900">منحنی پیشرفت پروژه (S-Curve)</h2>
+              <h2 className="text-sm font-bold text-slate-900">{t.sCurveTitle}</h2>
               <p className="text-[11px] text-slate-500">
-                واقعی: از روز اول برنامه تا آخرین گزارش کارگاه — برنامه: توزیع خطی وزن تا امروز؛ وزن از
-                فعالیت‌های برگ MSP
+                {t.sCurveHint}
               </p>
             </div>
           </div>

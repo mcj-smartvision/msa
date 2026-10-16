@@ -1,6 +1,15 @@
+/**
+ * @file features/manager/components/weekly-commitments-help.tsx
+ * @purpose کامپوننت UI — داشبورد مدیر پروژه و KPI (weekly-commitments-help)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/manager/lib/format, features/manager/lib/weekly-commitments
+ */
+
 import type { ReactNode } from 'react'
 import { faNumber, jalaliDate } from '@/features/manager/lib/format'
 import { PPC_LOW, type WeeklyCommitmentsData } from '@/features/manager/lib/weekly-commitments'
+import { MANAGER_PUNCT, WEEKLY_HELP_COPY } from '@/features/manager/config'
 
 /** Live numbers the help panels quote; null when that number is not available yet. */
 export interface HelpContext {
@@ -18,7 +27,7 @@ export interface HelpContext {
 /** Percent with up to `digits` decimals; whole numbers print without a fraction. */
 export function pct(v: number, digits = 0): string {
   const r = Math.round(v * 10 ** digits) / 10 ** digits
-  return `${faNumber(r, Number.isInteger(r) ? 0 : digits)}٪`
+  return `${faNumber(r, Number.isInteger(r) ? 0 : digits)}${MANAGER_PUNCT.percent}`
 }
 
 function HelpSection({ title, children }: { title: string; children: ReactNode }) {
@@ -33,7 +42,7 @@ function HelpSection({ title, children }: { title: string; children: ReactNode }
 /** Label/value lines of the card's current numbers; rows without a value are skipped. */
 function HelpNumbers({ rows }: { rows: Array<[string, string | null]> }) {
   const shown = rows.filter((r): r is [string, string] => r[1] != null)
-  if (shown.length === 0) return <p className="text-slate-500">هنوز عددی برای نمایش نیست.</p>
+  if (shown.length === 0) return <p className="text-slate-500">{WEEKLY_HELP_COPY.noNumbers}</p>
   return (
     <dl className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-[#faf9f7]">
       {shown.map(([label, value]) => (
@@ -63,61 +72,38 @@ function Bullets({ items }: { items: ReactNode[] }) {
 /** The scoring rule of phase one, shared by the PPC, trend and commitments panels. */
 function PhaseOneRule() {
   return (
-    <HelpSection title="فعلاً (فاز اول) چطور حساب می‌شود؟">
+    <HelpSection title={WEEKLY_HELP_COPY.phaseOne}>
       <p>
-        در روش اصلی، سرپرست‌ها هر هفته خودشان قول می‌دهند چه کارهایی را انجام دهند. تا وقتی ورود این «برنامهٔ تعهدات هفتگی» ساخته نشده، تعهدات
-        هر هفته را <b>همان برنامهٔ زمان‌بندی</b> در نظر می‌گیریم؛ یعنی فرض می‌کنیم کارگاه متعهد است دقیقاً طبق برنامه جلو برود.
+        {WEEKLY_HELP_COPY.phaseIntroBefore}
+        <b>{WEEKLY_HELP_COPY.sameSchedule}</b>
+        {WEEKLY_HELP_COPY.phaseIntroAfter}
       </p>
       <Bullets
         items={[
+          <><b>{WEEKLY_HELP_COPY.phaseLeads.week}</b>{WEEKLY_HELP_COPY.phaseBodies.week}</>,
+          <><b>{WEEKLY_HELP_COPY.phaseLeads.commits}</b>{WEEKLY_HELP_COPY.phaseBodies.commits}</>,
+          <><b>{WEEKLY_HELP_COPY.phaseLeads.lock}</b>{WEEKLY_HELP_COPY.phaseBodies.lock}</>,
           <>
-            <b>هفته:</b> شنبه تا پنج‌شنبه. جمعه و تعطیلات ثبت‌شده روز کاری نیستند. ارزیابی هر هفته پنج‌شنبه ساعت 16:00 باز می‌شود.
+            <b>{WEEKLY_HELP_COPY.phaseLeads.share}</b>
+            {WEEKLY_HELP_COPY.phaseBodies.shareBefore}
+            <Formula>{WEEKLY_HELP_COPY.phaseBodies.shareFormula}</Formula>
+            {WEEKLY_HELP_COPY.phaseBodies.shareAfter}
           </>,
-          <>
-            <b>تعهدات هفته:</b> هر فعالیت برنامهٔ زمان‌بندی که برنامه برای آن در این هفته سهمی دارد. زیرشاخه‌های کارگاهی که درصدشان در گزارش روزانه جداگانه
-            ثبت می‌شود هم هر کدام یک تعهد جدا هستند؛ یعنی همان فهرستی که سرپرست در «ثبت گزارش روزانه» می‌بیند. فعالیتی که قبلاً 100٪ شده تعهدی ندارد.
-          </>,
-          <>
-            <b>قفل شنبه:</b> تعهدات هر هفته شنبه ساعت 00:00 از بازهٔ پیش‌بینی‌شدهٔ فعالیت در همان لحظه ثابت می‌شوند. اگر بازهٔ پیش‌بینی وسط هفته جابه‌جا شود، از
-            هفتهٔ بعد اثر می‌کند.
-          </>,
-          <>
-            <b>سهم هفته (درصد لازم):</b> پیشرفت برنامه‌ای بازه به‌طور مساوی روی روزهای کاری پخش می‌شود:
-            <Formula>سهم هفته = درصد برنامه‌ای تا پایان پنج‌شنبه − درصد برنامه‌ای تا قبل از شنبه</Formula>
-            و حداکثر به اندازهٔ باقی‌ماندهٔ فعالیت (100 − درصد تجمعی قبل از شنبه).
-          </>,
-          <>
-            <b>تحقق هفته:</b> درصد تجمعی ثبت‌شده تا پایان پنج‌شنبه منهای درصد تجمعی قبل از شنبه؛ یعنی جمع پیشرفت روزانه‌ای که سرپرست در همین هفته ثبت کرده.
-            گزارشی که بعد از پنج‌شنبه ثبت شود، در نمرهٔ همان هفته حساب نمی‌شود. فعالیتی که هیچ‌وقت گزارش نشده، درصد ذخیره‌شده در برنامه را دارد.
-          </>,
-          <>
-            <b>نمره (صفر و یک):</b> اگر تحقق هفته برابر یا بیشتر از سهم هفته باشد 1، وگرنه 0. نمرهٔ نسبی نداریم و هر کمبودی ثبت علت (RNC) لازم دارد.
-          </>,
-          <>
-            <b>وزن:</b> همهٔ فعالیت‌ها یک نمره دارند، چه بزرگ باشند چه کوچک. PPC «قابلیت اعتماد به قول‌ها» را می‌سنجد، نه حجم کار؛ حجم کار را SPI می‌سنجد.
-          </>,
-          <>
-            <b>هفتهٔ جاری:</b> تا پنج‌شنبه 16:00 هنوز ارزیابی نشده؛ عددش «تا این لحظه» است و با پیشرفت امروز حساب می‌شود.
-          </>,
+          <><b>{WEEKLY_HELP_COPY.phaseLeads.actual}</b>{WEEKLY_HELP_COPY.phaseBodies.actual}</>,
+          <><b>{WEEKLY_HELP_COPY.phaseLeads.score}</b>{WEEKLY_HELP_COPY.phaseBodies.score}</>,
+          <><b>{WEEKLY_HELP_COPY.phaseLeads.weight}</b>{WEEKLY_HELP_COPY.phaseBodies.weight}</>,
+          <><b>{WEEKLY_HELP_COPY.phaseLeads.current}</b>{WEEKLY_HELP_COPY.phaseBodies.current}</>,
         ]}
       />
-      <Formula>PPC = تعداد فعالیت‌های نمره‌گرفته ÷ تعداد کل تعهدات هفته × 100</Formula>
+      <Formula>{WEEKLY_HELP_COPY.ppcFormula}</Formula>
     </HelpSection>
   )
 }
 
 function DataSources() {
   return (
-    <HelpSection title="داده از کجا می‌آید؟">
-      <Bullets
-        items={[
-          'تاریخ‌های برنامه: بازهٔ پیش‌بینی‌شدهٔ هر فعالیت از آخرین نسخهٔ برنامهٔ زمان‌بندی پروژه و زیرشاخه‌های کارگاهی دفتر فنی. SPI و منحنی S برخلاف PPC با برنامهٔ مبنا مقایسه می‌کنند.',
-          'پیش‌بینی خودکار: بعد از هر ثبت گزارش روزانه، فعالیت‌های تمام‌شده تاریخ واقعی می‌گیرند؛ فعالیت در حال اجرا باقی کارش را از امروز با سرعت برنامه انجام می‌دهد (مدت فعالیت × (1 − درصد انجام‌شده))؛ و فعالیت‌های شروع‌نشده از طریق پیش‌نیازها (FS/SS/FF/SF با تأخیرها) جلو یا عقب می‌روند. برنامهٔ مصوب دفتر فنی و برنامهٔ مبنا دست نمی‌خورند.',
-          'درصدهای واقعی: گزارش روزانهٔ سرپرست کارگاه («ثبت گزارش روزانه» و «بک‌گراند گزارش‌های روزانه» در داشبورد سرپرست).',
-          'برای درست‌شدن عدد، سرپرست باید درصد تجمعی فعالیت‌ها را تا پایان پنج‌شنبه ثبت کند؛ گزارش دیرهنگام به نفع هفتهٔ بعد حساب می‌شود.',
-          'علت عدم تحقق (RNC): از پنج‌شنبه 16:00، برای هر تعهد ناقص سرپرست علت را ثبت می‌کند و در «علل عدم تحقق» جمع می‌شود.',
-        ]}
-      />
+    <HelpSection title={WEEKLY_HELP_COPY.sources}>
+      <Bullets items={[...WEEKLY_HELP_COPY.sourcesItems]} />
     </HelpSection>
   )
 }
@@ -129,67 +115,64 @@ export function PpcHelp({ ctx }: { ctx: HelpContext }) {
   const example = behind.find((c) => c.targetPercent != null) ?? cur?.commitments.find((c) => c.targetPercent != null) ?? null
   return (
     <>
-      <HelpSection title="این شاخص چیست؟">
+      <HelpSection title={WEEKLY_HELP_COPY.what}>
         <p>
-          PPC (Percent Plan Complete، «درصد تحقق برنامه») شاخص اصلی روش <b>آخرین برنامه‌ریز</b> (Last Planner System) در مدیریت ناب ساخت است. می‌گوید از کارهایی که
-          برای یک هفته قول داده شده بود، چند درصد واقعاً به موقع انجام شد.
+          {WEEKLY_HELP_COPY.ppcWhat.split(WEEKLY_HELP_COPY.lastPlanner)[0]}
+          <b>{WEEKLY_HELP_COPY.lastPlanner}</b>
+          {WEEKLY_HELP_COPY.ppcWhat.split(WEEKLY_HELP_COPY.lastPlanner)[1]}
         </p>
       </HelpSection>
-      <HelpSection title="به چه دردی می‌خورد؟">
+      <HelpSection title={WEEKLY_HELP_COPY.why}>
         <Bullets
           items={[
             <>
-              <b>شاخص پیشرو است:</b> SPI و SPI(t) می‌گویند پروژه تا امروز چقدر عقب افتاده (نگاه به گذشته). PPC زودتر خبر می‌دهد: اگر چند هفته پشت سر هم پایین باشد،
-              چند هفته بعد SPI هم پایین می‌آید.
+              <b>{WEEKLY_HELP_COPY.leading}</b>
+              {WEEKLY_HELP_COPY.leadingBody}
             </>,
-            'قابلیت اعتماد برنامه‌ریزی را نشان می‌دهد: وقتی PPC بالاست، کارهای بعدی (مصالح، اکیپ، پیمانکار بعدی) را می‌شود با اطمینان برنامه‌ریزی کرد.',
-            'جای مشکل را نشان می‌دهد: فهرست فعالیت‌های عقب‌مانده دقیقاً می‌گوید این هفته کجا قول عملی نشد.',
+            WEEKLY_HELP_COPY.trust,
+            WEEKLY_HELP_COPY.where,
           ]}
         />
       </HelpSection>
       <PhaseOneRule />
-      <HelpSection title="عددهای الان">
+      <HelpSection title={WEEKLY_HELP_COPY.now}>
         {d && cur ? (
           <HelpNumbers
             rows={[
-              ['هفته', `${cur.live ? 'هفتهٔ جاری' : `هفتهٔ ${faNumber(cur.weekNumber)}`} (${jalaliDate(cur.start)} تا ${jalaliDate(cur.end)})`],
-              ['وضعیت هفته', cur.live ? 'باز است؛ عدد تا این لحظه است' : 'بسته شده؛ عدد نهایی است'],
-              ['تعداد تعهدات (فعالیت‌های برنامهٔ هفته)', faNumber(cur.planned)],
-              ['سهم هفته را کامل کرده‌اند', faNumber(cur.completed)],
-              ['عقب از برنامه', faNumber(cur.planned - cur.completed)],
-              ['PPC', cur.ppc == null ? null : `${faNumber(cur.completed)} ÷ ${faNumber(cur.planned)} = ${pct(cur.ppc)}`],
-              ['PPC هفتهٔ قبل', d.previousPpc == null ? null : pct(d.previousPpc)],
-              [`میانگین ${faNumber(d.rnc.weeks)} هفتهٔ بسته‌شدهٔ اخیر`, d.average4 == null ? null : pct(d.average4)],
-              ['هدف', pct(d.target)],
+              [WEEKLY_HELP_COPY.weekLabel, WEEKLY_HELP_COPY.weekRange(cur.live ? WEEKLY_HELP_COPY.weekCurrent : WEEKLY_HELP_COPY.weekN(faNumber(cur.weekNumber)), jalaliDate(cur.start), jalaliDate(cur.end))],
+              [WEEKLY_HELP_COPY.weekStatus, cur.live ? WEEKLY_HELP_COPY.weekOpen : WEEKLY_HELP_COPY.weekClosed],
+              [WEEKLY_HELP_COPY.commitCount, faNumber(cur.planned)],
+              [WEEKLY_HELP_COPY.shareDone, faNumber(cur.completed)],
+              [WEEKLY_HELP_COPY.behind, faNumber(cur.planned - cur.completed)],
+              ['PPC', cur.ppc == null ? null : WEEKLY_HELP_COPY.ppcEq(faNumber(cur.completed), faNumber(cur.planned), pct(cur.ppc))],
+              [WEEKLY_HELP_COPY.prevPpc, d.previousPpc == null ? null : pct(d.previousPpc)],
+              [WEEKLY_HELP_COPY.avgWeeks(faNumber(d.rnc.weeks)), d.average4 == null ? null : pct(d.average4)],
+              [WEEKLY_HELP_COPY.target, pct(d.target)],
             ]}
           />
         ) : (
-          <p className="text-slate-500">{ctx.ppcMissing ?? 'هنوز داده‌ای نیست.'}</p>
+          <p className="text-slate-500">{ctx.ppcMissing ?? WEEKLY_HELP_COPY.noData}</p>
         )}
         {example && example.targetPercent != null && example.actualPercent != null ? (
           <p>
-            <b>مثال از همین هفته:</b> سهم «{example.description}» در این هفته {pct(example.targetPercent, 1)} است و پیشرفت ثبت‌شده‌اش در همین هفته{' '}
-            {pct(example.actualPercent, 1)} است؛ پس {example.completed ? 'نمره می‌گیرد' : 'نمره نمی‌گیرد'}.
+            <b>{WEEKLY_HELP_COPY.example}</b>
+            {WEEKLY_HELP_COPY.exampleBody(example.description, pct(example.targetPercent, 1), pct(example.actualPercent, 1), example.completed)}
           </p>
         ) : null}
       </HelpSection>
-      <HelpSection title="رنگ‌ها چه می‌گویند؟">
+      <HelpSection title={WEEKLY_HELP_COPY.colorsWhat}>
         <Bullets
           items={[
-            `سبز («در هدف»): ${pct(d?.target ?? 80)} یا بیشتر؛ برنامه‌ریزی قابل اعتماد است.`,
-            `زرد («زیر هدف»): بین ${pct(PPC_LOW)} و ${pct(d?.target ?? 80)}؛ باید علت عقب‌ماندن فعالیت‌ها بررسی شود.`,
-            `قرمز («پایین»): کمتر از ${pct(PPC_LOW)}؛ برنامه با واقعیت کارگاه فاصله دارد و برنامهٔ هفته‌های بعد هم قابل اتکا نیست.`,
+            WEEKLY_HELP_COPY.green(pct(d?.target ?? 80)),
+            WEEKLY_HELP_COPY.yellow(pct(PPC_LOW), pct(d?.target ?? 80)),
+            WEEKLY_HELP_COPY.red(pct(PPC_LOW)),
           ]}
         />
       </HelpSection>
       <DataSources />
-      <HelpSection title="محدودیت‌های فاز اول و فاز بعد">
+      <HelpSection title={WEEKLY_HELP_COPY.limits}>
         <Bullets
-          items={[
-            'تعهدات از برنامه می‌آیند، نه از قول خود کارگاه؛ پس PPC فعلاً بیشتر «پایبندی به برنامهٔ زمان‌بندی» را نشان می‌دهد.',
-            'علت عدم تحقق (مصالح، اکیپ، نقشه، …) هنوز ثبت نمی‌شود، برای همین کادر «علل ریشه‌ای» خالی است.',
-            'در فاز بعد، سرپرست‌ها هر هفته فهرست تعهدات خودشان را وارد می‌کنند (فقط کارهایی که آماده و بدون قفل‌اند)، و برای هر کار انجام‌نشده علت ثبت می‌شود.',
-          ]}
+          items={[...WEEKLY_HELP_COPY.limitItems]}
         />
       </HelpSection>
     </>
@@ -199,31 +182,31 @@ export function PpcHelp({ ctx }: { ctx: HelpContext }) {
 export function SpiHelp({ ctx }: { ctx: HelpContext }) {
   return (
     <>
-      <HelpSection title="این شاخص چیست؟">
+      <HelpSection title={WEEKLY_HELP_COPY.what}>
         <p>
-          SPI (Schedule Performance Index، «شاخص عملکرد زمانی») از روش <b>مدیریت ارزش کسب‌شده</b> (EVM) است. مقایسه می‌کند تا امروز چقدر کار واقعاً انجام شده با
-          اینکه طبق برنامهٔ مبنا تا امروز چقدر باید انجام می‌شد.
+          {WEEKLY_HELP_COPY.spiWhat.split(WEEKLY_HELP_COPY.evm)[0]}
+          <b>{WEEKLY_HELP_COPY.evm}</b>
+          {WEEKLY_HELP_COPY.spiWhat.split(WEEKLY_HELP_COPY.evm)[1]}
         </p>
-        <Formula>SPI = EV ÷ PV</Formula>
+        <Formula>{WEEKLY_HELP_COPY.spiFormula}</Formula>
         <Bullets
           items={[
-            'EV (ارزش کسب‌شده): مجموع وزنی درصد واقعی همهٔ فعالیت‌ها؛ یعنی چند درصد کل پروژه واقعاً انجام شده.',
-            'PV (ارزش برنامه‌شده): مجموع وزنی درصدی که طبق برنامهٔ مبنا تا امروز باید انجام می‌شد.',
-            'وزن هر فعالیت همان وزن آن در برنامهٔ زمان‌بندی است.',
+            ...WEEKLY_HELP_COPY.spiBullets,
           ]}
         />
       </HelpSection>
-      <HelpSection title="به چه دردی می‌خورد؟">
+      <HelpSection title={WEEKLY_HELP_COPY.why}>
         <p>
-          می‌گوید پروژه از نظر <b>حجم کار</b> چقدر جلو یا عقب است. SPI = 1 یعنی دقیقاً طبق برنامه؛ 0.87 یعنی از هر 100 واحد کاری که باید انجام می‌شد، 87 واحد انجام
-          شده؛ بیشتر از 1 یعنی جلوتر از برنامه.
+          {WEEKLY_HELP_COPY.spiWhy.split(WEEKLY_HELP_COPY.volume)[0]}
+          <b>{WEEKLY_HELP_COPY.volume}</b>
+          {WEEKLY_HELP_COPY.spiWhy.split(WEEKLY_HELP_COPY.volume)[1]}
         </p>
       </HelpSection>
-      <HelpSection title="عددهای الان">
+      <HelpSection title={WEEKLY_HELP_COPY.now}>
         <HelpNumbers
           rows={[
-            ['EV (کار انجام‌شده از کل پروژه)', ctx.evPct == null ? null : pct(ctx.evPct, 1)],
-            ['PV (کار برنامه‌شده تا امروز)', ctx.pvPct == null ? null : pct(ctx.pvPct, 1)],
+            [WEEKLY_HELP_COPY.evNow, ctx.evPct == null ? null : pct(ctx.evPct, 1)],
+            [WEEKLY_HELP_COPY.pvNow, ctx.pvPct == null ? null : pct(ctx.pvPct, 1)],
             [
               'SPI',
               ctx.spi == null
@@ -232,18 +215,15 @@ export function SpiHelp({ ctx }: { ctx: HelpContext }) {
                   ? `${faNumber(ctx.evPct, 1)} ÷ ${faNumber(ctx.pvPct, 1)} = ${faNumber(ctx.spi, 2)}`
                   : faNumber(ctx.spi, 2),
             ],
-            ['یعنی', ctx.spi == null ? null : `از هر 100 واحد کار برنامه‌شده، ${faNumber(Math.round(ctx.spi * 100))} واحد انجام شده`],
+            [WEEKLY_HELP_COPY.meaning, ctx.spi == null ? null : WEEKLY_HELP_COPY.meaningN(faNumber(Math.round(ctx.spi * 100)))],
           ]}
         />
       </HelpSection>
-      <HelpSection title="رنگ‌ها">
-        <Bullets items={['سبز: 1 یا بیشتر (طبق برنامه یا جلوتر).', 'زرد: 0.9 تا 1 (کمی عقب).', 'قرمز: کمتر از 0.9 (عقب از برنامه).']} />
+      <HelpSection title={WEEKLY_HELP_COPY.colors}>
+        <Bullets items={[...WEEKLY_HELP_COPY.spiColors]} />
       </HelpSection>
-      <HelpSection title="یک نکتهٔ مهم">
-        <p>
-          نزدیک پایان پروژه SPI همیشه به 1 میل می‌کند، حتی اگر پروژه دیر تمام شود؛ چون در پایان، هم کار انجام‌شده و هم کار برنامه‌شده 100٪ می‌شوند. برای همین در
-          ماه‌های آخر به SPI(t) بیشتر اعتماد کنید. نمودار کوچک پایین کارت روند SPI را از نقاط ثبت‌شدهٔ منحنی S تا امروز نشان می‌دهد.
-        </p>
+      <HelpSection title={WEEKLY_HELP_COPY.note}>
+        <p>{WEEKLY_HELP_COPY.spiNote}</p>
       </HelpSection>
     </>
   )
@@ -253,29 +233,30 @@ export function SpiTHelp({ ctx }: { ctx: HelpContext }) {
   const u = ctx.unitFa
   return (
     <>
-      <HelpSection title="این شاخص چیست؟">
+      <HelpSection title={WEEKLY_HELP_COPY.what}>
         <p>
-          SPI(t) نسخهٔ «زمانی» شاخص عملکرد زمانی است و از روش <b>زمان کسب‌شده</b> (Earned Schedule) می‌آید. به جای حجم کار، با <b>زمان</b> حساب می‌کند.
+          {WEEKLY_HELP_COPY.spitWhat.split(WEEKLY_HELP_COPY.earnedSchedule)[0]}
+          <b>{WEEKLY_HELP_COPY.earnedSchedule}</b>
+          {WEEKLY_HELP_COPY.spitWhat.split(WEEKLY_HELP_COPY.earnedSchedule)[1].split(WEEKLY_HELP_COPY.time)[0]}
+          <b>{WEEKLY_HELP_COPY.time}</b>
+          {WEEKLY_HELP_COPY.spitWhat.split(WEEKLY_HELP_COPY.earnedSchedule)[1].split(WEEKLY_HELP_COPY.time)[1]}
         </p>
-        <Formula>SPI(t) = ES ÷ AT</Formula>
+        <Formula>{WEEKLY_HELP_COPY.spitFormula}</Formula>
         <Bullets
           items={[
-            `ES (زمان کسب‌شده): پیشرفتی که الان داریم، طبق برنامهٔ مبنا باید در کدام ${u} از شروع پروژه به دست می‌آمد.`,
-            `AT (زمان واقعی): چند ${u} از شروع پروژه واقعاً گذشته است.`,
+            WEEKLY_HELP_COPY.esDef(u),
+            WEEKLY_HELP_COPY.atDef(u),
           ]}
         />
       </HelpSection>
-      <HelpSection title="به چه دردی می‌خورد؟">
-        <p>
-          مستقیم می‌گوید پروژه چند {u} عقب یا جلو است و برخلاف SPI تا آخر پروژه قابل اعتماد می‌ماند. با آن می‌شود تاریخ پایان را هم پیش‌بینی کرد: اگر همین روند ادامه
-          پیدا کند، مدت پروژه تقریباً برابر «مدت برنامه ÷ SPI(t)» می‌شود.
-        </p>
+      <HelpSection title={WEEKLY_HELP_COPY.why}>
+        <p>{WEEKLY_HELP_COPY.spitWhy(u)}</p>
       </HelpSection>
-      <HelpSection title="عددهای الان">
+      <HelpSection title={WEEKLY_HELP_COPY.now}>
         <HelpNumbers
           rows={[
-            [`ES (پیشرفت فعلی معادل کدام ${u} برنامه است)`, ctx.es == null ? null : `${u} ${faNumber(ctx.es, 1)}`],
-            [`AT (${u}های گذشته از شروع)`, ctx.at == null ? null : `${faNumber(ctx.at, 1)} ${u}`],
+            [WEEKLY_HELP_COPY.esNow(u), ctx.es == null ? null : WEEKLY_HELP_COPY.esVal(u, faNumber(ctx.es, 1))],
+            [WEEKLY_HELP_COPY.atNow(u), ctx.at == null ? null : WEEKLY_HELP_COPY.atVal(faNumber(ctx.at, 1), u)],
             [
               'SPI(t)',
               ctx.spiT == null
@@ -285,24 +266,21 @@ export function SpiTHelp({ ctx }: { ctx: HelpContext }) {
                   : faNumber(ctx.spiT, 2),
             ],
             [
-              'فاصله با برنامه',
+              WEEKLY_HELP_COPY.gap,
               ctx.es != null && ctx.at != null
                 ? ctx.at > ctx.es
-                  ? `حدود ${faNumber(ctx.at - ctx.es, 1)} ${u} عقب‌تر از برنامه`
-                  : 'هم‌پای برنامه یا جلوتر'
+                  ? WEEKLY_HELP_COPY.spitBehind(faNumber(ctx.at - ctx.es, 1), u)
+                  : WEEKLY_HELP_COPY.onOrAhead
                 : null,
             ],
           ]}
         />
       </HelpSection>
-      <HelpSection title="رنگ‌ها">
-        <Bullets items={['سبز: 1 یا بیشتر.', 'زرد: 0.9 تا 1.', 'قرمز: کمتر از 0.9.']} />
+      <HelpSection title={WEEKLY_HELP_COPY.colors}>
+        <Bullets items={[...WEEKLY_HELP_COPY.spitColors]} />
       </HelpSection>
-      <HelpSection title="SPI و SPI(t) را چطور کنار هم بخوانیم؟">
-        <p>
-          SPI حجم کار را می‌سنجد و SPI(t) زمان را. اگر از هم فاصله بگیرند، به SPI(t) بیشتر اعتماد کنید. PPC هم کنارشان می‌گوید «چرا»: اگر PPC چند هفته پایین باشد،
-          یعنی قول‌های هفتگی عملی نمی‌شوند و SPI و SPI(t) هم به‌زودی پایین می‌آیند.
-        </p>
+      <HelpSection title={WEEKLY_HELP_COPY.together}>
+        <p>{WEEKLY_HELP_COPY.spitTogether}</p>
       </HelpSection>
     </>
   )
@@ -311,23 +289,14 @@ export function SpiTHelp({ ctx }: { ctx: HelpContext }) {
 export function LocksHelp() {
   return (
     <>
-      <HelpSection title="قفل (محدودیت) چیست؟">
-        <p>
-          در روش آخرین برنامه‌ریز، «قفل» هر چیزی است که اجازه نمی‌دهد یک کار شروع شود: مصالح نرسیده، نقشه یا اطلاعات فنی ناقص، اکیپ آزاد نیست، تجهیزات نیست، مجوز
-          یا تأیید گرفته نشده، یا کار پیش‌نیاز تمام نشده. کاری «آماده» است که همهٔ قفل‌هایش باز شده باشد.
-        </p>
+      <HelpSection title={WEEKLY_HELP_COPY.lockWhat}>
+        <p>{WEEKLY_HELP_COPY.lockBody}</p>
       </HelpSection>
-      <HelpSection title="به چه دردی می‌خورد؟">
-        <p>
-          اگر قفل‌های چند هفتهٔ آینده (Look-ahead) از الان دیده و باز شوند، کارها سر وقت آماده‌اند و PPC بالا می‌ماند. شمردن قفل‌ها بر اساس نوعشان نشان می‌دهد
-          کدام واحد (تدارکات، دفتر فنی، منابع انسانی، …) باید زودتر اقدام کند.
-        </p>
+      <HelpSection title={WEEKLY_HELP_COPY.why}>
+        <p>{WEEKLY_HELP_COPY.lockWhy}</p>
       </HelpSection>
-      <HelpSection title="وضعیت فعلی">
-        <p>
-          ثبت قفل‌ها هنوز در سامانه ساخته نشده؛ برای همین این کادر عددی ندارد. وقتی ساخته شود، برای هر فعالیت هفته‌های آینده نوع قفل، تاریخ رفع مورد انتظار، وضعیت
-          و اثر آن روی مسیر بحرانی ثبت می‌شود و این کادر تعداد کارهای قفل‌شده را نشان می‌دهد.
-        </p>
+      <HelpSection title={WEEKLY_HELP_COPY.status}>
+        <p>{WEEKLY_HELP_COPY.lockStatus}</p>
       </HelpSection>
     </>
   )
@@ -337,26 +306,21 @@ export function TrendHelp({ ctx }: { ctx: HelpContext }) {
   const d = ctx.ppcData
   return (
     <>
-      <HelpSection title="این نمودار چه نشان می‌دهد؟">
-        <p>
-          هر ستون PPC یک هفته است. ستون‌های پررنگ هفته‌های بسته‌شده‌اند (عدد نهایی). ستون کم‌رنگ و خط‌چین هفتهٔ جاری است که هنوز به پنج‌شنبه نرسیده و عددش تا این
-          لحظه است. خط‌چین افقی هدف ({pct(d?.target ?? 80)}) است. حداکثر 10 هفتهٔ بسته‌شدهٔ اخیر نشان داده می‌شود.
-        </p>
-        <p>
-          روند مهم‌تر از یک هفته است: یک هفتهٔ بد ممکن است اتفاقی باشد، ولی چند هفته زیر هدف یعنی برنامه با واقعیت کارگاه فاصله دارد.
-        </p>
+      <HelpSection title={WEEKLY_HELP_COPY.trendWhat}>
+        <p>{WEEKLY_HELP_COPY.trendBody(pct(d?.target ?? 80))}</p>
+        <p>{WEEKLY_HELP_COPY.trendNote}</p>
       </HelpSection>
       <PhaseOneRule />
-      <HelpSection title="عددهای هر هفته">
+      <HelpSection title={WEEKLY_HELP_COPY.weekNumbers}>
         {d && d.weeks.length ? (
           <HelpNumbers
             rows={d.weeks.map((w) => [
-              `${w.live ? 'هفتهٔ جاری' : `هفتهٔ ${faNumber(w.weekNumber)}`} (${jalaliDate(w.start)} تا ${jalaliDate(w.end)})`,
-              `${faNumber(w.completed)} از ${faNumber(w.planned)} · ${w.ppc == null ? '—' : pct(w.ppc)}`,
+              WEEKLY_HELP_COPY.weekRange(w.live ? WEEKLY_HELP_COPY.weekCurrent : WEEKLY_HELP_COPY.weekN(faNumber(w.weekNumber)), jalaliDate(w.start), jalaliDate(w.end)),
+              WEEKLY_HELP_COPY.weekScore(faNumber(w.completed), faNumber(w.planned), w.ppc == null ? '—' : pct(w.ppc)),
             ])}
           />
         ) : (
-          <p className="text-slate-500">{ctx.ppcMissing ?? 'هنوز هفته‌ای نیست.'}</p>
+          <p className="text-slate-500">{ctx.ppcMissing ?? WEEKLY_HELP_COPY.noWeek}</p>
         )}
       </HelpSection>
     </>
@@ -367,26 +331,26 @@ export function CommitmentsHelp({ ctx }: { ctx: HelpContext }) {
   const cur = ctx.ppcData?.current ?? null
   return (
     <>
-      <HelpSection title="این کادر چه نشان می‌دهد؟">
+      <HelpSection title={WEEKLY_HELP_COPY.boxWhat}>
         <p>
-          فهرست همهٔ فعالیت‌هایی که طبق برنامه در {cur?.live ? 'هفتهٔ جاری' : 'آخرین هفتهٔ بسته‌شده'} باید پیشرفت می‌کردند. هر کادر یک فعالیت است:
+          {WEEKLY_HELP_COPY.listIntro(cur?.live ? WEEKLY_HELP_COPY.currentWeek : WEEKLY_HELP_COPY.lastClosed)}
         </p>
         <Bullets
           items={[
             <>
-              <b>سبز با تیک:</b> پیشرفت ثبت‌شدهٔ این هفته به سهم هفته رسیده (نمره گرفته). عدد کنارش «تحقق هفته / سهم هفته» است.
+              <b>{WEEKLY_HELP_COPY.greenTick}</b>
+              {WEEKLY_HELP_COPY.greenTickBody}
             </>,
             <>
-              <b>قرمز:</b> هنوز به سهم هفته نرسیده. نوشتهٔ «X٪ از Y٪ برنامه» یعنی این هفته X واحد پیشرفت ثبت شده و سهم هفته Y است. نوار قرمز نشان می‌دهد چه
-              بخشی از سهم هفته انجام شده.
+              <b>{WEEKLY_HELP_COPY.red}</b>
+              {WEEKLY_HELP_COPY.redBody}
             </>,
-            'عقب‌مانده‌ها اول آمده‌اند و هر چه عقب‌تر، بالاتر؛ پس اولین کادرها همان جاهایی‌اند که باید پیگیری شوند.',
+            WEEKLY_HELP_COPY.sorted,
           ]}
         />
         {cur ? (
           <p>
-            الان {faNumber(cur.planned)} فعالیت در این هفته هست؛ {faNumber(cur.completed)} فعالیت سهم هفته را کامل کرده و {faNumber(cur.planned - cur.completed)} فعالیت
-            عقب است.
+            {WEEKLY_HELP_COPY.nowCount(faNumber(cur.planned), faNumber(cur.completed), faNumber(cur.planned - cur.completed))}
           </p>
         ) : null}
       </HelpSection>
@@ -399,22 +363,14 @@ export function CommitmentsHelp({ ctx }: { ctx: HelpContext }) {
 export function RncHelp() {
   return (
     <>
-      <HelpSection title="این کادر چیست؟">
-        <p>
-          RNC (Reasons for Non-Completion، «علل عدم تحقق») برای هر کاری که در هفته انجام نشده یک علت ریشه‌ای ثبت می‌کند: مصالح، اکیپ، تجهیزات، مجوز و تأیید، نقشه و
-          اطلاعات فنی، کار پیش‌نیاز، آب‌وهوا، دسترسی به کارگاه، پرداخت، دوباره‌کاری کیفی یا سایر. نمودار دایره‌ای سهم هر علت را در 4 هفتهٔ اخیر نشان می‌دهد.
-        </p>
+      <HelpSection title={WEEKLY_HELP_COPY.rncWhat}>
+        <p>{WEEKLY_HELP_COPY.rncBody}</p>
       </HelpSection>
-      <HelpSection title="به چه دردی می‌خورد؟">
-        <p>
-          معمولاً بیشتر کارهای انجام‌نشده از دو سه علت تکراری می‌آیند. با دیدن آن‌ها مدیر می‌داند اول کدام مشکل را حل کند تا PPC بالا برود.
-        </p>
+      <HelpSection title={WEEKLY_HELP_COPY.why}>
+        <p>{WEEKLY_HELP_COPY.rncWhy}</p>
       </HelpSection>
-      <HelpSection title="وضعیت فعلی">
-        <p>
-          در فاز اول تعهدات از برنامهٔ زمان‌بندی می‌آیند و هنوز جایی برای ثبت علت عدم تحقق نیست؛ برای همین این کادر خالی است. ثبت علت همراه با ورود برنامهٔ تعهدات
-          هفتگی در فاز بعد اضافه می‌شود.
-        </p>
+      <HelpSection title={WEEKLY_HELP_COPY.status}>
+        <p>{WEEKLY_HELP_COPY.rncStatus}</p>
       </HelpSection>
     </>
   )

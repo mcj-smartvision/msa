@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/components/workshop-cost-chart.tsx
+ * @purpose کامپوننت UI — حسابداری، هزینه،overhead و صورت‌وضعیت (workshop-cost-chart)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/manager/lib/format, features/finance/lib/workshop-cost-curve, features/evm/lib/metrics
+ */
+
 'use client'
 
 import { useMemo } from 'react'
@@ -15,20 +23,21 @@ import {
 import { jalaliDate, jalaliMonthLabel } from '@/features/manager/lib/format'
 import type { CostCurvePoint } from '@/features/finance/lib/workshop-cost-curve'
 import type { EvmBudgetBasis } from '@/features/evm/lib/metrics'
+import { WORKSHOP_COST_CHART_COPY } from '@/features/finance/config'
 
 const LAYERS = [
-  { key: 'overhead', label: 'بالاسری', color: '#f59e0b' },
-  { key: 'contractor', label: 'پیمانکاران', color: '#14b8a6' },
-  { key: 'purchases', label: 'خرید کارفرمایی', color: '#6366f1' },
+  { key: 'overhead', label: WORKSHOP_COST_CHART_COPY.layerOverhead, color: '#f59e0b' },
+  { key: 'contractor', label: WORKSHOP_COST_CHART_COPY.layerContractor, color: '#14b8a6' },
+  { key: 'purchases', label: WORKSHOP_COST_CHART_COPY.layerPurchases, color: '#6366f1' },
 ] as const
 
 const LINES = [
-  { key: 'planned', label: 'هزینهٔ برنامه‌ای (PV)', color: '#1e3a8a', dash: undefined },
-  { key: 'earned', label: 'ارزش کار انجام‌شده (EV)', color: '#ea580c', dash: '5 4' },
+  { key: 'planned', label: WORKSHOP_COST_CHART_COPY.linePlanned, color: '#1e3a8a', dash: undefined },
+  { key: 'earned', label: WORKSHOP_COST_CHART_COPY.lineEarned, color: '#ea580c', dash: '5 4' },
 ] as const
 
 const LABELS: Record<string, string> = Object.fromEntries(
-  [...LAYERS, ...LINES, { key: 'total', label: 'هزینهٔ واقعی کل' }].map((s) => [s.key, s.label])
+  [...LAYERS, ...LINES, { key: 'total', label: WORKSHOP_COST_CHART_COPY.totalActual }].map((s) => [s.key, s.label])
 )
 
 function tsOf(date: string): number {
@@ -40,7 +49,7 @@ function isoOf(ts: number): string {
 }
 
 function toman(value: number): string {
-  return `${Math.round(value).toLocaleString('en-US')} تومان`
+  return WORKSHOP_COST_CHART_COPY.toman(Math.round(value).toLocaleString('en-US'))
 }
 
 function millions(value: number): string {
@@ -48,9 +57,9 @@ function millions(value: number): string {
 }
 
 const BUDGET_SOURCE: Partial<Record<EvmBudgetBasis, string>> = {
-  technical_office_cost: 'ستون هزینهٔ فعالیت‌ها در برنامهٔ دفتر فنی',
-  contract_value: 'جمع مبلغ قرارداد پیمانکاران (مقدار × قیمت واحد)',
-  weighted_project_budget: 'بودجهٔ پروژه، پخش‌شده به نسبت وزن فعالیت‌ها',
+  technical_office_cost: WORKSHOP_COST_CHART_COPY.budgetTechnicalOffice,
+  contract_value: WORKSHOP_COST_CHART_COPY.budgetContractValue,
+  weighted_project_budget: WORKSHOP_COST_CHART_COPY.budgetWeighted,
 }
 
 export function WorkshopCostChart({
@@ -76,12 +85,12 @@ export function WorkshopCostChart({
   const budgetSource = budgetBasis ? BUDGET_SOURCE[budgetBasis] : undefined
 
   if (data.length === 0) {
-    return <p className="p-5 text-sm text-slate-500">هنوز داده‌ای برای رسم نمودار هزینه وجود ندارد.</p>
+    return <p className="p-5 text-sm text-slate-500">{WORKSHOP_COST_CHART_COPY.empty}</p>
   }
 
   return (
     <div className="space-y-3 p-5">
-      <ul className="flex flex-wrap items-center gap-2" aria-label="راهنمای نمودار و مقادیر امروز">
+      <ul className="flex flex-wrap items-center gap-2" aria-label={WORKSHOP_COST_CHART_COPY.legendAria}>
         {LAYERS.map((s) => (
           <li
             key={s.key}
@@ -108,7 +117,7 @@ export function WorkshopCostChart({
           : null}
       </ul>
 
-      <figure className="relative h-[340px] w-full" aria-label="هزینهٔ تجمعی کارگاه نسبت به زمان؛ زمان از چپ به راست">
+      <figure className="relative h-[340px] w-full" aria-label={WORKSHOP_COST_CHART_COPY.figureAria}>
         <div className="absolute inset-0" dir="ltr">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data} margin={{ top: 24, right: 24, left: 8, bottom: 0 }}>
@@ -132,14 +141,14 @@ export function WorkshopCostChart({
                 tickLine={false}
                 axisLine={false}
                 width={56}
-                label={{ value: 'میلیون تومان', angle: -90, position: 'insideLeft', fill: '#94a3b8', fontSize: 11 }}
+                label={{ value: WORKSHOP_COST_CHART_COPY.yAxis, angle: -90, position: 'insideLeft', fill: '#94a3b8', fontSize: 11 }}
               />
               {today ? (
                 <ReferenceLine
                   x={tsOf(today.date)}
                   stroke="#cbd5e1"
                   strokeDasharray="4 4"
-                  label={{ value: 'امروز', position: 'top', fill: '#334155', fontSize: 11, fontWeight: 600 }}
+                  label={{ value: WORKSHOP_COST_CHART_COPY.today, position: 'top', fill: '#334155', fontSize: 11, fontWeight: 600 }}
                 />
               ) : null}
               <Tooltip
@@ -156,8 +165,8 @@ export function WorkshopCostChart({
                 labelFormatter={(_value, payload) => {
                   const point = payload?.[0]?.payload as CostCurvePoint | undefined
                   if (!point?.date) return ''
-                  const total = point.total != null ? ` · کل ${toman(point.total)}` : ''
-                  return `${point.isToday ? 'امروز — ' : ''}${jalaliDate(point.date)}${total}`
+                  const total = point.total != null ? WORKSHOP_COST_CHART_COPY.totalInTooltip(toman(point.total)) : ''
+                  return `${point.isToday ? WORKSHOP_COST_CHART_COPY.todayPrefix : ''}${jalaliDate(point.date)}${total}`
                 }}
                 formatter={(value, name) => [value == null ? '—' : toman(Number(value)), LABELS[String(name)] ?? String(name)]}
               />
@@ -196,21 +205,16 @@ export function WorkshopCostChart({
       </figure>
 
       <div className="space-y-1 text-[11px] leading-5 text-slate-500">
-        <p>
-          سطح‌های رنگی روی هم = هزینهٔ واقعی تجمعی: بالاسری بر اساس زمان (مبلغ هر ماه بسته روزانه در همان ماه پخش می‌شود، ماه جاری
-          برآورد)، پیمانکاران = مبلغ قرارداد × پیشرفت همان روز، خرید کارفرمایی کامل در تاریخ خرید. نقاط هفتگی‌اند و نقطهٔ امروز همان عدد
-          بالای صفحه است.
-        </p>
+        <p>{WORKSHOP_COST_CHART_COPY.layersExplain}</p>
         {hasPlan ? (
           <p>
-            خط برنامه = بودجه × پیشرفت برنامه‌ای (baseline) و خط ارزش کار انجام‌شده = بودجه × پیشرفت واقعی؛ همان مبنای داشبورد ارزش
-            کسب‌شده. بودجه ({toman(bac)}) از {budgetSource ?? 'برنامهٔ زمان‌بندی'} آمده است
+            {WORKSHOP_COST_CHART_COPY.planExplain(toman(bac), budgetSource ?? WORKSHOP_COST_CHART_COPY.scheduleFallback)}
             {budgetBasis === 'contract_value'
-              ? '؛ بالاسری و خرید کارفرمایی در این بودجه نیستند، پس این دو خط را فقط با لایهٔ پیمانکاران مقایسه کنید.'
-              : '. اگر بالای سطح‌ها از خط ارزش کار انجام‌شده بالاتر باشد، کار گران‌تر از بودجه پیش رفته است.'}
+              ? WORKSHOP_COST_CHART_COPY.contractValueCaveat
+              : WORKSHOP_COST_CHART_COPY.overBudgetCaveat}
           </p>
         ) : (
-          <p>برای این پروژه بودجه‌ای (هزینهٔ فعالیت، قیمت قرارداد یا بودجهٔ پروژه) ثبت نشده، پس خط برنامه و ارزش کار انجام‌شده رسم نمی‌شود.</p>
+          <p>{WORKSHOP_COST_CHART_COPY.noBudget}</p>
         )}
       </div>
     </div>

@@ -1,3 +1,11 @@
+/**
+ * @file app/(dashboard)/admin/projects/[projectId]/positions/page.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (page)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/hooks/use-supabase, features/admin/services/admin, features/admin/components/shared, features/admin/components/position-form, shared/components/ui/card, shared/components/ui/button, shared/types/admin
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -8,6 +16,7 @@ import { PositionForm } from '@/features/admin/components/position-form'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import type { CreatePositionInput, Position } from '@/shared/types/admin'
+import { ADMIN_COPY } from '@/features/admin/config'
 
 export default function ProjectPositionsPage({ params }: { params: { projectId: string } }) {
   const supabase = useSupabase()
@@ -27,7 +36,7 @@ export default function ProjectPositionsPage({ params }: { params: { projectId: 
         setLoading(true)
         await loadPositions()
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری سمت‌ها ناموفق بود')
+        if (!cancelled) setError(err instanceof Error ? err.message : ADMIN_COPY.loadPositionsFailed)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -47,25 +56,25 @@ export default function ProjectPositionsPage({ params }: { params: { projectId: 
     await loadPositions()
   }
 
-  if (loading) return <LoadingBlock label="در حال بارگذاری سمت‌ها..." />
+  if (loading) return <LoadingBlock label={ADMIN_COPY.loadingPositions} />
   if (error) return <ErrorBlock message={error} onRetry={() => window.location.reload()} />
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="سمت‌ها"
-        description="سمت‌های مخصوص پروژه را برای کنترل دسترسی و اعلان‌ها تعریف کنید."
+        title={ADMIN_COPY.positionsTitle}
+        description={ADMIN_COPY.positionsHint}
       />
 
-      <PositionForm submitLabel="ایجاد سمت" onSubmit={handleCreate} />
+      <PositionForm submitLabel={ADMIN_COPY.createPosition} onSubmit={handleCreate} />
 
       <Card>
         <CardHeader>
-          <CardTitle>سمت‌های پروژه</CardTitle>
+          <CardTitle>{ADMIN_COPY.positionsList}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {positions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">هنوز سمتی ایجاد نشده است.</p>
+            <p className="text-sm text-muted-foreground">{ADMIN_COPY.noPositions}</p>
           ) : (
             positions.map((position) => (
               <div key={position.id} className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -78,7 +87,7 @@ export default function ProjectPositionsPage({ params }: { params: { projectId: 
                   {position.description ? <p className="text-sm mt-1">{position.description}</p> : null}
                 </div>
                 <Button variant="outline" size="sm" onClick={() => toggleActive(position)}>
-                  {position.is_active ? 'غیرفعال‌سازی' : 'فعال‌سازی'}
+                  {position.is_active ? ADMIN_COPY.deactivate : ADMIN_COPY.activate}
                 </Button>
               </div>
             ))

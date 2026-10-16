@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/components/manager-period-compare.tsx
+ * @purpose کامپوننت UI — داشبورد مدیر پروژه و KPI (manager-period-compare)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on shared/lib/utils, features/manager/lib/format, features/manager/lib/overview-types, features/manager/config
+ */
+
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
@@ -25,14 +33,9 @@ ManagerPeriod,
 PeriodComparison,
 } from '@/features/manager/lib/overview-types'
 import { EmptyNote, InfoHint, LoadingRows, SectionCard, Spinner } from './manager-ui'
+import { MANAGER_PUNCT, PERIOD_COPY, PERIOD_REPORT_TITLES, PERIOD_WORDS } from '@/features/manager/config'
 
 const COLORS = { current: '#d9601a', previous: '#2f6fed', planned: '#111827' } as const
-
-const PERIOD_WORDS: Record<ManagerPeriod, { current: string; previous: string }> = {
-  today: { current: 'امروز', previous: 'دیروز' },
-  week: { current: 'این هفته', previous: 'هفتهٔ قبل' },
-  month: { current: 'این ماه', previous: 'ماه قبل' },
-}
 
 const UNIT_DIGITS: Record<ComparisonMetric['unit'], number> = { points: 1, index: 2, people: 1, count: 0 }
 
@@ -46,15 +49,9 @@ const VERDICT_STYLE: Record<ComparisonVerdict, string> = {
   neutral: 'bg-slate-100 text-slate-500 ring-slate-200',
 }
 
-const CAUSE_SOURCE_LABELS: Record<ComparisonCause['source'], string> = {
-  daily_report: 'گزارش روزانه',
-  workshop: 'ثبت کارگاه',
-  site_plan: 'برنامهٔ روزانهٔ کارگاه',
-}
-
 function formatValue(metric: Pick<ComparisonMetric, 'unit'>, value: number): string {
   const text = faNumber(value, UNIT_DIGITS[metric.unit])
-  return metric.unit === 'points' ? `${text}٪` : text
+  return metric.unit === 'points' ? `${text}${MANAGER_PUNCT.percent}` : text
 }
 
 /** `text` must be the formatted absolute value. */
@@ -87,12 +84,12 @@ function usePeriodComparison(projectId: string | null, period: ManagerPeriod, re
         { cache: 'no-store' }
       )
       const body = await response.json()
-      if (!response.ok) throw new Error(body.error || 'بارگذاری مقایسهٔ دوره‌ای ناموفق بود')
+      if (!response.ok) throw new Error(body.error || PERIOD_COPY.loadFailed)
       if (id !== requestId.current) return
       setData(body as PeriodComparison)
     } catch (loadError) {
       if (id !== requestId.current) return
-      setError(loadError instanceof Error ? loadError.message : 'بارگذاری مقایسهٔ دوره‌ای ناموفق بود')
+      setError(loadError instanceof Error ? loadError.message : PERIOD_COPY.loadFailed)
     } finally {
       if (id === requestId.current) setLoading(false)
     }
@@ -151,29 +148,23 @@ export function ManagerPeriodCompare({
     ) : null}
     {showSection ? (
     <SectionCard
-      title="مقایسهٔ عملکرد دوره‌ای"
+      title={PERIOD_COPY.title}
       icon={<BarChart3 className="h-4 w-4" aria-hidden />}
-      hint={
-        <>
-          هر بازه با همان مقدار زمان سپری‌شده از بازهٔ قبل مقایسه می‌شود (مثلاً امروز تا همین ساعت در برابر دیروز تا همان
-          ساعت). رنگ سبز یعنی بهتر و قرمز یعنی بدتر، نه صرفاً افزایش یا کاهش. شاخصی که داده‌اش ثبت نشده خاکستری است و در
-          شمارش حساب نمی‌شود.
-        </>
-      }
+      hint={PERIOD_COPY.hint}
       action={loading && data ? <Spinner className="text-slate-400" /> : null}
     >
       {!projectId ? (
-        <EmptyNote title="پروژه‌ای انتخاب نشده است" />
+        <EmptyNote title={PERIOD_COPY.noProject} />
       ) : error && !data ? (
         <div className="space-y-3">
-          <EmptyNote tone="error" title="بارگذاری مقایسهٔ دوره‌ای ناموفق بود" description={error} />
+          <EmptyNote tone="error" title={PERIOD_COPY.loadFailed} description={error} />
           <button
             type="button"
             onClick={() => void reload()}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
           >
             <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-            تلاش دوباره
+            {PERIOD_COPY.retry}
           </button>
         </div>
       ) : !data || stale ? (
@@ -182,7 +173,7 @@ export function ManagerPeriodCompare({
         <div className="flex flex-col gap-4">
           <SummaryLine data={data} words={words} />
           {data.warnings.length > 0 ? (
-            <ul className="space-y-1.5" aria-label="هشدارهای داده">
+            <ul className="space-y-1.5" aria-label={PERIOD_COPY.dataWarnings}>
               {data.warnings.map((warning) => (
                 <li
                   key={warning}
@@ -214,12 +205,6 @@ export function ManagerPeriodCompare({
     ) : null}
     </>
   )
-}
-
-const PERIOD_REPORT_TITLES: Record<ManagerPeriod, string> = {
-  today: 'گزارش امروز',
-  week: 'گزارش هفتهٔ جاری',
-  month: 'گزارش ماه جاری',
 }
 
 interface ActivityProgressRow {
@@ -289,13 +274,13 @@ function PeriodReportDialog({
       aria-modal="true"
       aria-label={PERIOD_REPORT_TITLES[period]}
     >
-      <button type="button" aria-label="بستن" className="fixed inset-0 bg-slate-900/40" onClick={onClose} />
+      <button type="button" aria-label={PERIOD_COPY.close} className="fixed inset-0 bg-slate-900/40" onClick={onClose} />
       <div className="relative w-full max-w-6xl rounded-2xl bg-white shadow-elevated">
         <header className="sticky top-0 z-10 flex items-start justify-between gap-3 rounded-t-2xl border-b border-slate-100 bg-white px-5 py-4">
           <div className="min-w-0">
             <h2 className="text-base font-bold text-slate-900">{PERIOD_REPORT_TITLES[period]}</h2>
             <p className="mt-0.5 text-xs text-slate-500">
-              {data ? `${data.current.label} در برابر ${data.previous.label}` : 'در حال بارگذاری…'}
+              {data ? PERIOD_COPY.vs(data.current.label, data.previous.label) : PERIOD_COPY.loading}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -307,7 +292,7 @@ function PeriodReportDialog({
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
             >
               <X className="h-4 w-4" aria-hidden />
-              <span className="sr-only">بستن</span>
+              <span className="sr-only">{PERIOD_COPY.close}</span>
             </button>
           </div>
         </header>
@@ -315,14 +300,14 @@ function PeriodReportDialog({
         <div className="space-y-5 px-5 py-5">
           {error && !data ? (
             <div className="space-y-3">
-              <EmptyNote tone="error" title="بارگذاری گزارش ناموفق بود" description={error} />
+              <EmptyNote tone="error" title={PERIOD_COPY.reportLoadFailed} description={error} />
               <button
                 type="button"
                 onClick={onRetry}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
                 <RefreshCw className="h-3.5 w-3.5" aria-hidden />
-                تلاش دوباره
+                {PERIOD_COPY.retry}
               </button>
             </div>
           ) : !data ? (
@@ -332,13 +317,12 @@ function PeriodReportDialog({
               {!reported ? (
                 <p className="flex items-start gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3.5 py-2.5 text-xs leading-6 text-slate-600">
                   <CircleDashed className="mt-1 h-3.5 w-3.5 shrink-0" aria-hidden />
-                  گزارش پیشرفت {words.current} هنوز ثبت نشده است. همهٔ آیتم‌ها نمایش داده می‌شوند؛ آن‌هایی که داده ندارند
-                  خاکستری‌اند و در شمارش بهتر/بدتر حساب نمی‌شوند.
+                  {PERIOD_COPY.progressNotReported(words.current)}
                 </p>
               ) : null}
               <SummaryLine data={data} words={words} />
               {data.warnings.length > 0 ? (
-                <ul className="space-y-1.5" aria-label="هشدارهای داده">
+                <ul className="space-y-1.5" aria-label={PERIOD_COPY.dataWarnings}>
                   {data.warnings.map((warning) => (
                     <li
                       key={warning}
@@ -360,12 +344,12 @@ function PeriodReportDialog({
               <CompareChart data={data} words={words} onOpen={() => onOpenDetail(null)} />
               <section className={cn('rounded-xl border p-3', reported ? 'border-slate-100' : 'border-dashed border-slate-200 bg-slate-50/60')}>
                 <h3 className={cn('mb-2 text-[13px] font-semibold', reported ? 'text-slate-700' : 'text-slate-400')}>
-                  گزارش پیشرفت فعالیت‌ها
+                  {PERIOD_COPY.activityProgress}
                 </h3>
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-slate-400">
-                      <th className="py-1.5 text-right font-normal">فعالیت</th>
+                      <th className="py-1.5 text-right font-normal">{PERIOD_COPY.activity}</th>
                       <th className="py-1.5 text-center font-normal">{words.current}</th>
                       <th className="py-1.5 text-center font-normal">{words.previous}</th>
                     </tr>
@@ -381,10 +365,10 @@ function PeriodReportDialog({
                                 row.current == null ? 'text-slate-300' : 'font-semibold text-emerald-700'
                               )}
                             >
-                              {row.current == null ? 'ثبت نشده' : `+${faNumber(row.current, 1)}٪`}
+                              {row.current == null ? PERIOD_COPY.notRecorded : `+${faNumber(row.current, 1)}${MANAGER_PUNCT.percent}`}
                             </td>
                             <td className={cn('py-1.5 text-center tabular-nums', row.previous == null ? 'text-slate-300' : 'text-slate-600')}>
-                              {row.previous == null ? 'ثبت نشده' : `+${faNumber(row.previous, 1)}٪`}
+                              {row.previous == null ? PERIOD_COPY.notRecorded : `+${faNumber(row.previous, 1)}${MANAGER_PUNCT.percent}`}
                             </td>
                           </tr>
                         ))
@@ -400,19 +384,19 @@ function PeriodReportDialog({
                   </tbody>
                 </table>
                 {rows.length === 0 ? (
-                  <p className="mt-2 text-[11px] text-slate-400">در این بازه پیشرفت ثبت‌شده‌ای برای هیچ فعالیتی وجود ندارد.</p>
+                  <p className="mt-2 text-[11px] text-slate-400">{PERIOD_COPY.noActivityProgress}</p>
                 ) : null}
               </section>
 
               <section className={cn('rounded-xl border p-3', causes.length ? 'border-slate-100' : 'border-dashed border-slate-200 bg-slate-50/60')}>
                 <h3 className={cn('mb-2 text-[13px] font-semibold', causes.length ? 'text-slate-700' : 'text-slate-400')}>
-                  مسائل و علت‌های ثبت‌شده
+                  {PERIOD_COPY.issuesTitle}
                 </h3>
                 {data.causes.status === 'ok' ? (
-                  <CauseList causes={causes} emptyLabel="علت ثبت نشده" />
+                  <CauseList causes={causes} emptyLabel={PERIOD_COPY.noCause} />
                 ) : (
                   <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-400">
-                    علت ثبت نشده{data.causes.status === 'unavailable' ? ` — ${data.causes.reason}` : ''}
+                    {PERIOD_COPY.noCause}{data.causes.status === 'unavailable' ? `${MANAGER_PUNCT.dash}${data.causes.reason}` : ''}
                   </p>
                 )}
               </section>
@@ -429,11 +413,11 @@ function SummaryLine({ data, words }: { data: PeriodComparison; words: { current
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-sm font-semibold text-slate-800">
-        <span className="text-rose-600">{faNumber(worse)} شاخص بدتر</span>
-        <span className="mx-1.5 text-slate-300">،</span>
-        <span className="text-emerald-600">{faNumber(better)} شاخص بهتر</span>
-        {same > 0 ? <span className="font-normal text-slate-500">، {faNumber(same)} بدون تغییر</span> : null}
-        {neutral > 0 ? <span className="font-normal text-slate-400">، {faNumber(neutral)} بدون دادهٔ قابل مقایسه</span> : null}
+        <span className="text-rose-600">{PERIOD_COPY.worse(faNumber(worse))}</span>
+        <span className="mx-1.5 text-slate-300">{MANAGER_PUNCT.comma}</span>
+        <span className="text-emerald-600">{PERIOD_COPY.better(faNumber(better))}</span>
+        {same > 0 ? <span className="font-normal text-slate-500">{PERIOD_COPY.unchanged(faNumber(same))}</span> : null}
+        {neutral > 0 ? <span className="font-normal text-slate-400">{PERIOD_COPY.noCompare(faNumber(neutral))}</span> : null}
       </p>
       <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
         <span className="inline-flex items-center gap-1.5">
@@ -444,7 +428,7 @@ function SummaryLine({ data, words }: { data: PeriodComparison; words: { current
           <span className="h-2 w-2 rounded-full" style={{ background: COLORS.previous }} aria-hidden />
           {data.previous.label}
         </span>
-        <span className="sr-only">مقایسهٔ {words.current} با {words.previous}</span>
+        <span className="sr-only">{PERIOD_COPY.compareAria(words.current, words.previous)}</span>
       </p>
     </div>
   )
@@ -453,13 +437,13 @@ function SummaryLine({ data, words }: { data: PeriodComparison; words: { current
 function ChangeBadge({ metric }: { metric: ComparisonMetric }) {
   const { verdict, changePercent, current, previous } = metric
   let text: string
-  if (verdict === 'neutral') text = 'غیرقابل مقایسه'
-  else if (verdict === 'same') text = 'بدون تغییر'
+  if (verdict === 'neutral') text = PERIOD_COPY.incomparable
+  else if (verdict === 'same') text = PERIOD_COPY.noChange
   else if (changePercent == null) {
     const diff = current.state === 'ok' && previous.state === 'ok' ? current.value - previous.value : 0
     text = `${diff > 0 ? '▲' : '▼'} ${signed(formatValue(metric, Math.abs(diff)), diff)}`
   } else {
-    text = `${changePercent > 0 ? '▲' : '▼'} ${faNumber(Math.abs(changePercent), 0)}٪`
+    text = `${changePercent > 0 ? '▲' : '▼'} ${faNumber(Math.abs(changePercent), 0)}${MANAGER_PUNCT.percent}`
   }
   return (
     <span
@@ -495,9 +479,9 @@ function CompareBar({
         <span className={cn('tabular-nums', ok ? 'font-semibold text-slate-700' : 'text-slate-400')}>
           {ok
             ? metric.scaleMax
-              ? `${formatValue(metric, value.value)} از ${faNumber(metric.scaleMax)}`
+              ? PERIOD_COPY.ofMax(formatValue(metric, value.value), faNumber(metric.scaleMax))
               : formatValue(metric, value.value)
-            : 'ثبت نشده'}
+            : PERIOD_COPY.notRecordedShort}
         </span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
@@ -548,19 +532,19 @@ function MetricCard({
         </p>
       ) : (
         <p className="text-sm font-medium leading-6 text-slate-400">
-          {current.state === 'not_reported' ? `گزارش ${words.current} هنوز ثبت نشده` : 'داده در دسترس نیست'}
+          {current.state === 'not_reported' ? PERIOD_COPY.currentUnreported(words.current) : PERIOD_COPY.noData}
           <span className="block text-[11px] font-normal">{current.reason}</span>
         </p>
       )}
 
       {metric.levels && metric.levels.current != null ? (
         <p className="text-[11px] leading-5 text-slate-500">
-          پیشرفت تجمعی{' '}
-          <strong className="font-semibold tabular-nums text-slate-700">{faNumber(metric.levels.current, 1)}٪</strong>
+          {PERIOD_COPY.cumulative}{' '}
+          <strong className="font-semibold tabular-nums text-slate-700">{faNumber(metric.levels.current, 1)}{MANAGER_PUNCT.percent}</strong>
           {metric.levels.planned != null ? (
             <>
               {' '}
-              · برنامه <span className="tabular-nums">{faNumber(metric.levels.planned, 1)}٪</span>
+              · {PERIOD_COPY.plan} <span className="tabular-nums">{faNumber(metric.levels.planned, 1)}{MANAGER_PUNCT.percent}</span>
             </>
           ) : null}
         </p>
@@ -589,7 +573,7 @@ function MetricCard({
         onClick={onOpen}
         className="inline-flex items-center gap-0.5 self-start text-[11px] font-medium text-slate-500 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
       >
-        جزئیات و علت‌ها
+        {PERIOD_COPY.details}
         <ChevronLeft className="h-3 w-3" aria-hidden />
       </button>
     </div>
@@ -621,7 +605,7 @@ interface TooltipProps {
 
 function pointTitle(period: ManagerPeriod, detail: ComparisonPointDetail | null, label: string): string {
   if (!detail) return label
-  if (period === 'today') return `ساعت ${label}`
+  if (period === 'today') return PERIOD_COPY.hour(label)
   return tehranDateTime(detail.at, { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
@@ -631,9 +615,9 @@ function ChartTooltip({ active, payload, period, words }: TooltipProps) {
   const cur = point.currentDetail
   const prev = point.previousDetail
   const rows: { label: string; current: number | null; previous: number | null; higherIsBetter: boolean }[] = [
-    { label: 'نفرات حاضر', current: cur?.headcount ?? null, previous: prev?.headcount ?? null, higherIsBetter: true },
-    { label: 'فعالیت تکمیل‌شده', current: cur?.completed ?? null, previous: prev?.completed ?? null, higherIsBetter: true },
-    { label: 'مسائل و توقفات', current: cur?.issues ?? null, previous: prev?.issues ?? null, higherIsBetter: false },
+    { label: PERIOD_COPY.headcount, current: cur?.headcount ?? null, previous: prev?.headcount ?? null, higherIsBetter: true },
+    { label: PERIOD_COPY.completed, current: cur?.completed ?? null, previous: prev?.completed ?? null, higherIsBetter: true },
+    { label: PERIOD_COPY.issues, current: cur?.issues ?? null, previous: prev?.issues ?? null, higherIsBetter: false },
   ]
   const activities = cur?.activities.length ? cur.activities : []
   return (
@@ -652,34 +636,34 @@ function ChartTooltip({ active, payload, period, words }: TooltipProps) {
         <div className="flex items-center justify-between gap-3">
           <dt className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full" style={{ background: COLORS.current }} aria-hidden />
-            واقعی {words.current}
+            {PERIOD_COPY.actualCurrent(words.current)}
           </dt>
-          <dd className="font-semibold tabular-nums">{point.current == null ? 'ثبت نشده' : `${faNumber(point.current, 1)}٪`}</dd>
+          <dd className="font-semibold tabular-nums">{point.current == null ? PERIOD_COPY.notRecorded : `${faNumber(point.current, 1)}${MANAGER_PUNCT.percent}`}</dd>
         </div>
         <div className="flex items-center justify-between gap-3">
           <dt className="flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full" style={{ background: COLORS.previous }} aria-hidden />
             {words.previous}
           </dt>
-          <dd className="font-semibold tabular-nums">{point.previous == null ? 'ثبت نشده' : `${faNumber(point.previous, 1)}٪`}</dd>
+          <dd className="font-semibold tabular-nums">{point.previous == null ? PERIOD_COPY.notRecorded : `${faNumber(point.previous, 1)}${MANAGER_PUNCT.percent}`}</dd>
         </div>
         <div className="flex items-center justify-between gap-3">
           <dt className="flex items-center gap-1.5">
             <span className="h-0 w-3 border-t-2 border-dashed border-slate-900" aria-hidden />
-            برنامه
+            {PERIOD_COPY.plan}
           </dt>
-          <dd className="font-semibold tabular-nums">{point.planned == null ? '—' : `${faNumber(point.planned, 1)}٪`}</dd>
+          <dd className="font-semibold tabular-nums">{point.planned == null ? '—' : `${faNumber(point.planned, 1)}${MANAGER_PUNCT.percent}`}</dd>
         </div>
       </dl>
 
       {point.current != null ? (
         <p className="mt-1.5 flex flex-wrap gap-x-3 border-t border-slate-100 pt-1.5 text-[11px]">
           <span>
-            نسبت به {words.previous}:{' '}
+            {PERIOD_COPY.vsPrevious(words.previous)}{' '}
             <Diff value={point.previous == null ? null : point.current - point.previous} />
           </span>
           <span>
-            نسبت به برنامه: <Diff value={point.planned == null ? null : point.current - point.planned} />
+            {PERIOD_COPY.vsPlan} <Diff value={point.planned == null ? null : point.current - point.planned} />
           </span>
         </p>
       ) : null}
@@ -707,12 +691,12 @@ function ChartTooltip({ active, payload, period, words }: TooltipProps) {
 
       {activities.length > 0 ? (
         <div className="mt-2 border-t border-slate-100 pt-1.5">
-          <p className="text-[11px] font-semibold text-slate-500">فعالیت‌های اصلی این نقطه</p>
+          <p className="text-[11px] font-semibold text-slate-500">{PERIOD_COPY.topActivities}</p>
           <ul className="mt-0.5 space-y-0.5 text-[11px]">
             {activities.map((a) => (
               <li key={a.name} className="flex justify-between gap-2">
                 <span className="truncate">{a.name}</span>
-                <span className="shrink-0 tabular-nums text-emerald-700">+{faNumber(a.deltaPercent, 1)}٪</span>
+                <span className="shrink-0 tabular-nums text-emerald-700">+{faNumber(a.deltaPercent, 1)}{MANAGER_PUNCT.percent}</span>
               </li>
             ))}
           </ul>
@@ -736,18 +720,17 @@ function CompareChart({
     <div className="rounded-xl border border-slate-100 p-3">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-0.5">
-          <h3 className="text-[13px] font-semibold text-slate-700">پیشرفت تجمعی در بازه</h3>
-          <InfoHint label="پیشرفت تجمعی در بازه">
-            پیشرفت وزنی تأییدشده که از ابتدای هر بازه افزوده شده (واحد درصد). خط برنامه همان وزن‌ها را روی baseline
-            می‌سنجد. خط {words.current} فقط تا همین لحظه رسم می‌شود.
+          <h3 className="text-[13px] font-semibold text-slate-700">{PERIOD_COPY.rangeTitle}</h3>
+          <InfoHint label={PERIOD_COPY.rangeTitle}>
+            {PERIOD_COPY.rangeHint(words.current)}
           </InfoHint>
         </div>
-        <ul className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600" aria-label="راهنمای نمودار">
+        <ul className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600" aria-label={PERIOD_COPY.legend}>
           {(
             [
-              ['current', `واقعی ${words.current}`, undefined],
+              ['current', PERIOD_COPY.actualCurrent(words.current), undefined],
               ['previous', words.previous, undefined],
-              ['planned', 'برنامه', '4 3'],
+              ['planned', PERIOD_COPY.plan, '4 3'],
             ] as const
           ).map(([key, label, dash]) => (
             <li key={key} className="inline-flex items-center gap-1.5">
@@ -761,14 +744,14 @@ function CompareChart({
       </div>
 
       {chart.status === 'error' ? (
-        <EmptyNote tone="error" title="بارگذاری نمودار ناموفق بود" description={chart.message} />
+        <EmptyNote tone="error" title={PERIOD_COPY.chartFailed} description={chart.message} />
       ) : chart.status === 'unavailable' ? (
-        <EmptyNote title="نمودار قابل رسم نیست" description={chart.reason} />
+        <EmptyNote title={PERIOD_COPY.chartUnavailable} description={chart.reason} />
       ) : (
         <>
           <figure
             onClick={onOpen}
-            aria-label={`نمودار پیشرفت تجمعی ${words.current}، ${words.previous} و برنامه`}
+            aria-label={PERIOD_COPY.chartAria(words.current, words.previous)}
             className="relative h-[240px] w-full cursor-pointer sm:h-[280px]"
           >
             <div className="absolute inset-0" dir="ltr">
@@ -785,7 +768,7 @@ function CompareChart({
                   />
                   <YAxis
                     orientation="left"
-                    tickFormatter={(v) => `${faNumber(Number(v), 1)}٪`}
+                    tickFormatter={(v) => `${faNumber(Number(v), 1)}${MANAGER_PUNCT.percent}`}
                     tick={{ fontSize: 11, fill: '#64748b' }}
                     tickLine={false}
                     axisLine={false}
@@ -795,7 +778,7 @@ function CompareChart({
                     x={chart.data.points[chart.data.cutoffIndex]?.label}
                     stroke="#cbd5e1"
                     strokeDasharray="4 4"
-                    label={{ value: 'اکنون', position: 'top', fill: '#334155', fontSize: 11, fontWeight: 600 }}
+                    label={{ value: PERIOD_COPY.now, position: 'top', fill: '#334155', fontSize: 11, fontWeight: 600 }}
                   />
                   <Tooltip
                     cursor={{ stroke: '#94a3b8', strokeWidth: 1 }}
@@ -843,18 +826,17 @@ function CompareChart({
               onClick={onOpen}
               className="inline-flex items-center gap-0.5 font-medium text-slate-500 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
             >
-              جزئیات و علت‌ها
+              {PERIOD_COPY.details}
               <ChevronLeft className="h-3 w-3" aria-hidden />
             </button>
-            {!chart.data.currentReported ? <p>برای {words.current} هنوز گزارش پیشرفتی ثبت نشده؛ خط واقعی رسم نمی‌شود.</p> : null}
+            {!chart.data.currentReported ? <p>{PERIOD_COPY.noCurrentLine(words.current)}</p> : null}
             {!chart.data.previousDrawn ? (
-              <p>برای {words.previous} هنوز تاریخچهٔ پیشرفتی ثبت نشده بود؛ خط آن رسم نمی‌شود.</p>
+              <p>{PERIOD_COPY.noPreviousHistory(words.previous)}</p>
             ) : !chart.data.previousReported ? (
-              <p>در {words.previous} گزارش پیشرفتی ثبت نشده؛ خط آن صاف (بدون افزایش) است.</p>
+              <p>{PERIOD_COPY.previousFlat(words.previous)}</p>
             ) : chart.data.historyStart && Date.parse(chart.data.historyStart) > Date.parse(data.previous.start) ? (
               <p>
-                ثبت پیشرفت از {tehranDateTime(chart.data.historyStart, { day: 'numeric', month: 'long' })} شروع شده؛ خط{' '}
-                {words.previous} پیش از آن صاف است و فقط تغییرات ثبت‌شده را نشان می‌دهد.
+                {PERIOD_COPY.historyStart(tehranDateTime(chart.data.historyStart, { day: 'numeric', month: 'long' }), words.previous)}
               </p>
             ) : null}
           </div>
@@ -875,12 +857,12 @@ function CauseList({ causes, emptyLabel }: { causes: ComparisonCause[]; emptyLab
           <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500">
             <span className="font-semibold text-slate-700">{cause.category}</span>
             <span>
-              {CAUSE_SOURCE_LABELS[cause.source]} ·{' '}
+              {PERIOD_COPY.causeSources[cause.source]} ·{' '}
               {tehranDateTime(cause.at, { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
           <p className="text-slate-700">{cause.text}</p>
-          {cause.activity ? <p className="text-[11px] text-slate-500">فعالیت: {cause.activity}</p> : null}
+          {cause.activity ? <p className="text-[11px] text-slate-500">{PERIOD_COPY.activityColon(cause.activity)}</p> : null}
         </li>
       ))}
     </ul>
@@ -911,17 +893,17 @@ function DetailsPanel({
   }, [onClose])
 
   const causes = data.causes
-  const noCauseText = 'علت ثبت نشده'
+  const noCauseText = PERIOD_COPY.noCause
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-start" role="dialog" aria-modal="true" aria-label="جزئیات مقایسه">
-      <button type="button" aria-label="بستن" className="absolute inset-0 bg-slate-900/30" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex justify-start" role="dialog" aria-modal="true" aria-label={PERIOD_COPY.panelAria}>
+      <button type="button" aria-label={PERIOD_COPY.close} className="absolute inset-0 bg-slate-900/30" onClick={onClose} />
       <aside className="relative flex h-full w-full max-w-md flex-col overflow-y-auto bg-white shadow-elevated">
         <header className="sticky top-0 flex items-center justify-between gap-2 border-b border-slate-100 bg-white px-5 py-3">
           <div>
-            <h2 className="text-[15px] font-bold text-slate-800">{metric ? metric.label : 'پیشرفت تجمعی در بازه'}</h2>
+            <h2 className="text-[15px] font-bold text-slate-800">{metric ? metric.label : PERIOD_COPY.rangeTitle}</h2>
             <p className="text-[11px] text-slate-500">
-              {data.current.label} در برابر {data.previous.label}
+              {PERIOD_COPY.vs(data.current.label, data.previous.label)}
             </p>
           </div>
           <button
@@ -931,7 +913,7 @@ function DetailsPanel({
             className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
           >
             <X className="h-4 w-4" aria-hidden />
-            <span className="sr-only">بستن</span>
+            <span className="sr-only">{PERIOD_COPY.close}</span>
           </button>
         </header>
 
@@ -945,7 +927,7 @@ function DetailsPanel({
                 <table className="w-full text-[11px]">
                   <thead>
                     <tr className="text-slate-400">
-                      <th className="py-1 text-right font-normal">نوع</th>
+                      <th className="py-1 text-right font-normal">{PERIOD_COPY.type}</th>
                       <th className="py-1 text-center font-normal">{words.current}</th>
                       <th className="py-1 text-center font-normal">{words.previous}</th>
                     </tr>
@@ -965,9 +947,9 @@ function DetailsPanel({
           ) : null}
 
           <section className="space-y-3">
-            <h3 className="text-[13px] font-semibold text-slate-700">علت‌های ثبت‌شده</h3>
+            <h3 className="text-[13px] font-semibold text-slate-700">{PERIOD_COPY.causesTitle}</h3>
             {causes.status === 'error' ? (
-              <EmptyNote tone="error" title="بارگذاری علت‌ها ناموفق بود" description={causes.message} />
+              <EmptyNote tone="error" title={PERIOD_COPY.causesFailed} description={causes.message} />
             ) : causes.status === 'unavailable' ? (
               <EmptyNote title={noCauseText} description={causes.reason} />
             ) : (
@@ -981,8 +963,7 @@ function DetailsPanel({
               </>
             )}
             <p className="text-[11px] leading-5 text-slate-400">
-              علت‌ها فقط از مسائل ثبت‌شده در گزارش روزانه، ثبت‌های «مسدود/ناقص» کارگاه و محدودیت‌های برنامهٔ روزانه خوانده
-              می‌شوند. برای فعالیت‌های زمان‌بندی هنوز فیلد «علت تأخیر» وجود ندارد.
+              {PERIOD_COPY.causesNote}
             </p>
           </section>
         </div>

@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/week-commitments.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (week-commitments)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/persist-progress-forecast, features/schedule/lib/replay-week-windows, features/schedule/lib/week-commitment-windows, shared/lib/time/tehran
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadReportedForecastInputs } from '@/features/schedule/lib/persist-progress-forecast'
 import { replayWindows } from '@/features/schedule/lib/replay-week-windows'

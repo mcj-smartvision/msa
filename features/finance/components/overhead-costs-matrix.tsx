@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/components/overhead-costs-matrix.tsx
+ * @purpose کامپوننت UI — حسابداری، هزینه،overhead و صورت‌وضعیت (overhead-costs-matrix)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/finance/components/month-column-header, features/finance/config, features/finance/lib/live-workshop-cost, features/finance/lib/overhead-schedule-months, shared/lib/utils, features/workshop/lib/types
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -17,6 +25,11 @@ TrendingUp,
 Wallet,
 } from 'lucide-react'
 import { MonthColumnHeader } from '@/features/finance/components/month-column-header'
+import {
+  JALALI_MONTHS_FA,
+  OVERHEAD_MATRIX_COPY,
+  OVERHEAD_MATRIX_DEFAULTS,
+} from '@/features/finance/config'
 import { TOMAN_SCALE } from '@/features/finance/lib/live-workshop-cost'
 import {
 alignAmountsToScheduleMonths,
@@ -26,21 +39,6 @@ takeAmountsForLabels,
 } from '@/features/finance/lib/overhead-schedule-months'
 import { cn } from '@/shared/lib/utils'
 import type { ScheduleTreeNode } from '@/features/workshop/lib/types'
-
-const JALALI_MONTHS_FA = [
-  'فروردین',
-  'اردیبهشت',
-  'خرداد',
-  'تیر',
-  'مرداد',
-  'شهریور',
-  'مهر',
-  'آبان',
-  'آذر',
-  'دی',
-  'بهمن',
-  'اسفند',
-] as const
 
 const JALALI_MONTHS_EN = [
   'Farvardin',
@@ -65,54 +63,54 @@ export type OverheadCategory = {
   months: string[]
 }
 
-const DEFAULT_MONTH_COUNT = 6
+const DEFAULT_MONTH_COUNT = OVERHEAD_MATRIX_DEFAULTS.monthCount
 
 const OVERHEAD_CATEGORIES: OverheadCategory[] = [
   {
     code: '6101',
-    titleFa: 'بیمه و تأمین اجتماعی',
+    titleFa: OVERHEAD_MATRIX_COPY.catInsurance,
     titleEn: 'Insurance & Social Security',
     months: ['15', '15', '16', '16', '18', '18'],
   },
   {
     code: '6102',
-    titleFa: 'غذا و تدارکات رفاهی کارگاه',
+    titleFa: OVERHEAD_MATRIX_COPY.catCatering,
     titleEn: 'Camp, Catering & Welfare',
     months: ['22', '24', '26', '25', '28', '27'],
   },
   {
     code: '6103',
-    titleFa: 'ایاب‌ و ذهاب، سوخت و ترابری',
+    titleFa: OVERHEAD_MATRIX_COPY.catTransport,
     titleEn: 'Transportation & Logistics',
     months: ['12', '13', '14', '15', '16', '16'],
   },
   {
     code: '6104',
-    titleFa: 'انشعابات و قبوض (آب، برق، گاز، اینترنت)',
+    titleFa: OVERHEAD_MATRIX_COPY.catUtilities,
     titleEn: 'Site Utilities & Internet',
     months: ['5', '6', '8', '11', '13', '9'],
   },
   {
     code: '6105',
-    titleFa: 'اجاره تجهیزات عمومی، کانکس و انبار',
+    titleFa: OVERHEAD_MATRIX_COPY.catRentals,
     titleEn: 'Temporary Facilities & Rentals',
     months: ['20', '20', '20', '20', '22', '22'],
   },
   {
     code: '6106',
-    titleFa: 'لوازم اداری، مصرفی کارگاه و چاپ نقشه',
+    titleFa: OVERHEAD_MATRIX_COPY.catSupplies,
     titleEn: 'Site Office Supplies & Prints',
     months: ['3', '4', '3', '5', '4', '3'],
   },
   {
     code: '6107',
-    titleFa: 'حقوق پرسنل ستادی و پشتیبانی کارگاه',
+    titleFa: OVERHEAD_MATRIX_COPY.catLabor,
     titleEn: 'Site Supervision / Indirect Labor',
     months: ['22', '22', '22', '24', '24', '24'],
   },
   {
     code: '6108',
-    titleFa: 'ایمنی، بهداشت و محیط زیست (HSE خرد)',
+    titleFa: OVERHEAD_MATRIX_COPY.catHse,
     titleEn: 'Site HSE & PPE Supplies',
     months: ['1', '2', '1.5', '3', '2', '1'],
   },
@@ -661,7 +659,7 @@ export function OverheadCostsMatrix({
       ...prev,
       {
         code,
-        titleFa: fa ? 'سرفصل جدید' : 'New category',
+        titleFa: fa ? OVERHEAD_MATRIX_COPY.newCategory : 'New category',
         titleEn: 'New category',
         months: padMonths([], monthLabels.length),
       },
@@ -681,14 +679,14 @@ export function OverheadCostsMatrix({
     const totalLabel =
       monthLabels.length === 6
         ? fa
-          ? 'جمع 6 ماهه'
+          ? OVERHEAD_MATRIX_COPY.csvSixMonthTotal
           : '6-mo total'
         : fa
-          ? `جمع ${monthLabels.length} ماهه`
+          ? OVERHEAD_MATRIX_COPY.csvNMonthTotal(monthLabels.length)
           : `${monthLabels.length}-mo total`
     const header = [
-      fa ? 'کد سرفصل' : 'Code',
-      fa ? 'سرفصل هزینه' : 'Category',
+      fa ? OVERHEAD_MATRIX_COPY.csvCode : 'Code',
+      fa ? OVERHEAD_MATRIX_COPY.csvCategory : 'Category',
       ...monthLabels,
       totalLabel,
     ]
@@ -701,7 +699,12 @@ export function OverheadCostsMatrix({
       )
     }
     lines.push(
-      ['', fa ? 'جمع کل ماهانه' : 'Monthly totals', ...monthTotals.map(String), String(grandTotal)]
+      [
+        '',
+        fa ? OVERHEAD_MATRIX_COPY.csvMonthlyTotals : 'Monthly totals',
+        ...monthTotals.map(String),
+        String(grandTotal),
+      ]
         .map(escapeCsv)
         .join(',')
     )
@@ -713,9 +716,7 @@ export function OverheadCostsMatrix({
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = fa
-      ? 'ماتریس-هزینه-بالاسری-کارگاه.csv'
-      : 'site-overhead-costs-matrix.csv'
+    a.download = fa ? OVERHEAD_MATRIX_COPY.csvFilename : 'site-overhead-costs-matrix.csv'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -743,9 +744,9 @@ export function OverheadCostsMatrix({
       })
       setSavedAt(stamp)
       setDirty(false)
-      setMessage(fa ? 'ثبت نهایی با موفقیت انجام شد.' : 'Final submit saved successfully.')
+      setMessage(fa ? OVERHEAD_MATRIX_COPY.submitSuccess : 'Final submit saved successfully.')
     } catch {
-      setMessage(fa ? 'ثبت نهایی ناموفق بود.' : 'Final submit failed.')
+      setMessage(fa ? OVERHEAD_MATRIX_COPY.submitFailed : 'Final submit failed.')
     } finally {
       setSaving(false)
     }
@@ -756,13 +757,13 @@ export function OverheadCostsMatrix({
   const stickyTitle =
     'sticky z-20 bg-inherit start-[3rem] border-e border-slate-200 shadow-[-4px_0_8px_-4px_rgba(15,23,42,0.1)]'
 
-  const periodLabel = fa ? 'جمع' : 'Total'
+  const periodLabel = fa ? OVERHEAD_MATRIX_COPY.periodTotal : 'Total'
 
   if (!scheduleReady) {
     return (
       <p className="flex items-center gap-2 text-sm text-slate-500">
         <Loader2 className="h-4 w-4 animate-spin" />
-        {fa ? 'هماهنگ با برنامه زمان‌بندی…' : 'Matching the schedule…'}
+        {fa ? OVERHEAD_MATRIX_COPY.matchingSchedule : 'Matching the schedule…'}
       </p>
     )
   }
@@ -772,19 +773,19 @@ export function OverheadCostsMatrix({
       <div className="grid gap-3 sm:grid-cols-3">
         <MetricCard
           icon={<Wallet className="h-4 w-4" />}
-          label={fa ? 'جمع کل هزینه‌ها' : 'Grand total'}
-          value={`${formatToman(grandTotal)} تومان`}
+          label={fa ? OVERHEAD_MATRIX_COPY.grandTotal : 'Grand total'}
+          value={OVERHEAD_MATRIX_COPY.tomanAmount(formatToman(grandTotal))}
           accent="slate"
         />
         <MetricCard
           icon={<Calculator className="h-4 w-4" />}
-          label={fa ? 'میانگین ماهانه' : 'Monthly average'}
-          value={`${formatToman(overallAverage)} تومان`}
+          label={fa ? OVERHEAD_MATRIX_COPY.monthlyAverage : 'Monthly average'}
+          value={OVERHEAD_MATRIX_COPY.tomanAmount(formatToman(overallAverage))}
           accent="sky"
         />
         <MetricCard
           icon={<TrendingUp className="h-4 w-4" />}
-          label={fa ? 'بیشترین سرفصل' : 'Highest category'}
+          label={fa ? OVERHEAD_MATRIX_COPY.highestCategory : 'Highest category'}
           value={`${fa ? maxCategory.titleFa : maxCategory.titleEn}`}
           hint={`${formatPct(maxCategory.pct)}%`}
           accent="amber"
@@ -796,24 +797,24 @@ export function OverheadCostsMatrix({
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-slate-800">
               {fa
-                ? 'جدول ماتریس هزینه‌های بالاسری کارگاه'
+                ? OVERHEAD_MATRIX_COPY.tableTitle
                 : 'Project Monthly Overhead Costs Matrix'}
             </h3>
             <p className="mt-0.5 text-[10px] text-slate-500">
               {fa
-                ? `نمایش به تومان با رقم انگلیسی و کاما · در سلول عدد کوتاه بنویسید؛ 22 یعنی 22,000,000 تومان`
+                ? OVERHEAD_MATRIX_COPY.cellHint
                 : `Shown in Toman with English digits. Type 22 in a cell for 22,000,000 Toman`}
             </p>
             {message ? (
               <p className="mt-1 text-[10px] font-medium text-emerald-700">{message}</p>
             ) : savedAt && !dirty ? (
               <p className="mt-1 text-[10px] text-slate-500">
-                {fa ? 'آخرین ثبت:' : 'Last submit:'}{' '}
+                {fa ? OVERHEAD_MATRIX_COPY.lastSubmit : 'Last submit:'}{' '}
                 {new Date(savedAt).toLocaleString(fa ? 'fa-IR-u-nu-latn' : 'en-US')}
               </p>
             ) : dirty ? (
               <p className="mt-1 text-[10px] text-amber-700">
-                {fa ? 'تغییرات ذخیره نشده — ثبت نهایی را بزنید.' : 'Unsaved — submit final.'}
+                {fa ? OVERHEAD_MATRIX_COPY.unsaved : 'Unsaved — submit final.'}
               </p>
             ) : null}
           </div>
@@ -825,7 +826,7 @@ export function OverheadCostsMatrix({
             >
               <Rows3 className="h-3 w-3" />
               <Plus className="h-3 w-3" />
-              {fa ? 'ردیف' : 'Row'}
+              {fa ? OVERHEAD_MATRIX_COPY.row : 'Row'}
             </button>
             <button
               type="button"
@@ -834,7 +835,7 @@ export function OverheadCostsMatrix({
             >
               <Columns3 className="h-3 w-3" />
               <Plus className="h-3 w-3" />
-              {fa ? 'ماه بعد' : 'Month'}
+              {fa ? OVERHEAD_MATRIX_COPY.nextMonth : 'Month'}
             </button>
             <button
               type="button"
@@ -846,7 +847,13 @@ export function OverheadCostsMatrix({
               ) : (
                 <Copy className="h-3 w-3" />
               )}
-              {copied ? (fa ? 'کپی شد' : 'Copied') : fa ? 'کپی' : 'Copy'}
+              {copied
+                ? fa
+                  ? OVERHEAD_MATRIX_COPY.copied
+                  : 'Copied'
+                : fa
+                  ? OVERHEAD_MATRIX_COPY.copy
+                  : 'Copy'}
             </button>
             <button
               type="button"
@@ -867,7 +874,7 @@ export function OverheadCostsMatrix({
               ) : (
                 <CheckCircle2 className="h-3 w-3" />
               )}
-              {fa ? 'ثبت نهایی' : 'Submit'}
+              {fa ? OVERHEAD_MATRIX_COPY.submit : 'Submit'}
             </button>
           </div>
         </div>
@@ -882,7 +889,7 @@ export function OverheadCostsMatrix({
                     'top-0 z-30 w-[3rem] bg-slate-200 px-1 py-1 text-center text-[9px] font-semibold'
                   )}
                 >
-                  {fa ? 'کد' : 'Code'}
+                  {fa ? OVERHEAD_MATRIX_COPY.code : 'Code'}
                 </th>
                 <th
                   className={cn(
@@ -890,7 +897,7 @@ export function OverheadCostsMatrix({
                     'top-0 z-30 w-[10.5rem] max-w-[10.5rem] bg-slate-200 px-1.5 py-1 text-start text-[9px] font-semibold'
                   )}
                 >
-                  {fa ? 'سرفصل' : 'Category'}
+                  {fa ? OVERHEAD_MATRIX_COPY.category : 'Category'}
                 </th>
                 {monthLabels.map((m, i) => (
                   <th
@@ -981,7 +988,10 @@ export function OverheadCostsMatrix({
                           title={fa ? row.titleFa : row.titleEn}
                         />
                         {isTop ? (
-                          <Flame className="h-3 w-3 shrink-0 text-amber-600" aria-label={fa ? 'بیشینه' : 'Top'} />
+                          <Flame
+                            className="h-3 w-3 shrink-0 text-amber-600"
+                            aria-label={fa ? OVERHEAD_MATRIX_COPY.peakAria : 'Top'}
+                          />
                         ) : null}
                       </div>
                     </td>
@@ -1011,7 +1021,7 @@ export function OverheadCostsMatrix({
                           title={
                             roseOverPrev
                               ? fa
-                                ? `افزایش نسبت به ${monthLabels[i - 1]}`
+                                ? OVERHEAD_MATRIX_COPY.increasedVs(monthLabels[i - 1] ?? '')
                                 : `Higher than ${monthLabels[i - 1]}`
                               : undefined
                           }
@@ -1063,7 +1073,7 @@ export function OverheadCostsMatrix({
                         disabled={rows.length <= 1}
                         onClick={() => removeRow(row.code)}
                         className="inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-30"
-                        title={fa ? 'حذف ردیف' : 'Remove row'}
+                        title={fa ? OVERHEAD_MATRIX_COPY.removeRow : 'Remove row'}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -1088,7 +1098,7 @@ export function OverheadCostsMatrix({
                     'bg-slate-800 px-1.5 py-1.5 text-start text-[10px] font-semibold'
                   )}
                 >
-                  {fa ? 'جمع کل ماهانه' : 'Monthly totals'}
+                  {fa ? OVERHEAD_MATRIX_COPY.monthlyTotals : 'Monthly totals'}
                 </td>
                 {monthTotals.map((v, i) => (
                   <td

@@ -1,3 +1,11 @@
+/**
+ * @file features/attendance/lib/domain.ts
+ * @purpose منطق دامنه — حضور و غیاب و چهره (domain)
+ * @safe-to-edit CAREFUL
+ * @affects حضور و غیاب و چهره
+ * @depends-on nothing
+ */
+
 import type { AttendanceTransit, PresencePerson, TransitDirection } from './types'
 
 export class AttendanceError extends Error {

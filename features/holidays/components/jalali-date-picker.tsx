@@ -1,9 +1,18 @@
+/**
+ * @file features/holidays/components/jalali-date-picker.tsx
+ * @purpose کامپوننت UI — تقویم تعطیلات (jalali-date-picker)
+ * @safe-to-edit CAREFUL
+ * @affects تقویم تعطیلات
+ * @depends-on features/holidays/components/jalali-month-grid, features/holidays/hooks/use-dismiss, features/holidays/lib/types, shared/lib/time/jalali-month, shared/lib/time/tehran, shared/lib/utils
+ */
+
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
 import { CalendarDays, X } from 'lucide-react'
 import { JalaliMonthGrid } from '@/features/holidays/components/jalali-month-grid'
 import { useDismiss } from '@/features/holidays/hooks/use-dismiss'
+import { JALALI_PICKER_COPY } from '@/features/holidays/config'
 import type { Holiday } from '@/features/holidays/lib/types'
 import { formatJalaliShort, isoToJalali } from '@/shared/lib/time/jalali-month'
 import { todayTehranIso } from '@/shared/lib/time/tehran'
@@ -27,7 +36,7 @@ export function JalaliDatePicker({
   value,
   onChange,
   holidays = [],
-  placeholder = 'انتخاب تاریخ',
+  placeholder = JALALI_PICKER_COPY.placeholder,
   clearable,
   disabled,
   min,
@@ -62,7 +71,7 @@ export function JalaliDatePicker({
           <span className={value ? 'text-slate-800' : 'text-muted-foreground'}>{value ? formatJalaliShort(value) : placeholder}</span>
         </button>
         {clearable && value && !disabled ? (
-          <button type="button" onClick={() => onChange('')} className="text-slate-400 hover:text-slate-700" aria-label="پاک کردن تاریخ">
+          <button type="button" onClick={() => onChange('')} className="text-slate-400 hover:text-slate-700" aria-label={JALALI_PICKER_COPY.clearDate}>
             <X className="h-3.5 w-3.5" aria-hidden />
           </button>
         ) : null}

@@ -1,9 +1,18 @@
+/**
+ * @file features/schedule/components/schedule-task-row.tsx
+ * @purpose کامپوننت UI — زمان‌بندی، WBS و گانت (schedule-task-row)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/components/formatted-date, features/schedule/components/task-status-badge, features/schedule/lib/schedule-preview-columns, features/schedule/lib/task-view-date, features/schedule/lib/wbs-utils, shared/types/schedule, features/workshop/components/uom-display, shared/lib/utils
+ */
+
 'use client'
 
 import { Fragment, memo } from 'react'
 import { GitBranch, HelpCircle, Loader2 } from 'lucide-react'
 import { FormattedDate } from '@/features/schedule/components/formatted-date'
 import { CriticalBadge, TaskStatusBadge } from '@/features/schedule/components/task-status-badge'
+import { SCHEDULE_TASK_ROW_COPY } from '@/features/schedule/config'
 import type { SchedulePreviewColKey, SchedulePreviewColumn } from '@/features/schedule/lib/schedule-preview-columns'
 import { getTaskScheduleStatus } from '@/features/schedule/lib/task-view-date'
 import { displayActivityName, wbsDepth } from '@/features/schedule/lib/wbs-utils'
@@ -23,7 +32,7 @@ function formatNum(value: number | null | undefined, digits = 2): string {
 }
 
 function yesNo(value: boolean | null | undefined): string {
-  return value ? 'بله' : '—'
+  return value ? SCHEDULE_TASK_ROW_COPY.yes : '—'
 }
 
 const INDENT_PX = 10
@@ -186,7 +195,7 @@ function ScheduleTaskRowComponent({
               {isInheritedContractor ? (
                 <GitBranch
                   className="h-3 w-3 shrink-0 text-slate-400"
-                  aria-label="به ارث رسیده"
+                  aria-label={SCHEDULE_TASK_ROW_COPY.inheritedAria}
                 />
               ) : null}
               <select
@@ -194,8 +203,10 @@ function ScheduleTaskRowComponent({
                 disabled={contractorSaving || !onContractorChange}
                 title={
                   isInheritedContractor
-                    ? `به ارث رسیده از سرشاخه: ${resolvedContractor?.name ?? 'پیمانکار'}`
-                    : 'تخصیص مستقیم پیمانکار'
+                    ? SCHEDULE_TASK_ROW_COPY.inheritedFrom(
+                        resolvedContractor?.name ?? SCHEDULE_TASK_ROW_COPY.contractor
+                      )
+                    : SCHEDULE_TASK_ROW_COPY.directAssign
                 }
                 className={cn(
                   'h-7 min-w-0 w-full max-w-full rounded border border-slate-300 bg-white px-1 text-[10px] outline-none focus:border-sky-500',
@@ -210,7 +221,7 @@ function ScheduleTaskRowComponent({
                 <option value="">
                   {resolvedContractor
                     ? resolvedContractor.name
-                    : 'بدون پیمانکار'}
+                    : SCHEDULE_TASK_ROW_COPY.noContractor}
                 </option>
                 {contractors.map((contractor) => (
                   <option key={contractor.id} value={contractor.id}>
@@ -340,8 +351,8 @@ function ScheduleTaskRowComponent({
                 <button
                   type="button"
                   className="rounded-full p-0 text-sky-700 hover:bg-sky-100"
-                  title="وزن سرشاخه از کجا آمده؟"
-                  aria-label="وزن سرشاخه از کجا آمده؟"
+                  title={SCHEDULE_TASK_ROW_COPY.parentWeightOrigin}
+                  aria-label={SCHEDULE_TASK_ROW_COPY.parentWeightOrigin}
                   onClick={(e) => {
                     e.stopPropagation()
                     onToggleWeightHelp()

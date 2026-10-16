@@ -1,4 +1,12 @@
 /**
+ * @file features/compliance/lib/engine.ts
+ * @purpose منطق دامنه — انطباق (engine)
+ * @safe-to-edit CAREFUL
+ * @affects انطباق
+ * @depends-on nothing
+ */
+
+/**
  * Compliance Engine — resolves standards from region, construction type, and user selection.
  */
 

@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/persist-monthly-project-progress.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (persist-monthly-project-progress)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/monthly-deducted-weight, features/schedule/lib/monthly-project-progress, features/schedule/lib/progress-snapshots, features/schedule/lib/dates
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { enumerateProjectJalaliMonths } from '@/features/schedule/lib/monthly-deducted-weight'
 import { accumulateMonthlyProjectProgress } from '@/features/schedule/lib/monthly-project-progress'

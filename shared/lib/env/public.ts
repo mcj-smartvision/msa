@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/env/public.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (public)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 /** Public environment variables (safe for client + server checks) */
 
 export function getSupabasePublicConfig() {

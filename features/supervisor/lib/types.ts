@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/types.ts
+ * @purpose تعاریف نوع — سرپرست کارگاه و گزارش روزانه (types)
+ * @safe-to-edit YES
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/weather/lib/types
+ */
+
 import type { DailyWeatherSnapshot } from '@/features/weather/lib/types'
 
 /** Site Supervisor dashboard domain types */

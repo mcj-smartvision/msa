@@ -1,8 +1,17 @@
+/**
+ * @file features/workshop/components/flags-workspace.tsx
+ * @purpose کامپوننت UI — بسته‌های اجرایی و تأیید کارگاه (flags-workspace)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on features/admin/components/shared
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { PageHeader } from '@/features/admin/components/shared'
+import { WORKSHOP_COPY } from '@/features/workshop/lib/ui-copy'
 
 export function FlagsWorkspace({ showBanner = true }: { showBanner?: boolean }) {
   const projectId = useSearchParams().get('projectId') ?? ''
@@ -19,12 +28,12 @@ export function FlagsWorkspace({ showBanner = true }: { showBanner?: boolean }) 
     <div className="space-y-4" dir="rtl">
       <PageHeader
         showBanner={showBanner}
-        title="پرچم‌ها / نیاز به بررسی"
-        description="صف بررسی دفتر فنی — ثبت کارگاه را متوقف نمی‌کند."
+        title={WORKSHOP_COPY.flags.title}
+        description={WORKSHOP_COPY.flags.description}
       />
       {flags.length === 0 ? (
         <p className="text-sm text-slate-600 rounded-2xl border border-dashed bg-white p-6">
-          پرچم باز ندارید.
+          {WORKSHOP_COPY.flags.empty}
         </p>
       ) : (
         <ul className="space-y-2">

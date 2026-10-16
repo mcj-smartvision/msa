@@ -1,6 +1,15 @@
+/**
+ * @file features/project-init/components/form-fields.tsx
+ * @purpose کامپوننت UI — راه‌اندازی پروژه (form-fields)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on shared/components/ui/label, shared/components/ui/input, shared/components/ui/textarea, shared/components/ui/checkbox, features/schedule/components/schedule-date-input, shared/components/ui/select, shared/lib/utils
+ */
+
 'use client'
 
 import type { HTMLAttributes, ReactNode } from 'react'
+import { PROJECT_INIT_FIELDS_COPY } from '@/features/project-init/config'
 import { useEffect, useRef, useState } from 'react'
 import { useFormContext, Controller, type FieldPath, type FieldValues } from 'react-hook-form'
 import { Label } from '@/shared/components/ui/label'
@@ -155,7 +164,7 @@ export function SelectField<T extends FieldValues>({
   required,
   description,
   options,
-  placeholder = 'انتخاب کنید...',
+  placeholder = PROJECT_INIT_FIELDS_COPY.selectPlaceholder,
   className,
   onValueChange,
 }: BaseFieldProps<T> & {
@@ -208,7 +217,7 @@ export function SearchableSelectField<T extends FieldValues>({
   required,
   description,
   options,
-  placeholder = 'برای جستجو تایپ کنید...',
+  placeholder = PROJECT_INIT_FIELDS_COPY.searchPlaceholder,
   className,
   onValueChange,
 }: BaseFieldProps<T> & {
@@ -270,7 +279,9 @@ export function SearchableSelectField<T extends FieldValues>({
               {open ? (
                 <div className="absolute z-[9999] mt-1 w-full max-h-60 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-lg">
                   {filtered.length === 0 ? (
-                    <p className="px-3 py-2 text-sm text-muted-foreground">موردی یافت نشد</p>
+                    <p className="px-3 py-2 text-sm text-muted-foreground">
+                      {PROJECT_INIT_FIELDS_COPY.noMatch}
+                    </p>
                   ) : (
                     filtered.map((opt) => (
                       <button
@@ -306,7 +317,7 @@ export function GroupedSelectField<T extends FieldValues>({
   required,
   description,
   groups,
-  placeholder = 'انتخاب کنید...',
+  placeholder = PROJECT_INIT_FIELDS_COPY.selectPlaceholder,
   className,
 }: BaseFieldProps<T> & {
   groups: readonly { group: string; options: readonly { value: string; label: string }[] }[]
@@ -446,8 +457,8 @@ export function FileDropzone<T extends FieldValues>({
     <FieldWrapper label={label} description={description}>
       <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/20 hover:bg-muted/40 transition-colors">
         <div className="flex flex-col items-center justify-center py-4 px-4 text-center">
-          <p className="text-sm font-medium">برای بارگذاری کلیک کنید یا فایل را بکشید</p>
-          <p className="text-xs text-muted-foreground mt-1">{fileName || 'فایلی انتخاب نشده'}</p>
+          <p className="text-sm font-medium">{PROJECT_INIT_FIELDS_COPY.dropHint}</p>
+          <p className="text-xs text-muted-foreground mt-1">{fileName || PROJECT_INIT_FIELDS_COPY.noFile}</p>
         </div>
         <input
           type="file"

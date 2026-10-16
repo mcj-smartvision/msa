@@ -1,3 +1,11 @@
+/**
+ * @file features/project-controls/server/get-explained-cumulative-progress.ts
+ * @purpose ماژول — موتور کنترل پروژه و شاخص‌های توضیح‌پذیر (get-explained-cumulative-progress)
+ * @safe-to-edit CAREFUL
+ * @affects موتور کنترل پروژه و شاخص‌های توضیح‌پذیر
+ * @depends-on features/evm/lib/load-project-evm, features/project-controls/lib/cumulative-progress, shared/lib/supabase/service, shared/lib/time/tehran
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadProjectEvm } from '@/features/evm/lib/load-project-evm'
 import {

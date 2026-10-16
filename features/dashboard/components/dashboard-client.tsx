@@ -1,3 +1,11 @@
+/**
+ * @file features/dashboard/components/dashboard-client.tsx
+ * @purpose کامپوننت UI — داشبورد نقش‌ها و ویجت‌ها (dashboard-client)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد نقش‌ها و ویجت‌ها
+ * @depends-on shared/hooks/use-supabase, features/dashboard/services/dashboard, features/dashboard/components/role-dashboard, features/admin/components/shared, shared/types/dashboard
+ */
+
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
@@ -6,6 +14,7 @@ import { resolveVisibleWidgetKeys } from '@/features/dashboard/services/dashboar
 import { RoleDashboard } from '@/features/dashboard/components/role-dashboard'
 import { LoadingBlock, ErrorBlock } from '@/features/admin/components/shared'
 import type { DashboardUserContext } from '@/shared/types/dashboard'
+import { DASHBOARD_CLIENT_COPY } from '@/features/dashboard/config'
 
 export function DashboardClient({
   initialContext,
@@ -40,12 +49,12 @@ export function DashboardClient({
 
   useEffect(() => {
     loadWidgets(context)
-      .catch((err) => setError(err instanceof Error ? err.message : 'بارگذاری داشبورد ناموفق بود'))
+      .catch((err) => setError(err instanceof Error ? err.message : DASHBOARD_CLIENT_COPY.loadFailed))
       .finally(() => setLoading(false))
   }, [context, loadWidgets])
 
   if (loading && widgetKeys.length === 0) {
-    return <LoadingBlock label="در حال بارگذاری داشبورد شما..." />
+    return <LoadingBlock label={DASHBOARD_CLIENT_COPY.loading} />
   }
 
   if (error) {

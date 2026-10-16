@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/pulse-config.ts
+ * @purpose تنظیمات و برچسب‌ها — داشبورد مدیر پروژه و KPI (pulse-config)
+ * @safe-to-edit YES
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/manager/lib/overview-types
+ */
+
 import type { ManagerPulseKey } from '@/features/manager/lib/overview-types'
 
 export const MANAGER_REMINDER_PREFIX = 'manager_reminder:'

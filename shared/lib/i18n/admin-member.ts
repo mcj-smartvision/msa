@@ -1,3 +1,10 @@
+/**
+ * @file shared/lib/i18n/admin-member.ts
+ * @purpose تنظیمات و برچسب‌ها — زیرساخت مشترک سامانه (admin-member)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
 
 /** UI strings for admin member management (en, fa, fr, de). */
 export interface AdminMemberMessages {

@@ -1,9 +1,18 @@
+/**
+ * @file features/schedule/components/schedule-download-button.tsx
+ * @purpose کامپوننت UI — زمان‌بندی، WBS و گانت (schedule-download-button)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/components/ui/button, shared/lib/utils, features/schedule/config
+ */
+
 'use client'
 
 import { useState } from 'react'
 import { Download, Loader2 } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { cn } from '@/shared/lib/utils'
+import { SCHEDULE_DOWNLOAD_COPY } from '@/features/schedule/config'
 
 function ensureXmlExtension(name: string): string {
   const trimmed = name.trim()
@@ -31,7 +40,7 @@ export function ScheduleDownloadButton({
   variant = 'outline',
   size = 'sm',
   className,
-  label = 'دانلود برنامه XML',
+  label = SCHEDULE_DOWNLOAD_COPY.label,
 }: Props) {
   const [loading, setLoading] = useState(false)
 
@@ -46,7 +55,7 @@ export function ScheduleDownloadButton({
       const res = await fetch(url)
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'دانلود انجام نشد')
+        throw new Error(data.error || SCHEDULE_DOWNLOAD_COPY.failed)
       }
       const blob = await res.blob()
       const disposition = res.headers.get('Content-Disposition') ?? ''
@@ -65,7 +74,7 @@ export function ScheduleDownloadButton({
       a.click()
       URL.revokeObjectURL(objectUrl)
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'دانلود انجام نشد')
+      alert(error instanceof Error ? error.message : SCHEDULE_DOWNLOAD_COPY.failed)
     } finally {
       setLoading(false)
     }

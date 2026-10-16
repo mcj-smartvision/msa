@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/ui/button.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (button)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/lib/utils
+ */
+
 import * as React from 'react'
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'

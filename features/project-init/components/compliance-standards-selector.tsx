@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/components/compliance-standards-selector.tsx
+ * @purpose کامپوننت UI — راه‌اندازی پروژه (compliance-standards-selector)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on shared/components/ui/checkbox, shared/components/ui/badge, features/compliance/lib/catalog, features/compliance/lib/region-standards, features/compliance/lib/labels, features/project-init/lib/schema
+ */
+
 'use client'
 
 import { useEffect, useMemo, useRef } from 'react'

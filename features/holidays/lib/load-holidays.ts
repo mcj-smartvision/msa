@@ -1,3 +1,11 @@
+/**
+ * @file features/holidays/lib/load-holidays.ts
+ * @purpose منطق دامنه — تقویم تعطیلات (load-holidays)
+ * @safe-to-edit CAREFUL
+ * @affects تقویم تعطیلات
+ * @depends-on features/holidays/lib/types, features/holidays/lib/work-calendar
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { holidayFromRow, type Holiday } from '@/features/holidays/lib/types'
 import { siteWorkCalendar, type IsWorkday } from '@/features/holidays/lib/work-calendar'

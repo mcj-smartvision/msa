@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule-intelligence/lib/graph.ts
+ * @purpose منطق دامنه — تحلیل کیفیت برنامه و آپلود MSP (graph)
+ * @safe-to-edit CAREFUL
+ * @affects تحلیل کیفیت برنامه و آپلود MSP
+ * @depends-on shared/types/schedule-intelligence
+ */
+
 import type { ScheduleDependency, ScheduleTask } from '@/shared/types/schedule-intelligence'
 
 export interface ScheduleGraph {

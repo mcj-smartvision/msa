@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/brand/brand-logo.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (brand-logo)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/lib/brand, shared/lib/utils
+ */
+
 'use client'
 
 import { APP_NAME } from '@/shared/lib/brand'

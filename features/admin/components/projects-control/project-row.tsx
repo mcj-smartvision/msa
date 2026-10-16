@@ -1,4 +1,14 @@
+/**
+ * @file features/admin/components/projects-control/project-row.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (project-row)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/components/ui/button, features/admin/lib/project-status, shared/types/admin, shared/lib/brand, shared/lib/utils
+ */
+
+
 'use client'
+import { ADMIN_PROJECT_ROW_COPY } from '@/features/admin/config'
 
 import Link from 'next/link'
 import { Building2, FolderKanban, Users } from 'lucide-react'
@@ -70,25 +80,25 @@ export function ProjectRow({
                   : 'border-slate-300 bg-slate-100 text-slate-600'
               )}
             >
-              {enabled ? 'فعال در سامانه' : 'غیرفعال'}
+              {enabled ? ADMIN_PROJECT_ROW_COPY.enabled : ADMIN_PROJECT_ROW_COPY.disabled}
             </span>
           </div>
           <p className="truncate text-xs text-[#667085]">
-            سازمان / مالک: {org}
+            {ADMIN_PROJECT_ROW_COPY.orgOwnerPrefix} {org}
             {project.code ? ` · ${project.code}` : ''}
           </p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-[#344054]">
             <span className="inline-flex items-center gap-1">
               <Users className="h-3.5 w-3.5 text-[#667085]" />
-              {memberCount} عضو
+              {memberCount} {ADMIN_PROJECT_ROW_COPY.memberWord}
             </span>
-            <span>ایجاد: {formatCreated(project.created_at)}</span>
+            <span>{ADMIN_PROJECT_ROW_COPY.createdPrefix} {formatCreated(project.created_at)}</span>
           </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
           <Button asChild size="sm" className="bg-[#C96A1B] hover:bg-[#A95312]">
-            <Link href={href}>باز کردن</Link>
+            <Link href={href}>{ADMIN_PROJECT_ROW_COPY.open}</Link>
           </Button>
         </div>
       </div>
@@ -102,13 +112,13 @@ export function EmptyProjectsState({ onCreate }: { onCreate: () => void }) {
       <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-[#EDF4F8] text-[#4D718A]">
         <FolderKanban className="h-6 w-6" aria-hidden />
       </div>
-      <h3 className="text-base font-semibold text-[#17202A]">هنوز پروژه‌ای نیست</h3>
+      <h3 className="text-base font-semibold text-[#17202A]">{ADMIN_PROJECT_ROW_COPY.emptyTitle}</h3>
       <p className="mx-auto mt-1 max-w-md text-sm text-[#667085]">
-        اولین پروژه را بسازید تا اعضا، دسترسی‌ها و تنظیمات سامانه را از اینجا مدیریت کنید.
+        {ADMIN_PROJECT_ROW_COPY.emptyHint}
       </p>
       <Button type="button" className="mt-5 bg-[#C96A1B] hover:bg-[#A95312]" onClick={onCreate}>
         <Building2 className="h-4 w-4" />
-        ایجاد پروژه
+        {ADMIN_PROJECT_ROW_COPY.create}
       </Button>
     </div>
   )

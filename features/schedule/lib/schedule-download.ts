@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/schedule-download.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (schedule-download)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/lib/supabase/service, features/schedule/lib/msp-export, features/schedule/lib/schedule-files
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/shared/lib/supabase/service'
 import { exportMspXmlFromProject } from '@/features/schedule/lib/msp-export'

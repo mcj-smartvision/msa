@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/components/daily-plans-client.tsx
+ * @purpose کامپوننت UI — عملیات کارگاه، دستورکار و برنامه روزانه (daily-plans-client)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on shared/components/i18n/locale-provider, shared/lib/i18n/site-ops
+ */
+
 'use client'
 
 import Link from 'next/link'

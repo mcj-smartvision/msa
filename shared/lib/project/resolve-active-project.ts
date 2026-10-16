@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/project/resolve-active-project.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (resolve-active-project)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 /** Resolve active project from cookie + allowed options (client or server). */
 
 export function resolveActiveProjectId(

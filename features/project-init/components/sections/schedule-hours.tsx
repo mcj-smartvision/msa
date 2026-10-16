@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/components/sections/schedule-hours.tsx
+ * @purpose کامپوننت UI — راه‌اندازی پروژه (schedule-hours)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on features/project-init/lib/schema
+ */
+
 'use client'
 
 import { FieldGrid, NumberField, SectionHeader, SelectField, SubsectionTitle, SwitchField, TextField } from '../form-fields'

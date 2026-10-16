@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/lib/types.ts
+ * @purpose تعاریف نوع — بسته‌های اجرایی و تأیید کارگاه (types)
+ * @safe-to-edit YES
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on nothing
+ */
+
 export type WorkshopPackageStatus =
   | 'draft'
   | 'ready'

@@ -1,3 +1,11 @@
+/**
+ * @file features/holidays/hooks/use-dismiss.ts
+ * @purpose هوک — تقویم تعطیلات (use-dismiss)
+ * @safe-to-edit CAREFUL
+ * @affects تقویم تعطیلات
+ * @depends-on nothing
+ */
+
 'use client'
 
 import { useEffect, type RefObject } from 'react'

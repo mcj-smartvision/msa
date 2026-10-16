@@ -1,3 +1,11 @@
+/**
+ * @file features/attendance/lib/face-recognition-method-copy.ts
+ * @purpose منطق دامنه — حضور و غیاب و چهره (face-recognition-method-copy)
+ * @safe-to-edit CAREFUL
+ * @affects حضور و غیاب و چهره
+ * @depends-on nothing
+ */
+
 /** متن فارسی توضیحات روش شناسایی چهره برای ذی‌نفعان — شناسه بیومتریک گیت. */
 
 export const FACE_RECOGNITION_METHOD_TITLE =

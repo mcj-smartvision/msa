@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/schedule-view-sync.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (schedule-view-sync)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on nothing
+ */
+
 'use client'
 
 import { useCallback, useEffect, useRef } from 'react'

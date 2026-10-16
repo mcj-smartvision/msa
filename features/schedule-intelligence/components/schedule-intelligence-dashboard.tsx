@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule-intelligence/components/schedule-intelligence-dashboard.tsx
+ * @purpose کامپوننت UI — تحلیل کیفیت برنامه و آپلود MSP (schedule-intelligence-dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects تحلیل کیفیت برنامه و آپلود MSP
+ * @depends-on shared/lib/project/project-cookie, features/admin/components/shared, shared/components/ui/badge, shared/components/ui/button, shared/components/ui/input, features/schedule-intelligence/lib, features/schedule-intelligence/lib/export-utils, features/schedule-intelligence/lib/schedule-metrics, shared/types/schedule-intelligence, features/schedule/lib/wbs-utils
+ */
+
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
@@ -27,13 +35,9 @@ import { compareWbs } from '@/features/schedule/lib/wbs-utils'
 import { ScheduleUpload, ExportButtons } from '@/features/schedule-intelligence/components/schedule-upload'
 import { ScheduleDownloadButton } from '@/features/schedule/components/schedule-download-button'
 import { cn } from '@/shared/lib/utils'
+import { SCHEDULE_INTELLIGENCE_COPY as copy } from '@/features/schedule-intelligence/lib/config'
 
-const STATUS_LABELS: Record<string, string> = {
-  'not-started': 'شروع‌نشده',
-  'in-progress': 'در حال انجام',
-  completed: 'تکمیل',
-  unknown: 'نامشخص',
-}
+const STATUS_LABELS: Record<string, string> = { ...copy.statusLabels }
 
 function KpiCard({
   label,
@@ -85,15 +89,15 @@ function ActivitiesTable({
     <div className="space-y-3">
       {projectDurationDays != null && projectDurationDays > 0 ? (
         <p className="text-xs text-muted-foreground">
-          مدت کل پروژه (CPM):{' '}
+          {copy.projectDurationCpm}{' '}
           <span className="font-semibold tabular-nums">
-            {projectDurationDays.toLocaleString('fa-IR-u-nu-latn')} روز
+            {projectDurationDays.toLocaleString('fa-IR-u-nu-latn')} {copy.days}
           </span>
-          — ستون «سهم از کل» = مدت هر فعالیت ÷ مدت کل پروژه
+          {copy.shareColumnHint}
         </p>
       ) : null}
       <Input
-        placeholder="جستجو نام، WBS، UID..."
+        placeholder={copy.searchPlaceholder}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="max-w-md"
@@ -102,16 +106,16 @@ function ActivitiesTable({
         <table className="w-full text-sm text-right">
           <thead className="bg-muted/50 sticky top-0">
             <tr>
-              <th className="p-2">نام</th>
+<th className="p-2">{copy.colName}</th>
               <th className="p-2">WBS</th>
-              <th className="p-2">مدت (روز)</th>
+<th className="p-2">{copy.colDuration}</th>
               {projectDurationDays != null ? (
-                <th className="p-2">سهم از کل</th>
+<th className="p-2">{copy.colShare}</th>
               ) : null}
-              <th className="p-2">پیشرفت</th>
-              <th className="p-2">شناوری</th>
-              <th className="p-2">ریسک</th>
-              <th className="p-2">بحرانی</th>
+<th className="p-2">{copy.colProgress}</th>
+<th className="p-2">{copy.colFloat}</th>
+<th className="p-2">{copy.colRisk}</th>
+<th className="p-2">{copy.colCritical}</th>
             </tr>
           </thead>
           <tbody>
@@ -132,10 +136,10 @@ function ActivitiesTable({
                 <td className="p-2 tabular-nums">{durationDays.toLocaleString('fa-IR-u-nu-latn')}</td>
                 {share != null ? (
                   <td className="p-2 tabular-nums font-medium text-primary">
-                    {share.toLocaleString('fa-IR-u-nu-latn')}٪
+                    {share.toLocaleString('fa-IR-u-nu-latn')}{copy.percent}
                   </td>
                 ) : null}
-                <td className="p-2 tabular-nums">{t.percentComplete.toLocaleString('fa-IR-u-nu-latn')}٪</td>
+                <td className="p-2 tabular-nums">{t.percentComplete.toLocaleString('fa-IR-u-nu-latn')}{copy.percent}</td>
                 <td className="p-2">
                   {t.totalFloatMinutes != null
                     ? (t.totalFloatMinutes / minutesPerDay).toLocaleString('fa-IR-u-nu-latn')
@@ -156,7 +160,7 @@ function ActivitiesTable({
         </table>
       </div>
       {rows.length > 200 ? (
-        <p className="text-xs text-muted-foreground">نمایش 200 از {rows.length.toLocaleString('fa-IR-u-nu-latn')} فعالیت</p>
+        <p className="text-xs text-muted-foreground">{copy.showingFirst(rows.length.toLocaleString('fa-IR-u-nu-latn'))}</p>
       ) : null}
     </div>
   )
@@ -178,34 +182,34 @@ function ActivityDrawer({
       >
         <div className="flex justify-between items-start gap-4 mb-4">
           <h3 className="font-bold text-lg">{task.name}</h3>
-          <Button variant="ghost" size="sm" onClick={onClose}>بستن</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>{copy.close}</Button>
         </div>
         <dl className="space-y-2 text-sm">
           <div><dt className="text-muted-foreground">UID</dt><dd>{task.uid}</dd></div>
           <div><dt className="text-muted-foreground">WBS</dt><dd>{task.wbs ?? '—'}</dd></div>
-          <div><dt className="text-muted-foreground">مدت (روز)</dt>
+          <div><dt className="text-muted-foreground">{copy.colDuration}</dt>
             <dd>{effectiveTaskDurationDays(task, 480).toLocaleString('fa-IR-u-nu-latn')}</dd>
           </div>
-          <div><dt className="text-muted-foreground">وضعیت</dt><dd>{STATUS_LABELS[task.status]}</dd></div>
-          <div><dt className="text-muted-foreground">شناوری کل (روز)</dt>
+          <div><dt className="text-muted-foreground">{copy.status}</dt><dd>{STATUS_LABELS[task.status]}</dd></div>
+          <div><dt className="text-muted-foreground">{copy.totalFloatDays}</dt>
             <dd>{task.totalFloatMinutes != null ? (task.totalFloatMinutes / 480).toLocaleString('fa-IR-u-nu-latn') : '—'}</dd>
           </div>
-          <div><dt className="text-muted-foreground">امتیاز ریسک</dt><dd>{task.riskScore ?? '—'}</dd></div>
+          <div><dt className="text-muted-foreground">{copy.riskScore}</dt><dd>{task.riskScore ?? '—'}</dd></div>
           {task.riskReasons.length > 0 ? (
             <div>
-              <dt className="text-muted-foreground mb-1">دلایل ریسک</dt>
+<dt className="text-muted-foreground mb-1">{copy.riskReasons}</dt>
               <ul className="list-disc pr-4 space-y-1">
                 {task.riskReasons.map((r) => <li key={r}>{r}</li>)}
               </ul>
             </div>
           ) : null}
           <div>
-            <dt className="text-muted-foreground mb-1">پیش‌نیازها</dt>
-            <dd>{task.predecessors.map((p) => `${p.predecessorUid} (${p.type})`).join('، ') || '—'}</dd>
+<dt className="text-muted-foreground mb-1">{copy.predecessors}</dt>
+            <dd>{task.predecessors.map((p) => `${p.predecessorUid} (${p.type})`).join(copy.listSep) || '—'}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground mb-1">پس‌نیازها</dt>
-            <dd>{task.successors.map((s) => `${s.successorUid} (${s.type})`).join('، ') || '—'}</dd>
+<dt className="text-muted-foreground mb-1">{copy.successors}</dt>
+            <dd>{task.successors.map((s) => `${s.successorUid} (${s.type})`).join(copy.listSep) || '—'}</dd>
           </div>
         </dl>
       </div>
@@ -243,7 +247,7 @@ export function ScheduleIntelligenceDashboard() {
       setResult(r)
       setTab('overview')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'خطا در تحلیل')
+      alert(e instanceof Error ? e.message : copy.analyzeFailed)
     } finally {
       setLoading(false)
     }
@@ -254,16 +258,16 @@ export function ScheduleIntelligenceDashboard() {
     const kpis = result.kpis
     return {
       status: [
-        { name: 'شروع‌نشده', value: kpis.notStartedCount },
-        { name: 'در حال انجام', value: kpis.inProgressCount },
-        { name: 'تکمیل', value: kpis.completedCount },
-        { name: 'نامشخص', value: kpis.unknownStatusCount },
+        { name: copy.statusLabels['not-started'], value: kpis.notStartedCount },
+        { name: copy.statusLabels['in-progress'], value: kpis.inProgressCount },
+        { name: copy.statusLabels.completed, value: kpis.completedCount },
+        { name: copy.statusLabels.unknown, value: kpis.unknownStatusCount },
       ].filter((d) => d.value > 0),
       risk: [
-        { name: 'کم', value: result.schedule.tasks.filter((t) => t.riskLevel === 'low').length },
-        { name: 'متوسط', value: result.schedule.tasks.filter((t) => t.riskLevel === 'medium').length },
-        { name: 'زیاد', value: result.schedule.tasks.filter((t) => t.riskLevel === 'high').length },
-        { name: 'خیلی زیاد', value: result.schedule.tasks.filter((t) => t.riskLevel === 'very-high').length },
+        { name: copy.riskLabels.low, value: result.schedule.tasks.filter((t) => t.riskLevel === 'low').length },
+        { name: copy.riskLabels.medium, value: result.schedule.tasks.filter((t) => t.riskLevel === 'medium').length },
+        { name: copy.riskLabels.high, value: result.schedule.tasks.filter((t) => t.riskLevel === 'high').length },
+        { name: copy.riskLabels.veryHigh, value: result.schedule.tasks.filter((t) => t.riskLevel === 'very-high').length },
       ].filter((d) => d.value > 0),
       deps: [
         { type: 'FS', count: kpis.fsCount },
@@ -281,8 +285,8 @@ export function ScheduleIntelligenceDashboard() {
   return (
     <div className="space-y-6 pb-12" dir="rtl">
       <PageHeader
-        title="تحلیل زمان‌بندی"
-        description="داشبورد هوشمند زمان‌بندی ساخت — CPM قطعی، بدون هوش مصنوعی"
+        title={copy.title}
+        description={copy.description}
         actions={
           projectId ? (
             <ScheduleDownloadButton
@@ -297,7 +301,7 @@ export function ScheduleIntelligenceDashboard() {
 
       <div className="flex flex-wrap items-end gap-4">
         <div>
-          <label className="text-xs text-muted-foreground block mb-1">تاریخ تحلیل</label>
+          <label className="text-xs text-muted-foreground block mb-1">{copy.analysisDate}</label>
           <Input type="date" value={analysisDate} onChange={(e) => setAnalysisDate(e.target.value)} />
         </div>
       </div>
@@ -305,7 +309,7 @@ export function ScheduleIntelligenceDashboard() {
       <ScheduleUpload onAnalyzed={handleAnalyze} loading={loading} />
 
       {loading ? (
-        <p className="text-center text-muted-foreground py-8">در حال پردازش و محاسبه CPM...</p>
+        <p className="text-center text-muted-foreground py-8">{copy.processing}</p>
       ) : null}
 
       {result ? (
@@ -313,7 +317,7 @@ export function ScheduleIntelligenceDashboard() {
           {result.hasFatalErrors ? (
             <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm">
               <ShieldAlert className="h-5 w-5 text-destructive inline ml-2" />
-              خطاهای بحرانی در داده — نتایج CPM ممکن است نامعتبر باشد. بخش اعتبارسنجی را بررسی کنید.
+              {copy.fatal}
             </div>
           ) : null}
 
@@ -325,7 +329,7 @@ export function ScheduleIntelligenceDashboard() {
                 size="sm"
                 onClick={() => setTab(t)}
               >
-                {t === 'overview' ? 'خلاصه' : t === 'activities' ? 'فعالیت‌ها' : t === 'risk' ? 'ریسک' : 'اعتبارسنجی'}
+                {copy.tabs[t]}
               </Button>
             ))}
             <div className="mr-auto">
@@ -354,20 +358,20 @@ export function ScheduleIntelligenceDashboard() {
 
           {tab === 'overview' ? (
             <div className="space-y-6">
-              <SectionCard title="خلاصه مدیریتی">
+              <SectionCard title={copy.executive}>
                 <p className="text-sm leading-relaxed">{result.executiveSummary}</p>
               </SectionCard>
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <KpiCard label="فعالیت‌های اجرایی" value={result.kpis.totalLeafTasks.toLocaleString('fa-IR-u-nu-latn')} icon={<Network className="h-4 w-4 text-muted-foreground" />} />
-                <KpiCard label="مدت شبکه (روز)" value={result.kpis.calculatedProjectDurationDays.toLocaleString('fa-IR-u-nu-latn')} icon={<Calendar className="h-4 w-4 text-muted-foreground" />} />
-                <KpiCard label="بحرانی" value={result.kpis.criticalCount.toLocaleString('fa-IR-u-nu-latn')} icon={<AlertTriangle className="h-4 w-4 text-amber-500" />} />
-                <KpiCard label="میانگین پیشرفت %" value={result.kpis.averagePercentComplete.toLocaleString('fa-IR-u-nu-latn')} icon={<Gauge className="h-4 w-4 text-muted-foreground" />} />
+                <KpiCard label={copy.kpi.leaf} value={result.kpis.totalLeafTasks.toLocaleString('fa-IR-u-nu-latn')} icon={<Network className="h-4 w-4 text-muted-foreground" />} />
+                <KpiCard label={copy.kpi.duration} value={result.kpis.calculatedProjectDurationDays.toLocaleString('fa-IR-u-nu-latn')} icon={<Calendar className="h-4 w-4 text-muted-foreground" />} />
+                <KpiCard label={copy.kpi.critical} value={result.kpis.criticalCount.toLocaleString('fa-IR-u-nu-latn')} icon={<AlertTriangle className="h-4 w-4 text-amber-500" />} />
+                <KpiCard label={copy.kpi.avgProgress} value={result.kpis.averagePercentComplete.toLocaleString('fa-IR-u-nu-latn')} icon={<Gauge className="h-4 w-4 text-muted-foreground" />} />
               </div>
 
               {chartData ? (
                 <div className="grid gap-6 lg:grid-cols-2">
-                  <SectionCard title="وضعیت فعالیت‌ها">
+                  <SectionCard title={copy.activityStatus}>
                     <ResponsiveContainer width="100%" height={220}>
                       <PieChart>
                         <Pie data={chartData.status} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
@@ -380,7 +384,7 @@ export function ScheduleIntelligenceDashboard() {
                       </PieChart>
                     </ResponsiveContainer>
                   </SectionCard>
-                  <SectionCard title="توزیع ریسک">
+                  <SectionCard title={copy.riskSpread}>
                     <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={chartData.risk}>
                         <XAxis dataKey="name" />
@@ -390,7 +394,7 @@ export function ScheduleIntelligenceDashboard() {
                       </BarChart>
                     </ResponsiveContainer>
                   </SectionCard>
-                  <SectionCard title="طولانی‌ترین فعالیت‌ها">
+                  <SectionCard title={copy.longest}>
                     <ResponsiveContainer width="100%" height={280}>
                       <BarChart data={chartData.longest} layout="vertical">
                         <XAxis type="number" />
@@ -400,7 +404,7 @@ export function ScheduleIntelligenceDashboard() {
                       </BarChart>
                     </ResponsiveContainer>
                   </SectionCard>
-                  <SectionCard title="نوع وابستگی‌ها">
+                  <SectionCard title={copy.dependencyTypes}>
                     <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={chartData.deps}>
                         <XAxis dataKey="type" />
@@ -416,7 +420,7 @@ export function ScheduleIntelligenceDashboard() {
           ) : null}
 
           {tab === 'activities' ? (
-            <SectionCard title="همه فعالیت‌ها">
+            <SectionCard title={copy.allActivities}>
               <ActivitiesTable
                 tasks={result.schedule.tasks}
                 onSelect={setSelected}
@@ -428,7 +432,7 @@ export function ScheduleIntelligenceDashboard() {
 
           {tab === 'risk' ? (
             <div className="space-y-6">
-              <SectionCard title="فعالیت‌های پرریسک">
+              <SectionCard title={copy.highRisk}>
                 <ActivitiesTable
                   tasks={topActivitiesBy(result.schedule.tasks, 'riskScore', 50)}
                   onSelect={setSelected}
@@ -436,10 +440,12 @@ export function ScheduleIntelligenceDashboard() {
                   minutesPerDay={result.schedule.minutesPerDay}
                 />
               </SectionCard>
-              <SectionCard title="مسیر بحرانی">
+              <SectionCard title={copy.criticalPath}>
                 <p className="text-sm text-muted-foreground mb-2">
-                  {result.cpm.criticalUids.length.toLocaleString('fa-IR-u-nu-latn')} فعالیت بحرانی —{' '}
-                  {result.cpm.criticalChains.length.toLocaleString('fa-IR-u-nu-latn')} زنجیره
+                  {copy.criticalChains(
+                    result.cpm.criticalUids.length.toLocaleString('fa-IR-u-nu-latn'),
+                    result.cpm.criticalChains.length.toLocaleString('fa-IR-u-nu-latn')
+                  )}
                 </p>
                 <ul className="text-sm space-y-1">
                   {result.cpm.criticalChains.map((chain, i) => (
@@ -455,10 +461,12 @@ export function ScheduleIntelligenceDashboard() {
           ) : null}
 
           {tab === 'validation' ? (
-            <SectionCard title="هشدارها و خطاها">
+            <SectionCard title={copy.alerts}>
               <p className="text-sm mb-4">
-                خطا: {result.kpis.validationErrorCount.toLocaleString('fa-IR-u-nu-latn')} — هشدار:{' '}
-                {result.kpis.validationWarningCount.toLocaleString('fa-IR-u-nu-latn')}
+                {copy.validationLine(
+                  result.kpis.validationErrorCount.toLocaleString('fa-IR-u-nu-latn'),
+                  result.kpis.validationWarningCount.toLocaleString('fa-IR-u-nu-latn')
+                )}
               </p>
               <ul className="space-y-2 text-sm max-h-[400px] overflow-y-auto">
                 {result.schedule.warnings.map((w, i) => (

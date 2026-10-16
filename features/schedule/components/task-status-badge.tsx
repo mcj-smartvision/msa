@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/components/task-status-badge.tsx
+ * @purpose کامپوننت UI — زمان‌بندی، WBS و گانت (task-status-badge)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/components/ui/badge, shared/components/i18n/locale-provider, features/schedule/lib/task-view-date, shared/lib/utils, features/schedule/config
+ */
+
 'use client'
 
 import { Badge } from '@/shared/components/ui/badge'
@@ -7,6 +15,7 @@ TASK_STATUS_LABELS,
 type TaskScheduleStatus,
 } from '@/features/schedule/lib/task-view-date'
 import { cn } from '@/shared/lib/utils'
+import { TASK_STATUS_COPY } from '@/features/schedule/config'
 
 const STATUS_STYLES: Record<TaskScheduleStatus, string> = {
   not_started: 'bg-slate-100 text-slate-700 border-slate-200',
@@ -53,9 +62,15 @@ export function CriticalBadge({
         compact ? 'text-[9px] px-1.5 py-0' : 'text-[10px] px-2 py-0.5',
         className
       )}
-      title={fa ? 'مسیر بحرانی' : 'Critical path'}
+      title={fa ? TASK_STATUS_COPY.criticalPath : 'Critical path'}
     >
-      {compact ? (fa ? 'بحرانی' : 'Crit') : fa ? 'بحرانی' : 'Critical'}
+      {compact
+        ? fa
+          ? TASK_STATUS_COPY.critical
+          : 'Crit'
+        : fa
+          ? TASK_STATUS_COPY.critical
+          : 'Critical'}
     </Badge>
   )
 }

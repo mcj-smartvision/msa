@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/zone-project-storage.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (zone-project-storage)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/lib/drawings-zoning-mock
+ */
+
 import type { DefinedZone } from '@/features/supervisor/lib/drawings-zoning-mock'
 
 const STORAGE_PREFIX = 'sitepilot-project-zones:'

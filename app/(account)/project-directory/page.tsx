@@ -1,3 +1,11 @@
+/**
+ * @file app/(account)/project-directory/page.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (page)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/admin/lib/access, features/admin/services/admin, features/admin/lib/control-center, features/admin/components/project-directory-page
+ */
+
 import { redirect } from 'next/navigation'
 import { createClient } from '@/shared/lib/supabase/server'
 import { isSystemAdmin } from '@/features/admin/lib/access'

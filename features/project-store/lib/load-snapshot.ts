@@ -1,3 +1,11 @@
+/**
+ * @file features/project-store/lib/load-snapshot.ts
+ * @purpose منطق دامنه — ذخیره پیشرفت و overlay اعداد داشبورد (load-snapshot)
+ * @safe-to-edit CAREFUL
+ * @affects ذخیره پیشرفت و overlay اعداد داشبورد
+ * @depends-on features/evm/lib/load-project-evm, features/holidays/lib/load-holidays, features/schedule/lib/progress-history, features/schedule/lib/week-commitments, features/workshop/lib/service, shared/lib/time/tehran
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadProjectEvm } from '@/features/evm/lib/load-project-evm'
 import { loadHolidays } from '@/features/holidays/lib/load-holidays'

@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/services/stock-valuation.ts
+ * @purpose سرویس داده — حسابداری، هزینه،overhead و صورت‌وضعیت (stock-valuation)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on nothing
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function fetchStockValuation(

@@ -1,4 +1,12 @@
 /**
+ * @file features/schedule/lib/msp-import-validate.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (msp-import-validate)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/cpm-calculate, features/schedule/lib/parent-weight-rollup, features/schedule/lib/msp-import
+ */
+
+/**
  * MSP import pre-validation + summary report (بخش 2 — مرحله 1 و 4).
  * Cycle detection reuses the system CPM graph (never trust file float).
  */

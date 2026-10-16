@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/lib/service.ts
+ * @purpose منطق دامنه — بسته‌های اجرایی و تأیید کارگاه (service)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on features/schedule/services/schedule, features/admin/lib/access, features/site-ops/lib/auth, features/site-ops/lib/audit, features/site-ops/domain/errors, features/site-ops/domain, features/schedule/lib/predecessor-labels, features/workshop/lib/header-rules, features/schedule/lib/weight-consistency, features/schedule/lib/weighted-progress
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { fetchAllProjectTasks } from '@/features/schedule/services/schedule'

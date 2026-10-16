@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/zone-map-full-page.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (zone-map-full-page)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/components/zone-levels-field, features/supervisor/components/zone-map-svg, shared/components/ui/button, features/supervisor/lib/zone-session-storage
+ */
+
 'use client'
 
 'use client'
@@ -15,6 +23,9 @@ readProjectZones,
 readZoneMapViewSnapshot,
 type ZoneMapViewSnapshot,
 } from '@/features/supervisor/lib/zone-session-storage'
+import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+
+const t = getSiteSupervisorMessages('fa')
 
 export function ZoneMapFullPage({ zoneId }: { zoneId: string }) {
   const searchParams = useSearchParams()
@@ -57,7 +68,7 @@ export function ZoneMapFullPage({ zoneId }: { zoneId: string }) {
   if (!ready) {
     return (
       <p className="p-8 text-sm text-slate-600" dir="rtl" lang="fa">
-        در حال بارگذاری…
+        {t.loading}
       </p>
     )
   }
@@ -66,10 +77,10 @@ export function ZoneMapFullPage({ zoneId }: { zoneId: string }) {
     return (
       <div className="mx-auto max-w-lg space-y-4 p-8 text-center" dir="rtl" lang="fa">
         <p className="text-sm text-slate-700">
-          نقشه این زون در دسترس نیست. از صفحه زون‌بندی دوباره روی شمای نقشه کلیک کنید.
+          {t.zoneMapUnavailableLong}
         </p>
         <Button asChild variant="outline">
-          <Link href="/dashboard/site-supervisor?section=drawings">بازگشت به زون‌بندی</Link>
+          <Link href="/dashboard/site-supervisor?section=drawings">{t.backToZoning}</Link>
         </Button>
       </div>
     )
@@ -84,13 +95,13 @@ export function ZoneMapFullPage({ zoneId }: { zoneId: string }) {
           <div>
             <h1 className="text-base font-semibold text-slate-900">{zone.name}</h1>
             <p className="text-xs text-slate-500">
-              کد {zone.code?.trim() || '—'} · {drawing.title}
+              {t.codePrefix} {zone.code?.trim() || '—'} · {drawing.title}
             </p>
           </div>
           <Button asChild variant="outline" size="sm" className="gap-1.5">
             <Link href="/dashboard/site-supervisor?section=drawings">
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              بازگشت به زون‌بندی
+              {t.backToZoning}
             </Link>
           </Button>
         </div>
@@ -102,25 +113,25 @@ export function ZoneMapFullPage({ zoneId }: { zoneId: string }) {
             <ZoneMapCanvas drawing={drawing} zones={[zone]} highlightZoneId={zone.id} />
           </div>
           <p className="border-t border-slate-100 px-4 py-2 text-xs text-slate-500">
-            شمای نقشه — محدوده علامت‌گذاری‌شده
+            {t.mapSchemaRange}
           </p>
         </div>
 
         <dl className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-[11px] font-semibold text-slate-500">نام زون</dt>
+            <dt className="text-[11px] font-semibold text-slate-500">{t.zoneName}</dt>
             <dd className="font-semibold text-slate-900">{zone.name}</dd>
           </div>
           <div>
-            <dt className="text-[11px] font-semibold text-slate-500">کد زون</dt>
+            <dt className="text-[11px] font-semibold text-slate-500">{t.zoneCode}</dt>
             <dd className="font-mono font-semibold text-[#1e3a5f]">{zone.code?.trim() || '—'}</dd>
           </div>
           <div>
-            <dt className="text-[11px] font-semibold text-slate-500">نام پیمانکار زون</dt>
+            <dt className="text-[11px] font-semibold text-slate-500">{t.zoneContractor}</dt>
             <dd>{zone.contractor?.trim() || '—'}</dd>
           </div>
           <div className="sm:col-span-3">
-            <dt className="text-[11px] font-semibold text-slate-500">تراز زون</dt>
+            <dt className="text-[11px] font-semibold text-slate-500">{t.zoneLevel}</dt>
             <dd>{formatZoneLevels(zone.levels)}</dd>
           </div>
         </dl>

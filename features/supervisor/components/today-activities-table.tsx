@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/today-activities-table.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (today-activities-table)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/admin/components/shared, shared/components/ui/button, shared/components/ui/badge, features/schedule/components/task-status-badge, features/supervisor/components/traffic-light, features/supervisor/lib/types, shared/lib/i18n/site-supervisor, features/workshop/components/uom-display, shared/lib/utils
+ */
+
 'use client'
 
 import { MessageSquare } from 'lucide-react'
@@ -20,24 +28,22 @@ interface TodayActivitiesTableProps {
   onCreateInstruction: (activityId: string) => void
 }
 
-const plannedLabelsFa: Record<TodayActivity['planned_status'], string> = {
-  shouldStart: 'شروع',
-  shouldContinue: 'ادامه',
-  shouldFinish: 'پایان',
+function plannedLabelsOf(labels: SiteSupervisorMessages) {
+  return {
+    shouldStart: labels.plannedStart,
+    shouldContinue: labels.plannedContinue,
+    shouldFinish: labels.plannedFinish,
+  } as Record<TodayActivity['planned_status'], string>
 }
 
-const plannedLabelsEn: Record<TodayActivity['planned_status'], string> = {
-  shouldStart: 'Start',
-  shouldContinue: 'Continue',
-  shouldFinish: 'Finish',
-}
-
-const approvalLabelsFa: Record<string, string> = {
-  draft: 'پیش‌نویس',
-  pending_approval: 'در انتظار تأیید',
-  approved: 'تأیید شده',
-  rejected: 'رد شده',
-  change_requested: 'درخواست تغییر',
+function approvalLabelsOf(labels: SiteSupervisorMessages): Record<string, string> {
+  return {
+    draft: labels.approvalDraft,
+    pending_approval: labels.approvalPending,
+    approved: labels.approvalApproved,
+    rejected: labels.approvalRejected,
+    change_requested: labels.approvalChangeRequested,
+  }
 }
 
 export function TodayActivitiesTable({
@@ -48,7 +54,8 @@ export function TodayActivitiesTable({
   onOpenPackageProgress,
   onCreateInstruction,
 }: TodayActivitiesTableProps) {
-  const plannedLabels = isRtl ? plannedLabelsFa : plannedLabelsEn
+  const plannedLabels = plannedLabelsOf(labels)
+  const approvalLabels = approvalLabelsOf(labels)
 
   if (activities.length === 0) {
     return (
@@ -65,15 +72,15 @@ export function TodayActivitiesTable({
           <thead>
             <tr className="border-b text-muted-foreground">
               <th className="px-4 py-2 font-medium text-start">{labels.wbs}</th>
-              <th className="px-4 py-2 font-medium text-start">{isRtl ? 'فعالیت' : 'Activity'}</th>
+              <th className="px-4 py-2 font-medium text-start">{labels.activity}</th>
               <th className="px-4 py-2 font-medium text-start hidden md:table-cell">
-                {isRtl ? 'برنامه' : 'Plan'}
+                {labels.plan}
               </th>
-              <th className="px-4 py-2 font-medium text-start">{isRtl ? 'پیشرفت' : 'Progress'}</th>
+              <th className="px-4 py-2 font-medium text-start">{labels.progress}</th>
               <th className="px-4 py-2 font-medium text-start hidden lg:table-cell">
-                {isRtl ? 'آمادگی' : 'Readiness'}
+                {labels.readiness}
               </th>
-              <th className="px-4 py-2 font-medium text-end">{isRtl ? 'اقدامات' : 'Actions'}</th>
+              <th className="px-4 py-2 font-medium text-end">{labels.actions}</th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -108,7 +115,7 @@ export function TodayActivitiesTable({
                       {isPackage && a.approvalStatus ? (
                         <Badge variant="secondary" className="text-xs">
                           {isRtl
-                            ? approvalLabelsFa[a.approvalStatus] ?? a.approvalStatus
+                            ? approvalLabels[a.approvalStatus] ?? a.approvalStatus
                             : a.approvalStatus}
                         </Badge>
                       ) : null}

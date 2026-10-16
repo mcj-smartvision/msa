@@ -1,3 +1,11 @@
+/**
+ * @file features/storekeeper/services/inventory.ts
+ * @purpose سرویس داده — انبار، موجودی و حواله مصالح (inventory)
+ * @safe-to-edit CAREFUL
+ * @affects انبار، موجودی و حواله مصالح
+ * @depends-on features/storekeeper/lib/types
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
 ConfirmReceiptItem,

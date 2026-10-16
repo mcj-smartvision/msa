@@ -1,3 +1,11 @@
+/**
+ * @file app/(dashboard)/admin/projects/[projectId]/widgets/page.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (page)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/hooks/use-supabase, features/admin/services/admin, features/admin/components/shared, features/admin/components/widget-visibility-editor, shared/types/admin
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -11,6 +19,7 @@ upsertWidgetVisibility,
 import { PageHeader, LoadingBlock, ErrorBlock } from '@/features/admin/components/shared'
 import { WidgetVisibilityEditor } from '@/features/admin/components/widget-visibility-editor'
 import type { DashboardWidget, Position, PositionDashboardWidget } from '@/shared/types/admin'
+import { ADMIN_COPY } from '@/features/admin/config'
 
 export default function ProjectWidgetsPage({ params }: { params: { projectId: string } }) {
   const supabase = useSupabase()
@@ -38,7 +47,7 @@ export default function ProjectWidgetsPage({ params }: { params: { projectId: st
         setLoading(true)
         await loadData()
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری تنظیمات نمایش ناموفق بود')
+        if (!cancelled) setError(err instanceof Error ? err.message : ADMIN_COPY.loadWidgetsFailed)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -48,14 +57,14 @@ export default function ProjectWidgetsPage({ params }: { params: { projectId: st
     }
   }, [supabase, params.projectId])
 
-  if (loading) return <LoadingBlock label="در حال بارگذاری تنظیمات نمایش..." />
+  if (loading) return <LoadingBlock label={ADMIN_COPY.loadingWidgets} />
   if (error) return <ErrorBlock message={error} onRetry={() => window.location.reload()} />
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="نمایش داشبورد"
-        description="مشخص کنید کدام ویجت‌های داشبورد برای هر سمت قابل‌نمایش باشند."
+        title={ADMIN_COPY.widgetsTitle}
+        description={ADMIN_COPY.widgetsHint}
       />
 
       <WidgetVisibilityEditor

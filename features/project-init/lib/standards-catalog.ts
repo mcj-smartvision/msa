@@ -1,4 +1,12 @@
 /**
+ * @file features/project-init/lib/standards-catalog.ts
+ * @purpose منطق دامنه — راه‌اندازی پروژه (standards-catalog)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on nothing
+ */
+
+/**
  * Construction standards catalog for SitePilot AI compliance checks.
  * Each entry includes a stable `value` id used in the database and by AI to load the correct rule set.
  */

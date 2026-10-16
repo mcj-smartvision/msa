@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/layout/dashboard-header.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (dashboard-header)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/components/i18n/locale-provider, shared/lib/dashboard/role-nav, shared/components/brand/brand-logo, shared/components/layout/header-user-controls, shared/lib/utils, shared/lib/i18n/chrome
+ */
+
 'use client'
 
 import Link from 'next/link'
@@ -6,6 +14,7 @@ import { useLocale } from '@/shared/components/i18n/locale-provider'
 import type { RoleNavLink } from '@/shared/lib/dashboard/role-nav'
 import { BrandLogo } from '@/shared/components/brand/brand-logo'
 import { HeaderUserControls } from '@/shared/components/layout/header-user-controls'
+import { getChromeMessages } from '@/shared/lib/i18n/chrome'
 import { cn } from '@/shared/lib/utils'
 
 interface DashboardHeaderProps {
@@ -23,12 +32,13 @@ export function DashboardHeader({
 }: DashboardHeaderProps) {
   const { app } = useLocale()
   const pathname = usePathname()
+  const chrome = getChromeMessages('fa')
 
   const baseNav = isAdmin
     ? [
-        { href: '/admin', label: 'کنترل سنتر' },
-        { href: '/admin/members', label: 'اعضا' },
-        { href: '/admin/projects', label: 'پروژه‌ها' },
+        { href: '/admin', label: chrome.controlCenter },
+        { href: '/admin/members', label: chrome.members },
+        { href: '/admin/projects', label: chrome.projects },
       ]
     : []
 
@@ -46,7 +56,7 @@ export function DashboardHeader({
   const navItems = isAdmin
     ? [...adminNav, ...tailNav]
     : [
-        ...(roleNav.length > 0 ? roleNav : [{ href: '/dashboard', label: 'داشبورد' }]),
+        ...(roleNav.length > 0 ? roleNav : [{ href: '/dashboard', label: chrome.dashboard }]),
         ...tailNav,
       ]
 

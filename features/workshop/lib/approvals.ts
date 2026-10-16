@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/lib/approvals.ts
+ * @purpose منطق دامنه — بسته‌های اجرایی و تأیید کارگاه (approvals)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on nothing
+ */
+
 import { WorkshopError } from './domain'
 
 /** Temporary: save auto-approves packages; PM submit step disabled in UI */

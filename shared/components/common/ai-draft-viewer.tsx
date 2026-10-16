@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/common/ai-draft-viewer.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (ai-draft-viewer)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/components/ui/button, shared/components/ui/textarea, shared/components/ui/badge, shared/lib/common/ai-types
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'

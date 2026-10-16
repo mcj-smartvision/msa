@@ -1,7 +1,15 @@
+/**
+ * @file features/account/components/account-change-request-form.tsx
+ * @purpose کامپوننت UI — حساب کاربری (account-change-request-form)
+ * @safe-to-edit CAREFUL
+ * @affects حساب کاربری
+ * @depends-on features/account/lib/copy, shared/components/i18n/locale-provider, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/textarea, shared/components/ui/alert
+ */
+
 'use client'
 
 import { useState } from 'react'
-import { accountCopy } from '@/features/account/lib/copy'
+import { accountCopy } from '@/features/account/config'
 import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'

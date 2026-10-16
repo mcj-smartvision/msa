@@ -1,3 +1,11 @@
+/**
+ * @file features/project-store/lib/weekly-engine.ts
+ * @purpose منطق دامنه — ذخیره پیشرفت و overlay اعداد داشبورد (weekly-engine)
+ * @safe-to-edit CAREFUL
+ * @affects ذخیره پیشرفت و overlay اعداد داشبورد
+ * @depends-on features/supervisor/lib/progress-ledger, features/supervisor/lib/daily-report-activities, features/supervisor/lib/weekly-activity-progress, features/schedule/lib/week-commitment-windows, shared/lib/time/tehran
+ */
+
 import { isSiteWorkday, plannedProgressFrom, plannedWorkdays } from '@/features/supervisor/lib/progress-ledger'
 import type { DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
 import { cumulativeBefore, reportedDays, siteWeekStart } from '@/features/supervisor/lib/weekly-activity-progress'

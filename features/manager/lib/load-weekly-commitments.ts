@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/load-weekly-commitments.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (load-weekly-commitments)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on nothing
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
 buildWeeklyCommitments,

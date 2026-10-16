@@ -1,4 +1,14 @@
+/**
+ * @file features/admin/components/member-form.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (member-form)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/checkbox, shared/components/ui/card, features/admin/components/construction-role-select, shared/lib/auth/login-identifier, shared/lib/i18n/admin-member, shared/components/i18n/locale-provider, shared/types/admin
+ */
+
+
 'use client'
+import { ADMIN_MEMBER_FORM_COPY } from '@/features/admin/config'
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/shared/components/ui/button'
@@ -201,13 +211,13 @@ export function MemberForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="member-personnel-code">کد پرسنلی</Label>
+            <Label htmlFor="member-personnel-code">{ADMIN_MEMBER_FORM_COPY.personnelCode}</Label>
             <Input
               id="member-personnel-code"
               value={personnelCode}
               onChange={(e) => setPersonnelCode(e.target.value)}
               className="h-11 font-mono"
-              placeholder="مثلاً 1403-012"
+              placeholder={ADMIN_MEMBER_FORM_COPY.personnelPlaceholder}
             />
           </div>
 

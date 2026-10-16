@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/components/incidents-page.tsx
+ * @purpose کامپوننت UI — ایمنی، بهداشت و محیط زیست (incidents-page)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on features/hse/components/badges, features/hse/components/format, features/hse/components/ui, shared/components/ui/input, shared/components/ui/select, features/hse/lib/mock-data, features/hse/lib/nav, features/hse/lib/types, features/hse/config
+ */
+
 'use client'
 
 import { useMemo, useState } from 'react'
@@ -17,6 +25,7 @@ SelectValue,
 import { getCamera, getZone, HSE_INCIDENTS } from '@/features/hse/lib/mock-data'
 import { HSE_BASE } from '@/features/hse/lib/nav'
 import type { IncidentStatus, Severity } from '@/features/hse/lib/types'
+import { HSE_COMMON_COPY, HSE_INCIDENTS_COPY } from '@/features/hse/config'
 
 const SEVERITIES: Array<Severity | 'all'> = ['all', 'critical', 'high', 'medium', 'low']
 const STATUSES: Array<IncidentStatus | 'all'> = [
@@ -58,13 +67,13 @@ export function IncidentsPage() {
   return (
     <div className="space-y-4" dir="rtl" lang="fa">
       <HsePageHeader
-        title="حوادث"
-        description="فهرست قابل جستجوی همه تشخیص‌های ایمنی دوربین برای این پروژه."
+        title={HSE_INCIDENTS_COPY.title}
+        description={HSE_INCIDENTS_COPY.description}
       />
 
       <Panel
-        title="ثبت حوادث"
-        description={`${rows.length} رکورد`}
+        title={HSE_INCIDENTS_COPY.panelTitle}
+        description={HSE_INCIDENTS_COPY.recordCount(rows.length)}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
@@ -72,30 +81,30 @@ export function IncidentsPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="جستجوی کد، عنوان، زون…"
+                placeholder={HSE_INCIDENTS_COPY.searchPlaceholder}
                 className="h-8 w-[200px] pr-8 text-xs"
               />
             </div>
             <Select value={severity} onValueChange={(v) => setSeverity(v as Severity | 'all')}>
               <SelectTrigger className="h-8 w-[130px] text-xs">
-                <SelectValue placeholder="شدت" />
+                <SelectValue placeholder={HSE_COMMON_COPY.severity} />
               </SelectTrigger>
               <SelectContent>
                 {SEVERITIES.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {s === 'all' ? 'همه شدت‌ها' : severityLabel[s]}
+                    {s === 'all' ? HSE_COMMON_COPY.allSeverities : severityLabel[s]}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={(v) => setStatus(v as IncidentStatus | 'all')}>
               <SelectTrigger className="h-8 w-[150px] text-xs">
-                <SelectValue placeholder="وضعیت" />
+                <SelectValue placeholder={HSE_COMMON_COPY.status} />
               </SelectTrigger>
               <SelectContent>
                 {STATUSES.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {s === 'all' ? 'همه وضعیت‌ها' : statusLabel[s]}
+                    {s === 'all' ? HSE_COMMON_COPY.allStatuses : statusLabel[s]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -104,20 +113,20 @@ export function IncidentsPage() {
         }
       >
         {rows.length === 0 ? (
-          <EmptyRow>هیچ حادثه‌ای با پالایش فعلی مطابقت ندارد.</EmptyRow>
+          <EmptyRow>{HSE_INCIDENTS_COPY.empty}</EmptyRow>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-[11px] tracking-wide text-slate-500">
-                  <th className="pb-2 pl-3 font-semibold">کد</th>
-                  <th className="pb-2 pl-3 font-semibold">عنوان</th>
-                  <th className="pb-2 pl-3 font-semibold">شدت</th>
-                  <th className="pb-2 pl-3 font-semibold">وضعیت</th>
-                  <th className="pb-2 pl-3 font-semibold">زون</th>
-                  <th className="pb-2 pl-3 font-semibold">دوربین</th>
-                  <th className="pb-2 pl-3 font-semibold">اطمینان</th>
-                  <th className="pb-2 font-semibold">زمان تشخیص</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_COMMON_COPY.code}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_COMMON_COPY.title}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_COMMON_COPY.severity}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_COMMON_COPY.status}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_COMMON_COPY.zone}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_COMMON_COPY.camera}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_COMMON_COPY.confidence}</th>
+                  <th className="pb-2 font-semibold">{HSE_COMMON_COPY.detectedAt}</th>
                 </tr>
               </thead>
               <tbody>

@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/drawing-file-preview.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (drawing-file-preview)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/technical-office/lib/drawings-shared, features/qc/engine/drawing-file, features/qc/engine/pdfjs, shared/lib/utils
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -5,7 +13,11 @@ import type { DrawingFormat } from '@/features/technical-office/lib/drawings-sha
 import { projectDrawingPreviewPath } from '@/features/technical-office/lib/drawings-shared'
 import { fetchDrawingBytes, sniffDrawingKind } from '@/features/qc/engine/drawing-file'
 import { renderPdfPage } from '@/features/qc/engine/pdfjs'
+import { DRAWING_PREVIEW_COPY } from '@/features/supervisor/config'
 import { cn } from '@/shared/lib/utils'
+import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+
+const DRAWING_FALLBACK = getSiteSupervisorMessages('fa').drawingFallback
 
 /** کیفیت سریع برای علامت‌گذاری — ابتدا نمایش، بعد ارتقا */
 const MARKING_QUICK_DIM = 640
@@ -270,10 +282,8 @@ export function DrawingFilePreview({
           )}
           style={blockPointer}
         >
-          <p className="font-medium text-slate-800">پیش‌نمایش DWG در مرورگر پشتیبانی نمی‌شود</p>
-          <p className="text-xs text-slate-500">
-            فایل بارگذاری‌شده ذخیره شده — برای زون‌بندی از نقشه PDF استفاده کنید.
-          </p>
+          <p className="font-medium text-slate-800">{DRAWING_PREVIEW_COPY.dwgUnsupported}</p>
+          <p className="text-xs text-slate-500">{DRAWING_PREVIEW_COPY.dwgHint}</p>
         </div>
       )
     }
@@ -287,7 +297,7 @@ export function DrawingFilePreview({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={rasterSrc}
-            alt={title ?? 'نقشه'}
+            alt={title ?? DRAWING_FALLBACK}
             className={mediaClass}
             style={blockPointer}
             draggable={false}
@@ -303,7 +313,7 @@ export function DrawingFilePreview({
               className="absolute bottom-2 left-2 rounded-md bg-white/90 px-2 py-1 text-[10px] text-slate-600 shadow-sm"
               style={blockPointer}
             >
-              در حال بهبود کیفیت…
+              {DRAWING_PREVIEW_COPY.improvingQuality}
             </div>
           ) : null}
         </div>
@@ -318,7 +328,7 @@ export function DrawingFilePreview({
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={src}
-        alt={title ?? 'نقشه'}
+        alt={title ?? DRAWING_FALLBACK}
         className={cn(mediaClass, 'object-contain')}
         style={blockPointer}
         draggable={false}
@@ -334,7 +344,7 @@ export function DrawingFilePreview({
       )}
       style={blockPointer}
     >
-      <p className="font-medium text-slate-800">پیش‌نمایش در دسترس نیست</p>
+      <p className="font-medium text-slate-800">{DRAWING_PREVIEW_COPY.previewUnavailable}</p>
     </div>
   )
 }

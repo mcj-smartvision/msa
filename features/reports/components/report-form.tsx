@@ -1,3 +1,11 @@
+/**
+ * @file features/reports/components/report-form.tsx
+ * @purpose کامپوننت UI — گزارش‌ها و بایگانی (report-form)
+ * @safe-to-edit CAREFUL
+ * @affects گزارش‌ها و بایگانی
+ * @depends-on features/reports/hooks/use-reports, shared/components/ui/button, shared/components/ui/label, shared/components/ui/textarea, shared/components/ui/card, shared/components/ui/progress, shared/components/ui/alert, shared/components/ui/select, features/admin/components/shared, shared/components/ui/skeleton
+ */
+
 'use client'
 
 import { useRef, useState } from 'react'
@@ -13,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PageHeader } from '@/features/admin/components/shared'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import { Camera, Package, AlertTriangle, Upload, FileText } from 'lucide-react'
+import { REPORTS_COPY as R } from '@/features/reports/config'
 
 export function ReportForm() {
   const router = useRouter()
@@ -37,8 +46,8 @@ export function ReportForm() {
   return (
     <div className="max-w-3xl mx-auto space-y-6" dir="rtl">
       <PageHeader
-        title="ثبت گزارش کارگاه"
-        description="گزارش روزانه، مصالح، موانع و عکس — برای تحلیل هوشمند و آرشیو مدیریتی"
+        title={R.formTitle}
+        description={R.formHint}
       />
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -46,13 +55,13 @@ export function ReportForm() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              گزارش روزانه
+              {R.dailyCard}
             </CardTitle>
-            <CardDescription>خلاصه کارهای انجام‌شده و وضعیت کلی امروز</CardDescription>
+            <CardDescription>{R.dailyCardHint}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>پروژه *</Label>
+              <Label>{R.projectRequired}</Label>
               {projectsLoading ? (
                 <Skeleton className="h-10 w-full" />
               ) : projectsError ? (
@@ -61,12 +70,12 @@ export function ReportForm() {
                 </Alert>
               ) : projects.length === 0 ? (
                 <Alert>
-                  <AlertDescription>پروژه‌ای یافت نشد.</AlertDescription>
+                  <AlertDescription>{R.noProjects}</AlertDescription>
                 </Alert>
               ) : (
                 <Select value={projectId} onValueChange={setProjectId} disabled={isBusy}>
                   <SelectTrigger>
-                    <SelectValue placeholder="انتخاب پروژه" />
+                    <SelectValue placeholder={R.selectProject} />
                   </SelectTrigger>
                   <SelectContent>
                     {projects.map((p) => (
@@ -80,7 +89,7 @@ export function ReportForm() {
             </div>
             <Textarea
               rows={4}
-              placeholder="امروز چه کارهایی انجام شد؟ پیشرفت، نیرو، تجهیزات…"
+              placeholder={R.workPlaceholder}
               value={dailyNote}
               onChange={(e) => setDailyNote(e.target.value)}
               disabled={isBusy}
@@ -92,13 +101,13 @@ export function ReportForm() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Package className="h-5 w-5" />
-              لاگ مصالح
+              {R.materialsCard}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Textarea
               rows={3}
-              placeholder="دریافت، کمبود، ETA تحویل…"
+              placeholder={R.materialsPlaceholder}
               value={materialLog}
               onChange={(e) => setMaterialLog(e.target.value)}
               disabled={isBusy}
@@ -110,13 +119,13 @@ export function ReportForm() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <AlertTriangle className="h-5 w-5 text-amber-600" />
-              موانع و تأخیرها
+              {R.blockersCard}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <Textarea
               rows={3}
-              placeholder="علت توقف، مدت تأخیر، مسئول پیگیری…"
+              placeholder={R.blockersPlaceholder}
               value={blockers}
               onChange={(e) => setBlockers(e.target.value)}
               disabled={isBusy}
@@ -128,13 +137,13 @@ export function ReportForm() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Camera className="h-5 w-5" />
-              عکس و پیوست
+              {R.attachCard}
             </CardTitle>
-            <CardDescription>عکس کارگاه برای تحلیل AI الزامی است</CardDescription>
+            <CardDescription>{R.attachHint}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="photo">عکس کارگاه *</Label>
+              <Label htmlFor="photo">{R.photoRequired}</Label>
               <input
                 ref={fileInputRef}
                 id="photo"
@@ -147,7 +156,7 @@ export function ReportForm() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="doc">سند / PDF (اختیاری)</Label>
+              <Label htmlFor="doc">{R.docOptional}</Label>
               <input
                 id="doc"
                 type="file"
@@ -174,17 +183,17 @@ export function ReportForm() {
         )}
         {state.status === 'error' && state.error && (
           <Alert variant="destructive">
-            <AlertTitle>خطا</AlertTitle>
+            <AlertTitle>{R.errorTitle}</AlertTitle>
             <AlertDescription>{state.error}</AlertDescription>
           </Alert>
         )}
 
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={!projectId || !selectedFile || isBusy}>
-            {isBusy ? 'در حال پردازش…' : 'آپلود و تحلیل'}
+            {isBusy ? R.processing : R.uploadAnalyze}
           </Button>
           <Button type="button" variant="outline" disabled={isBusy} onClick={() => reset()}>
-            پاک کردن
+            {R.clear}
           </Button>
         </div>
       </form>

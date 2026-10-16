@@ -1,3 +1,11 @@
+/**
+ * @file features/project-manager/lib/plan-compliance.ts
+ * @purpose منطق دامنه — اتاق فرمان مدیر پروژه و کارتابل (plan-compliance)
+ * @safe-to-edit CAREFUL
+ * @affects اتاق فرمان مدیر پروژه و کارتابل
+ * @depends-on features/schedule/lib/dates, features/schedule/lib/leaf-activities, features/schedule/lib/planned-progress, features/schedule/lib/task-view-date, features/schedule/lib/wbs-utils, shared/types/schedule
+ */
+
 import { diffDaysIso, toIsoDateOnly } from '@/features/schedule/lib/dates'
 import { taskBaselineDates } from '@/features/schedule/lib/leaf-activities'
 import { plannedPercentInWindow } from '@/features/schedule/lib/planned-progress'

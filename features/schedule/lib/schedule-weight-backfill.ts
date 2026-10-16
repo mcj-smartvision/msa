@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/schedule-weight-backfill.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (schedule-weight-backfill)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/msp-import, features/schedule/lib/schedule-files
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { parseMspXml } from '@/features/schedule/lib/msp-import'
 import {

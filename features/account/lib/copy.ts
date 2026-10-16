@@ -1,5 +1,14 @@
+/**
+ * @file features/account/lib/copy.ts
+ * @purpose منطق دامنه — حساب کاربری (copy)
+ * @safe-to-edit CAREFUL
+ * @affects حساب کاربری
+ * @depends-on nothing
+ */
+
 export function accountCopy(fa: boolean) {
   return {
+    user: fa ? 'کاربر' : 'User',
     menuAria: fa ? 'منوی حساب کاربری' : 'Account menu',
     profile: fa ? 'پروفایل' : 'Profile',
     changeRequest: fa ? 'درخواست تغییر' : 'Change request',
@@ -54,8 +63,17 @@ export function accountCopy(fa: boolean) {
     cancel: fa ? 'انصراف' : 'Cancel',
     loadError: fa ? 'بارگذاری اطلاعات انجام نشد.' : 'Could not load account details.',
     positions: fa ? 'سمت‌ها' : 'Roles',
+    listSep: fa ? '، ' : ', ',
   }
 }
+
+export const SETTINGS_PAGE_COPY = {
+  title: 'تنظیمات حساب',
+  description: 'رمز ورود خود را تغییر دهید. ادمین همچنان آخرین رمزی را که برای شما تنظیم کرده می‌بیند.',
+  calendar: 'تقویم',
+  calendarHint: 'تقویم نمایش تاریخ را از اینجا تغییر دهید.',
+  listSep: '، ',
+} as const
 
 export type AccountSection = 'profile' | 'edit' | 'password' | 'change-request' | 'logout'
 

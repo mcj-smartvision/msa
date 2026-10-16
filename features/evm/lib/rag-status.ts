@@ -1,3 +1,11 @@
+/**
+ * @file features/evm/lib/rag-status.ts
+ * @purpose منطق دامنه — ارزش کسب‌شده (CPI، SPI، EAC) (rag-status)
+ * @safe-to-edit CAREFUL
+ * @affects ارزش کسب‌شده (CPI، SPI، EAC)
+ * @depends-on nothing
+ */
+
 export type RagStatus = 'GREEN' | 'AMBER' | 'RED'
 
 export interface RagThresholds {

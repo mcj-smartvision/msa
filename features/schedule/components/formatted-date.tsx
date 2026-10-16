@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/components/formatted-date.tsx
+ * @purpose کامپوننت UI — زمان‌بندی، WBS و گانت (formatted-date)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/dates, features/schedule/hooks/use-schedule-calendar
+ */
+
 'use client'
 
 import { formatScheduleDate, formatScheduleDateTime } from '@/features/schedule/lib/dates'

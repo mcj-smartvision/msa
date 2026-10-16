@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/components/sections/standards-location.tsx
+ * @purpose کامپوننت UI — راه‌اندازی پروژه (standards-location)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on features/compliance/lib/catalog, features/project-init/lib/constants, shared/components/ui/checkbox, shared/components/ui/label, features/project-init/lib/schema
+ */
+
 'use client'
 
 import { useEffect, useMemo } from 'react'

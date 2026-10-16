@@ -1,3 +1,11 @@
+/**
+ * @file features/reports/hooks/use-reports.ts
+ * @purpose هوک — گزارش‌ها و بایگانی (use-reports)
+ * @safe-to-edit CAREFUL
+ * @affects گزارش‌ها و بایگانی
+ * @depends-on shared/hooks/use-supabase, shared/types, features/reports/services/reports
+ */
+
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'

@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/run-project-cpm.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (run-project-cpm)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule, features/schedule/lib/cpm-calculate, features/schedule/lib/predecessor-format, features/schedule/lib/dates, features/schedule/lib/run-float-alerts, features/schedule/lib/float-alerts, features/schedule/lib/milestone-forecast, features/schedule/lib/persist-progress-pace
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { TaskRelationType } from '@/shared/types/schedule'
 import {

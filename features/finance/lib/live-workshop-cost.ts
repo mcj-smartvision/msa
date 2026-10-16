@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/live-workshop-cost.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (live-workshop-cost)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/schedule/lib/monthly-deducted-weight, features/schedule/lib/dates
+ */
+
 import { toGregorian, toJalaali } from 'jalaali-js'
 import { inclusiveDayCount } from '@/features/schedule/lib/monthly-deducted-weight'
 import { toIsoDateOnly } from '@/features/schedule/lib/dates'

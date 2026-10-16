@@ -1,3 +1,11 @@
+/**
+ * @file app/api/manager/cumulative-progress/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, shared/lib/supabase/service, features/site-ops/lib/auth, features/site-ops/domain/errors, features/manager/lib/access, features/schedule/lib/dates, features/project-controls/server/get-explained-cumulative-progress, features/workshop/lib/service
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { createServiceClient } from '@/shared/lib/supabase/service'

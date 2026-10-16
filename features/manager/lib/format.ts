@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/format.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (format)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/schedule/lib/dates, shared/lib/time/jalali-month
+ */
+
 import { formatScheduleDate } from '@/features/schedule/lib/dates'
 import { latinDigits } from '@/shared/lib/time/jalali-month'
 

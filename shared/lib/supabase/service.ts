@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/supabase/service.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (service)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 import { createClient } from '@supabase/supabase-js'
 
 export function createServiceClient() {

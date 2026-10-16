@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/load-cost-estimate.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (load-cost-estimate)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/evm/lib/load-project-evm, features/finance/lib/live-workshop-cost, features/finance/lib/load-live-cost-inputs, features/project-controls/lib/controls-snapshot, features/project-controls/lib/earned-schedule, features/project-controls/lib/kpis, features/schedule/lib/progress-history, features/schedule/lib/wbs-utils, features/schedule/lib/dates, features/supervisor/lib/daily-report-activities
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadProjectEvm } from '@/features/evm/lib/load-project-evm'
 import { buildLiveWorkshopCostModel } from '@/features/finance/lib/live-workshop-cost'

@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/engine/note-markers.ts
+ * @purpose منطق دامنه — کنترل کیفیت و عدم انطباق (note-markers)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on nothing
+ */
+
 export const QC_REJECTED_AT_MARKER = 'QC_REJECTED_AT'
 export const QC_APPROVED_AT_MARKER = 'QC_APPROVED_AT'
 export const QC_RESUBMIT_MARKER = 'QC_RESUBMIT'

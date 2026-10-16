@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/predecessor-format.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (predecessor-format)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule
+ */
+
 import type { TaskRelationType } from '@/shared/types/schedule'
 
 /** MSP lag_duration is stored in minutes (LinkLag tenths ÷ 10). */

@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/employer-purchases-service.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (employer-purchases-service)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/schedule/lib/wbs-utils, features/workshop/lib/domain, features/workshop/lib/service, features/finance/lib/employer-purchases
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { compareWbs } from '@/features/schedule/lib/wbs-utils'
 import { WorkshopError } from '@/features/workshop/lib/domain'

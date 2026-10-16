@@ -1,4 +1,14 @@
+/**
+ * @file features/admin/components/control-center-details-context.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (control-center-details-context)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/hooks/use-supabase, features/admin/services/admin, features/admin/lib/control-center, shared/lib/project/project-cookie, shared/types/admin
+ */
+
+
 'use client'
+import { ADMIN_CONTEXT_COPY } from '@/features/admin/config'
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSupabase } from '@/shared/hooks/use-supabase'
@@ -95,7 +105,7 @@ export function ControlCenterDataProvider({ children }: { children: ReactNode })
           setError(null)
         }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری داشبورد ناموفق بود')
+        if (!cancelled) setError(err instanceof Error ? err.message : ADMIN_CONTEXT_COPY.loadDashboardFailed)
       } finally {
         if (!cancelled) setLoading(false)
       }

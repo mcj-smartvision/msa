@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/access.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (access)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/admin/lib/access, features/site-ops/lib/auth, features/site-ops/domain/errors, features/schedule/lib/access, shared/lib/time/tehran
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { isSystemAdmin } from '@/features/admin/lib/access'
 import { loadMemberPositionKeys } from '@/features/site-ops/lib/auth'

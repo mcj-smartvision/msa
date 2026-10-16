@@ -1,3 +1,11 @@
+/**
+ * @file app/(account)/account/profile/page.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (page)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on features/account/components/account-page-shell, features/account/components/account-profile-view, features/account/lib/copy, shared/components/i18n/locale-provider
+ */
+
 'use client'
 
 import { AccountPageShell } from '@/features/account/components/account-page-shell'

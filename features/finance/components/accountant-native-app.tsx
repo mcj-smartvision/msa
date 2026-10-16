@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/components/accountant-native-app.tsx
+ * @purpose کامپوننت UI — حسابداری، هزینه،overhead و صورت‌وضعیت (accountant-native-app)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on shared/components/i18n/locale-provider, features/schedule/components/formatted-date, features/schedule/components/schedule-date-input, features/admin/components/shared, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/badge, shared/components/ui/select, shared/components/common/modal-overlay
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -69,6 +77,7 @@ type FinancialCost,
 import { fetchVendorBills, buildVendorBillKpis, getUnpaidVendorBills } from '@/features/finance/services/vendor-bills'
 import { NativeAppBootstrap } from '@/features/finance/components/native-app-bootstrap'
 import { BrandLogo } from '@/shared/components/brand/brand-logo'
+import { ACCOUNTANT_NATIVE_COPY } from '@/features/finance/config'
 
 type TabId = 'home' | 'invoices' | 'expenses' | 'payables'
 
@@ -304,10 +313,10 @@ export function AccountantNativeApp({
   }
 
   const tabs: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
-    { id: 'home', label: isFa ? 'خلاصه' : 'Home', icon: LayoutDashboard },
-    { id: 'invoices', label: isFa ? 'صورت‌وضعیت' : 'Invoices', icon: FileText },
-    { id: 'expenses', label: isFa ? 'هزینه‌ها' : 'Expenses', icon: Receipt },
-    { id: 'payables', label: isFa ? 'بدهی' : 'Payables', icon: Wallet },
+    { id: 'home', label: isFa ? ACCOUNTANT_NATIVE_COPY.tabHome : 'Home', icon: LayoutDashboard },
+    { id: 'invoices', label: isFa ? ACCOUNTANT_NATIVE_COPY.tabInvoices : 'Invoices', icon: FileText },
+    { id: 'expenses', label: isFa ? ACCOUNTANT_NATIVE_COPY.tabExpenses : 'Expenses', icon: Receipt },
+    { id: 'payables', label: isFa ? ACCOUNTANT_NATIVE_COPY.tabPayables : 'Payables', icon: Wallet },
   ]
 
   const showHero = tab === 'home'
@@ -416,7 +425,7 @@ export function AccountantNativeApp({
                   },
                   {
                     code: 'ACC-KPI-06',
-                    label: isFa ? 'شکاف نقدینگی' : 'Cash Gap',
+                    label: isFa ? ACCOUNTANT_NATIVE_COPY.cashGap : 'Cash Gap',
                     value: cashGap,
                     icon: TrendingDown,
                   },

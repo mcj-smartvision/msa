@@ -1,3 +1,11 @@
+/**
+ * @file app/(dashboard)/dashboard/site-supervisor/inspection-drawings/page.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (page)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, shared/lib/dashboard/load-role-page, features/schedule/lib/access, features/qc/components/qc-office-drawings-page
+ */
+
 import { redirect } from 'next/navigation'
 import { createClient } from '@/shared/lib/supabase/server'
 import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'

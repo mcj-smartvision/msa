@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/progress-curve.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (progress-curve)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/evm/lib/metrics, features/evm/lib/load-project-evm, features/project-controls/lib/earned-schedule, features/project-controls/lib/pv-curve, features/project-controls/lib/ev-forecast, features/manager/lib/overview-types
+ */
+
 import { toGregorian, toJalaali } from 'jalaali-js'
 import { progressWeightOf, resolveProgressBasis, weightedPercents } from '@/features/evm/lib/metrics'
 import type { ProjectEvmActivityRow } from '@/features/evm/lib/load-project-evm'

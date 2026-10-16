@@ -1,3 +1,11 @@
+/**
+ * @file features/project-store/lib/snapshot-types.ts
+ * @purpose تعاریف نوع — ذخیره پیشرفت و overlay اعداد داشبورد (snapshot-types)
+ * @safe-to-edit YES
+ * @affects ذخیره پیشرفت و overlay اعداد داشبورد
+ * @depends-on features/evm/lib/metrics, features/evm/lib/load-project-evm, features/holidays/lib/types, features/schedule/lib/week-commitment-windows, features/supervisor/lib/daily-report-activities, features/workshop/lib/types
+ */
+
 import type { EvmBudgetBasis, EvmCostEntry } from '@/features/evm/lib/metrics'
 import type { ProjectEvmActivityRow } from '@/features/evm/lib/load-project-evm'
 import type { Holiday } from '@/features/holidays/lib/types'

@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/expense-duplicates.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (expense-duplicates)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/finance/lib/expense-types
+ */
+
 import type { AccountingDocument, DuplicateMatch } from '@/features/finance/lib/expense-types'
 
 export interface DuplicateCandidateInput {

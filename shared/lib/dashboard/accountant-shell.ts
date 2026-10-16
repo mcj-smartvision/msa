@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/dashboard/accountant-shell.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (accountant-shell)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/types/dashboard
+ */
+
 import type { DashboardUserContext } from '@/shared/types/dashboard'
 
 export const ACCOUNTANT_DESKTOP_PATH = '/dashboard/accountant'

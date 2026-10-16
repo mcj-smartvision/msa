@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/components/money-input.tsx
+ * @purpose کامپوننت UI — حسابداری، هزینه،overhead و صورت‌وضعیت (money-input)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on shared/components/ui/input, shared/components/i18n/locale-provider, features/finance/lib/money-input, shared/lib/utils
+ */
+
 'use client'
 
 import { Input } from '@/shared/components/ui/input'

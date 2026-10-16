@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/replace-task-predecessors.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (replace-task-predecessors)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/predecessor-format, features/workshop/lib/domain
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 DEFAULT_MSP_MINUTES_PER_DAY,

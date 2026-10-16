@@ -1,3 +1,11 @@
+/**
+ * @file shared/types/schedule-intelligence.ts
+ * @purpose تعاریف نوع — زیرساخت مشترک سامانه (schedule-intelligence)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 /** Schedule Intelligence — canonical deterministic schedule model (MSP XML → CPM → KPIs). */
 
 export type RelationType = 'FS' | 'SS' | 'FF' | 'SF'

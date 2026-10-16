@@ -1,3 +1,11 @@
+/**
+ * @file features/holidays/lib/types.ts
+ * @purpose تعاریف نوع — تقویم تعطیلات (types)
+ * @safe-to-edit YES
+ * @affects تقویم تعطیلات
+ * @depends-on nothing
+ */
+
 export type HolidayType = 'weekly' | 'official' | 'organizational'
 
 export const HOLIDAY_TYPE_LABELS: Record<HolidayType, string> = {

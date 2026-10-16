@@ -1,3 +1,11 @@
+/**
+ * @file shared/hooks/use-synced-project-id.ts
+ * @purpose هوک — زیرساخت مشترک سامانه (use-synced-project-id)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/lib/project/project-cookie
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'

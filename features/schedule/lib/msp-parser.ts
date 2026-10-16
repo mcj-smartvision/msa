@@ -1,4 +1,12 @@
 /**
+ * @file features/schedule/lib/msp-parser.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (msp-parser)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/msp-import, features/schedule/lib/msp-weight, features/schedule/lib/cpm-calculate, features/schedule/lib/dates
+ */
+
+/**
  * MSP XML import parser (بخش 2).
  *
  * Uses fast-xml-parser (structured XML library) — not hand-edited XML strings.

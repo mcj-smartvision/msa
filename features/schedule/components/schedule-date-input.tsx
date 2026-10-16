@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/components/schedule-date-input.tsx
+ * @purpose کامپوننت UI — زمان‌بندی، WBS و گانت (schedule-date-input)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/components/ui/input, shared/components/ui/label, features/schedule/hooks/use-schedule-calendar, shared/components/i18n/locale-provider, features/schedule/lib/dates, features/schedule/config
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -6,6 +14,7 @@ import { Label } from '@/shared/components/ui/label'
 import { useScheduleCalendar } from '@/features/schedule/hooks/use-schedule-calendar'
 import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { isoToCalendarInput, parseScheduleDateInput } from '@/features/schedule/lib/dates'
+import { SCHEDULE_DATE_COPY } from '@/features/schedule/config'
 
 interface ScheduleDateInputProps {
   id?: string
@@ -53,10 +62,10 @@ export function ScheduleDateInput({
   const calendarLabel =
     calendar === 'jalali'
       ? fa
-        ? 'تاریخ (هجری شمسی)'
+        ? SCHEDULE_DATE_COPY.jalali
         : 'Date (Solar Hijri)'
       : fa
-        ? 'تاریخ (میلادی)'
+        ? SCHEDULE_DATE_COPY.gregorian
         : 'Date (Gregorian)'
 
   if (calendar === 'gregorian') {
@@ -107,11 +116,11 @@ export function ScheduleDateInput({
       />
       <p className="text-[10px] text-muted-foreground mt-1">
         {calendarLabel}
-        {fa ? ' — مثال: 1403/07/14' : ' — e.g. 1403/07/14'}
+        {fa ? SCHEDULE_DATE_COPY.jalaliExample : ' — e.g. 1403/07/14'}
       </p>
       {invalid ? (
         <p className="text-xs text-destructive mt-1">
-          {fa ? 'فرمت: 1403/07/14' : 'Format: 1403/07/14'}
+          {fa ? SCHEDULE_DATE_COPY.jalaliFormat : 'Format: 1403/07/14'}
         </p>
       ) : null}
     </div>

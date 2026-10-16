@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/refresh-after-progress.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (refresh-after-progress)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/persist-parent-progress, features/schedule/lib/persist-progress-forecast
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { persistParentProgressRollup } from '@/features/schedule/lib/persist-parent-progress'
 import { persistProgressForecast } from '@/features/schedule/lib/persist-progress-forecast'

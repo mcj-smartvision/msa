@@ -1,3 +1,11 @@
+/**
+ * @file app/api/site-ops/cre-runs/import-fixture/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/site-ops/lib/service, features/site-ops/lib/http
+ */
+
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { NextRequest, NextResponse } from 'next/server'

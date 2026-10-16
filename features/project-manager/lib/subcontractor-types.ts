@@ -1,3 +1,11 @@
+/**
+ * @file features/project-manager/lib/subcontractor-types.ts
+ * @purpose تعاریف نوع — اتاق فرمان مدیر پروژه و کارتابل (subcontractor-types)
+ * @safe-to-edit YES
+ * @affects اتاق فرمان مدیر پروژه و کارتابل
+ * @depends-on nothing
+ */
+
 export type SubcontractStatus = 'draft' | 'active' | 'completed' | 'cancelled'
 
 export interface ProjectSubcontractor {

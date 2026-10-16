@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/domain/errors.ts
+ * @purpose منطق دامنه — عملیات کارگاه، دستورکار و برنامه روزانه (errors)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on nothing
+ */
+
 export type SiteOpsErrorCode =
   | 'CRE_NOT_READY'
   | 'TASK_NOT_PROMOTABLE'

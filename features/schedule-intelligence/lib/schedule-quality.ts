@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule-intelligence/lib/schedule-quality.ts
+ * @purpose منطق دامنه — تحلیل کیفیت برنامه و آپلود MSP (schedule-quality)
+ * @safe-to-edit CAREFUL
+ * @affects تحلیل کیفیت برنامه و آپلود MSP
+ * @depends-on shared/types/schedule-intelligence, features/schedule-intelligence/lib/date-utils, features/schedule-intelligence/lib/duration-utils
+ */
+
 import type {
 ActivityStatus,
 NormalizedSchedule,
@@ -8,6 +16,7 @@ StartTimingLabel,
 } from '@/shared/types/schedule-intelligence'
 import { calendarDaysBetween, workingDaysBetween } from '@/features/schedule-intelligence/lib/date-utils'
 import { durationDaysFromMinutes } from '@/features/schedule-intelligence/lib/duration-utils'
+import { SCHEDULE_LIB_COPY as L } from '@/features/schedule-intelligence/lib/config'
 
 /** Classifies a task from its percent complete and actual dates. */
 export function deriveActivityStatus(task: ScheduleTask): ActivityStatus {
@@ -79,7 +88,7 @@ export function validateScheduleQuality(
       warnings.push({
         code: 'ZERO_DURATION',
         severity: 'info',
-        message: 'فعالیت با مدت صفر (احتمالاً milestone)',
+        message: L.zeroDuration,
         taskUid: task.uid,
         taskName: task.name,
       })
@@ -92,7 +101,7 @@ export function validateScheduleQuality(
         warnings.push({
           code: 'FINISH_BEFORE_START',
           severity: 'error',
-          message: 'تاریخ پایان قبل از تاریخ شروع',
+          message: L.finishBeforeStart,
           taskUid: task.uid,
           taskName: task.name,
         })
@@ -103,7 +112,7 @@ export function validateScheduleQuality(
       warnings.push({
         code: 'INVALID_PERCENT',
         severity: 'warning',
-        message: 'درصد پیشرفت نامعتبر',
+        message: L.invalidPercent,
         taskUid: task.uid,
         taskName: task.name,
       })
@@ -113,7 +122,7 @@ export function validateScheduleQuality(
       warnings.push({
         code: 'OPEN_START',
         severity: 'info',
-        message: 'فعالیت بدون پیش‌نیاز (شروع باز)',
+        message: L.openStart,
         taskUid: task.uid,
         taskName: task.name,
       })
@@ -123,7 +132,7 @@ export function validateScheduleQuality(
       warnings.push({
         code: 'OPEN_FINISH',
         severity: 'info',
-        message: 'فعالیت بدون پس‌نیاز (پایان باز)',
+        message: L.openFinish,
         taskUid: task.uid,
         taskName: task.name,
       })
@@ -133,7 +142,7 @@ export function validateScheduleQuality(
       warnings.push({
         code: 'HAS_CONSTRAINT',
         severity: 'info',
-        message: `محدودیت تاریخ (نوع ${task.constraintType})`,
+        message: L.hasConstraint(task.constraintType),
         taskUid: task.uid,
         taskName: task.name,
       })
@@ -146,7 +155,7 @@ export function validateScheduleQuality(
       warnings.push({
         code: 'DUPLICATE_DEPENDENCY',
         severity: 'warning',
-        message: 'وابستگی تکراری',
+        message: L.duplicateDependency,
         details: key,
       })
     }
@@ -157,9 +166,9 @@ export function validateScheduleQuality(
     warnings.push({
       code: 'CALENDAR_UNAVAILABLE',
       severity: 'warning',
-      message:
-        'تقویم کامل پروژه در دسترس نیست — روزهای کاری با پیش‌فرض ' +
-        `${durationDaysFromMinutes(config.minutesPerDay, config.minutesPerDay)} ساعت/روز محاسبه می‌شوند`,
+      message: L.calendarUnavailable(
+        String(durationDaysFromMinutes(config.minutesPerDay, config.minutesPerDay))
+      ),
     })
   }
 
@@ -191,7 +200,7 @@ export function applyActivityDerivedFields(
       schedule.warnings.push({
         code: 'REMAINING_DURATION_MISMATCH',
         severity: 'info',
-        message: 'اختلاف بین مدت مانده منبع و محاسبه‌شده',
+        message: L.remainingMismatch,
         taskUid: task.uid,
         taskName: task.name,
       })

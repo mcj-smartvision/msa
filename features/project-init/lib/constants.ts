@@ -1,4 +1,12 @@
 /**
+ * @file features/project-init/lib/constants.ts
+ * @purpose منطق دامنه — راه‌اندازی پروژه (constants)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on nothing
+ */
+
+/**
  * Data-driven option lists for the Project Initialization Form.
  * Update these arrays to change dropdown values without touching UI components.
  */

@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/lib/mock-data.ts
+ * @purpose منطق دامنه — ایمنی، بهداشت و محیط زیست (mock-data)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on features/hse/lib/types
+ */
+
 import type {
 AlertLogEntry,
 AlertRouting,

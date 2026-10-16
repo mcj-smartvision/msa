@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/package-progress-dialog.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (package-progress-dialog)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on shared/components/ui/button, shared/components/ui/label, shared/components/ui/input, shared/components/ui/textarea, features/supervisor/components/modal-overlay, features/supervisor/lib/types, shared/lib/i18n/site-supervisor, shared/components/common/voice-to-text-button, features/workshop/components/uom-display
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -27,7 +35,7 @@ export function PackageProgressDialog({
   activity,
   viewDate,
   labels,
-  locale,
+  locale: _locale,
   onSaved,
 }: PackageProgressDialogProps) {
   const [progress, setProgress] = useState(0)
@@ -62,13 +70,13 @@ export function PackageProgressDialog({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(data.error || (locale === 'fa' ? 'ثبت نشد' : 'Failed to save'))
+        throw new Error(data.error || labels.saveFailed)
       }
       setSuccess(true)
       onSaved()
       setTimeout(() => onClose(), 600)
     } catch (err) {
-      setError(err instanceof Error ? err.message : locale === 'fa' ? 'خطا' : 'Error')
+      setError(err instanceof Error ? err.message : labels.error)
     } finally {
       setLoading(false)
     }
@@ -128,18 +136,14 @@ export function PackageProgressDialog({
             rows={3}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder={
-              locale === 'fa'
-                ? 'توضیحات میدانی — با دکمه میکروفون صحبت کنید، AI به متن تبدیل می‌کند'
-                : 'Field notes — use the mic button for voice-to-text'
-            }
+            placeholder={labels.fieldNotesPlaceholder}
           />
         </div>
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         {success ? (
           <p className="text-sm text-emerald-700">
-            {locale === 'fa' ? 'پیشرفت ثبت شد.' : 'Progress saved.'}
+            {labels.progressSaved}
           </p>
         ) : null}
 

@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/components/manager-font.ts
+ * @purpose کامپوننت UI — داشبورد مدیر پروژه و KPI (manager-font)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on nothing
+ */
+
 import { Vazirmatn } from 'next/font/google'
 
 /**

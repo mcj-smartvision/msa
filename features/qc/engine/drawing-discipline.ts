@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/engine/drawing-discipline.ts
+ * @purpose منطق دامنه — کنترل کیفیت و عدم انطباق (drawing-discipline)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on nothing
+ */
+
 export const QC_DRAWING_DISCIPLINES = ['structure', 'architecture', 'electrical', 'mechanical'] as const
 
 export type QcDrawingDiscipline = (typeof QC_DRAWING_DISCIPLINES)[number]

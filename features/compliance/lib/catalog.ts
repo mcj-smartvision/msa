@@ -1,4 +1,12 @@
 /**
+ * @file features/compliance/lib/catalog.ts
+ * @purpose منطق دامنه — انطباق (catalog)
+ * @safe-to-edit CAREFUL
+ * @affects انطباق
+ * @depends-on nothing
+ */
+
+/**
  * Data-driven compliance catalog.
  * Add new countries by extending REGULATORY_REGIONS + REGION_BASE_STANDARDS.
  * Add construction-type refinements in TYPE_ADDITIONAL_STANDARDS.

@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/load-schedule-commitments.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (load-schedule-commitments)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/holidays/lib/load-holidays, features/holidays/lib/work-calendar, features/project-store/lib/load-rnc, features/schedule/lib/progress-history, features/schedule/lib/week-commitment-windows, features/schedule/lib/week-commitments, features/supervisor/lib/daily-report-activities, features/workshop/lib/service, shared/lib/time/tehran
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadHolidays } from '@/features/holidays/lib/load-holidays'
 import { siteWorkCalendar } from '@/features/holidays/lib/work-calendar'

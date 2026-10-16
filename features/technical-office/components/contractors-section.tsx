@@ -1,3 +1,11 @@
+/**
+ * @file features/technical-office/components/contractors-section.tsx
+ * @purpose کامپوننت UI — دفتر فنی (contractors-section)
+ * @safe-to-edit CAREFUL
+ * @affects دفتر فنی
+ * @depends-on shared/components/ui/button, shared/components/ui/card, shared/components/ui/input, shared/components/ui/label, features/schedule/components/schedule-date-input, shared/hooks/use-supabase, features/project-manager/lib/subcontractor-types, features/project-manager/services/subcontractors
+ */
+
 'use client'
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
@@ -29,6 +37,7 @@ updateSubcontractorContractIdentity,
 updateSubcontractorIdentity,
 uploadContractFile,
 } from '@/features/project-manager/services/subcontractors'
+import { CONTRACTORS_COPY } from '@/features/technical-office/config'
 import { ContractorActivitiesPanel } from './contractor-activities-panel'
 
 export function ContractorsSection({ projectId }: { projectId: string }) {
@@ -61,7 +70,7 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
       setRows(await fetchProjectSubcontractors(supabase, projectId))
     } catch (loadError) {
       setError(
-        loadError instanceof Error ? loadError.message : 'بارگذاری پیمانکاران ناموفق بود'
+        loadError instanceof Error ? loadError.message : CONTRACTORS_COPY.loadFailed
       )
     } finally {
       setLoading(false)
@@ -81,7 +90,7 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
       !contractNo.trim() ||
       !contractDate
     ) {
-      setError('همه فیلدهای مشخصات و تاریخ قرارداد الزامی هستند.')
+      setError(CONTRACTORS_COPY.fieldsRequired)
       return
     }
     if (
@@ -89,7 +98,7 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
       contractFile.type !== 'application/pdf' &&
       !contractFile.name.toLowerCase().endsWith('.pdf')
     ) {
-      setError('اگر فایل می‌گذارید باید PDF باشد.')
+      setError(CONTRACTORS_COPY.pdfOnly)
       return
     }
 
@@ -105,14 +114,14 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
         projectId,
         name: companyName.trim(),
         contactName: managerName,
-        notes: `مدیرعامل: ${managerName}`,
+        notes: CONTRACTORS_COPY.ceoNotes(managerName),
         createdBy: user?.id,
       })
       const contract = await createSubcontractorContract(supabase, {
         projectId,
         subcontractorId: contractor.id,
         contractNo: contractNo.trim(),
-        title: `قرارداد ${companyName.trim()}`,
+        title: CONTRACTORS_COPY.contractTitle(companyName.trim()),
         startDate: contractDate,
         status: 'active',
         createdBy: user?.id,
@@ -132,11 +141,11 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
       setContractDate('')
       setContractFile(null)
       setSuccess(
-        contractFile ? 'پیمانکار و فایل قرارداد با موفقیت ثبت شد.' : 'پیمانکار ثبت شد.'
+        contractFile ? CONTRACTORS_COPY.savedWithFile : CONTRACTORS_COPY.saved
       )
       await load()
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'ثبت پیمانکار ناموفق بود')
+      setError(saveError instanceof Error ? saveError.message : CONTRACTORS_COPY.saveFailed)
     } finally {
       setSaving(false)
     }
@@ -163,7 +172,7 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
       URL.revokeObjectURL(url)
     } catch (downloadError) {
       setError(
-        downloadError instanceof Error ? downloadError.message : 'دانلود قرارداد ناموفق بود'
+        downloadError instanceof Error ? downloadError.message : CONTRACTORS_COPY.downloadFailed
       )
     } finally {
       setDownloadingContractId(null)
@@ -193,7 +202,7 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
       !editContractDate ||
       !contract
     ) {
-      setError('اطلاعات مدیرعامل، شرکت، شماره و تاریخ قرارداد را کامل کنید.')
+      setError(CONTRACTORS_COPY.editFieldsRequired)
       return
     }
     if (
@@ -201,7 +210,7 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
       editContractFile.type !== 'application/pdf' &&
       !editContractFile.name.toLowerCase().endsWith('.pdf')
     ) {
-      setError('فایل جایگزین قرارداد باید PDF باشد.')
+      setError(CONTRACTORS_COPY.replacePdfOnly)
       return
     }
 
@@ -222,7 +231,7 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
           contractId: contract.id,
           contractNo: editContractNo,
           startDate: editContractDate,
-          title: `قرارداد ${editCompanyName.trim()}`,
+          title: CONTRACTORS_COPY.contractTitle(editCompanyName.trim()),
         }),
       ])
       if (editContractFile) {
@@ -234,10 +243,10 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
       }
       setEditingId(null)
       setEditContractFile(null)
-      setSuccess('اطلاعات پیمانکار ویرایش شد.')
+      setSuccess(CONTRACTORS_COPY.edited)
       await load()
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'ویرایش پیمانکار ناموفق بود')
+      setError(saveError instanceof Error ? saveError.message : CONTRACTORS_COPY.editFailed)
     } finally {
       setSaving(false)
     }
@@ -249,7 +258,7 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
         <CardHeader className="border-b bg-orange-50/60">
           <CardTitle className="flex items-center gap-2 text-base">
             <Building2 className="h-5 w-5 text-orange-600" />
-            ثبت پیمانکار جدید
+            {CONTRACTORS_COPY.newTitle}
           </CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto pt-5">
@@ -258,38 +267,38 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
             onSubmit={handleSubmit}
           >
               <div className="space-y-1.5">
-                <Label htmlFor="contractor-ceo-first-name">نام مدیرعامل</Label>
+                <Label htmlFor="contractor-ceo-first-name">{CONTRACTORS_COPY.ceoFirstName}</Label>
                 <Input
                   id="contractor-ceo-first-name"
                   value={firstName}
                   onChange={(event) => setFirstName(event.target.value)}
-                  placeholder="نام"
+                  placeholder={CONTRACTORS_COPY.firstNamePh}
                   disabled={saving}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="contractor-ceo-last-name">نام خانوادگی مدیرعامل</Label>
+                <Label htmlFor="contractor-ceo-last-name">{CONTRACTORS_COPY.ceoLastName}</Label>
                 <Input
                   id="contractor-ceo-last-name"
                   value={lastName}
                   onChange={(event) => setLastName(event.target.value)}
-                  placeholder="نام خانوادگی"
+                  placeholder={CONTRACTORS_COPY.lastNamePh}
                   disabled={saving}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="contractor-company-name">نام شرکت</Label>
+                <Label htmlFor="contractor-company-name">{CONTRACTORS_COPY.companyName}</Label>
                 <Input
                   id="contractor-company-name"
                   value={companyName}
                   onChange={(event) => setCompanyName(event.target.value)}
-                  placeholder="نام شرکت پیمانکار"
+                  placeholder={CONTRACTORS_COPY.companyPh}
                   disabled={saving}
                 />
               </div>
               <ScheduleDateInput
                 id="contractor-contract-date"
-                label="تاریخ قرارداد"
+                label={CONTRACTORS_COPY.contractDate}
                 valueIso={contractDate}
                 onChangeIso={setContractDate}
                 className="[&>p]:hidden"
@@ -297,17 +306,17 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
                 required
               />
               <div className="space-y-1.5">
-                <Label htmlFor="contractor-contract-no">شماره قرارداد</Label>
+                <Label htmlFor="contractor-contract-no">{CONTRACTORS_COPY.contractNo}</Label>
                 <Input
                   id="contractor-contract-no"
                   value={contractNo}
                   onChange={(event) => setContractNo(event.target.value)}
-                  placeholder="شماره قرارداد"
+                  placeholder={CONTRACTORS_COPY.contractNo}
                   disabled={saving}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="contractor-contract-file">آپلود قرارداد (اختیاری)</Label>
+                <Label htmlFor="contractor-contract-file">{CONTRACTORS_COPY.uploadOptional}</Label>
                 <Input
                   id="contractor-contract-file"
                   type="file"
@@ -322,7 +331,7 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
                 ) : (
                   <Plus className="me-2 h-4 w-4" />
                 )}
-                ثبت پیمانکار
+                {CONTRACTORS_COPY.submit}
               </Button>
 
             {error ? <p className="col-span-7 text-sm text-red-700">{error}</p> : null}
@@ -335,16 +344,16 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
 
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="text-base">پیمانکاران ثبت‌شده</CardTitle>
+          <CardTitle className="text-base">{CONTRACTORS_COPY.listTitle}</CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
           {loading ? (
             <p className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              در حال بارگذاری...
+              {CONTRACTORS_COPY.loading}
             </p>
           ) : rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">هنوز پیمانکاری ثبت نشده است.</p>
+            <p className="text-sm text-muted-foreground">{CONTRACTORS_COPY.empty}</p>
           ) : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {rows.map((row) => {
@@ -357,36 +366,36 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
                           <Input
                             value={editFirstName}
                             onChange={(event) => setEditFirstName(event.target.value)}
-                            placeholder="نام مدیرعامل"
+                            placeholder={CONTRACTORS_COPY.ceoFirstPh}
                             disabled={saving}
                           />
                           <Input
                             value={editLastName}
                             onChange={(event) => setEditLastName(event.target.value)}
-                            placeholder="نام خانوادگی مدیرعامل"
+                            placeholder={CONTRACTORS_COPY.ceoLastPh}
                             disabled={saving}
                           />
                           <Input
                             value={editCompanyName}
                             onChange={(event) => setEditCompanyName(event.target.value)}
-                            placeholder="نام شرکت"
+                            placeholder={CONTRACTORS_COPY.companyPhShort}
                             disabled={saving}
                           />
                           <Input
                             value={editContractNo}
                             onChange={(event) => setEditContractNo(event.target.value)}
-                            placeholder="شماره قرارداد"
+                            placeholder={CONTRACTORS_COPY.contractNo}
                             disabled={saving}
                           />
                           <ScheduleDateInput
-                            label="تاریخ قرارداد"
+                            label={CONTRACTORS_COPY.contractDate}
                             valueIso={editContractDate}
                             onChangeIso={setEditContractDate}
                             className="[&>p]:hidden"
                             disabled={saving}
                           />
                           <div className="space-y-1.5">
-                            <Label className="text-xs">تعویض فایل PDF (اختیاری)</Label>
+                            <Label className="text-xs">{CONTRACTORS_COPY.replacePdf}</Label>
                             <Input
                               type="file"
                               accept=".pdf,application/pdf"
@@ -409,7 +418,7 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
                             ) : (
                               <Save className="me-2 h-4 w-4" />
                             )}
-                            ذخیره ویرایش
+                            {CONTRACTORS_COPY.saveEdit}
                           </Button>
                           <Button
                             type="button"
@@ -419,7 +428,7 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
                             onClick={() => setEditingId(null)}
                           >
                             <X className="me-2 h-4 w-4" />
-                            انصراف
+                            {CONTRACTORS_COPY.cancel}
                           </Button>
                         </div>
                       </div>
@@ -437,17 +446,19 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
                             onClick={() => beginEdit(row)}
                           >
                             <Pencil className="me-1 h-3.5 w-3.5" />
-                            ویرایش
+                            {CONTRACTORS_COPY.edit}
                           </Button>
                         </div>
                         <p className="mt-2 flex items-center gap-2 text-sm text-slate-600">
                           <UserRound className="h-4 w-4" />
-                          مدیرعامل: {row.contact_name || '—'}
+                          {CONTRACTORS_COPY.ceoPrefix(row.contact_name || CONTRACTORS_COPY.dash)}
                         </p>
                         <p className="mt-1 flex items-center gap-2 text-sm text-slate-600">
                           <FileText className="h-4 w-4" />
-                          شماره قرارداد: {contract?.contract_no || '—'} · تاریخ:{' '}
-                          {contract?.start_date || '—'}
+                          {CONTRACTORS_COPY.contractMeta(
+                            contract?.contract_no || CONTRACTORS_COPY.dash,
+                            contract?.start_date || CONTRACTORS_COPY.dash
+                          )}
                         </p>
                         <div className="mt-3 grid grid-cols-2 gap-2">
                           {contract?.storage_path ? (
@@ -463,12 +474,12 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
                               ) : (
                                 <Download className="me-2 h-4 w-4" />
                               )}
-                              دانلود قرارداد PDF
+                              {CONTRACTORS_COPY.downloadPdf}
                             </Button>
                           ) : (
                           <p className="mt-1 flex items-center gap-2 text-sm text-slate-600">
                             <Upload className="h-4 w-4" />
-                            فایل قرارداد ثبت نشده
+                            {CONTRACTORS_COPY.noContractFile}
                           </p>
                           )}
                           <Button
@@ -484,7 +495,7 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
                             }
                           >
                             <ClipboardList className="me-1 h-4 w-4" />
-                            فعالیت‌ها
+                            {CONTRACTORS_COPY.activities}
                           </Button>
                         </div>
                       </>
@@ -499,7 +510,7 @@ export function ContractorsSection({ projectId }: { projectId: string }) {
               projectId={projectId}
               contractorId={activitiesContractorId}
               contractorName={
-                rows.find((row) => row.id === activitiesContractorId)?.name ?? 'پیمانکار'
+                rows.find((row) => row.id === activitiesContractorId)?.name ?? CONTRACTORS_COPY.contractorFallback
               }
               onClose={() => setActivitiesContractorId(null)}
             />

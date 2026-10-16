@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/physical-progress.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (physical-progress)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/supervisor/lib/daily-report-activities
+ */
+
 import { getLatestProgressForActivity, type DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
 
 /** Local report wins on the same activity and date; otherwise both histories stay. */

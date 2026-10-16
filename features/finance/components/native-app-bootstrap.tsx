@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/components/native-app-bootstrap.tsx
+ * @purpose کامپوننت UI — حسابداری، هزینه،overhead و صورت‌وضعیت (native-app-bootstrap)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on nothing
+ */
+
 'use client'
 
 import { useEffect } from 'react'

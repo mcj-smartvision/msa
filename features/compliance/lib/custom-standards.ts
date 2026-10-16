@@ -1,4 +1,12 @@
 /**
+ * @file features/compliance/lib/custom-standards.ts
+ * @purpose منطق دامنه — انطباق (custom-standards)
+ * @safe-to-edit CAREFUL
+ * @affects انطباق
+ * @depends-on nothing
+ */
+
+/**
  * User-defined standards not in the regional catalog.
  */
 

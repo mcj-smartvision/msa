@@ -1,4 +1,12 @@
 /**
+ * @file features/compliance/lib/region-standards.ts
+ * @purpose منطق دامنه — انطباق (region-standards)
+ * @safe-to-edit CAREFUL
+ * @affects انطباق
+ * @depends-on nothing
+ */
+
+/**
  * Full standard lists per regulatory region + mandatory rules.
  */
 

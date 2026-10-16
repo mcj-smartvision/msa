@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/components/workshop-ops-panel.tsx
+ * @purpose کامپوننت UI — بسته‌های اجرایی و تأیید کارگاه (workshop-ops-panel)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on features/workshop/components/schedule-workspace, features/workshop/components/weight-deduction-workspace, features/schedule/components/schedule-gantt-workspace, features/workshop/components/dependency-network-workspace, features/workshop/components/approvals-workspace, features/workshop/components/prepared-workspace, shared/lib/utils
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -10,14 +18,15 @@ import { ApprovalsWorkspace } from '@/features/workshop/components/approvals-wor
 import { PreparedWorkspace } from '@/features/workshop/components/prepared-workspace'
 import { RefreshCw } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
+import { WORKSHOP_COPY } from '@/features/workshop/lib/ui-copy'
 
 const TABS = [
-  { id: 'schedule', label: 'برنامه' },
-  { id: 'weight-deduction', label: 'وزن کسر شده' },
-  { id: 'gantt', label: 'گانت' },
-  { id: 'dependencies', label: 'وابستگی‌ها' },
-  { id: 'approvals', label: 'تأییدات' },
-  { id: 'prepared', label: 'لیست‌ها' },
+  { id: 'schedule', label: WORKSHOP_COPY.ops.tabSchedule },
+  { id: 'weight-deduction', label: WORKSHOP_COPY.ops.tabWeight },
+  { id: 'gantt', label: WORKSHOP_COPY.ops.tabGantt },
+  { id: 'dependencies', label: WORKSHOP_COPY.ops.tabDependencies },
+  { id: 'approvals', label: WORKSHOP_COPY.ops.tabApprovals },
+  { id: 'prepared', label: WORKSHOP_COPY.ops.tabPrepared },
 ] as const
 
 type WorkshopTab = (typeof TABS)[number]['id']
@@ -72,8 +81,8 @@ export function WorkshopOpsPanel() {
     <div className="space-y-3 w-full max-w-full min-w-0" dir="rtl" lang="fa">
       <p className="text-sm text-slate-600 leading-relaxed">
         {readOnly
-          ? 'نمای مشاهده — ویرایش زیرشاخه و برنامه فقط برای دفتر فنی است.'
-          : 'برنامه MSP را ببینید، زیرشاخه تعریف کنید و با به‌روزرسانی ثبت کنید.'}
+          ? WORKSHOP_COPY.ops.readOnlyHint
+          : WORKSHOP_COPY.ops.editHint}
       </p>
 
       <nav className="flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-slate-200 pb-3">
@@ -101,7 +110,7 @@ export function WorkshopOpsPanel() {
           className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-900 hover:bg-emerald-100"
         >
           <RefreshCw className="h-3.5 w-3.5" />
-          به‌روزرسانی
+          {WORKSHOP_COPY.ops.refresh}
         </button>
       </nav>
 

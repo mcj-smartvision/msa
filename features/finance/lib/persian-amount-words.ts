@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/persian-amount-words.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (persian-amount-words)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on nothing
+ */
+
 /** Convert a non-negative integer to Persian words (for invoice "مبلغ به حروف"). */
 
 const ONES = [

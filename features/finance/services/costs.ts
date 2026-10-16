@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/services/costs.ts
+ * @purpose سرویس داده — حسابداری، هزینه،overhead و صورت‌وضعیت (costs)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/finance/lib/types
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
 FINANCIAL_COST_TYPES,

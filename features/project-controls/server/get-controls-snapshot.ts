@@ -1,3 +1,11 @@
+/**
+ * @file features/project-controls/server/get-controls-snapshot.ts
+ * @purpose ماژول — موتور کنترل پروژه و شاخص‌های توضیح‌پذیر (get-controls-snapshot)
+ * @safe-to-edit CAREFUL
+ * @affects موتور کنترل پروژه و شاخص‌های توضیح‌پذیر
+ * @depends-on shared/types/project-controls, features/evm/lib/load-project-evm, features/evm/lib/metrics, features/project-controls/lib/controls-snapshot, features/project-controls/lib/kpis, features/project-controls/lib/load-weekly-plan, shared/lib/supabase/service, shared/lib/time/tehran
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ControlsSnapshot, PVCurvePoint, SnapshotField } from '@/shared/types/project-controls'
 import { loadProjectEvm } from '@/features/evm/lib/load-project-evm'

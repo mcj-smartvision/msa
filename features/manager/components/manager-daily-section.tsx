@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/components/manager-daily-section.tsx
+ * @purpose کامپوننت UI — داشبورد مدیر پروژه و KPI (manager-daily-section)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on shared/lib/utils, features/manager/lib/format, features/manager/lib/overview-types, features/manager/config
+ */
+
 'use client'
 
 import Link from 'next/link'
@@ -29,11 +37,12 @@ SectionResult,
 } from '@/features/manager/lib/overview-types'
 import { InfoHint, SectionBody } from './manager-ui'
 import { CriticalFrontsList } from './critical-fronts-list'
+import { DAILY_COPY, MANAGER_PUNCT, MANAGER_UI_NUMBERS } from '@/features/manager/config'
 
 const DAY_MS = 86_400_000
 
 function pct(value: number, digits = 2): string {
-  return `${faNumber(Math.abs(value), digits)}٪`
+  return `${faNumber(Math.abs(value), digits)}${MANAGER_PUNCT.percent}`
 }
 
 function signed(value: number, digits = 2): string {
@@ -90,9 +99,9 @@ function DailyDeltaBody({ data }: { data: ManagerDailyDelta }) {
     ? actual > 0
       ? 'good'
       : 'none'
-    : fulfillment >= 95
+    : fulfillment >= MANAGER_UI_NUMBERS.fulfillmentGood
       ? 'good'
-      : fulfillment >= 50
+      : fulfillment >= MANAGER_UI_NUMBERS.fulfillmentWarn
         ? 'warn'
         : 'bad'
   const actualColor =
@@ -106,12 +115,12 @@ function DailyDeltaBody({ data }: { data: ManagerDailyDelta }) {
       <dl className="grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-slate-50 p-3">
           <dt className="text-xs text-slate-500">
-            برنامهٔ مصوب امروز
+            {DAILY_COPY.plannedToday}
           </dt>
           <dd className="mt-1.5 text-2xl font-black leading-none tracking-tight tabular-nums text-slate-900">{pct(planned)}</dd>
         </div>
         <div className="rounded-xl bg-slate-50 p-3">
-          <dt className="text-xs text-slate-500">پیشرفت واقعی ثبت‌شده</dt>
+          <dt className="text-xs text-slate-500">{DAILY_COPY.actualToday}</dt>
           <dd className={cn('mt-1.5 text-2xl font-black leading-none tracking-tight tabular-nums', actualColor)}>{pct(actual)}</dd>
         </div>
       </dl>
@@ -128,28 +137,28 @@ function DailyDeltaBody({ data }: { data: ManagerDailyDelta }) {
           )}
         >
           {behind ? <TrendingDown className="h-3.5 w-3.5" aria-hidden /> : <TrendingUp className="h-3.5 w-3.5" aria-hidden />}
-          <span className="sr-only">انحراف روز: </span>
+          <span className="sr-only">{DAILY_COPY.deltaAria}</span>
           {signed(data.deltaPercent)}
         </span>
         <span className={cn('text-xs font-semibold', behind ? (tone === 'bad' ? 'text-rose-700' : 'text-amber-700') : 'text-emerald-700')}>
           {nothingPlanned
-            ? 'برای امروز سهمی در برنامه تعریف نشده است'
+            ? DAILY_COPY.nothingPlanned
             : behind
-              ? 'افت راندمان شیفت'
-              : 'مطابق یا جلوتر از برنامهٔ امروز'}
+              ? DAILY_COPY.lowEfficiency
+              : DAILY_COPY.onOrAhead}
         </span>
       </div>
 
       {!nothingPlanned ? (
         <div className="mt-4">
           <div className="flex items-baseline justify-between text-xs">
-            <span className="text-slate-500">تحقق برنامهٔ امروز</span>
+            <span className="text-slate-500">{DAILY_COPY.fulfillment}</span>
             <span className="font-bold tabular-nums text-slate-800">{pct(fulfillment, 0)}</span>
           </div>
           <div
             className="relative mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100"
             role="progressbar"
-            aria-label="تحقق برنامهٔ امروز"
+            aria-label={DAILY_COPY.fulfillment}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(Math.min(100, fulfillment))}
@@ -169,21 +178,21 @@ function DailyDeltaBody({ data }: { data: ManagerDailyDelta }) {
         <p className="flex gap-2 rounded-xl bg-slate-50/80 p-3 text-xs leading-6 text-slate-600">
           <Sparkles className="mt-1 h-3.5 w-3.5 shrink-0 text-primary/80" aria-hidden />
           <span>
-            <strong className="font-semibold text-slate-700">خلاصهٔ سیستم: </strong>
-            {data.baselineEnded ? 'دورهٔ برنامهٔ مبنا پیش از امروز به پایان رسیده و برای امروز سهمی تعریف نمی‌کند. ' : ''}
+            <strong className="font-semibold text-slate-700">{DAILY_COPY.summary}</strong>
+            {data.baselineEnded ? DAILY_COPY.baselineEnded : ''}
             {data.plannedActivities > 0
-              ? `${faNumber(data.plannedReportedActivities)} فعالیت از ${faNumber(data.plannedActivities)} فعالیت برنامه‌ای امروز پیشرفت ثبت کرده‌اند`
-              : 'فعالیتی برای امروز زمان‌بندی نشده است'}
-            {extra > 0 ? ` و ${faNumber(extra)} فعالیت خارج از برنامهٔ امروز هم پیش رفته‌اند` : ''}
-            {data.overdueActivities > 0 ? `؛ ${faNumber(data.overdueActivities)} فعالیت از موعد مبنا گذشته و هنوز ناتمام‌اند` : ''}
-            {'؛ '}
+              ? DAILY_COPY.plannedReported(faNumber(data.plannedReportedActivities), faNumber(data.plannedActivities))
+              : DAILY_COPY.noneScheduled}
+            {extra > 0 ? DAILY_COPY.extra(faNumber(extra)) : ''}
+            {data.overdueActivities > 0 ? DAILY_COPY.overdue(faNumber(data.overdueActivities)) : ''}
+            {MANAGER_PUNCT.semi}
             {data.lastProgressAt
-              ? staleHours != null && staleHours > 24
-                ? `آخرین ثبت پیشرفت ${relativeTimeFa(data.lastProgressAt)} بوده است`
-                : `آخرین ثبت پیشرفت ${relativeTimeFa(data.lastProgressAt)}`
-              : 'هنوز هیچ پیشرفتی در سامانه ثبت نشده است'}
+              ? staleHours != null && staleHours > MANAGER_UI_NUMBERS.dailyStaleHours
+                ? DAILY_COPY.lastProgressStale(relativeTimeFa(data.lastProgressAt))
+                : DAILY_COPY.lastProgress(relativeTimeFa(data.lastProgressAt))
+              : DAILY_COPY.noProgress}
             {data.lastDailyReport
-              ? `. آخرین گزارش روزانه: ${jalaliDate(data.lastDailyReport.date)} (${data.lastDailyReport.approved ? 'تأییدشده' : 'منتظر تأیید'}).`
+              ? DAILY_COPY.lastDaily(jalaliDate(data.lastDailyReport.date), data.lastDailyReport.approved ? DAILY_COPY.approved : DAILY_COPY.pending)
               : '.'}
           </span>
         </p>
@@ -207,8 +216,8 @@ export function DailyDeltaCard({
     <CardShell
       className={className}
       icon={<Clock className="h-4 w-4" aria-hidden />}
-      title="عملکرد 24 ساعت گذشته"
-      hint="«برنامهٔ مصوب امروز» سهم یک روز از برنامهٔ مبنا بر مبنای وزن فیزیکی همهٔ فعالیت‌های برنامه است؛ اگر برنامهٔ مبنا پیش از امروز تمام شده باشد، سهم امروز از تاریخ‌های برنامهٔ به‌روز محاسبه می‌شود. «پیشرفت واقعی» مجموع پیشرفت‌های ثبت‌شده در 24 ساعت گذشته با همان وزن‌هاست. عدد کهربایی یعنی بخشی از برنامهٔ امروز محقق شده و قرمز یعنی کمتر از نیمی از آن."
+      title={DAILY_COPY.title}
+      hint={DAILY_COPY.hint}
       badge={
         today ? (
           <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium tabular-nums text-slate-600">
@@ -234,10 +243,10 @@ const BLOCKER_ICON: Record<ManagerBlockerCategory, ComponentType<{ className?: s
 }
 
 const BLOCKER_LABEL: Record<ManagerBlockerCategory, string> = {
-  site: 'جبههٔ کاری',
-  materials: 'تأمین مصالح',
-  quality: 'کیفیت و نظارت',
-  schedule: 'برنامه‌ریزی',
+  site: DAILY_COPY.blockers.site,
+  materials: DAILY_COPY.blockers.materials,
+  quality: DAILY_COPY.blockers.quality,
+  schedule: DAILY_COPY.blockers.schedule,
 }
 
 function ageDays(since: string | null): number | null {
@@ -279,17 +288,17 @@ function BlockerRow({ item }: { item: ManagerBlocker }) {
             )}
           >
             <span className={cn('h-1.5 w-1.5 rounded-full', critical ? 'bg-rose-500' : 'bg-amber-500')} aria-hidden />
-            {critical ? 'بحرانی' : 'معلق'}
-            {age != null && age > 0 ? ` · ${faNumber(age)} روز معوق` : ''}
+            {critical ? DAILY_COPY.blockers.critical : DAILY_COPY.blockers.pending}
+            {age != null && age > 0 ? DAILY_COPY.blockers.overdueDays(faNumber(age)) : ''}
           </span>
         </div>
         <p className="mt-0.5 text-xs leading-5 text-slate-600">
-          <span className="text-slate-500">اثر: </span>
+          <span className="text-slate-500">{DAILY_COPY.blockers.impact}</span>
           {item.impact}
         </p>
         {item.owner ? (
           <p className="text-[11px] leading-5 text-slate-500">
-            مسئول: <span className="font-medium text-slate-700">{item.owner}</span>
+            {DAILY_COPY.blockers.owner}<span className="font-medium text-slate-700">{item.owner}</span>
           </p>
         ) : null}
       </div>
@@ -350,15 +359,15 @@ export function BlockersDelaysCard({
     <CardShell
       className={className}
       icon={<Construction className="h-4 w-4" aria-hidden />}
-      title="گلوگاه‌های فعال و جبهه‌های بحرانی"
-      hint="موانع از دستور کارهای «متوقف» برنامهٔ روزانهٔ کارگاه، کسری انبار، NCRهای بحرانی و هشدارهای باز برنامه‌ریزی جمع می‌شوند. تأخیر هر فعالیت = پایان پیش‌بینی (یا امروز، اگر موعدش گذشته) منهای پایان برنامهٔ مبنا. با شبکهٔ CPM فقط فعالیت‌های ناتمام روی مسیر بحرانی یا با شناوری صفر/منفی و Total Float آن‌ها نمایش داده می‌شود؛ بدون CPM، همهٔ فعالیت‌های عقب از baseline با گزارش دادهٔ ناقص. پیشرفت برنامه = سهم سپری‌شدهٔ بازهٔ مبنا (روز تقویمی). علت/مانع از هشدارهای باز و دستور کارهای متوقف امروز."
+      title={DAILY_COPY.cardTitle}
+      hint={DAILY_COPY.cardHint}
       badge={
         ganttHref ? (
           <Link
             href={ganttHref}
             className="group/link inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-primary transition-colors hover:bg-orange-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
           >
-            <span className="hidden sm:inline">مشاهده همه جبهه‌ها (Gantt)</span>
+            <span className="hidden sm:inline">{DAILY_COPY.allFronts}</span>
             <span className="sm:hidden">Gantt</span>
             <ArrowUpLeft className="h-3.5 w-3.5 transition-transform group-hover/link:-translate-x-0.5 group-hover/link:-translate-y-0.5" aria-hidden />
           </Link>
@@ -369,22 +378,22 @@ export function BlockersDelaysCard({
         <div className="md:pl-5">
           <SubHeader
             icon={<AlertOctagon className="h-4 w-4 text-rose-500" aria-hidden />}
-            title={blockerCount ? `موانع و توقفات فعال کارگاه (${faNumber(blockerCount)} مورد نیازمند رفع)` : 'موانع و توقفات فعال کارگاه'}
+            title={blockerCount ? DAILY_COPY.activeStopsCount(faNumber(blockerCount)) : DAILY_COPY.activeStops}
           />
           <SectionBody result={blockers} loading={loading} rows={3}>
             {(data) =>
               data.items.length === 0 ? (
                 <Calm
-                  title="مانع فعالی ثبت نشده است"
-                  description={`بررسی‌شده: ${data.checkedSources.join('، ')}.`}
+                  title={DAILY_COPY.noBlockers}
+                  description={DAILY_COPY.checked(data.checkedSources.join(MANAGER_PUNCT.list))}
                 />
               ) : (
                 <ul className="space-y-2.5">
-                  {data.items.slice(0, 4).map((item) => (
+                  {data.items.slice(0, MANAGER_UI_NUMBERS.blockersPreview).map((item) => (
                     <BlockerRow key={item.id} item={item} />
                   ))}
-                  {data.items.length > 4 ? (
-                    <li className="text-xs text-slate-500">و {faNumber(data.items.length - 4)} مورد دیگر</li>
+                  {data.items.length > MANAGER_UI_NUMBERS.blockersPreview ? (
+                    <li className="text-xs text-slate-500">{DAILY_COPY.more(faNumber(data.items.length - MANAGER_UI_NUMBERS.blockersPreview))}</li>
                   ) : null}
                 </ul>
               )
@@ -397,8 +406,8 @@ export function BlockersDelaysCard({
             icon={<TriangleAlert className="h-4 w-4 text-amber-500" aria-hidden />}
             title={
               delays?.status === 'ok' && delays.data.mode === 'baseline'
-                ? 'جبهه‌های تأخیردار نسبت به برنامهٔ مبنا'
-                : 'مهم‌ترین جبهه‌های تأخیردار در مسیر بحرانی'
+                ? DAILY_COPY.delayedVsBaseline
+                : DAILY_COPY.delayedCritical
             }
             count={delays?.status === 'ok' && delays.data.total > 0 ? <CountPill value={delays.data.total} tone="rose" /> : undefined}
           />

@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/cascade-successors.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (cascade-successors)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule, features/schedule/lib/dates, features/schedule/lib/gantt-parent-expand
+ */
+
 import type { TaskRelationType } from '@/shared/types/schedule'
 import { addDaysIso, diffDaysIso, toIsoDateOnly } from '@/features/schedule/lib/dates'
 import {

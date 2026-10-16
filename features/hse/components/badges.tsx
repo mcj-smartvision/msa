@@ -1,37 +1,19 @@
+/**
+ * @file features/hse/components/badges.tsx
+ * @purpose کامپوننت UI — ایمنی، بهداشت و محیط زیست (badges)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on shared/lib/utils, features/hse/lib/types, features/hse/config
+ */
+
 import { cn } from '@/shared/lib/utils'
 import type { CameraHealth, IncidentStatus, Severity, ZoneRisk } from '@/features/hse/lib/types'
+import { HSE_BADGE_COPY } from '@/features/hse/config'
 
-const severityLabel: Record<Severity, string> = {
-  critical: 'بحرانی',
-  high: 'بالا',
-  medium: 'متوسط',
-  low: 'کم',
-}
-
-const statusLabel: Record<IncidentStatus, string> = {
-  new: 'جدید',
-  acknowledged: 'دریافت‌شده',
-  ai_review: 'بازبینی هوشمند',
-  confirmed: 'تأیید تخلف',
-  dismissed: 'رد شده',
-  escalated: 'ارجاع بالا',
-  assigned: 'محول‌شده',
-  closed: 'بسته‌شده',
-}
-
-const healthLabel: Record<CameraHealth, string> = {
-  online: 'آنلاین',
-  degraded: 'ضعیف',
-  offline: 'قطع',
-  calibrating: 'کالیبره',
-}
-
-const riskLabel: Record<ZoneRisk, string> = {
-  critical: 'بحرانی',
-  high: 'بالا',
-  medium: 'متوسط',
-  low: 'کم',
-}
+const severityLabel: Record<Severity, string> = HSE_BADGE_COPY.severity
+const statusLabel: Record<IncidentStatus, string> = HSE_BADGE_COPY.status
+const healthLabel: Record<CameraHealth, string> = HSE_BADGE_COPY.health
+const riskLabel: Record<ZoneRisk, string> = HSE_BADGE_COPY.risk
 
 const severityClass: Record<Severity, string> = {
   critical: 'bg-rose-100 text-rose-800 border-rose-300',

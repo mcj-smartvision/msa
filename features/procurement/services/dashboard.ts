@@ -1,3 +1,11 @@
+/**
+ * @file features/procurement/services/dashboard.ts
+ * @purpose سرویس داده — تدارکات (dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects تدارکات
+ * @depends-on features/procurement/lib/types, features/supervisor/lib/types, features/supervisor/lib/ai-generator
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
 ProcurementKpis,

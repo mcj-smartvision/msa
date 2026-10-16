@@ -1,3 +1,11 @@
+/**
+ * @file shared/types/project-controls.ts
+ * @purpose تعاریف نوع — زیرساخت مشترک سامانه (project-controls)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 export type RagStatus = 'HEALTHY' | 'WARNING' | 'CRITICAL'
 
 /* ------------------------------------------------------- KPI contract */

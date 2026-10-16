@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/transforms.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (transforms)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/schedule/lib/task-view-date, features/storekeeper/lib/types, features/supervisor/lib/types, shared/types/schedule
+ */
+
 import { getTaskScheduleStatus, taskEffectiveFinish, taskEffectiveStart } from '@/features/schedule/lib/task-view-date'
 import type { InventoryItemRow } from '@/features/storekeeper/lib/types'
 import type {

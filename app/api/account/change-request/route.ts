@@ -1,3 +1,11 @@
+/**
+ * @file app/api/account/change-request/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, shared/lib/auth/login-identifier
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { formatLoginDisplay } from '@/shared/lib/auth/login-identifier'

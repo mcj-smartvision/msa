@@ -1,3 +1,11 @@
+/**
+ * @file features/project-controls/lib/earned-schedule.ts
+ * @purpose منطق دامنه — موتور کنترل پروژه و شاخص‌های توضیح‌پذیر (earned-schedule)
+ * @safe-to-edit CAREFUL
+ * @affects موتور کنترل پروژه و شاخص‌های توضیح‌پذیر
+ * @depends-on shared/types/project-controls, shared/lib/time/tehran
+ */
+
 import type {
 ControlsEngineResult,
 EarnedScheduleInput, PVCurvePoint,

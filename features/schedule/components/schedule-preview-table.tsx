@@ -1,8 +1,17 @@
+/**
+ * @file features/schedule/components/schedule-preview-table.tsx
+ * @purpose کامپوننت UI — زمان‌بندی، WBS و گانت (schedule-preview-table)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/components/schedule-task-row, features/schedule/lib/parent-weight-rollup, features/schedule/lib/parent-duration-rollup, features/schedule/lib/schedule-preview-columns, features/schedule/lib/wbs-utils, features/schedule/lib/schedule-view-sync, features/schedule/lib/task-view-date, shared/types/schedule, shared/lib/utils
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { AlertCircle, GitBranch, HelpCircle, Loader2, Users } from 'lucide-react'
 import { ScheduleTaskRow } from '@/features/schedule/components/schedule-task-row'
+import { SCHEDULE_PREVIEW_COPY } from '@/features/schedule/config'
 import { applyParentWeightSum } from '@/features/schedule/lib/parent-weight-rollup'
 import { applyParentDurationSum } from '@/features/schedule/lib/parent-duration-rollup'
 import {
@@ -103,7 +112,7 @@ export function SchedulePreviewTable({
           { cache: 'no-store' }
         )
         const data = await response.json()
-        if (!response.ok) throw new Error(data.error || 'بارگذاری پیمانکاران ناموفق بود')
+        if (!response.ok) throw new Error(data.error || SCHEDULE_PREVIEW_COPY.loadContractorsFailed)
         if (cancelled) return
         setContractors((data.contractors ?? []) as ContractorOption[])
         setContractorAssignments(
@@ -116,7 +125,7 @@ export function SchedulePreviewTable({
       } catch (error) {
         if (!cancelled) {
           setContractorError(
-            error instanceof Error ? error.message : 'بارگذاری پیمانکاران ناموفق بود'
+            error instanceof Error ? error.message : SCHEDULE_PREVIEW_COPY.loadContractorsFailed
           )
         }
       }
@@ -145,7 +154,7 @@ export function SchedulePreviewTable({
             body: JSON.stringify({ projectId, taskIds: mspTaskIds, contractorId }),
           })
           const data = await response.json()
-          if (!response.ok) throw new Error(data.error || 'ذخیره پیمانکار ناموفق بود')
+          if (!response.ok) throw new Error(data.error || SCHEDULE_PREVIEW_COPY.saveContractorFailed)
           setContractorAssignments((current) => ({
             ...current,
             ...Object.fromEntries(
@@ -164,7 +173,9 @@ export function SchedulePreviewTable({
             body: JSON.stringify({ subcontractorId: contractorId }),
           })
           const data = await response.json()
-          if (!response.ok) throw new Error(data.error || 'ذخیره پیمانکار زیرشاخه ناموفق بود')
+          if (!response.ok) {
+            throw new Error(data.error || SCHEDULE_PREVIEW_COPY.savePackageContractorFailed)
+          }
           setContractorAssignments((current) => ({
             ...current,
             [packageId]: {
@@ -178,7 +189,7 @@ export function SchedulePreviewTable({
         publishScheduleViewSync(projectId)
       } catch (error) {
         setContractorError(
-          error instanceof Error ? error.message : 'ذخیره پیمانکار ناموفق بود'
+          error instanceof Error ? error.message : SCHEDULE_PREVIEW_COPY.saveContractorFailed
         )
       } finally {
         setSavingContractorIds((current) => {
@@ -444,10 +455,10 @@ export function SchedulePreviewTable({
             value={reviewContractorId}
             onChange={(event) => setReviewContractorId(event.target.value)}
             className="h-8 rounded-md border bg-white px-2 text-[11px]"
-            aria-label="فیلتر پیمانکار"
+            aria-label={SCHEDULE_PREVIEW_COPY.filterContractor}
           >
-            <option value="all">همه پیمانکاران</option>
-            <option value="unassigned">بدون پیمانکار</option>
+            <option value="all">{SCHEDULE_PREVIEW_COPY.allContractors}</option>
+            <option value="unassigned">{SCHEDULE_PREVIEW_COPY.unassigned}</option>
             {contractors.map((contractor) => (
               <option key={contractor.id} value={contractor.id}>
                 {contractor.name}
@@ -469,9 +480,9 @@ export function SchedulePreviewTable({
             <thead className="sticky top-0 z-10 bg-slate-100">
               <tr>
                 <th className="border p-2 text-right">WBS</th>
-                <th className="border p-2 text-right">فعالیت اجرایی</th>
-                <th className="border p-2 text-right">پیمانکار نهایی</th>
-                <th className="border p-2 text-center">نوع تخصیص</th>
+                <th className="border p-2 text-right">{SCHEDULE_PREVIEW_COPY.colActivity}</th>
+                <th className="border p-2 text-right">{SCHEDULE_PREVIEW_COPY.colFinalContractor}</th>
+                <th className="border p-2 text-center">{SCHEDULE_PREVIEW_COPY.colAssignType}</th>
               </tr>
             </thead>
             <tbody>
@@ -491,18 +502,20 @@ export function SchedulePreviewTable({
                     <td className="border p-2 font-mono">{task.wbs_code ?? '—'}</td>
                     <td className="border p-2">{task.name}</td>
                     <td className="border p-2">
-                      {resolvedId ? contractorNameById.get(resolvedId) ?? 'پیمانکار نامشخص' : 'بدون پیمانکار'}
+                      {resolvedId
+                        ? contractorNameById.get(resolvedId) ?? SCHEDULE_PREVIEW_COPY.unknownContractor
+                        : SCHEDULE_PREVIEW_COPY.unassigned}
                     </td>
                     <td className="border p-2 text-center">
                       {resolvedId && !directId ? (
                         <span className="inline-flex items-center gap-1 text-slate-500">
                           <GitBranch className="h-3 w-3" />
-                          ارثی
+                          {SCHEDULE_PREVIEW_COPY.inherited}
                         </span>
                       ) : resolvedId ? (
-                        'مستقیم'
+                        SCHEDULE_PREVIEW_COPY.direct
                       ) : (
-                        'تخصیص‌نیافته'
+                        SCHEDULE_PREVIEW_COPY.unassignedType
                       )}
                     </td>
                   </tr>
@@ -615,8 +628,8 @@ export function SchedulePreviewTable({
                       <button
                         type="button"
                         className="shrink-0 rounded-full p-0 text-sky-700/80 hover:bg-sky-100"
-                        title="توضیح ستون"
-                        aria-label={`توضیح ${col.label}`}
+                        title={SCHEDULE_PREVIEW_COPY.colHelpTitle}
+                        aria-label={SCHEDULE_PREVIEW_COPY.colHelpAria(col.label)}
                         onClick={(e) => {
                           e.stopPropagation()
                           setHeaderHelpKey((k) => (k === col.key ? null : col.key))
@@ -658,7 +671,7 @@ export function SchedulePreviewTable({
                     ) : null}
                     <button
                       type="button"
-                      aria-label={`تغییر عرض ${col.label}`}
+                      aria-label={SCHEDULE_PREVIEW_COPY.resizeAria(col.label)}
                       className="absolute inset-y-0 left-0 z-[4] w-1.5 cursor-col-resize bg-transparent hover:bg-sky-500/40 active:bg-sky-600/50 border-l border-transparent hover:border-sky-500"
                       onMouseDown={(e) => startResize(col.key, e)}
                       onClick={(e) => e.stopPropagation()}
@@ -762,7 +775,7 @@ export function SchedulePreviewTable({
             onChange={(event) => setBulkContractorId(event.target.value)}
             className="h-8 min-w-44 rounded-md border bg-white px-2"
           >
-            <option value="">پاک‌کردن و بازگشت به وراثت</option>
+            <option value="">{SCHEDULE_PREVIEW_COPY.clearInherit}</option>
             {contractors.map((contractor) => (
               <option key={contractor.id} value={contractor.id}>
                 {contractor.name}

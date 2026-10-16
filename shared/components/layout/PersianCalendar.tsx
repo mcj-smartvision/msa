@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/layout/PersianCalendar.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (PersianCalendar)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/holidays/components/jalali-month-grid, features/holidays/hooks/use-dismiss, features/holidays/hooks/use-holidays, features/holidays/lib/work-calendar, shared/components/layout/header-chip, shared/lib/time/jalali-month, shared/lib/time/tehran, shared/lib/utils, shared/lib/i18n/chrome
+ */
+
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -7,12 +15,14 @@ import { useDismiss } from '@/features/holidays/hooks/use-dismiss'
 import { useHolidays } from '@/features/holidays/hooks/use-holidays'
 import { holidaysOn } from '@/features/holidays/lib/work-calendar'
 import { HEADER_CHIP } from '@/shared/components/layout/header-chip'
+import { getChromeMessages } from '@/shared/lib/i18n/chrome'
 import { formatJalaliLong, isoToJalali } from '@/shared/lib/time/jalali-month'
 import { todayTehranIso } from '@/shared/lib/time/tehran'
 import { cn } from '@/shared/lib/utils'
 
 /** Today's Jalali date in the header; opens a month calendar with Fridays and registered holidays. */
 export function PersianCalendar({ className }: { className?: string }) {
+  const chrome = getChromeMessages('fa')
   const [today, setToday] = useState(todayTehranIso)
   const [open, setOpen] = useState(false)
   const [view, setView] = useState(() => isoToJalali(todayTehranIso()))
@@ -39,7 +49,7 @@ export function PersianCalendar({ className }: { className?: string }) {
         className={cn(HEADER_CHIP, 'inline-flex items-center whitespace-nowrap font-medium')}
         aria-expanded={open}
         aria-haspopup="dialog"
-        title={todayHolidays.map((h) => h.title).join('، ') || 'تقویم'}
+        title={todayHolidays.map((h) => h.title).join(chrome.listSep) || chrome.calendar}
       >
         <CalendarDays className={cn('h-3.5 w-3.5 shrink-0', todayHolidays.length ? 'text-red-500' : 'text-slate-500')} aria-hidden />
         {formatJalaliLong(today)}
@@ -47,7 +57,7 @@ export function PersianCalendar({ className }: { className?: string }) {
       {open ? (
         <div
           role="dialog"
-          aria-label="تقویم"
+          aria-label={chrome.calendar}
           className="absolute left-0 top-full z-[60] mt-2 rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
         >
           <JalaliMonthGrid

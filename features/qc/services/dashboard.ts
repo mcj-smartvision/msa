@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/services/dashboard.ts
+ * @purpose سرویس داده — کنترل کیفیت و عدم انطباق (dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on features/qc/lib/types, shared/types/schedule, features/schedule/services/schedule
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
 ChecklistItem,

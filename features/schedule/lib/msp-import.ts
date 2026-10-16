@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/msp-import.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (msp-import)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule, features/schedule/lib/msp-parser, features/schedule/lib/dates, features/schedule/lib/apply-actual-start, features/schedule/lib/task-view-date, features/schedule/lib/schedule-files, features/schedule/lib/wipe-project-schedule, features/schedule/lib/reapply-supervisor-progress, features/schedule/lib/msp-import-validate, features/schedule/lib/run-project-cpm
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { MspImportResult, ProjectTask, ScheduleImport } from '@/shared/types/schedule'
 import { parseMspXml } from '@/features/schedule/lib/msp-parser'

@@ -1,3 +1,11 @@
+/**
+ * @file features/project-manager/lib/pm-inbox/build.ts
+ * @purpose منطق دامنه — اتاق فرمان مدیر پروژه و کارتابل (build)
+ * @safe-to-edit CAREFUL
+ * @affects اتاق فرمان مدیر پروژه و کارتابل
+ * @depends-on shared/types/project-controls, features/project-manager/lib/pm-inbox/types, features/manager/lib/format
+ */
+
 import type { ExplainedKpi } from '@/shared/types/project-controls'
 import type { InboxEvidenceMetric, InboxItem, InboxSeverity, PmInboxSnapshot } from '@/features/project-manager/lib/pm-inbox/types'
 import { jalaliDate } from '@/features/manager/lib/format'

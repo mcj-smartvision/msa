@@ -1,3 +1,11 @@
+/**
+ * @file features/calc-trace/lib/types.ts
+ * @purpose تعاریف نوع — دفتر رد محاسبه شاخص‌ها (types)
+ * @safe-to-edit YES
+ * @affects دفتر رد محاسبه شاخص‌ها
+ * @depends-on nothing
+ */
+
 /** How a value is formatted in the calculation ledger drawer. */
 export type CalcTraceUnit =
   | 'index'

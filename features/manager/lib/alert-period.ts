@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/alert-period.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (alert-period)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/manager/lib/overview-types, shared/lib/time/tehran
+ */
+
 import type { ManagerAlert, ManagerPeriod } from '@/features/manager/lib/overview-types';
 import { tehranPeriodStartMs } from '@/shared/lib/time/tehran';
 

@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/cpm-calculate.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (cpm-calculate)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule
+ */
+
 import type { TaskRelationType } from '@/shared/types/schedule'
 
 export interface CpmActivityInput {

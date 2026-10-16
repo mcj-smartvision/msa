@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/engine/service.ts
+ * @purpose منطق دامنه — کنترل کیفیت و عدم انطباق (service)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on shared/lib/supabase/service, shared/lib/dashboard/user-context, features/qc/engine/activity-types, features/qc/engine/note-markers, features/qc/engine/types, features/technical-office/lib/drawings
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/shared/lib/supabase/service'
 import { fetchDashboardUserContext } from '@/shared/lib/dashboard/user-context'

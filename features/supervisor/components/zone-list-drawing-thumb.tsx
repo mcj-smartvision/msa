@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/zone-list-drawing-thumb.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (zone-list-drawing-thumb)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/components/zone-map-svg, features/supervisor/components/drawing-file-preview, features/supervisor/lib/drawings-zoning-mock, features/technical-office/lib/drawings-shared
+ */
+
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
@@ -6,6 +14,9 @@ import { ZoneMapCanvas } from '@/features/supervisor/components/zone-map-svg'
 import { prefetchDrawingPreview } from '@/features/supervisor/components/drawing-file-preview'
 import type { DefinedZone } from '@/features/supervisor/lib/drawings-zoning-mock'
 import type { ProjectDrawing } from '@/features/technical-office/lib/drawings-shared'
+import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+
+const t = getSiteSupervisorMessages('fa')
 
 export function ZoneListDrawingThumb({
   zone,
@@ -69,9 +80,9 @@ export function ZoneListDrawingThumb({
     return (
       <div
         className="flex h-[88px] w-[88px] shrink-0 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-2 text-center text-[10px] font-medium text-rose-700 sm:h-24 sm:w-24"
-        title="نقشه در دسترس نیست"
+        title={t.drawingUnavailable}
       >
-        نقشه ناموجود
+        {t.drawingMissing}
       </div>
     )
   }
@@ -81,13 +92,13 @@ export function ZoneListDrawingThumb({
       type="button"
       onClick={onClick}
       className="group shrink-0 overflow-hidden rounded-lg border border-white bg-white shadow-sm ring-1 ring-emerald-100 transition-shadow hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
-      aria-label={`بزرگنمایی شمای نقشه — ${zone.name}`}
+      aria-label={t.zoomDrawingAria(zone.name)}
     >
       <div className="h-[88px] w-[88px] sm:h-24 sm:w-24">
         <ZoneMapCanvas drawing={resolved} zones={[zone]} highlightZoneId={zone.id} />
       </div>
       <p className="border-t border-slate-100 bg-slate-50 px-1 py-0.5 text-[9px] font-medium text-slate-600 group-hover:text-emerald-800">
-        کلیک — بزرگنمایی
+        {t.clickZoom}
       </p>
     </button>
   )

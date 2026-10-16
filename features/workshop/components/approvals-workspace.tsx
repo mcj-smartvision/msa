@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/components/approvals-workspace.tsx
+ * @purpose کامپوننت UI — بسته‌های اجرایی و تأیید کارگاه (approvals-workspace)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on features/workshop/lib/approvals, features/admin/components/shared, features/workshop/components/proposed-change-view, features/workshop/components/uom-display
+ */
+
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
@@ -6,6 +14,7 @@ import { approvalStatusFa } from '@/features/workshop/lib/approvals'
 import { PageHeader } from '@/features/admin/components/shared'
 import { ProposedChangeView } from '@/features/workshop/components/proposed-change-view'
 import { QtyWithUom } from '@/features/workshop/components/uom-display'
+import { WORKSHOP_COPY } from '@/features/workshop/lib/ui-copy'
 
 type InboxItem = {
   id: string
@@ -37,11 +46,11 @@ export function ApprovalsWorkspace({ showBanner = true }: { showBanner?: boolean
     try {
       const res = await fetch(`/api/workshop/approvals?projectId=${projectId}`)
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'خطا')
+      if (!res.ok) throw new Error(data.error || WORKSHOP_COPY.genericError)
       setItems(data.items ?? [])
       setCanDecide(Boolean(data.canDecide))
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'خطا')
+      setMessage(e instanceof Error ? e.message : WORKSHOP_COPY.genericError)
     } finally {
       setLoading(false)
     }
@@ -71,25 +80,25 @@ export function ApprovalsWorkspace({ showBanner = true }: { showBanner?: boolean
     })
     const data = await res.json()
     if (!res.ok) {
-      setMessage(data.error || 'عملیات انجام نشد')
+      setMessage(data.error || WORKSHOP_COPY.approvals.actionFailed)
       return
     }
     setComment('')
-    setMessage('ثبت شد')
+    setMessage(WORKSHOP_COPY.approvals.saved)
     setSelectedId(null)
     await load()
   }
 
   if (!projectId) {
-    return <p className="text-sm text-slate-600">پروژه را از بالا انتخاب کنید.</p>
+    return <p className="text-sm text-slate-600">{WORKSHOP_COPY.selectProjectTop}</p>
   }
 
   return (
     <div className="space-y-4" dir="rtl">
       <PageHeader
         showBanner={showBanner}
-        title="تأییدات"
-        description="مدیر پروژه موارد ارسالی دفتر فنی را تأیید، رد یا با کامنت برمی‌گرداند."
+        title={WORKSHOP_COPY.approvals.title}
+        description={WORKSHOP_COPY.approvals.description}
       />
 
       {message && (
@@ -98,9 +107,9 @@ export function ApprovalsWorkspace({ showBanner = true }: { showBanner?: boolean
 
       <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
         <section className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
-          {loading && <p className="p-4 text-sm text-slate-500">در حال بارگذاری…</p>}
+          {loading && <p className="p-4 text-sm text-slate-500">{WORKSHOP_COPY.loading}</p>}
           {!loading && items.length === 0 && (
-            <p className="p-6 text-sm text-slate-500">موردی در صف تأیید نیست.</p>
+            <p className="p-6 text-sm text-slate-500">{WORKSHOP_COPY.approvals.empty}</p>
           )}
           <ul className="divide-y">
             {items.map((item) => {
@@ -133,17 +142,17 @@ export function ApprovalsWorkspace({ showBanner = true }: { showBanner?: boolean
 
         <aside className="rounded-2xl border border-slate-200 bg-white p-4 h-fit space-y-3">
           {!selected ? (
-            <p className="text-sm text-slate-500">یک مورد را از لیست انتخاب کنید.</p>
+            <p className="text-sm text-slate-500">{WORKSHOP_COPY.approvals.pickItem}</p>
           ) : (
             <>
               <h2 className="font-semibold">{selected.name}</h2>
               <dl className="text-sm space-y-1 text-slate-700">
-                <div>محل: {selected.location ?? '—'}</div>
+                <div>{WORKSHOP_COPY.approvals.locationPrefix} {selected.location ?? '—'}</div>
                 <div>
-                  مقدار: <QtyWithUom qty={selected.quantity} uom={selected.uom} />
+                  {WORKSHOP_COPY.approvals.qtyPrefix} <QtyWithUom qty={selected.quantity} uom={selected.uom} />
                 </div>
-                <div>گروه: {selected.crew ?? '—'}</div>
-                {selected.note && <div>یادداشت: {selected.note}</div>}
+                <div>{WORKSHOP_COPY.approvals.crewPrefix} {selected.crew ?? '—'}</div>
+                {selected.note && <div>{WORKSHOP_COPY.approvals.notePrefix} {selected.note}</div>}
               </dl>
 
               {selected.pending_change && (
@@ -162,12 +171,12 @@ export function ApprovalsWorkspace({ showBanner = true }: { showBanner?: boolean
               )}
 
               <label className="block text-sm">
-                کامنت مدیر پروژه
+                {WORKSHOP_COPY.approvals.pmComment}
                 <textarea
                   className="mt-1 w-full rounded-lg border px-3 py-2 text-sm min-h-[80px]"
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="توضیح برای دفتر فنی…"
+                  placeholder={WORKSHOP_COPY.approvals.commentPlaceholder}
                 />
               </label>
 
@@ -178,14 +187,14 @@ export function ApprovalsWorkspace({ showBanner = true }: { showBanner?: boolean
                     onClick={() => void act('approve', { comment })}
                     className="rounded-lg bg-emerald-700 px-3 py-2 text-sm text-white"
                   >
-                    تأیید
+                    {WORKSHOP_COPY.approvals.approve}
                   </button>
                   <button
                     type="button"
                     onClick={() => void act('reject', { comment })}
                     className="rounded-lg border border-rose-300 text-rose-800 px-3 py-2 text-sm"
                   >
-                    رد با کامنت
+                    {WORKSHOP_COPY.approvals.rejectWithComment}
                   </button>
                 </div>
               )}
@@ -197,21 +206,21 @@ export function ApprovalsWorkspace({ showBanner = true }: { showBanner?: boolean
                     onClick={() => void act('change-decide', { decision: 'approve', comment })}
                     className="rounded-lg bg-emerald-700 px-3 py-2 text-sm text-white"
                   >
-                    تأیید تغییر
+                    {WORKSHOP_COPY.approvals.approveChange}
                   </button>
                   <button
                     type="button"
                     onClick={() => void act('change-decide', { decision: 'reject', comment })}
                     className="rounded-lg border border-rose-300 text-rose-800 px-3 py-2 text-sm"
                   >
-                    رد درخواست تغییر
+                    {WORKSHOP_COPY.approvals.rejectChange}
                   </button>
                 </div>
               )}
 
               {!canDecide && (
                 <p className="text-xs text-slate-500">
-                  فقط مدیر پروژه می‌تواند تأیید/رد کند. دفتر فنی با کامنت اصلاح می‌کند.
+                  {WORKSHOP_COPY.approvals.onlyPm}
                 </p>
               )}
 
@@ -220,7 +229,7 @@ export function ApprovalsWorkspace({ showBanner = true }: { showBanner?: boolean
                 onClick={() => void act('comment', { comment })}
                 className="w-full rounded-lg border px-3 py-2 text-sm"
               >
-                ثبت کامنت
+                {WORKSHOP_COPY.approvals.postComment}
               </button>
             </>
           )}

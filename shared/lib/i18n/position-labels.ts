@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/i18n/position-labels.ts
+ * @purpose تنظیمات و برچسب‌ها — زیرساخت مشترک سامانه (position-labels)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/project-init/lib/i18n/types, features/admin/lib/construction-roles
+ */
+
 import type { FormLocale } from '@/features/project-init/lib/i18n/types';
 import { CONSTRUCTION_ROLES } from '@/features/admin/lib/construction-roles';
 

@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/components/manager-dashboard.tsx
+ * @purpose کامپوننت UI — داشبورد مدیر پروژه و KPI (manager-dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on shared/lib/utils, features/admin/components/shared, shared/components/brand/brand-logo, features/account/components/header-user-menu, shared/components/layout/PersianCalendar, features/weather/components/header-weather, shared/hooks/use-synced-project-id, shared/lib/project/project-cookie, features/manager/lib/manager-nav, features/manager/lib/overview-types, features/manager/config
+ */
+
 'use client'
 
 import Link from 'next/link'
@@ -72,11 +80,18 @@ import { CostEstimateView } from './cost-estimate-view'
 import { PmInboxCard } from './pm-inbox-card'
 import { BlockersDelaysCard, DailyDeltaCard } from './manager-daily-section'
 import { ManagerHelpPanel, type ManagerHelpLink } from './manager-help-panel'
-import { ManagerTour, markTourSeen, readTourSeen, type ManagerTourStep } from './manager-tour'
+import { ManagerTour, markTourSeen, readTourSeen } from './manager-tour'
+import {
+  DASHBOARD_CONFIG,
+  MANAGER_DASHBOARD_COPY,
+  MANAGER_TOUR_STEPS,
+  MANAGER_UI_NUMBERS,
+  buildManagerHelpLinks,
+} from '@/features/manager/config'
 import { managerFont } from './manager-font'
 import { CalcTraceProvider, CalcTraceTrigger } from '@/features/calc-trace/components/calc-trace'
 
-const REFRESH_MS = 5 * 60 * 1000
+const REFRESH_MS = MANAGER_UI_NUMBERS.refreshMs
 
 const NAV_ICONS: Record<ManagerNavIcon, ComponentType<{ className?: string }>> = {
   home: LayoutDashboard,
@@ -92,34 +107,6 @@ const NAV_ICONS: Record<ManagerNavIcon, ComponentType<{ className?: string }>> =
   store: Database,
   estimate: Coins,
 }
-
-const TOUR_STEPS: ManagerTourStep[] = [
-  {
-    target: 'health',
-    title: 'نوار سلامت پروژه',
-    body: 'پنج ستون اصلی پروژه — زمان‌بندی، هزینه، ایمنی، کیفیت و مصالح — در یک نگاه. وضعیت کلی سربرگ از بدترین ستون گرفته می‌شود.',
-  },
-  {
-    target: 'kpis',
-    title: 'چهار شاخص اصلی',
-    body: 'پیشرفت تجمعی در برابر برنامه، انحراف زمانی (روز و SPI)، انحراف هزینه (BAC، EV، AC و CPI) و اقدامات معوق.',
-  },
-  {
-    target: 'pulse',
-    title: 'نبض زندهٔ کارگاه',
-    body: 'آخرین ثبت گزارش روزانه، انبار، ایمنی و گیت. اگر بخشی عقب مانده باشد، با «ارسال یادآوری» به مسئولش اعلان بفرستید.',
-  },
-  {
-    target: 'alerts',
-    title: 'هشدارهای هوشمند',
-    body: 'فقط سه هشدار مهم، با حوزه، اثر احتمالی و پیشنهاد سیستم. نوار قرمز یعنی بحران و کهربایی یعنی نیازمند توجه؛ فهرست کامل از پایین همین کارت باز می‌شود.',
-  },
-  {
-    target: 'chart',
-    title: 'منحنی S پیشرفت',
-    body: 'خط برنامه (PV)، پیشرفت واقعی تأییدشده و ارزش کسب‌شده (EV) از چپ به راست در طول زمان. نقطهٔ «امروز» همان مقادیر کارت‌های بالای صفحه است.',
-  },
-]
 
 const PERIOD_IDS = MANAGER_PERIODS.map((p) => p.id)
 
@@ -167,13 +154,13 @@ function useManagerOverview(projectId: string | null) {
         cache: 'no-store',
       })
       const body = await response.json()
-      if (!response.ok) throw new Error(body.error || 'بارگذاری داشبورد ناموفق بود')
+      if (!response.ok) throw new Error(body.error || MANAGER_DASHBOARD_COPY.loadFailed)
       if (id !== requestId.current) return
       setData(body as ManagerOverview)
       loadedAt.current = Date.now()
     } catch (loadError) {
       if (id !== requestId.current) return
-      setError(loadError instanceof Error ? loadError.message : 'بارگذاری داشبورد ناموفق بود')
+      setError(loadError instanceof Error ? loadError.message : MANAGER_DASHBOARD_COPY.loadFailed)
     } finally {
       if (id === requestId.current) setLoading(false)
     }
@@ -187,7 +174,7 @@ function useManagerOverview(projectId: string | null) {
   useEffect(() => {
     const timer = window.setInterval(() => void load(), REFRESH_MS)
     const onVisible = () => {
-      if (document.visibilityState === 'visible' && Date.now() - loadedAt.current > 60000) void load()
+      if (document.visibilityState === 'visible' && Date.now() - loadedAt.current > MANAGER_UI_NUMBERS.visibilityReloadMs) void load()
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
@@ -372,7 +359,7 @@ function SidebarContent({
     'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60'
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <nav aria-label="منوی ماژول‌ها" data-tour="nav" className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
+      <nav aria-label={MANAGER_DASHBOARD_COPY.modulesNav} data-tour="nav" className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
         <ul className="space-y-0.5">
           {nav.groups.map((group) => (
             <SidebarGroup
@@ -393,8 +380,8 @@ function SidebarContent({
             type="button"
             onClick={onOpenHelp}
             aria-haspopup="dialog"
-            aria-label="راهنما و تور سیستم"
-            title="راهنما و تور سیستم"
+            aria-label={MANAGER_DASHBOARD_COPY.helpAndTour}
+            title={MANAGER_DASHBOARD_COPY.helpAndTour}
             className="mb-2 flex w-full items-center rounded-xl px-1.5 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-400 to-primary text-white shadow-sm">
@@ -413,10 +400,10 @@ function SidebarContent({
           </span>
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-1.5">
-              <span className="text-[13px] font-bold text-slate-800">راهنما و تور سیستم</span>
-              <span className="rounded-full bg-primary/10 px-1.5 py-px text-[10px] font-bold text-primary">تعاملی</span>
+              <span className="text-[13px] font-bold text-slate-800">{MANAGER_DASHBOARD_COPY.helpAndTour}</span>
+              <span className="rounded-full bg-primary/10 px-1.5 py-px text-[10px] font-bold text-primary">{MANAGER_DASHBOARD_COPY.helpBadge}</span>
             </span>
-            <span className="block truncate text-[11px] text-slate-500">تور 5 مرحله‌ای، اصطلاحات و میانبرها</span>
+            <span className="block truncate text-[11px] text-slate-500">{MANAGER_DASHBOARD_COPY.helpHint}</span>
           </span>
         </button>
         )}
@@ -424,23 +411,23 @@ function SidebarContent({
           <Link
             href="/admin"
             onClick={onNavigate}
-            aria-label={collapsed ? 'کنترل سنتر' : undefined}
-            title={collapsed ? 'کنترل سنتر' : undefined}
+            aria-label={collapsed ? MANAGER_DASHBOARD_COPY.controlCenter : undefined}
+            title={collapsed ? MANAGER_DASHBOARD_COPY.controlCenter : undefined}
             className={footerLink}
           >
             <Building2 className="h-4 w-4 shrink-0" aria-hidden />
-            <NavLabel collapsed={collapsed}>کنترل سنتر</NavLabel>
+            <NavLabel collapsed={collapsed}>{MANAGER_DASHBOARD_COPY.controlCenter}</NavLabel>
           </Link>
         ) : null}
         <Link
           href="/settings"
           onClick={onNavigate}
-          aria-label={collapsed ? 'تنظیمات' : undefined}
-          title={collapsed ? 'تنظیمات' : undefined}
+          aria-label={collapsed ? MANAGER_DASHBOARD_COPY.settings : undefined}
+          title={collapsed ? MANAGER_DASHBOARD_COPY.settings : undefined}
           className={footerLink}
         >
           <Settings className="h-4 w-4 shrink-0" aria-hidden />
-          <NavLabel collapsed={collapsed}>تنظیمات</NavLabel>
+          <NavLabel collapsed={collapsed}>{MANAGER_DASHBOARD_COPY.settings}</NavLabel>
         </Link>
       </div>
     </div>
@@ -487,24 +474,24 @@ function NotificationsMenu({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="true"
-        aria-label={count > 0 ? `اعلان‌ها، ${faNumber(count)} مورد` : 'اعلان‌ها'}
+        aria-label={count > 0 ? MANAGER_DASHBOARD_COPY.notificationsCount(faNumber(count)) : MANAGER_DASHBOARD_COPY.notifications}
         className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
       >
         <Bell className="h-[18px] w-[18px]" aria-hidden />
         {count > 0 ? (
           <span className="absolute -left-0.5 -top-0.5 min-w-[18px] rounded-full bg-rose-600 px-1 text-center text-[10px] font-bold leading-[18px] text-white">
-            {count > 99 ? '99+' : faNumber(count)}
+            {count > MANAGER_UI_NUMBERS.notificationCap ? `${MANAGER_UI_NUMBERS.notificationCap}+` : faNumber(count)}
           </span>
         ) : null}
       </button>
       {open ? (
         <div className="absolute left-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 motion-reduce:animate-none">
-          <p className="border-b border-slate-100 px-4 py-2.5 text-xs font-bold text-slate-900">اعلان‌ها</p>
+          <p className="border-b border-slate-100 px-4 py-2.5 text-xs font-bold text-slate-900">{MANAGER_DASHBOARD_COPY.notifications}</p>
           {count === 0 ? (
-            <p className="px-4 py-5 text-center text-xs text-slate-500">اعلان تازه‌ای نیست.</p>
+            <p className="px-4 py-5 text-center text-xs text-slate-500">{MANAGER_DASHBOARD_COPY.notificationsEmpty}</p>
           ) : (
             <ul className="max-h-80 divide-y divide-slate-100 overflow-y-auto">
-              {decisions?.items.slice(0, 3).map((item) => (
+              {decisions?.items.slice(0, MANAGER_UI_NUMBERS.notificationsPreview).map((item) => (
                 <li key={item.id}>
                   {inboxHref ? (
                     <Link
@@ -513,7 +500,7 @@ function NotificationsMenu({
                       className="block px-4 py-2.5 hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none"
                     >
                       <span className="block text-[11px] font-semibold text-primary">
-                        {item.kind === 'change_request' ? 'درخواست تغییر' : 'منتظر تأیید شما'}
+                        {item.kind === 'change_request' ? MANAGER_DASHBOARD_COPY.changeRequest : MANAGER_DASHBOARD_COPY.awaitingYou}
                       </span>
                       <span className="block truncate text-xs text-slate-800">{item.title}</span>
                     </Link>
@@ -522,14 +509,14 @@ function NotificationsMenu({
                   )}
                 </li>
               ))}
-              {critical.slice(0, 3).map((alert) => (
+              {critical.slice(0, MANAGER_UI_NUMBERS.notificationsPreview).map((alert) => (
                 <li key={alert.id}>
                   <Link
                     href="/dashboard/manager/alerts"
                     onClick={() => setOpen(false)}
                     className="block px-4 py-2.5 hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none"
                   >
-                    <span className="block text-[11px] font-semibold text-rose-700">هشدار بحرانی · {DOMAIN_META[alert.domain].label}</span>
+                    <span className="block text-[11px] font-semibold text-rose-700">{MANAGER_DASHBOARD_COPY.criticalAlert(DOMAIN_META[alert.domain].label)}</span>
                     <span className="block truncate text-xs text-slate-800">{alert.title}</span>
                   </Link>
                 </li>
@@ -572,10 +559,10 @@ function AllAlertsView({
           className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded"
         >
           <ArrowRight className="h-4 w-4" aria-hidden />
-          بازگشت به داشبورد
+          {MANAGER_DASHBOARD_COPY.backToDashboard}
         </Link>
       </div>
-      <SectionCard title="همهٔ هشدارهای فعال" icon={<ShieldAlert className="h-4 w-4" aria-hidden />}>
+      <SectionCard title={MANAGER_DASHBOARD_COPY.allAlertsTitle} icon={<ShieldAlert className="h-4 w-4" aria-hidden />}>
         <SectionBody result={overview?.alerts} loading={loading} rows={5}>
           {(alerts) => {
             const domains = Array.from(new Set(alerts.map((a) => a.domain)))
@@ -584,19 +571,19 @@ function AllAlertsView({
             )
             return (
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2" role="group" aria-label="فیلتر هشدارها">
+                <div className="flex flex-wrap items-center gap-2" role="group" aria-label={MANAGER_DASHBOARD_COPY.alertFilters}>
                   <button type="button" aria-pressed={level === 'all'} onClick={() => setLevel('all')} className={chip(level === 'all')}>
-                    همه ({faNumber(alerts.length)})
+                    {MANAGER_DASHBOARD_COPY.allWithCount(faNumber(alerts.length))}
                   </button>
                   <button type="button" aria-pressed={level === 'critical'} onClick={() => setLevel('critical')} className={chip(level === 'critical')}>
-                    بحرانی ({faNumber(alerts.filter((a) => a.level === 'critical').length)})
+                    {MANAGER_DASHBOARD_COPY.criticalWithCount(faNumber(alerts.filter((a) => a.level === 'critical').length))}
                   </button>
                   <button type="button" aria-pressed={level === 'warning'} onClick={() => setLevel('warning')} className={chip(level === 'warning')}>
-                    ریسک متوسط ({faNumber(alerts.filter((a) => a.level === 'warning').length)})
+                    {MANAGER_DASHBOARD_COPY.warningWithCount(faNumber(alerts.filter((a) => a.level === 'warning').length))}
                   </button>
                   <span className="mx-1 h-5 w-px bg-slate-200" aria-hidden />
                   <button type="button" aria-pressed={domain === 'all'} onClick={() => setDomain('all')} className={chip(domain === 'all')}>
-                    همهٔ حوزه‌ها
+                    {MANAGER_DASHBOARD_COPY.allDomains}
                   </button>
                   {domains.map((d) => (
                     <button key={d} type="button" aria-pressed={domain === d} onClick={() => setDomain(d)} className={chip(domain === d)}>
@@ -605,7 +592,7 @@ function AllAlertsView({
                   ))}
                 </div>
                 {shown.length === 0 ? (
-                  <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">هشداری با این فیلتر وجود ندارد.</p>
+                  <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{MANAGER_DASHBOARD_COPY.noFilterMatch}</p>
                 ) : (
                   <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                     {shown.map((alert) => (
@@ -653,7 +640,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
   }, [user.id])
 
   useEffect(() => {
-    const timer = window.setInterval(() => setTick((t) => t + 1), 30000)
+    const timer = window.setInterval(() => setTick((t) => t + 1), MANAGER_UI_NUMBERS.clockTickMs)
     return () => window.clearInterval(timer)
   }, [])
 
@@ -696,23 +683,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
     }
   }, [nav, projectId])
 
-  const helpLinks = useMemo<ManagerHelpLink[]>(() => {
-    const candidates: (ManagerHelpLink | null)[] = [
-      { label: 'همهٔ هشدارها', description: 'فهرست کامل هشدارها با فیلتر حوزه و سطح', href: '/dashboard/manager/alerts' },
-      { label: 'بک‌گراند محاسبات', description: 'فرمول و ریز محاسبهٔ هر عدد داشبورد', href: '/dashboard/manager/background' },
-      { label: 'جدول داده‌ها (Store)', description: 'پیشرفت، تعهد هفته و PPC هر فعالیت از منبع مشترک', href: '/dashboard/manager/store' },
-      { label: 'برآورد و کنترل هزینه', description: 'ارزش قرارداد، BAC، هزینهٔ واقعی و EAC', href: '/dashboard/manager/estimate' },
-      hrefs.inbox ? { label: 'کارتابل من', description: 'تصمیم‌ها و تأییدهای در انتظار', href: hrefs.inbox() } : null,
-      hrefs.evm ? { label: 'شاخص‌های ارزش کسب‌شده', description: 'جزئیات SPI، CPI و فعالیت‌ها', href: hrefs.evm } : null,
-      hrefs.scheduleIntel
-        ? { label: 'تحلیل زمان‌بندی و مسیر بحرانی', description: 'فعالیت‌های بحرانی و شناوری', href: hrefs.scheduleIntel }
-        : null,
-      hrefs.attendance ? { label: 'منابع انسانی و تردد', description: 'حضور و تردد امروز کارگاه', href: hrefs.attendance } : null,
-      hrefs.inventory ? { label: 'انبار و مصالح', description: 'موجودی و اقلام زیر حداقل', href: hrefs.inventory } : null,
-      hrefs.invoices ? { label: 'صورت‌وضعیت‌های کارفرما', description: 'ارسال‌شده، در انتظار و پرداخت‌شده', href: hrefs.invoices } : null,
-    ]
-    return candidates.filter((c): c is ManagerHelpLink => c != null)
-  }, [hrefs])
+  const helpLinks = useMemo<ManagerHelpLink[]>(() => buildManagerHelpLinks(hrefs), [hrefs])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -763,8 +734,8 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
     return (
       <div className="container mx-auto px-4 py-8">
         <EmptyState
-          title="داشبورد مدیر"
-          description="هنوز پروژه‌ای به شما تخصیص داده نشده است. از ادمین بخواهید شما را به‌عنوان مدیر پروژه روی یک پروژه منصوب کند."
+          title={DASHBOARD_CONFIG.emptyTitle}
+          description={DASHBOARD_CONFIG.emptyDescription}
         />
       </div>
     )
@@ -798,15 +769,15 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
               className="flex min-w-0 flex-1 items-center rounded-md px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
             >
               <BrandLogo size="sm" withName />
-              <span className="sr-only">داشبورد مدیر پروژه</span>
+              <span className="sr-only">{DASHBOARD_CONFIG.title}</span>
             </Link>
           ) : null}
           <button
             type="button"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             aria-expanded={!sidebarCollapsed}
-            aria-label={sidebarCollapsed ? 'باز کردن منو' : 'جمع کردن منو'}
-            title={sidebarCollapsed ? 'باز کردن منو' : 'جمع کردن منو'}
+            aria-label={sidebarCollapsed ? MANAGER_DASHBOARD_COPY.expandMenu : MANAGER_DASHBOARD_COPY.collapseMenu}
+            title={sidebarCollapsed ? MANAGER_DASHBOARD_COPY.expandMenu : MANAGER_DASHBOARD_COPY.collapseMenu}
             className={cn(
               'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
               sidebarCollapsed && 'mx-auto'
@@ -832,7 +803,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
           <aside
             role="dialog"
             aria-modal="true"
-            aria-label="منوی ماژول‌ها"
+            aria-label={MANAGER_DASHBOARD_COPY.modulesNav}
             className="absolute inset-y-0 right-0 flex w-72 max-w-[85vw] flex-col bg-white shadow-2xl animate-in slide-in-from-right duration-[220ms] ease-out motion-reduce:animate-none"
           >
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 px-4">
@@ -840,7 +811,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
               <button
                 type="button"
                 onClick={() => setMobileNavOpen(false)}
-                aria-label="بستن منو"
+                aria-label={MANAGER_DASHBOARD_COPY.closeMenu}
                 className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
               >
                 <X className="h-5 w-5" aria-hidden />
@@ -867,7 +838,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}
-              aria-label="باز کردن منوی ماژول‌ها"
+              aria-label={MANAGER_DASHBOARD_COPY.openModules}
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 md:hidden"
             >
               <Menu className="h-4 w-4" aria-hidden />
@@ -879,16 +850,16 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                 onChange={(event) => {
                   if (event.target.value) writeProjectCookie(event.target.value)
                 }}
-                aria-label="انتخاب پروژه"
+                aria-label={MANAGER_DASHBOARD_COPY.pickProject}
                 className={cn(
                   'h-10 appearance-none truncate rounded-xl border border-slate-200/80 bg-white py-0 pe-9 ps-3.5 text-[15px] font-medium tracking-tight text-slate-900 shadow-xs transition-colors hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
                   view === 'home' ? 'w-44 max-w-[70vw] xl:w-72' : 'max-w-[240px]'
                 )}
               >
-                {!projectId ? <option value="">انتخاب پروژه…</option> : null}
+                {!projectId ? <option value="">{MANAGER_DASHBOARD_COPY.pickProjectPlaceholder}</option> : null}
                 {projectOptions.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {view === 'home' ? `اتاق فرمان ${p.name}` : p.name}
+                    {view === 'home' ? MANAGER_DASHBOARD_COPY.commandRoom(p.name) : p.name}
                   </option>
                 ))}
               </select>
@@ -899,14 +870,14 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
               <button
                 type="button"
                 onClick={startTour}
-                title="یک تور کوتاه 5 مرحله‌ای از بخش‌های اصلی"
+                title={MANAGER_DASHBOARD_COPY.startTourTitle}
                 className={cn(
                   'inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-1',
                   showIntro && !tourOpen && 'ring-2 ring-primary/30 ring-offset-1'
                 )}
               >
                 <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                <span className="lg:max-xl:sr-only">شروع تور</span>
+                <span className="lg:max-xl:sr-only">{MANAGER_DASHBOARD_COPY.startTour}</span>
               </button>
             ) : null}
 
@@ -916,7 +887,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
               <span className="h-6 w-20 animate-pulse rounded-full bg-slate-200 motion-reduce:animate-none" aria-hidden />
             )}
 
-            <div role="radiogroup" aria-label="بازهٔ زمانی" className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-0.5">
+            <div role="radiogroup" aria-label={MANAGER_DASHBOARD_COPY.periodGroup} className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-0.5">
               {MANAGER_PERIODS.map((option) => (
                 <button
                   key={option.id}
@@ -944,13 +915,13 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                 type="button"
                 onClick={() => void reload()}
                 disabled={loading || !projectId}
-                title={data ? `آخرین همگام‌سازی: ${jalaliDateTime(data.generatedAt)}` : undefined}
-                aria-label="همگام‌سازی داده‌ها"
+                title={data ? MANAGER_DASHBOARD_COPY.syncLast(jalaliDateTime(data.generatedAt)) : undefined}
+                aria-label={MANAGER_DASHBOARD_COPY.syncAria}
                 className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
               >
                 {loading ? <Spinner className="h-3.5 w-3.5" /> : <RefreshCw className="h-3.5 w-3.5" aria-hidden />}
                 <span className="hidden xl:inline">
-                  {data ? `همگام‌سازی ${relativeTimeFa(data.generatedAt)}` : loading ? 'در حال بارگذاری…' : 'همگام‌سازی'}
+                  {data ? MANAGER_DASHBOARD_COPY.syncRelative(relativeTimeFa(data.generatedAt)) : loading ? MANAGER_DASHBOARD_COPY.loading : MANAGER_DASHBOARD_COPY.syncIdle}
                 </span>
               </button>
 
@@ -962,8 +933,8 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
               <button
                 type="button"
                 onClick={() => setHelpOpen(true)}
-                aria-label="مرکز راهنما"
-                title="راهنما"
+                aria-label={MANAGER_DASHBOARD_COPY.helpCenter}
+                title={MANAGER_DASHBOARD_COPY.helpTitle}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
               >
                 <CircleHelp className="h-[18px] w-[18px]" aria-hidden />
@@ -984,7 +955,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                 onClick={() => void reload()}
                 className="rounded-lg border border-rose-200 bg-white px-3 py-1 text-xs font-semibold hover:bg-rose-100"
               >
-                تلاش دوباره
+                {MANAGER_DASHBOARD_COPY.retry}
               </button>
             </div>
           ) : null}
@@ -996,10 +967,8 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
           ) : view === 'store' ? (
             <div className="space-y-4">
               <div>
-                <h1 className="text-base font-bold text-slate-900">جدول داده‌ها (Store)</h1>
-                <p className="mt-1 text-xs leading-6 text-slate-500">
-                  همین جدول منبع مشترک پیشرفت فعالیت‌هاست. عددها را می‌توانید جستجو کنید یا با JSON و CSV دانلود کنید.
-                </p>
+                <h1 className="text-base font-bold text-slate-900">{MANAGER_DASHBOARD_COPY.storeTitle}</h1>
+                <p className="mt-1 text-xs leading-6 text-slate-500">{MANAGER_DASHBOARD_COPY.storeHint}</p>
               </div>
               <StoreInspector projectId={projectId} />
             </div>
@@ -1007,11 +976,11 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
             <CostEstimateView projectId={projectId} overview={data} loading={loading} />
           ) : (
             <>
-              <h1 className="sr-only">اتاق فرمان {activeProjectName}</h1>
+              <h1 className="sr-only">{MANAGER_DASHBOARD_COPY.commandRoom(activeProjectName)}</h1>
               {data ? (
                 <p className="-mb-2 text-xs text-slate-500">
-                  {data.project?.endDate ? `پایان قراردادی ${jalaliDate(data.project.endDate)} · ` : ''}
-                  امروز {jalaliDate(data.site.date)}
+                  {data.project?.endDate ? MANAGER_DASHBOARD_COPY.contractEnd(jalaliDate(data.project.endDate)) : ''}
+                  {MANAGER_DASHBOARD_COPY.today(jalaliDate(data.site.date))}
                 </p>
               ) : null}
 
@@ -1041,10 +1010,10 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
                 <SectionCard
                   tourId="chart"
                   className="order-5 border-2 border-[#1e2a5e] lg:order-1 lg:col-span-12"
-                  title="منحنی S پیشرفت پروژه"
+                  title={MANAGER_DASHBOARD_COPY.sCurveTitle}
                   icon={<LineChartIcon className="h-4 w-4" aria-hidden />}
                   action={<CalcTraceTrigger metrics={['home.pv_curve', 'home.spi_t']} />}
-                  hint="خط برنامه (PV)، پیشرفت واقعی ثبت‌شده و ارزش کسب‌شده (EV) به درصد تجمعی، از اولین گزارش ثبت‌شدهٔ پیشرفت تا امروز. نقطهٔ «امروز» دقیقاً همان مقادیر کارت‌های بالای صفحه است."
+                  hint={MANAGER_DASHBOARD_COPY.sCurveHint}
                 >
                   <SectionBody result={data?.progress} loading={loading} rows={5}>
                     {(curve) => <ManagerProgressChart curve={curve} />}
@@ -1124,11 +1093,11 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
         open={helpOpen}
         onClose={() => setHelpOpen(false)}
         onStartTour={startTour}
-        steps={TOUR_STEPS}
+        steps={MANAGER_TOUR_STEPS}
         links={helpLinks}
         unavailable={nav.unavailable}
       />
-      <ManagerTour open={tourOpen} steps={TOUR_STEPS} onClose={closeTour} />
+      <ManagerTour open={tourOpen} steps={MANAGER_TOUR_STEPS} onClose={closeTour} />
     </div>
     </CalcTraceProvider>
   )

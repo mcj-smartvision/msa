@@ -1,3 +1,11 @@
+/**
+ * @file app/api/cron/progress-snapshots/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/service, features/schedule/lib/progress-snapshots
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/shared/lib/supabase/service'
 import { captureProgressSnapshots } from '@/features/schedule/lib/progress-snapshots'

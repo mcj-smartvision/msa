@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/dependency-network-layout.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (dependency-network-layout)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/wbs-utils, features/schedule/lib/dependency-network, shared/types/schedule
+ */
+
 import { compareWbs } from '@/features/schedule/lib/wbs-utils'
 import type {
 DependencyNetwork,

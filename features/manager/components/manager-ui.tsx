@@ -1,9 +1,18 @@
+/**
+ * @file features/manager/components/manager-ui.tsx
+ * @purpose کامپوننت UI — داشبورد مدیر پروژه و KPI (manager-ui)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on shared/lib/utils, features/manager/lib/overview-types, features/manager/config
+ */
+
 'use client'
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { AlertCircle, CircleSlash, Info, Loader2 } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import type { SectionResult } from '@/features/manager/lib/overview-types'
+import { MANAGER_UI_COPY } from '@/features/manager/config'
 
 /** Contextual help: opens on click or keyboard focus, closes on Escape / outside click. */
 export function InfoHint({ label, children }: { label: string; children: ReactNode }) {
@@ -31,7 +40,7 @@ export function InfoHint({ label, children }: { label: string; children: ReactNo
     <span ref={wrapRef} className="relative inline-flex">
       <button
         type="button"
-        aria-label={`دربارهٔ ${label}`}
+        aria-label={MANAGER_UI_COPY.about(label)}
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((v) => !v)}
@@ -105,7 +114,7 @@ export function SectionCard({
 export function LoadingRows({ rows = 3 }: { rows?: number }) {
   return (
     <div className="space-y-2.5" aria-busy="true" aria-live="polite">
-      <span className="sr-only">در حال بارگذاری…</span>
+      <span className="sr-only">{MANAGER_UI_COPY.loading}</span>
       {Array.from({ length: rows }).map((_, index) => (
         <div key={index} className="h-10 animate-pulse rounded-xl bg-slate-100/80 motion-reduce:animate-none" />
       ))}
@@ -159,13 +168,13 @@ export function SectionBody<T>({
   children: (data: T) => ReactNode
 }) {
   if (!result) {
-    return loading ? <LoadingRows rows={rows} /> : <EmptyNote title="داده هنوز بارگذاری نشده است" />
+    return loading ? <LoadingRows rows={rows} /> : <EmptyNote title={MANAGER_UI_COPY.notLoaded} />
   }
   if (result.status === 'unavailable') {
-    return <EmptyNote title="داده هنوز متصل نشده" description={result.reason} />
+    return <EmptyNote title={MANAGER_UI_COPY.notConnected} description={result.reason} />
   }
   if (result.status === 'error') {
-    return <EmptyNote tone="error" title="بارگذاری این بخش ناموفق بود" description={result.message} />
+    return <EmptyNote tone="error" title={MANAGER_UI_COPY.sectionFailed} description={result.message} />
   }
   return <>{children(result.data)}</>
 }

@@ -1,3 +1,11 @@
+/**
+ * @file app/(dashboard)/admin/projects/[projectId]/members/[memberId]/page.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (page)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/hooks/use-supabase, features/admin/services/admin, features/admin/components/shared, features/admin/components/member-form, features/admin/components/admin-password-panel, shared/components/ui/button, shared/types/admin
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -10,6 +18,7 @@ import { MemberForm } from '@/features/admin/components/member-form'
 import { AdminPasswordPanel } from '@/features/admin/components/admin-password-panel'
 import { Button } from '@/shared/components/ui/button'
 import type { Position, ProjectMember } from '@/shared/types/admin'
+import { ADMIN_COPY } from '@/features/admin/config'
 
 export default function MemberProfilePage({
   params,
@@ -29,7 +38,7 @@ export default function MemberProfilePage({
       fetchProjectMember(supabase, params.memberId),
       fetchPositions(supabase, params.projectId),
     ])
-    if (!memberData) throw new Error('عضو یافت نشد')
+    if (!memberData) throw new Error(ADMIN_COPY.memberNotFound)
     setMember(memberData)
     setPositions(positionData)
   }
@@ -41,7 +50,7 @@ export default function MemberProfilePage({
         setLoading(true)
         await loadMember()
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری پروفایل عضو ناموفق بود')
+        if (!cancelled) setError(err instanceof Error ? err.message : ADMIN_COPY.loadMemberFailed)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -51,24 +60,24 @@ export default function MemberProfilePage({
     }
   }, [supabase, params.memberId, params.projectId])
 
-  if (loading) return <LoadingBlock label="در حال بارگذاری پروفایل عضو..." />
-  if (error || !member) return <ErrorBlock message={error ?? 'عضو یافت نشد'} />
+  if (loading) return <LoadingBlock label={ADMIN_COPY.loadingMember} />
+  if (error || !member) return <ErrorBlock message={error ?? ADMIN_COPY.memberNotFound} />
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="پروفایل عضو"
-        description="جزئیات عضو، سمت‌ها و اطلاعات ورود را به‌روز کنید."
+        title={ADMIN_COPY.memberTitle}
+        description={ADMIN_COPY.memberHint}
         actions={
           <Button asChild variant="outline">
-            <Link href={`/admin/projects/${params.projectId}/members`}>بازگشت به اعضا</Link>
+            <Link href={`/admin/projects/${params.projectId}/members`}>{ADMIN_COPY.backToMembers}</Link>
           </Button>
         }
       />
 
       {saved ? (
         <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2">
-          پروفایل عضو با موفقیت به‌روز شد.
+          {ADMIN_COPY.memberSaved}
         </p>
       ) : null}
 
@@ -81,7 +90,7 @@ export default function MemberProfilePage({
             body: JSON.stringify({ member_id: member.id, password }),
           })
           const data = await response.json()
-          if (!response.ok) throw new Error(data.error || 'بازنشانی رمز ناموفق بود')
+          if (!response.ok) throw new Error(data.error || ADMIN_COPY.resetPasswordFailed)
           await loadMember()
         }}
       />
@@ -92,7 +101,7 @@ export default function MemberProfilePage({
           ...member,
           position_ids: member.positions?.map((position) => position.id) ?? [],
         }}
-        submitLabel="ذخیره تغییرات"
+        submitLabel={ADMIN_COPY.saveChanges}
         showPasswordField={false}
         onSubmit={async (values) => {
           const response = await fetch('/api/admin/update-member', {
@@ -110,7 +119,7 @@ export default function MemberProfilePage({
             }),
           })
           const data = await response.json()
-          if (!response.ok) throw new Error(data.error || 'به‌روزرسانی عضو ناموفق بود')
+          if (!response.ok) throw new Error(data.error || ADMIN_COPY.updateMemberFailed)
           setSaved(true)
           await loadMember()
           router.refresh()

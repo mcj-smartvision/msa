@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/project/project-cookie.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (project-cookie)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 /** Global "active project" selection, shared across pages via cookie (like the locale cookie). */
 
 export const PROJECT_COOKIE = 'sitepilot_active_project'

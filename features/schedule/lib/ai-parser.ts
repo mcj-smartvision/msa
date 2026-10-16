@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/ai-parser.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (ai-parser)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule
+ */
+
 import type { DailyReportAiParsed } from '@/shared/types/schedule'
 
 /**

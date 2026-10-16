@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/components/overhead-per-capita-table.tsx
+ * @purpose کامپوننت UI — حسابداری، هزینه،overhead و صورت‌وضعیت (overhead-per-capita-table)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/finance/components/month-column-header, features/finance/components/overhead-costs-matrix, features/finance/lib/overhead-schedule-months, features/finance/lib/live-workshop-cost, features/schedule/lib/month-progress-overhead, features/schedule/lib/earned-month-weight, features/schedule/lib/parent-weight-rollup, features/schedule/lib/wbs-utils, features/supervisor/lib/daily-progress-storage, features/supervisor/lib/daily-report-activities
+ */
+
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
@@ -25,6 +33,7 @@ type DailyProgressEntry,
 } from '@/features/supervisor/lib/daily-report-activities'
 import type { ScheduleTreeNode } from '@/features/workshop/lib/types'
 import { enrichScheduleTreeWithWbs } from '@/features/workshop/lib/wbs-numbering'
+import { OVERHEAD_PER_CAPITA_COPY } from '@/features/finance/config'
 import { cn } from '@/shared/lib/utils'
 import { useStoreProgress } from '@/features/project-store/use-store-progress'
 
@@ -111,7 +120,7 @@ export function OverheadPerCapitaTable({
           }),
         ])
         const treeJson = await treeRes.json()
-        if (!treeRes.ok) throw new Error(treeJson.error || 'خطا در بارگذاری برنامه')
+        if (!treeRes.ok) throw new Error(treeJson.error || OVERHEAD_PER_CAPITA_COPY.loadScheduleFailed)
         const progressJson = await progressRes.json().catch(() => ({ updates: [] }))
         if (cancelled) return
         const saved: DailyProgressEntry[] = Array.isArray(progressJson.updates)
@@ -136,7 +145,7 @@ export function OverheadPerCapitaTable({
         setEntries([...merged.values()])
         setOverhead(loadOverheadMonthTotals(projectId, fa))
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'خطا')
+        if (!cancelled) setError(err instanceof Error ? err.message : OVERHEAD_PER_CAPITA_COPY.error)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -252,7 +261,7 @@ export function OverheadPerCapitaTable({
   if (!projectId) {
     return (
       <p className="text-sm text-muted-foreground">
-        {fa ? 'ابتدا یک پروژه انتخاب کنید.' : 'Select a project first.'}
+        {fa ? OVERHEAD_PER_CAPITA_COPY.selectProject : 'Select a project first.'}
       </p>
     )
   }
@@ -260,7 +269,7 @@ export function OverheadPerCapitaTable({
     return (
       <p className="flex items-center gap-2 text-sm text-slate-500">
         <Loader2 className="h-4 w-4 animate-spin" />
-        {fa ? 'در حال محاسبه…' : 'Calculating…'}
+        {fa ? OVERHEAD_PER_CAPITA_COPY.calculating : 'Calculating…'}
       </p>
     )
   }
@@ -270,7 +279,7 @@ export function OverheadPerCapitaTable({
     <div className="space-y-3" dir="rtl">
       <p className="text-xs leading-relaxed text-slate-600">
         {fa
-          ? 'با + کنار هر ماه، ستون قبل یا بعد اضافه کنید و نام ماه را بنویسید. مبلغ همان ماه را به تومان در ردیف مشکی پایین وارد کنید (همهٔ عددها به تومان است). سهم هر فعالیت = این مبلغ × (وزن کسب‌شده ÷ جمع وزن کسب‌شده).'
+          ? OVERHEAD_PER_CAPITA_COPY.intro
           : 'Use + beside a month to insert a column and type its name. Enter that month’s amount in toman in the dark footer (all figures are in toman). Each activity gets that amount × its earned-weight share.'}
       </p>
       <div className="max-h-[min(75vh,820px)] overflow-auto rounded-xl border border-slate-200 bg-white">
@@ -281,7 +290,7 @@ export function OverheadPerCapitaTable({
                 WBS
               </th>
               <th className="sticky z-30 whitespace-nowrap border-b border-e border-slate-300 bg-slate-100 px-2 py-2 text-start" style={{ insetInlineStart: 52 }}>
-                {fa ? 'نام' : 'Name'}
+                {fa ? OVERHEAD_PER_CAPITA_COPY.name : 'Name'}
               </th>
               {model.months.map((month, index) => (
                 <th
@@ -317,7 +326,7 @@ export function OverheadPerCapitaTable({
             {model.rows.length === 0 ? (
               <tr>
                 <td colSpan={2 + model.months.length} className="px-3 py-8 text-center text-slate-500">
-                  {fa ? 'فعالیتی در برنامه نیست.' : 'No schedule activities.'}
+                  {fa ? OVERHEAD_PER_CAPITA_COPY.noActivities : 'No schedule activities.'}
                 </td>
               </tr>
             ) : null}
@@ -356,7 +365,7 @@ export function OverheadPerCapitaTable({
               <tr className="bg-emerald-50 font-semibold text-emerald-950">
                 <td className="sticky start-0 z-30 border-e border-t border-slate-300 bg-emerald-50 px-2 py-2" />
                 <td className="sticky z-30 border-e border-t border-slate-300 bg-emerald-50 px-2 py-2" style={{ insetInlineStart: 52 }}>
-                  {fa ? 'جمع کار انجام‌شده' : 'Performed total'}
+                  {fa ? OVERHEAD_PER_CAPITA_COPY.performedTotal : 'Performed total'}
                 </td>
                 {model.performed.map((value, index) => (
                   <td
@@ -370,7 +379,7 @@ export function OverheadPerCapitaTable({
               <tr className="bg-slate-900 font-semibold text-white">
                 <td className="sticky start-0 z-30 border-e border-slate-700 bg-slate-900 px-2 py-2" />
                 <td className="sticky z-30 border-e border-slate-700 bg-slate-900 px-2 py-2" style={{ insetInlineStart: 52 }}>
-                  {fa ? 'هزینهٔ واقعی ثبت‌شده' : 'Recorded overhead'}
+                  {fa ? OVERHEAD_PER_CAPITA_COPY.recordedOverhead : 'Recorded overhead'}
                 </td>
                 {model.monthCost.map((value, index) => (
                   <td
@@ -381,7 +390,7 @@ export function OverheadPerCapitaTable({
                       key={`${model.months[index]?.label ?? index}:${value}`}
                       dir="ltr"
                       defaultValue={formatToman(value)}
-                      aria-label={fa ? `مبلغ ${model.months[index]?.label ?? ''} (تومان)` : 'Month amount (toman)'}
+                      aria-label={fa ? OVERHEAD_PER_CAPITA_COPY.monthAmountAria(model.months[index]?.label ?? '') : 'Month amount (toman)'}
                       onBlur={(event) => {
                         const next = parseTomanInput(event.target.value)
                         if (next == null || Math.round(next * TOMAN_SCALE) === Math.round(value * TOMAN_SCALE)) {

@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/time/tehran.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (tehran)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 import { toGregorian, toJalaali } from 'jalaali-js'
 
 /** Iran has kept a fixed UTC+03:30 offset (no daylight saving) since 2022. */

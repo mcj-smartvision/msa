@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/gantt-tone.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (gantt-tone)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/float-alerts, features/schedule/lib/progress-alert-quadrant
+ */
+
 import type { ScheduleAlertSeverity } from '@/features/schedule/lib/float-alerts'
 import type { AlertQuadrant } from '@/features/schedule/lib/progress-alert-quadrant'
 

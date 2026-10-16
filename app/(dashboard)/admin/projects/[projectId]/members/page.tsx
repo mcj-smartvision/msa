@@ -1,3 +1,11 @@
+/**
+ * @file app/(dashboard)/admin/projects/[projectId]/members/page.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (page)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/hooks/use-supabase, features/admin/services/admin, features/admin/components/shared, features/admin/components/member-form, shared/components/ui/card, shared/components/ui/button, shared/lib/i18n/admin-member, shared/components/i18n/locale-provider, shared/lib/auth/login-identifier, shared/types/admin
+ */
+
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
@@ -12,6 +20,7 @@ import { getAdminMemberMessages } from '@/shared/lib/i18n/admin-member'
 import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { formatLoginDisplay } from '@/shared/lib/auth/login-identifier'
 import type { Position, ProjectMember } from '@/shared/types/admin'
+import { ADMIN_COPY } from '@/features/admin/config'
 
 export default function ProjectMembersPage({ params }: { params: { projectId: string } }) {
   const supabase = useSupabase()
@@ -52,7 +61,7 @@ export default function ProjectMembersPage({ params }: { params: { projectId: st
         setLoading(true)
         await loadData()
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری اعضا ناموفق بود')
+        if (!cancelled) setError(err instanceof Error ? err.message : ADMIN_COPY.loadMembersFailed)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -92,7 +101,7 @@ export default function ProjectMembersPage({ params }: { params: { projectId: st
     })
 
     const data = await response.json()
-    if (!response.ok) throw new Error(data.error || 'ایجاد عضو ناموفق بود')
+    if (!response.ok) throw new Error(data.error || ADMIN_COPY.createMemberFailed)
     await loadData()
   }
 

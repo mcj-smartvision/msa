@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/cost-performance.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (cost-performance)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/evm/lib/metrics
+ */
+
 import type { EvmBudgetBasis } from '@/features/evm/lib/metrics'
 
 export type CostTone = 'good' | 'warn' | 'bad' | 'neutral'

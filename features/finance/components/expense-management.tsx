@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/components/expense-management.tsx
+ * @purpose کامپوننت UI — حسابداری، هزینه،overhead و صورت‌وضعیت (expense-management)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on shared/components/i18n/locale-provider, features/schedule/components/formatted-date, features/schedule/components/schedule-date-input, features/schedule/hooks/use-schedule-calendar, features/admin/components/shared, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/textarea, shared/components/ui/select
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -73,6 +81,7 @@ FINANCIAL_COST_TYPE_LABELS,
 type FinancialCostType,
 } from '@/features/finance/lib/types'
 import { getExpenseMessages } from '@/shared/lib/i18n/expenses'
+import { EXPENSE_MANAGEMENT_COPY } from '@/features/finance/config'
 import { cn } from '@/shared/lib/utils'
 import type { DashboardUserContext } from '@/shared/types/dashboard'
 import { useSupabase } from '@/shared/hooks/use-supabase'
@@ -497,7 +506,7 @@ export function ExpenseManagement({
             extracted.items
               .slice(0, 5)
               .map((i) => i.description)
-              .join('، ')
+              .join(EXPENSE_MANAGEMENT_COPY.listSep)
           )
         }
         if (extracted.amount == null) {
@@ -788,14 +797,14 @@ export function ExpenseManagement({
       const mapping: Record<number, ImportField> = {}
       headers.forEach((h, i) => {
         const key = h.toLowerCase()
-        if (key.includes('document') || key.includes('سند')) mapping[i] = 'documentNo'
-        else if (key.includes('invoice') || key.includes('فاکتور')) mapping[i] = 'invoiceNo'
-        else if (key.includes('supplier') || key.includes('vendor') || key.includes('تأمین'))
+        if (key.includes('document') || key.includes(EXPENSE_MANAGEMENT_COPY.headerDocument)) mapping[i] = 'documentNo'
+        else if (key.includes('invoice') || key.includes(EXPENSE_MANAGEMENT_COPY.headerInvoice)) mapping[i] = 'invoiceNo'
+        else if (key.includes('supplier') || key.includes('vendor') || key.includes(EXPENSE_MANAGEMENT_COPY.headerSupplier))
           mapping[i] = 'supplierName'
-        else if (key.includes('date') || key.includes('تاریخ')) mapping[i] = 'documentDate'
-        else if (key.includes('amount') || key.includes('مبلغ')) mapping[i] = 'amount'
-        else if (key.includes('desc') || key.includes('شرح')) mapping[i] = 'description'
-        else if (key.includes('type') || key.includes('نوع')) mapping[i] = 'costType'
+        else if (key.includes('date') || key.includes(EXPENSE_MANAGEMENT_COPY.headerDate)) mapping[i] = 'documentDate'
+        else if (key.includes('amount') || key.includes(EXPENSE_MANAGEMENT_COPY.headerAmount)) mapping[i] = 'amount'
+        else if (key.includes('desc') || key.includes(EXPENSE_MANAGEMENT_COPY.headerDescription)) mapping[i] = 'description'
+        else if (key.includes('type') || key.includes(EXPENSE_MANAGEMENT_COPY.headerType)) mapping[i] = 'costType'
         else mapping[i] = 'skip'
       })
       setImportMapping(mapping)
@@ -827,8 +836,8 @@ export function ExpenseManagement({
           ? costTypeRaw
           : 'materials'
       ) as FinancialCostType
-      if (!Number.isFinite(amount) || amount <= 0) errors.push('مبلغ نامعتبر')
-      if (!documentDate) errors.push('تاریخ وارد نشده')
+      if (!Number.isFinite(amount) || amount <= 0) errors.push(EXPENSE_MANAGEMENT_COPY.invalidAmount)
+      if (!documentDate) errors.push(EXPENSE_MANAGEMENT_COPY.missingDate)
 
       const candidate = {
         projectId: projectId!,
@@ -921,7 +930,7 @@ export function ExpenseManagement({
                 </Button>
                 <Button type="button" variant="outline" asChild>
                   <Link href="/finance/payables">
-                    {isFa ? 'بدهی پیمانکاران' : 'Contractor Payables'}
+                    {isFa ? EXPENSE_MANAGEMENT_COPY.contractorPayables : 'Contractor Payables'}
                   </Link>
                 </Button>
               </>
@@ -1441,7 +1450,7 @@ export function ExpenseManagement({
                     className="underline"
                     onClick={() => void handleAnalyzeScan()}
                   >
-                    {isFa ? 'تلاش دوباره' : 'Try again'}
+                    {isFa ? EXPENSE_MANAGEMENT_COPY.tryAgain : 'Try again'}
                   </button>
                 </div>
               ) : null}
@@ -1593,7 +1602,7 @@ export function ExpenseManagement({
           setDetailDoc(null)
           setRevisions([])
         }}
-        title={isFa ? 'فاکتور فروش' : t.detailTitle}
+        title={isFa ? EXPENSE_MANAGEMENT_COPY.salesInvoice : t.detailTitle}
         className="sm:max-w-4xl"
       >
         {detailDoc ? (

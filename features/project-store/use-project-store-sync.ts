@@ -1,3 +1,11 @@
+/**
+ * @file features/project-store/use-project-store-sync.ts
+ * @purpose ماژول — ذخیره پیشرفت و overlay اعداد داشبورد (use-project-store-sync)
+ * @safe-to-edit CAREFUL
+ * @affects ذخیره پیشرفت و overlay اعداد داشبورد
+ * @depends-on features/schedule/lib/schedule-view-sync
+ */
+
 'use client'
 
 import { useEffect } from 'react'

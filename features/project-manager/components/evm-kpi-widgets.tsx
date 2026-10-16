@@ -1,22 +1,24 @@
+/**
+ * @file features/project-manager/components/evm-kpi-widgets.tsx
+ * @purpose کامپوننت UI — اتاق فرمان مدیر پروژه و کارتابل (evm-kpi-widgets)
+ * @safe-to-edit CAREFUL
+ * @affects اتاق فرمان مدیر پروژه و کارتابل
+ * @depends-on shared/lib/utils, features/evm/lib/metrics, features/evm/lib/rag-status, features/project-manager/config
+ */
+
 'use client'
 
 import type { ReactNode } from 'react'
 import { cn } from '@/shared/lib/utils'
 import type { EvmCostSource, EvmMetrics } from '@/features/evm/lib/metrics'
 import { DEFAULT_RAG_THRESHOLDS, type FloatHealth } from '@/features/evm/lib/rag-status'
+import { EVM_KPI_COPY } from '@/features/project-manager/config'
 
-const COST_SOURCE_LABEL: Record<EvmCostSource, string> = {
-  expense: 'اسناد هزینه نهایی‌شده',
-  vendor_bill: 'صورت‌حساب تأمین‌کنندگان',
-  overhead: 'هزینه بالاسری کارگاه',
-}
+const C = EVM_KPI_COPY
 
-const BUDGET_BASIS_LABEL: Record<EvmMetrics['budgetBasis'], string> = {
-  technical_office_cost: 'بودجه = ستون «هزینه» برنامهٔ دفتر فنی (جمع فعالیت‌های برگ)',
-  contract_value: 'بودجه = مقدار × قیمت واحد فعالیت‌ها',
-  weighted_project_budget: 'بودجه پروژه به نسبت وزن فعالیت‌ها تقسیم شده',
-  none: 'بودجه‌ای برای فعالیت‌ها ثبت نشده است',
-}
+const COST_SOURCE_LABEL: Record<EvmCostSource, string> = C.costSource
+
+const BUDGET_BASIS_LABEL: Record<EvmMetrics['budgetBasis'], string> = C.budgetBasis
 
 function formatAmount(value: number): string {
   return Math.round(value).toLocaleString('en-US')
@@ -24,7 +26,7 @@ function formatAmount(value: number): string {
 
 /** Left-to-right isolate keeps the sign and digit grouping intact inside Persian text. */
 function formatToman(value: number): string {
-  return `\u2066${formatAmount(value)}\u2069 تومان`
+  return `\u2066${formatAmount(value)}\u2069 ${C.toman}`
 }
 
 function indexTone(value: number | null): string {
@@ -70,7 +72,7 @@ export function EvmKpiWidgets({
 }: {
   metrics: EvmMetrics
   float: FloatHealth
-  /** The «زمان‌بندی» card (SPI(t) primary, SPI secondary) rendered by the explainable engine. */
+  /** The schedule card (SPI(t) primary, SPI secondary) rendered by the explainable engine. */
   scheduleCard: ReactNode
 }) {
   const acHelp = (Object.keys(COST_SOURCE_LABEL) as EvmCostSource[])
@@ -82,55 +84,59 @@ export function EvmKpiWidgets({
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {scheduleCard}
         <KpiCard
-          title="CPI — شاخص عملکرد هزینه"
+          title={C.cpiTitle}
           value={metrics.cpi == null ? '—' : metrics.cpi.toFixed(2)}
           valueClassName={indexTone(metrics.cpi)}
-          caption={metrics.cpi == null ? 'هزینهٔ واقعی ثبت نشده است' : 'EV ریالی (Σ بودجه × پیشرفت) ÷ AC'}
-          help="نسبت ارزش کسب‌شده به هزینهٔ واقعی؛ کمتر از 1 یعنی بیش از بودجه خرج شده."
+          caption={metrics.cpi == null ? C.cpiMissing : C.cpiCaption}
+          help={C.cpiHelp}
         />
         <KpiCard
-          title="پیشرفت واقعی (کسب‌شده)"
+          title={C.earnedTitle}
           value={`${metrics.earnedPercent.toFixed(1)}%`}
-          caption={`برنامه‌ای: ${metrics.plannedPercent.toFixed(1)}٪ · ${metrics.activityCount} فعالیت ${metrics.progressBasis === 'schedule_weight' ? 'وزن‌دار' : 'بودجه‌دار'}`}
-          help="درصد کسب‌شده طبق پیشرفت فیزیکی تأییدشدهٔ دفتر فنی و درصد برنامه‌ای طبق baseline برنامه MSP."
+          caption={C.earnedCaption(
+            metrics.plannedPercent.toFixed(1),
+            metrics.activityCount,
+            metrics.progressBasis === 'schedule_weight' ? C.weighted : C.budgeted
+          )}
+          help={C.earnedHelp}
         />
         <KpiCard
-          title="شناوری مسیر بحرانی"
+          title={C.floatTitle}
           value={float.criticalFloatDays == null ? '—' : String(Math.round(float.criticalFloatDays))}
-          unit={float.criticalFloatDays == null ? undefined : 'روز'}
+          unit={float.criticalFloatDays == null ? undefined : C.days}
           valueClassName={
             float.criticalFloatDays != null && float.criticalFloatDays < 0 ? 'text-red-600' : undefined
           }
           caption={
             float.floatConsumptionPercent == null
-              ? 'تاریخچهٔ شناوری ثبت نشده'
-              : `بیشترین مصرف شناوری: ${Math.round(float.floatConsumptionPercent)}٪`
+              ? C.floatHistoryMissing
+              : C.maxFloatConsumption(Math.round(float.floatConsumptionPercent))
           }
-          help="کمترین شناوری کل در فعالیت‌های بحرانی طبق آخرین محاسبهٔ CPM."
+          help={C.floatHelp}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <KpiCard
-          title="PV — ارزش برنامه‌ای"
+          title={C.pvTitle}
           value={formatAmount(metrics.pv)}
-          unit="تومان"
+          unit={C.toman}
           valueClassName="text-lg"
-          caption={`از بودجهٔ کل ${formatToman(metrics.bac)}`}
+          caption={C.fromBac(formatToman(metrics.bac))}
         />
         <KpiCard
-          title="EV — ارزش کسب‌شده"
+          title={C.evTitle}
           value={formatAmount(metrics.ev)}
-          unit="تومان"
+          unit={C.toman}
           valueClassName="text-lg"
-          caption={`انحراف زمانی (SV): ${formatToman(metrics.sv)}`}
+          caption={C.svCaption(formatToman(metrics.sv))}
         />
         <KpiCard
-          title="AC — هزینهٔ واقعی"
+          title={C.acTitle}
           value={formatAmount(metrics.ac)}
-          unit="تومان"
+          unit={C.toman}
           valueClassName="text-lg"
-          caption={`انحراف هزینه (CV): ${formatToman(metrics.cv)}`}
+          caption={C.cvCaption(formatToman(metrics.cv))}
           help={acHelp}
         />
       </div>

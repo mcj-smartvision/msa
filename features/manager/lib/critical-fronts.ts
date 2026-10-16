@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/critical-fronts.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (critical-fronts)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/schedule/lib/planned-progress, features/manager/lib/overview-types
+ */
+
 import { plannedPercentInWindow } from '@/features/schedule/lib/planned-progress'
 import type {
 CriticalFrontAction,

@@ -1,3 +1,11 @@
+/**
+ * @file features/calc-trace/lib/history.ts
+ * @purpose منطق دامنه — دفتر رد محاسبه شاخص‌ها (history)
+ * @safe-to-edit CAREFUL
+ * @affects دفتر رد محاسبه شاخص‌ها
+ * @depends-on shared/lib/time/tehran
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { tehranDateIso } from '@/shared/lib/time/tehran'
 import { CALC_TRACE_HISTORY_LIMIT, type CalcTraceMap, type CalcTracePoint } from './types'

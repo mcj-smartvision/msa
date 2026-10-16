@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/daily-progress-storage.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (daily-progress-storage)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/lib/daily-report-activities
+ */
+
 import type { DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
 
 const STORAGE_PREFIX = 'sitepilot-daily-progress:'

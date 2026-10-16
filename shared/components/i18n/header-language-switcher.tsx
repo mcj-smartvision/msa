@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/i18n/header-language-switcher.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (header-language-switcher)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/lib/i18n/app-shell, features/project-init/lib/i18n/types, shared/components/ui/select, shared/components/layout/header-chip, shared/lib/utils
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'

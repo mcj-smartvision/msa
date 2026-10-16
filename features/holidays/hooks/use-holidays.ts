@@ -1,3 +1,11 @@
+/**
+ * @file features/holidays/hooks/use-holidays.ts
+ * @purpose هوک — تقویم تعطیلات (use-holidays)
+ * @safe-to-edit CAREFUL
+ * @affects تقویم تعطیلات
+ * @depends-on features/holidays/lib/types
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'

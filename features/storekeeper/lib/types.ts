@@ -1,3 +1,11 @@
+/**
+ * @file features/storekeeper/lib/types.ts
+ * @purpose تعاریف نوع — انبار، موجودی و حواله مصالح (types)
+ * @safe-to-edit YES
+ * @affects انبار، موجودی و حواله مصالح
+ * @depends-on nothing
+ */
+
 export interface InventoryItemRow {
   id: string
   project_id: string

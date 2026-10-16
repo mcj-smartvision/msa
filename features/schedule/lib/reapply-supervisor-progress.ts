@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/reapply-supervisor-progress.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (reapply-supervisor-progress)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on nothing
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type CarriedSupervisorProgress = {

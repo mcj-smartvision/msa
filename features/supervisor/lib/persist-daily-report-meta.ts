@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/persist-daily-report-meta.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (persist-daily-report-meta)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/weather/lib/report-stamp, features/weather/lib/types
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { parseWeatherSnapshot } from '@/features/weather/lib/report-stamp'
 import type { DailyWeatherSnapshot } from '@/features/weather/lib/types'

@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/dependency-network.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (dependency-network)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule
+ */
+
 import type { TaskRelationType } from '@/shared/types/schedule'
 
 export type DependencyNetworkTask = {

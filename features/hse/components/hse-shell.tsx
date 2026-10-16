@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/components/hse-shell.tsx
+ * @purpose کامپوننت UI — ایمنی، بهداشت و محیط زیست (hse-shell)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on features/hse/lib/nav, features/hse/lib/mock-data, shared/lib/utils, features/hse/config
+ */
+
 'use client'
 
 import Link from 'next/link'
@@ -6,6 +14,7 @@ import type { ReactNode } from 'react'
 import { HSE_ARCHITECTURE_PILLARS, HSE_NAV, isHseNavActive } from '@/features/hse/lib/nav'
 import { HSE_PROJECT } from '@/features/hse/lib/mock-data'
 import { cn } from '@/shared/lib/utils'
+import { HSE_SHELL_COPY } from '@/features/hse/config'
 
 export function HseShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
@@ -15,7 +24,7 @@ export function HseShell({ children }: { children: ReactNode }) {
       <aside className="hidden w-56 shrink-0 border-l border-slate-300 bg-slate-900 text-slate-100 lg:flex lg:flex-col">
         <div className="border-b border-slate-700 px-3 py-3">
           <p className="text-[10px] font-semibold tracking-[0.08em] text-slate-400">
-            مرکز کنترل ایمنی
+            {HSE_SHELL_COPY.controlCenter}
           </p>
           <p className="mt-1 text-sm font-semibold leading-tight text-white">{HSE_PROJECT.name}</p>
           <p className="mt-0.5 text-[11px] text-slate-400">
@@ -46,7 +55,7 @@ export function HseShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="border-t border-slate-700 px-3 py-3">
-          <p className="mb-2 text-[10px] font-semibold text-slate-500">خط لوله سامانه</p>
+          <p className="mb-2 text-[10px] font-semibold text-slate-500">{HSE_SHELL_COPY.pipeline}</p>
           <ul className="space-y-1.5">
             {HSE_ARCHITECTURE_PILLARS.map((p) => (
               <li key={p.key} className="text-[11px] leading-snug">

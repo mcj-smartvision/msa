@@ -1,3 +1,11 @@
+/**
+ * @file features/technical-office/lib/drawings-shared.ts
+ * @purpose منطق دامنه — دفتر فنی (drawings-shared)
+ * @safe-to-edit CAREFUL
+ * @affects دفتر فنی
+ * @depends-on nothing
+ */
+
 export const DRAWING_MAX_FILES = 20
 export const DRAWING_EXTENSIONS = ['pdf', 'dwg'] as const
 

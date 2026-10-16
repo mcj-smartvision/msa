@@ -1,3 +1,11 @@
+/**
+ * @file features/wwp/lib/service.ts
+ * @purpose منطق دامنه — برنامه هفتگی متعهد (WWP) (service)
+ * @safe-to-edit CAREFUL
+ * @affects برنامه هفتگی متعهد (WWP)
+ * @depends-on features/site-ops/lib/auth, features/site-ops/domain/errors, shared/lib/time/tehran
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadMemberPositionKeys, requireUser } from '@/features/site-ops/lib/auth'
 import { SiteOpsError } from '@/features/site-ops/domain/errors'

@@ -1,4 +1,14 @@
+/**
+ * @file features/admin/components/notification-route-editor.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (notification-route-editor)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/components/ui/button, shared/components/ui/card, shared/components/ui/checkbox, shared/components/ui/label, shared/types/admin
+ */
+
+
 'use client'
+import { ADMIN_ROUTE_EDITOR_COPY } from '@/features/admin/config'
 
 import { useMemo, useState } from 'react'
 import { Button } from '@/shared/components/ui/button'
@@ -54,7 +64,7 @@ export function NotificationRouteEditor({
         is_active: true,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ذخیره مسیر ناموفق بود')
+      setError(err instanceof Error ? err.message : ADMIN_ROUTE_EDITOR_COPY.saveFailed)
     } finally {
       setLoading(false)
     }
@@ -73,12 +83,12 @@ export function NotificationRouteEditor({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>افزودن مسیر اعلان</CardTitle>
+          <CardTitle>{ADMIN_ROUTE_EDITOR_COPY.addTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAddRoute} className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="route-event">نوع رویداد</Label>
+              <Label htmlFor="route-event">{ADMIN_ROUTE_EDITOR_COPY.eventType}</Label>
               <select
                 id="route-event"
                 value={eventTypeId}
@@ -91,7 +101,7 @@ export function NotificationRouteEditor({
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="route-position">سمت هدف</Label>
+              <Label htmlFor="route-position">{ADMIN_ROUTE_EDITOR_COPY.targetPosition}</Label>
               <select
                 id="route-position"
                 value={positionId}
@@ -106,7 +116,7 @@ export function NotificationRouteEditor({
             <div className="sm:col-span-2">
               <Checkbox
                 id="route-email"
-                label="ایمیل فعال"
+                label={ADMIN_ROUTE_EDITOR_COPY.emailEnabled}
                 checked={emailEnabled}
                 onChange={(e) => setEmailEnabled(e.target.checked)}
               />
@@ -114,7 +124,7 @@ export function NotificationRouteEditor({
             {error ? <p className="sm:col-span-2 text-sm text-destructive">{error}</p> : null}
             <div className="sm:col-span-2">
               <Button type="submit" disabled={loading || !eventTypeId || !positionId}>
-                {loading ? 'در حال ذخیره...' : 'ذخیره مسیر'}
+                {loading ? ADMIN_ROUTE_EDITOR_COPY.saving : ADMIN_ROUTE_EDITOR_COPY.saveRoute}
               </Button>
             </div>
           </form>
@@ -123,29 +133,30 @@ export function NotificationRouteEditor({
 
       <Card>
         <CardHeader>
-          <CardTitle>مسیرهای پیکربندی‌شده</CardTitle>
+          <CardTitle>{ADMIN_ROUTE_EDITOR_COPY.configuredTitle}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {routes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">هنوز مسیر اعلانی پیکربندی نشده است.</p>
+            <p className="text-sm text-muted-foreground">{ADMIN_ROUTE_EDITOR_COPY.none}</p>
           ) : (
             routes.map((route) => (
               <div key={route.id} className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="font-medium">{route.event_type?.title ?? 'رویداد'}</p>
+                  <p className="font-medium">{route.event_type?.title ?? ADMIN_ROUTE_EDITOR_COPY.eventFallback}</p>
                   <p className="text-sm text-muted-foreground">
-                    سمت: {route.position?.title ?? route.position_id}
+                    {ADMIN_ROUTE_EDITOR_COPY.positionPrefix}
+                    {route.position?.title ?? route.position_id}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <Checkbox
                     id={`route-email-${route.id}`}
-                    label="ایمیل فعال"
+                    label={ADMIN_ROUTE_EDITOR_COPY.emailEnabled}
                     checked={route.email_enabled}
                     onChange={() => toggleEmail(route)}
                   />
                   <Button variant="outline" size="sm" onClick={() => onDelete(route.id)}>
-                    حذف
+                    {ADMIN_ROUTE_EDITOR_COPY.remove}
                   </Button>
                 </div>
               </div>
@@ -156,13 +167,13 @@ export function NotificationRouteEditor({
 
       <Card>
         <CardHeader>
-          <CardTitle>ماتریس مسیریابی</CardTitle>
+          <CardTitle>{ADMIN_ROUTE_EDITOR_COPY.matrixTitle}</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b text-left">
-                <th className="py-2 pr-4">رویداد</th>
+                <th className="py-2 pr-4">{ADMIN_ROUTE_EDITOR_COPY.eventCol}</th>
                 {positions.map((position) => (
                   <th key={position.id} className="py-2 px-2 whitespace-nowrap">{position.title}</th>
                 ))}
@@ -176,7 +187,11 @@ export function NotificationRouteEditor({
                     const route = routeMap.get(`${eventType.id}:${position.id}`)
                     return (
                       <td key={position.id} className="py-2 px-2 text-center">
-                        {route ? (route.email_enabled ? 'ایمیل' : 'بی‌صدا') : '—'}
+                        {route
+                          ? route.email_enabled
+                            ? ADMIN_ROUTE_EDITOR_COPY.email
+                            : ADMIN_ROUTE_EDITOR_COPY.silent
+                          : '—'}
                       </td>
                     )
                   })}

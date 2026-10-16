@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/ai-generator.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (ai-generator)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/lib/types
+ */
+
 import type { AiActionType, DailyReportInput, PurchaseRequestPayload } from '@/features/supervisor/lib/types'
 
 /** Stub AI text generator — replace with Edge Function / OpenAI. */

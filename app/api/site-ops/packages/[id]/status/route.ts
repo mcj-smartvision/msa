@@ -1,3 +1,11 @@
+/**
+ * @file app/api/site-ops/packages/[id]/status/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/site-ops/lib/service, features/site-ops/lib/http, features/site-ops/domain
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { setPackageStatus } from '@/features/site-ops/lib/service'

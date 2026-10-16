@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/quick-report-dialog.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (quick-report-dialog)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on shared/components/ui/button, shared/components/ui/label, shared/components/ui/input, shared/components/ui/textarea, shared/components/ui/select, features/supervisor/components/modal-overlay, shared/components/common/ai-draft-viewer, features/supervisor/lib/types, shared/lib/i18n/site-supervisor, shared/components/common/voice-to-text-button
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -122,7 +130,7 @@ export function QuickReportDialog({
       setSummaryText(result.summaryText)
       setReportId(result.reportId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : locale === 'fa' ? 'ناموفق بود' : 'Failed')
+      setError(err instanceof Error ? err.message : labels.failed)
     } finally {
       setLoading(false)
     }
@@ -172,15 +180,15 @@ export function QuickReportDialog({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>{locale === 'fa' ? 'وضعیت' : 'Status'}</Label>
+              <Label>{labels.status}</Label>
               <Select value={actualStatus} onValueChange={(v) => setActualStatus(v as ActualStatus)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="notStarted">{locale === 'fa' ? 'شروع نشده' : 'Not started'}</SelectItem>
-                  <SelectItem value="started">{locale === 'fa' ? 'شروع شده' : 'Started'}</SelectItem>
-                  <SelectItem value="finished">{locale === 'fa' ? 'تمام شده' : 'Finished'}</SelectItem>
+                  <SelectItem value="notStarted">{labels.notStarted}</SelectItem>
+                  <SelectItem value="started">{labels.started}</SelectItem>
+                  <SelectItem value="finished">{labels.finished}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -230,7 +238,7 @@ export function QuickReportDialog({
               rows={2}
               value={hseDesc}
               onChange={(e) => setHseDesc(e.target.value)}
-              placeholder={locale === 'fa' ? 'جزئیات HSE' : 'HSE details'}
+              placeholder={labels.hseDetails}
             />
           ) : null}
 

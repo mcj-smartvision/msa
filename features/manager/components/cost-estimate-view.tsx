@@ -1,6 +1,15 @@
+/**
+ * @file features/manager/components/cost-estimate-view.tsx
+ * @purpose کامپوننت UI — داشبورد مدیر پروژه و KPI (cost-estimate-view)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on shared/lib/utils, shared/components/ui/button, features/finance/components/money-input, features/holidays/components/jalali-date-picker, features/manager/lib/overview-types, features/manager/lib/load-cost-estimate, features/manager/lib/cost-estimate, features/manager/lib/format, features/calc-trace/components/calc-trace
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { SECTIONS_COPY } from '@/features/manager/lib/ui-copy'
 import {
   AlertOctagon,
   AlertTriangle,
@@ -41,29 +50,30 @@ import { faNumber, faPercent, jalaliDate, jalaliDateTime } from '@/features/mana
 import { EmptyNote, LoadingRows, SectionBody, SectionCard, Spinner } from './manager-ui'
 import { ManagerProgressChart } from './manager-progress-chart'
 import { CalcTraceProvider, CalcTraceTrigger } from '@/features/calc-trace/components/calc-trace'
+import { ESTIMATE_COPY } from '@/features/manager/config'
 
 const STATUS_META: Record<EstimateStatus, { label: string; className: string }> = {
-  missing: { label: 'نیازمند تکمیل تنظیمات', className: 'bg-amber-50 text-amber-800 ring-amber-200' },
-  incomplete: { label: 'برآورد ناقص', className: 'bg-amber-50 text-amber-800 ring-amber-200' },
-  draft: { label: 'پیش‌نویس (تأییدنشده)', className: 'bg-sky-50 text-sky-800 ring-sky-200' },
-  approved: { label: 'برآورد مصوب', className: 'bg-emerald-50 text-emerald-800 ring-emerald-200' },
+  missing: { label: ESTIMATE_COPY.status.missing, className: 'bg-amber-50 text-amber-800 ring-amber-200' },
+  incomplete: { label: ESTIMATE_COPY.status.incomplete, className: 'bg-amber-50 text-amber-800 ring-amber-200' },
+  draft: { label: ESTIMATE_COPY.status.draft, className: 'bg-sky-50 text-sky-800 ring-sky-200' },
+  approved: { label: ESTIMATE_COPY.status.approved, className: 'bg-emerald-50 text-emerald-800 ring-emerald-200' },
 }
 
 const LEVEL_META: Record<EstimateAlertLevel, { label: string; bar: string; badge: string; icon: ReactNode }> = {
   critical: {
-    label: 'بحرانی',
+    label: ESTIMATE_COPY.level.critical,
     bar: 'border-r-rose-500',
     badge: 'bg-rose-50 text-rose-700 ring-rose-200',
     icon: <AlertOctagon className="h-4 w-4 text-rose-600" aria-hidden />,
   },
   warning: {
-    label: 'نیازمند بررسی',
+    label: ESTIMATE_COPY.level.warning,
     bar: 'border-r-amber-400',
     badge: 'bg-amber-50 text-amber-800 ring-amber-200',
     icon: <AlertTriangle className="h-4 w-4 text-amber-600" aria-hidden />,
   },
   info: {
-    label: 'اطلاع‌رسانی',
+    label: ESTIMATE_COPY.level.info,
     bar: 'border-r-sky-400',
     badge: 'bg-sky-50 text-sky-700 ring-sky-200',
     icon: <Info className="h-4 w-4 text-sky-600" aria-hidden />,
@@ -88,10 +98,10 @@ function useCostEstimate(projectId: string | null) {
     try {
       const response = await fetch(`/api/manager/cost-estimate?projectId=${encodeURIComponent(projectId)}`, { cache: 'no-store' })
       const body = await response.json().catch(() => null)
-      if (!response.ok) throw new Error(body?.error || 'بارگذاری برآورد ناموفق بود')
+      if (!response.ok) throw new Error(body?.error || ESTIMATE_COPY.loadFailed)
       setData(body as CostEstimateOverview)
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'بارگذاری برآورد ناموفق بود')
+      setError(loadError instanceof Error ? loadError.message : ESTIMATE_COPY.loadFailed)
     } finally {
       setLoading(false)
     }
@@ -144,40 +154,40 @@ function Headline({ data }: { data: CostEstimateOverview }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-lg font-bold text-slate-900">برآورد اولیه و کنترل هزینه</h1>
+        <h1 className="text-lg font-bold text-slate-900">{ESTIMATE_COPY.title}</h1>
         <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1', meta.className)}>{meta.label}</span>
         {data.record?.approvedAt ? (
-          <span className="text-xs text-slate-500">تأیید {jalaliDateTime(data.record.approvedAt)}</span>
+          <span className="text-xs text-slate-500">{ESTIMATE_COPY.approvedAt(jalaliDateTime(data.record.approvedAt))}</span>
         ) : null}
-        <span className="ms-auto text-xs text-slate-500">همهٔ مبالغ به {data.currency} · تاریخ وضعیت {jalaliDate(data.today)}</span>
+        <span className="ms-auto text-xs text-slate-500">{ESTIMATE_COPY.amountsIn(data.currency, jalaliDate(data.today))}</span>
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        <Figure label="ارزش قرارداد با کارفرما" value={toman(data.settings.contractValue)} hint="درآمد قراردادی؛ مبنای سود و زیان، نه بودجهٔ هزینه" tone="sky" />
+        <Figure label={ESTIMATE_COPY.contract} value={toman(data.settings.contractValue)} hint={ESTIMATE_COPY.contractHint} tone="sky" />
         <Figure
-          label="حاشیهٔ سود هدف"
+          label={ESTIMATE_COPY.targetMargin}
           value={data.record && data.targets.marginPercent != null ? faPercent(data.targets.marginPercent) : '—'}
           hint={
             data.record && data.targets.targetProfit != null
-              ? `سود هدف ${toman(data.targets.targetProfit)} = قرارداد − BAC کل`
-              : 'با ثبت ارزش قرارداد و برآورد محاسبه می‌شود'
+              ? ESTIMATE_COPY.targetProfit(toman(data.targets.targetProfit))
+              : ESTIMATE_COPY.targetNeed
           }
           metrics={['estimate.target_profit_pct', 'estimate.overhead_burn_rate']}
           tone={!data.record ? 'slate' : data.targets.level === 'critical' ? 'rose' : data.targets.level === 'warning' ? 'orange' : data.targets.level === 'ok' ? 'emerald' : 'slate'}
         />
         <Figure
-          label="BAC کل (بودجهٔ هزینهٔ داخلی)"
+          label={ESTIMATE_COPY.bacTotal}
           metrics={['estimate.bac_total']}
           value={data.record ? toman(data.bac.bacTotal) : '—'}
-          hint={data.record ? `BAC پایه ${toman(data.bac.bacBase)} + ذخیرهٔ ریسک ${toman(data.bac.riskReserve)}` : 'برآورد هنوز ذخیره نشده است'}
+          hint={data.record ? ESTIMATE_COPY.bacHint(toman(data.bac.bacBase), toman(data.bac.riskReserve)) : ESTIMATE_COPY.notSaved}
           tone="orange"
         />
-        <Figure metrics={['estimate.cpi', 'estimate.cv']} label="هزینهٔ واقعی تا امروز (AC)" value={toman(data.actual.total)} hint="بالاسری + کارکرد پیمانکاران + خرید کارفرمایی" />
-        <Figure label="ارزش کسب‌شده (EV)" value={toman(data.evm.ev.value)} hint={data.evm.ev.value == null ? data.evm.ev.reason ?? '' : 'BAC پایه × پیشرفت تأییدشده'} tone="emerald" />
+        <Figure metrics={['estimate.cpi', 'estimate.cv']} label={ESTIMATE_COPY.ac} value={toman(data.actual.total)} hint={ESTIMATE_COPY.acHint} />
+        <Figure label={ESTIMATE_COPY.ev} value={toman(data.evm.ev.value)} hint={data.evm.ev.value == null ? data.evm.ev.reason ?? '' : ESTIMATE_COPY.evHint} tone="emerald" />
         <Figure
-          label="برآورد هزینهٔ تکمیل (EAC)"
+          label={ESTIMATE_COPY.eac}
           metrics={['estimate.eac', 'estimate.etc']}
           value={toman(data.evm.eac.value)}
-          hint={data.evm.eac.value == null ? data.evm.eac.reason ?? '' : 'AC + (BAC پایه − EV) ÷ CPI'}
+          hint={data.evm.eac.value == null ? data.evm.eac.reason ?? '' : ESTIMATE_COPY.eacHint}
           tone={data.evm.vac.value != null && data.evm.vac.value < 0 ? 'rose' : 'slate'}
         />
       </div>
@@ -200,15 +210,15 @@ function AlertItem({ alert }: { alert: EstimateAlert }) {
             <span className={cn('rounded-full px-2 py-px text-[10px] font-semibold ring-1', meta.badge)}>{meta.label}</span>
           </div>
           <p className="text-xs leading-6 text-slate-600">
-            <span className="font-semibold text-slate-700">علت: </span>
+            <span className="font-semibold text-slate-700">{ESTIMATE_COPY.cause}</span>
             {alert.cause}
           </p>
           <p className="text-xs leading-6 text-slate-600 tabular-nums">
-            <span className="font-semibold text-slate-700">مبنای عددی: </span>
+            <span className="font-semibold text-slate-700">{ESTIMATE_COPY.basis}</span>
             {alert.basis}
           </p>
           <p className="text-xs leading-6 text-slate-600">
-            <span className="font-semibold text-slate-700">اقدام پیشنهادی: </span>
+            <span className="font-semibold text-slate-700">{ESTIMATE_COPY.action}</span>
             {alert.action}
           </p>
           {alert.items?.length ? (
@@ -219,7 +229,7 @@ function AlertItem({ alert }: { alert: EstimateAlert }) {
                 aria-expanded={open}
                 className="inline-flex items-center gap-1 rounded text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
               >
-                {open ? 'بستن فهرست' : `نمایش ${faNumber(alert.items.length)} مورد`}
+                {open ? ESTIMATE_COPY.closeList : ESTIMATE_COPY.showItems(faNumber(alert.items.length))}
                 <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} aria-hidden />
               </button>
               {open ? (
@@ -243,13 +253,13 @@ function AlertItem({ alert }: { alert: EstimateAlert }) {
 function AlertsSection({ alerts }: { alerts: EstimateAlert[] }) {
   return (
     <SectionCard
-      title="هشدارهای هزینه و زمان"
+      title={ESTIMATE_COPY.alertsTitle}
       action={<CalcTraceTrigger metrics={['estimate.ppc', 'estimate.progress_gap']} />}
       icon={<AlertTriangle className="h-4 w-4" aria-hidden />}
-      hint="آبی: اطلاع‌رسانی، زرد: نیازمند بررسی، قرمز: بحرانی. آستانه‌ها در یک جا (ESTIMATE_ALERT_THRESHOLDS) تعریف شده‌اند."
+      hint={ESTIMATE_COPY.alertsHint}
     >
       {alerts.length === 0 ? (
-        <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">هشدار فعالی وجود ندارد.</p>
+        <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{ESTIMATE_COPY.noAlerts}</p>
       ) : (
         <ul className="grid grid-cols-1 gap-3 xl:grid-cols-2">
           {alerts.map((alert) => (
@@ -304,7 +314,13 @@ function toForm(s: CostEstimateSettings): FormState {
 }
 
 function fromForm(f: FormState): Record<EstimateField, unknown> {
-  const risk = f.riskMode === 'amount' ? moneyValue(f.riskValue) : f.riskValue.trim() === '' ? null : Number(f.riskValue.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))))
+  const persianDigitRe = new RegExp(`[${SECTIONS_COPY.persianDigits}]`, 'g')
+  const risk =
+    f.riskMode === 'amount'
+      ? moneyValue(f.riskValue)
+      : f.riskValue.trim() === ''
+        ? null
+        : Number(f.riskValue.replace(persianDigitRe, (d) => String(SECTIONS_COPY.persianDigits.indexOf(d))))
   return {
     contractValue: moneyValue(f.contractValue),
     plannedStart: f.plannedStart || null,
@@ -351,7 +367,7 @@ function InWbsToggle({ id, checked, onChange, disabled }: { id: string; checked:
         onChange={(e) => onChange(e.target.checked)}
         className="h-4 w-4 rounded border-slate-300 accent-[hsl(var(--primary))]"
       />
-      در بودجهٔ ردیف‌های WBS منظور شده است (دوباره به BAC اضافه نشود)
+      {ESTIMATE_COPY.inWbs}
     </label>
   )
 }
@@ -424,15 +440,15 @@ function SettingsSection({
       }
       if (response.status === 409) {
         setPendingIssues(body?.issues ?? [])
-        throw new Error(body?.error ?? 'پیش از تأیید، هشدارها را بررسی کنید')
+        throw new Error(body?.error ?? ESTIMATE_COPY.reviewFirst)
       }
-      if (!response.ok) throw new Error(body?.error || 'ذخیره ناموفق بود')
+      if (!response.ok) throw new Error(body?.error || ESTIMATE_COPY.saveFailed)
       setPendingIssues(null)
       setAcknowledged(false)
       onSaved(body as CostEstimateOverview)
-      setMessage({ tone: 'ok', text: approve ? 'برآورد ذخیره و تأیید شد.' : 'تنظیمات ذخیره شد (تأییدنشده).' })
+      setMessage({ tone: 'ok', text: approve ? ESTIMATE_COPY.savedApproved : ESTIMATE_COPY.savedDraft })
     } catch (saveError) {
-      setMessage({ tone: 'error', text: saveError instanceof Error ? saveError.message : 'ذخیره ناموفق بود' })
+      setMessage({ tone: 'error', text: saveError instanceof Error ? saveError.message : ESTIMATE_COPY.saveFailed })
     } finally {
       setSaving(null)
     }
@@ -442,15 +458,15 @@ function SettingsSection({
 
   return (
     <SectionCard
-      title="تنظیمات مالی و برآورد اولیه"
+      title={ESTIMATE_COPY.settingsTitle}
       icon={<Settings2 className="h-4 w-4" aria-hidden />}
-      hint="ارزش قرارداد درآمد پروژه است و جدا از بودجهٔ هزینهٔ داخلی (BAC) نگه داشته می‌شود. هزینهٔ مستقیم از ردیف‌های WBS خوانده می‌شود و دستی وارد نمی‌شود."
+      hint={ESTIMATE_COPY.settingsHint}
     >
       {data.tableMissing ? (
-        <EmptyNote title="جدول برآورد هنوز ساخته نشده است" description="فایل database/106-project-cost-estimates.sql را یک بار در Supabase اجرا کنید." />
+        <EmptyNote title={ESTIMATE_COPY.tableMissingTitle} description={ESTIMATE_COPY.tableMissingBody} />
       ) : null}
       {!data.canEdit && !data.tableMissing ? (
-        <p className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">فقط مدیر پروژه می‌تواند این تنظیمات را تغییر دهد.</p>
+        <p className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">{ESTIMATE_COPY.pmOnly}</p>
       ) : null}
       <form
         className="space-y-5"
@@ -460,46 +476,46 @@ function SettingsSection({
         }}
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Field id="ce-contract" label={`ارزش قرارداد با کارفرما (${data.currency})`} hint="درآمد قراردادی؛ در BAC جمع نمی‌شود" error={fieldErrors.contractValue}>
+          <Field id="ce-contract" label={ESTIMATE_COPY.contractField(data.currency)} hint={ESTIMATE_COPY.contractFieldHint} error={fieldErrors.contractValue}>
             <MoneyInput id="ce-contract" value={form.contractValue} onChange={(v) => set('contractValue', v)} disabled={disabled} />
           </Field>
-          <Field id="ce-start" label="تاریخ شروع مصوب" error={fieldErrors.plannedStart}>
+          <Field id="ce-start" label={ESTIMATE_COPY.start} error={fieldErrors.plannedStart}>
             <JalaliDatePicker id="ce-start" value={form.plannedStart} onChange={(v) => set('plannedStart', v)} disabled={disabled} />
           </Field>
           <Field
             id="ce-finish"
-            label="تاریخ پایان مصوب"
-            hint={months != null ? `مدت برنامه‌ای: ${faNumber(months, 2)} ماه شمسی` : 'پایان باید بعد از شروع باشد'}
+            label={ESTIMATE_COPY.finish}
+            hint={months != null ? ESTIMATE_COPY.duration(faNumber(months, 2)) : ESTIMATE_COPY.finishAfter}
             error={fieldErrors.plannedFinish}
           >
             <JalaliDatePicker id="ce-finish" value={form.plannedFinish} onChange={(v) => set('plannedFinish', v)} min={form.plannedStart || undefined} disabled={disabled} />
           </Field>
-          <Field id="ce-overhead" label={`بالاسری ماهانه (${data.currency})`} hint="× مدت برنامه‌ای = بالاسری کل برنامه‌ای" error={fieldErrors.monthlyOverhead}>
+          <Field id="ce-overhead" label={ESTIMATE_COPY.overhead(data.currency)} hint={ESTIMATE_COPY.overheadHint} error={fieldErrors.monthlyOverhead}>
             <MoneyInput id="ce-overhead" value={form.monthlyOverhead} onChange={(v) => set('monthlyOverhead', v)} disabled={disabled} />
             <InWbsToggle id="ce-overhead-wbs" checked={form.overheadInWbs} onChange={(v) => set('overheadInWbs', v)} disabled={disabled} />
           </Field>
-          <Field id="ce-personnel" label={`هزینهٔ ماهانهٔ پرسنل (${data.currency})`} hint="فقط اگر در WBS یا بالاسری منظور نشده است" error={fieldErrors.monthlyPersonnel}>
+          <Field id="ce-personnel" label={ESTIMATE_COPY.personnel(data.currency)} hint={ESTIMATE_COPY.personnelHint} error={fieldErrors.monthlyPersonnel}>
             <MoneyInput id="ce-personnel" value={form.monthlyPersonnel} onChange={(v) => set('monthlyPersonnel', v)} disabled={disabled} />
             <InWbsToggle id="ce-personnel-wbs" checked={form.personnelInWbs} onChange={(v) => set('personnelInWbs', v)} disabled={disabled} />
           </Field>
-          <Field id="ce-purchases" label={`خریدهای برنامه‌ریزی‌شدهٔ کارفرمایی (${data.currency})`} error={fieldErrors.plannedEmployerPurchases}>
+          <Field id="ce-purchases" label={ESTIMATE_COPY.purchases(data.currency)} error={fieldErrors.plannedEmployerPurchases}>
             <MoneyInput id="ce-purchases" value={form.plannedEmployerPurchases} onChange={(v) => set('plannedEmployerPurchases', v)} disabled={disabled} />
             <InWbsToggle id="ce-purchases-wbs" checked={form.purchasesInWbs} onChange={(v) => set('purchasesInWbs', v)} disabled={disabled} />
           </Field>
-          <Field id="ce-other" label={`سایر هزینه‌های ثابت (${data.currency})`} hint="مثلاً بیمه، مجوزها، تجهیز و برچیدن کارگاه" error={fieldErrors.otherFixedCosts}>
+          <Field id="ce-other" label={ESTIMATE_COPY.other(data.currency)} hint={ESTIMATE_COPY.otherHint} error={fieldErrors.otherFixedCosts}>
             <MoneyInput id="ce-other" value={form.otherFixedCosts} onChange={(v) => set('otherFixedCosts', v)} disabled={disabled} />
           </Field>
-          <Field id="ce-risk" label="ذخیرهٔ ریسک" hint="در BAC کل هست، ولی تا هزینه‌ای ثبت نشود جزو AC نیست" error={fieldErrors.riskValue}>
+          <Field id="ce-risk" label={ESTIMATE_COPY.risk} hint={ESTIMATE_COPY.riskHint} error={fieldErrors.riskValue}>
             <div className="flex gap-2">
               <select
-                aria-label="نوع ذخیرهٔ ریسک"
+                aria-label={ESTIMATE_COPY.riskType}
                 value={form.riskMode}
                 disabled={disabled}
                 onChange={(e) => set('riskMode', e.target.value === 'amount' ? 'amount' : 'percent')}
                 className="h-10 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
               >
-                <option value="percent">درصد از BAC پایه</option>
-                <option value="amount">مبلغ ثابت</option>
+                <option value="percent">{ESTIMATE_COPY.riskPercent}</option>
+                <option value="amount">{ESTIMATE_COPY.riskAmount}</option>
               </select>
               {form.riskMode === 'amount' ? (
                 <MoneyInput id="ce-risk" value={form.riskValue} onChange={(v) => set('riskValue', v)} disabled={disabled} />
@@ -511,13 +527,13 @@ function SettingsSection({
                   value={form.riskValue}
                   disabled={disabled}
                   onChange={(e) => set('riskValue', e.target.value)}
-                  placeholder="0 تا 100"
+                  placeholder={ESTIMATE_COPY.riskPlaceholder}
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                 />
               )}
             </div>
           </Field>
-          <Field id="ce-notes" label="یادداشت">
+          <Field id="ce-notes" label={ESTIMATE_COPY.notes}>
             <textarea
               id="ce-notes"
               rows={2}
@@ -532,7 +548,7 @@ function SettingsSection({
         {preview ? (
           <div className="space-y-1.5">
             <p className="text-xs font-semibold text-slate-700">
-              پیش‌نمایش با مقادیر فرم — BAC کل {toman(preview.bac.bacTotal)} {data.currency}
+              {ESTIMATE_COPY.preview(toman(preview.bac.bacTotal), data.currency)}
             </p>
             <TargetsPanel targets={preview.targets} bacTotal={preview.bac.bacTotal} contractValue={preview.contractValue} currency={data.currency} />
           </div>
@@ -544,11 +560,11 @@ function SettingsSection({
           <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
             <Button type="submit" variant="outline" disabled={disabled}>
               {saving === 'draft' ? <Spinner /> : <Save className="h-4 w-4" aria-hidden />}
-              ذخیره (بدون تأیید)
+              {ESTIMATE_COPY.saveDraft}
             </Button>
             <Button type="button" disabled={disabled || (shownIssues.some((i) => i.level === 'warning') && !acknowledged)} onClick={() => void save(true)}>
               {saving === 'approve' ? <Spinner /> : <ShieldCheck className="h-4 w-4" aria-hidden />}
-              ذخیره و تأیید برآورد
+              {ESTIMATE_COPY.saveApprove}
             </Button>
             {shownIssues.some((i) => i.level === 'warning') ? (
               <label className="flex items-center gap-2 text-xs text-slate-700">
@@ -558,7 +574,7 @@ function SettingsSection({
                   onChange={(e) => setAcknowledged(e.target.checked)}
                   className="h-4 w-4 rounded border-slate-300 accent-[hsl(var(--primary))]"
                 />
-                هشدارهای بالا را دیدم و برآورد را با همین داده تأیید می‌کنم
+                {ESTIMATE_COPY.ack}
               </label>
             ) : null}
             {message ? (
@@ -580,36 +596,36 @@ function BacSection({ data }: { data: CostEstimateOverview }) {
   const { bac, direct } = data
   return (
     <SectionCard
-      title="اجزای BAC و منبع هر مبلغ"
+      title={ESTIMATE_COPY.bacTitle}
       action={<CalcTraceTrigger metrics={['estimate.bac_total']} />}
       icon={<Sigma className="h-4 w-4" aria-hidden />}
-      hint="BAC پایه = هزینهٔ مستقیم WBS + بالاسری برنامه‌ای + پرسنل خارج از WBS + خریدهای برنامه‌ریزی‌شده + سایر هزینه‌های ثابت. BAC کل = BAC پایه + ذخیرهٔ ریسک."
+      hint={ESTIMATE_COPY.bacCardHint}
     >
       {!data.record ? (
         <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          پیش‌نمایش با داده‌های فعلی؛ برآورد هنوز ذخیره نشده و شاخص‌های EVM بر این عدد تکیه نمی‌کنند.
+          {ESTIMATE_COPY.bacPreview}
         </p>
       ) : null}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
             <tr className="border-b border-slate-100 text-xs text-slate-500">
-              <th className="py-2 text-right font-semibold">جزء</th>
-              <th className="py-2 text-right font-semibold">مبلغ ({data.currency})</th>
-              <th className="py-2 text-right font-semibold">وضعیت</th>
-              <th className="py-2 text-right font-semibold">محاسبه و منبع</th>
+              <th className="py-2 text-right font-semibold">{ESTIMATE_COPY.colPart}</th>
+              <th className="py-2 text-right font-semibold">{ESTIMATE_COPY.colAmount(data.currency)}</th>
+              <th className="py-2 text-right font-semibold">{ESTIMATE_COPY.colStatus}</th>
+              <th className="py-2 text-right font-semibold">{ESTIMATE_COPY.colSource}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {bac.components.map((c) => (
               <tr key={c.key} className={cn(!c.included && 'text-slate-400')}>
                 <td className="py-2.5 font-medium">{c.label}</td>
-                <td className="py-2.5 tabular-nums">{c.amount == null ? 'وارد نشده' : toman(c.amount)}</td>
+                <td className="py-2.5 tabular-nums">{c.amount == null ? ESTIMATE_COPY.notEntered : toman(c.amount)}</td>
                 <td className="py-2.5 text-xs">
                   {c.included ? (
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">در BAC</span>
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">{ESTIMATE_COPY.inBac}</span>
                   ) : (
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">{c.note ? 'جمع نمی‌شود' : 'وارد نشده'}</span>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">{c.note ? ESTIMATE_COPY.excluded : ESTIMATE_COPY.notEntered}</span>
                   )}
                 </td>
                 <td className="py-2.5 text-xs leading-5 text-slate-500">
@@ -619,24 +635,24 @@ function BacSection({ data }: { data: CostEstimateOverview }) {
               </tr>
             ))}
             <tr className="bg-slate-50/70 font-semibold">
-              <td className="py-2.5">BAC پایه</td>
+              <td className="py-2.5">{ESTIMATE_COPY.bacBase}</td>
               <td className="py-2.5 tabular-nums">{toman(bac.bacBase)}</td>
               <td colSpan={2} className="py-2.5 text-xs font-normal text-slate-500">
-                مبنای PV، EV و EAC
+                {ESTIMATE_COPY.bacBaseNote}
               </td>
             </tr>
             <tr>
-              <td className="py-2.5">ذخیرهٔ ریسک</td>
+              <td className="py-2.5">{ESTIMATE_COPY.riskReserve}</td>
               <td className="py-2.5 tabular-nums">{toman(bac.riskReserve)}</td>
               <td colSpan={2} className="py-2.5 text-xs text-slate-500">
-                {bac.riskFormula} · تا ثبت هزینهٔ واقعی جزو AC نیست
+                {bac.riskFormula} · {ESTIMATE_COPY.riskUntilAc}
               </td>
             </tr>
             <tr className="bg-orange-50/60 font-bold">
-              <td className="py-2.5">BAC کل</td>
+              <td className="py-2.5">{ESTIMATE_COPY.bacTotalRow}</td>
               <td className="py-2.5 tabular-nums">{toman(bac.bacTotal)}</td>
               <td colSpan={2} className="py-2.5 text-xs font-normal text-slate-500">
-                جدا از ارزش قرارداد ({toman(data.settings.contractValue)})
+                {ESTIMATE_COPY.apartFrom(toman(data.settings.contractValue))}
               </td>
             </tr>
           </tbody>
@@ -650,8 +666,8 @@ function BacSection({ data }: { data: CostEstimateOverview }) {
           aria-expanded={showRows}
           className="inline-flex items-center gap-1 rounded text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
         >
-          {showRows ? 'بستن ریز هزینهٔ مستقیم' : `ریز هزینهٔ مستقیم: ${faNumber(direct.rows.length)} ردیف WBS`}
-          {direct.missingRows.length ? ` · ${faNumber(direct.missingRows.length)} ردیف بدون بودجه` : ''}
+          {showRows ? ESTIMATE_COPY.closeDirect : ESTIMATE_COPY.showDirect(faNumber(direct.rows.length))}
+          {direct.missingRows.length ? ESTIMATE_COPY.missingBudget(faNumber(direct.missingRows.length)) : ''}
           <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showRows && 'rotate-180')} aria-hidden />
         </button>
         {showRows ? (
@@ -660,10 +676,10 @@ function BacSection({ data }: { data: CostEstimateOverview }) {
               <thead className="bg-slate-50 text-slate-500">
                 <tr>
                   <th className="px-3 py-2 text-right font-semibold">WBS</th>
-                  <th className="px-3 py-2 text-right font-semibold">فعالیت</th>
-                  <th className="px-3 py-2 text-right font-semibold">مقدار</th>
-                  <th className="px-3 py-2 text-right font-semibold">قیمت واحد</th>
-                  <th className="px-3 py-2 text-right font-semibold">بودجه ({data.currency})</th>
+                  <th className="px-3 py-2 text-right font-semibold">{ESTIMATE_COPY.activity}</th>
+                  <th className="px-3 py-2 text-right font-semibold">{ESTIMATE_COPY.colQty}</th>
+                  <th className="px-3 py-2 text-right font-semibold">{ESTIMATE_COPY.colUnit}</th>
+                  <th className="px-3 py-2 text-right font-semibold">{ESTIMATE_COPY.colBudget(data.currency)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -680,11 +696,11 @@ function BacSection({ data }: { data: CostEstimateOverview }) {
                   <tr key={`m-${r.id}`} className="bg-amber-50/50 text-amber-900">
                     <td className="px-3 py-1.5 tabular-nums" dir="ltr">{r.wbs ?? '—'}</td>
                     <td className="px-3 py-1.5">{r.name}</td>
-                    <td colSpan={3} className="px-3 py-1.5">بدون بودجه یا قیمت (وزن {faPercent(r.weight)})</td>
+                    <td colSpan={3} className="px-3 py-1.5">{ESTIMATE_COPY.noPrice(faPercent(r.weight))}</td>
                   </tr>
                 ))}
                 <tr className="bg-slate-50 font-semibold">
-                  <td colSpan={4} className="px-3 py-2">جمع هزینهٔ مستقیم</td>
+                  <td colSpan={4} className="px-3 py-2">{ESTIMATE_COPY.directTotal}</td>
                   <td className="px-3 py-2 tabular-nums">{toman(direct.total)}</td>
                 </tr>
               </tbody>
@@ -717,13 +733,13 @@ function TargetsPanel({ targets, bacTotal, contractValue, currency }: { targets:
   return (
     <div className={cn('space-y-3 rounded-2xl border p-3', TARGET_TONE[targets.level])}>
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
-        {cell('سود هدف', toman(targets.targetProfit), `قرارداد ${toman(contractValue)} − BAC کل ${toman(bacTotal)}`)}
-        {cell('حاشیهٔ سود', targets.marginPercent == null ? '—' : faPercent(targets.marginPercent), 'سود هدف ÷ مبلغ قرارداد × 100')}
-        {cell('نرخ سوختن کل', targets.burnRateMonthly == null ? '—' : `${toman(targets.burnRateMonthly)} / ماه`, `BAC کل ÷ مدت برنامه‌ای (${currency})`)}
+        {cell(ESTIMATE_COPY.targetProfitLabel, toman(targets.targetProfit), ESTIMATE_COPY.profitHint(toman(contractValue), toman(bacTotal)))}
+        {cell(ESTIMATE_COPY.margin, targets.marginPercent == null ? '—' : faPercent(targets.marginPercent), ESTIMATE_COPY.marginHint)}
+        {cell(ESTIMATE_COPY.burn, targets.burnRateMonthly == null ? '—' : ESTIMATE_COPY.burnValue(toman(targets.burnRateMonthly)), ESTIMATE_COPY.burnHint(currency))}
         {cell(
-          'نرخ سوختن بالاسری',
-          targets.overheadPerDay == null ? '—' : `${toman(targets.overheadPerDay)} / روز`,
-          targets.durationDays == null ? 'تاریخ‌های مصوب کامل نیست' : `بالاسری کل ÷ ${faNumber(targets.durationDays)} روز`
+          ESTIMATE_COPY.overheadBurn,
+          targets.overheadPerDay == null ? '—' : ESTIMATE_COPY.perDay(toman(targets.overheadPerDay)),
+          targets.durationDays == null ? ESTIMATE_COPY.datesIncomplete : ESTIMATE_COPY.overheadPerDays(faNumber(targets.durationDays))
         )}
       </div>
       {targets.messages.length ? (
@@ -743,7 +759,7 @@ function TargetsPanel({ targets, bacTotal, contractValue, currency }: { targets:
           ))}
         </ul>
       ) : targets.level === 'none' ? (
-        <p className="text-xs text-slate-600">برای سود هدف و حاشیه، مبلغ قرارداد و اجزای BAC را وارد کنید.</p>
+        <p className="text-xs text-slate-600">{ESTIMATE_COPY.formNeedTargets}</p>
       ) : null}
     </div>
   )
@@ -752,13 +768,13 @@ function TargetsPanel({ targets, bacTotal, contractValue, currency }: { targets:
 function TargetsSection({ data }: { data: CostEstimateOverview }) {
   return (
     <SectionCard
-      title="سود هدف و نرخ سوختن"
+      title={ESTIMATE_COPY.targetsTitle}
       icon={<Coins className="h-4 w-4" aria-hidden />}
       action={<CalcTraceTrigger metrics={['estimate.target_profit_pct', 'estimate.overhead_burn_rate', 'estimate.bac_total']} />}
-      hint={`سود هدف = مبلغ قرارداد − BAC کل؛ حاشیه = سود ÷ قرارداد. قرمز: BAC کل بیشتر از قرارداد یا حاشیهٔ منفی؛ زرد: حاشیه کمتر از ${TARGET_MARGIN_WARNING_PERCENT}٪.`}
+      hint={ESTIMATE_COPY.targetsHint(String(TARGET_MARGIN_WARNING_PERCENT))}
     >
       {!data.record ? (
-        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">پیش‌نمایش با داده‌های فعلی؛ برآورد هنوز ذخیره نشده است.</p>
+        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">{ESTIMATE_COPY.unsavedPreview}</p>
       ) : null}
       <TargetsPanel targets={data.targets} bacTotal={data.bac.bacTotal} contractValue={data.settings.contractValue} currency={data.currency} />
     </SectionCard>
@@ -770,12 +786,12 @@ function TargetsSection({ data }: { data: CostEstimateOverview }) {
 function IndexCard({ label, value, formula, format }: { label: string; value: IndexValue; formula: string; format: 'money' | 'ratio' | 'days' | 'months' }) {
   const text =
     value.value == null
-      ? 'داده کافی نیست'
+      ? ESTIMATE_COPY.insufficient
       : format === 'money'
         ? toman(value.value)
         : format === 'ratio'
           ? faNumber(value.value, 2)
-          : `${faNumber(value.value, format === 'months' ? 1 : 0)} ${format === 'days' ? 'روز' : 'ماه'}`
+          : `${faNumber(value.value, format === 'months' ? 1 : 0)} ${format === 'days' ? ESTIMATE_COPY.days : ESTIMATE_COPY.months}`
   const negative = value.value != null && format === 'money' && value.value < 0
   return (
     <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
@@ -792,26 +808,26 @@ function EvmSection({ data }: { data: CostEstimateOverview }) {
   const { evm, progress } = data
   return (
     <SectionCard
-      title="شاخص‌های هزینه و ارزش کسب‌شده"
+      title={ESTIMATE_COPY.evmTitle}
       action={<CalcTraceTrigger metrics={['estimate.cpi', 'estimate.eac', 'estimate.etc', 'estimate.cv', 'estimate.sv']} />}
       icon={<Coins className="h-4 w-4" aria-hidden />}
-      hint="PV و EV با وزن برنامه‌ای فعالیت‌ها (همان مبنای پیشرفت تجمعی) و BAC پایه حساب می‌شوند. ذخیرهٔ ریسک در PV/EV نیست. هر نسبت با مخرج صفر «داده کافی نیست» نشان داده می‌شود."
+      hint={ESTIMATE_COPY.evmHint}
     >
       <p className="mb-3 text-xs text-slate-500 tabular-nums">
-        پیشرفت برنامه‌ای {progress.plannedPercent == null ? '—' : faPercent(progress.plannedPercent)} · پیشرفت تأییدشده {progress.earnedPercent == null ? '—' : faPercent(progress.earnedPercent)}
+        {ESTIMATE_COPY.plannedProgress} {progress.plannedPercent == null ? '—' : faPercent(progress.plannedPercent)} · {ESTIMATE_COPY.earnedProgress} {progress.earnedPercent == null ? '—' : faPercent(progress.earnedPercent)}
       </p>
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
-        <IndexCard label="PV (ارزش برنامه‌ای)" value={evm.pv} formula="BAC پایه × پیشرفت برنامه‌ای" format="money" />
-        <IndexCard label="EV (ارزش کسب‌شده)" value={evm.ev} formula="BAC پایه × پیشرفت تأییدشده" format="money" />
-        <IndexCard label="AC (هزینهٔ واقعی)" value={{ value: evm.ac }} formula="بالاسری + پیمانکاران + خرید کارفرمایی" format="money" />
-        <IndexCard label="CV (انحراف هزینه)" value={evm.cv} formula="EV − AC" format="money" />
-        <IndexCard label="SV (انحراف زمانی)" value={evm.sv} formula="EV − PV" format="money" />
+        <IndexCard label={ESTIMATE_COPY.pv} value={evm.pv} formula={ESTIMATE_COPY.pvFormula} format="money" />
+        <IndexCard label={ESTIMATE_COPY.evLabel} value={evm.ev} formula={ESTIMATE_COPY.evFormula} format="money" />
+        <IndexCard label={ESTIMATE_COPY.acLabel} value={{ value: evm.ac }} formula={ESTIMATE_COPY.acFormula} format="money" />
+        <IndexCard label={ESTIMATE_COPY.cv} value={evm.cv} formula="EV − AC" format="money" />
+        <IndexCard label={ESTIMATE_COPY.sv} value={evm.sv} formula="EV − PV" format="money" />
         <IndexCard label="CPI" value={evm.cpi} formula="EV ÷ AC" format="ratio" />
         <IndexCard label="SPI" value={evm.spi} formula="EV ÷ PV" format="ratio" />
-        <IndexCard label="EAC (برآورد تکمیل)" value={evm.eac} formula="AC + (BAC پایه − EV) ÷ CPI" format="money" />
-        <IndexCard label="ETC (هزینهٔ باقی‌مانده)" value={evm.etc} formula="EAC − AC" format="money" />
-        <IndexCard label="VAC (انحراف از BAC کل)" value={evm.vac} formula="BAC کل − EAC" format="money" />
-        <IndexCard label="حاشیهٔ قراردادی پیش‌بینی" value={evm.margin} formula="ارزش قرارداد − EAC" format="money" />
+        <IndexCard label={ESTIMATE_COPY.eacLabel} value={evm.eac} formula={ESTIMATE_COPY.eacFormula} format="money" />
+        <IndexCard label={ESTIMATE_COPY.etc} value={evm.etc} formula="EAC − AC" format="money" />
+        <IndexCard label={ESTIMATE_COPY.vac} value={evm.vac} formula={ESTIMATE_COPY.vacFormula} format="money" />
+        <IndexCard label={ESTIMATE_COPY.marginForecast} value={evm.margin} formula={ESTIMATE_COPY.marginFormula} format="money" />
       </div>
       <p className="mt-3 text-[11px] leading-5 text-slate-500">{evm.eacFormula}</p>
     </SectionCard>
@@ -822,25 +838,25 @@ function ScheduleSection({ data }: { data: CostEstimateOverview }) {
   const s = data.schedule
   const approvedFinish = data.settings.plannedFinish
   return (
-    <SectionCard action={<CalcTraceTrigger metrics={['estimate.spi_t']} />} title="پیش‌بینی زمان (Earned Schedule)" icon={<CalendarClock className="h-4 w-4" aria-hidden />} hint={s.basis}>
+    <SectionCard action={<CalcTraceTrigger metrics={['estimate.spi_t']} />} title={ESTIMATE_COPY.scheduleTitle} icon={<CalendarClock className="h-4 w-4" aria-hidden />} hint={s.basis}>
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
         <IndexCard label="SPI(t)" value={s.spiT} formula="ES ÷ AT" format="ratio" />
-        <IndexCard label="مدت برنامه (PD)" value={s.plannedDurationMonths} formula="منحنی PV مبنا" format="months" />
-        <IndexCard label="مدت پیش‌بینی (EAC(t))" value={s.eacMonths} formula="PD ÷ SPI(t)" format="months" />
-        <IndexCard label="تأخیر پیش‌بینی‌شده" value={s.delayDays} formula="(EAC(t) − PD) × 30.44" format="days" />
+        <IndexCard label={ESTIMATE_COPY.pd} value={s.plannedDurationMonths} formula={ESTIMATE_COPY.pdFormula} format="months" />
+        <IndexCard label={ESTIMATE_COPY.eacT} value={s.eacMonths} formula={ESTIMATE_COPY.eacTFormula} format="months" />
+        <IndexCard label={ESTIMATE_COPY.delay} value={s.delayDays} formula={ESTIMATE_COPY.delayFormula} format="days" />
       </div>
       <dl className="mt-3 grid grid-cols-1 gap-1 text-xs text-slate-600 sm:grid-cols-3">
         <div>
-          <dt className="inline text-slate-500">پایان مبنای برنامه: </dt>
+          <dt className="inline text-slate-500">{ESTIMATE_COPY.baselineFinishLabel}</dt>
           <dd className="inline tabular-nums">{jalaliDate(s.baselineFinish)}</dd>
         </div>
         <div>
-          <dt className="inline text-slate-500">پایان مصوب (تنظیمات): </dt>
+          <dt className="inline text-slate-500">{ESTIMATE_COPY.approvedFinishLabel}</dt>
           <dd className="inline tabular-nums">{jalaliDate(approvedFinish)}</dd>
         </div>
         <div>
-          <dt className="inline text-slate-500">پایان پیش‌بینی‌شده با SPI(t): </dt>
-          <dd className="inline tabular-nums">{s.forecastFinish ? jalaliDate(s.forecastFinish) : 'داده کافی نیست'}</dd>
+          <dt className="inline text-slate-500">{ESTIMATE_COPY.forecastFinish}</dt>
+          <dd className="inline tabular-nums">{s.forecastFinish ? jalaliDate(s.forecastFinish) : ESTIMATE_COPY.insufficient}</dd>
         </div>
       </dl>
     </SectionCard>
@@ -850,9 +866,9 @@ function ScheduleSection({ data }: { data: CostEstimateOverview }) {
 function ActualSection({ data }: { data: CostEstimateOverview }) {
   return (
     <SectionCard
-      title="هزینهٔ واقعی (AC) و منابع آن"
+      title={ESTIMATE_COPY.actualTitle}
       icon={<Receipt className="h-4 w-4" aria-hidden />}
-      hint="همان مدل تب «هزینه تا این لحظه» حسابداری. هر خرید فقط یک بار شمرده می‌شود."
+      hint={ESTIMATE_COPY.actualHint}
     >
       <ul className="divide-y divide-slate-50 text-sm">
         {data.actual.parts.map((p) => (
@@ -865,19 +881,19 @@ function ActualSection({ data }: { data: CostEstimateOverview }) {
           </li>
         ))}
         <li className="flex justify-between py-2 font-bold">
-          <span>AC تا امروز</span>
+          <span>{ESTIMATE_COPY.acToDate}</span>
           <span className="tabular-nums">{toman(data.actual.total)}</span>
         </li>
       </ul>
       {data.actual.excluded.some((e) => e.count > 0) ? (
         <div className="mt-3 rounded-xl bg-slate-50 p-3">
-          <p className="text-xs font-semibold text-slate-600">فقط برای مرجع (در AC جمع نمی‌شود)</p>
+          <p className="text-xs font-semibold text-slate-600">{ESTIMATE_COPY.excludedRef}</p>
           <ul className="mt-1.5 space-y-1 text-[11px] text-slate-500">
             {data.actual.excluded
               .filter((e) => e.count > 0)
               .map((e) => (
                 <li key={e.label}>
-                  {e.label}: {faNumber(e.count)} مورد، {toman(e.amount)} {data.currency} — {e.reason}
+                  {ESTIMATE_COPY.excludedRow(e.label, faNumber(e.count), toman(e.amount), data.currency, e.reason)}
                 </li>
               ))}
           </ul>
@@ -901,13 +917,13 @@ export function CostEstimateView({
   const { data, setData, loading, error, reload } = useCostEstimate(projectId)
   const settingsKey = useMemo(() => (data ? `${data.projectId}:${data.record?.updatedAt ?? 'new'}` : ''), [data])
 
-  if (!projectId) return <EmptyNote title="پروژه‌ای انتخاب نشده است" />
+  if (!projectId) return <EmptyNote title={ESTIMATE_COPY.noProject} />
   if (error) {
     return (
       <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
         <span>{error}</span>
         <button type="button" onClick={() => void reload()} className="rounded-lg border border-rose-200 bg-white px-3 py-1 text-xs font-semibold hover:bg-rose-100">
-          تلاش دوباره
+          {ESTIMATE_COPY.retry}
         </button>
       </div>
     )
@@ -920,7 +936,7 @@ export function CostEstimateView({
       <Headline data={data} />
       {loading ? (
         <p className="flex items-center gap-2 text-xs text-slate-500">
-          <Spinner className="h-3.5 w-3.5" /> در حال به‌روزرسانی…
+          <Spinner className="h-3.5 w-3.5" /> {ESTIMATE_COPY.updating}
         </p>
       ) : null}
       <AlertsSection alerts={data.alerts} />
@@ -933,9 +949,9 @@ export function CostEstimateView({
         <ActualSection data={data} />
       </div>
       <SectionCard
-        title="روند پیشرفت"
+        title={ESTIMATE_COPY.trendTitle}
         icon={<LineChartIcon className="h-4 w-4" aria-hidden />}
-        hint="همان منحنی S داشبورد: برنامه (PV)، پیشرفت ثبت‌شده و ارزش کسب‌شده به درصد تجمعی."
+        hint={ESTIMATE_COPY.trendHint}
       >
         <SectionBody result={overview?.progress} loading={overviewLoading} rows={4}>
           {(curve) => <ManagerProgressChart curve={curve} />}

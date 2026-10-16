@@ -1,4 +1,14 @@
+/**
+ * @file features/admin/components/admin-members-page.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (admin-members-page)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/hooks/use-supabase, features/admin/services/admin, features/admin/components/shared, shared/components/ui/card, shared/components/ui/button, shared/components/ui/badge, shared/components/ui/select, features/admin/components/control-center-details-context, features/admin/lib/resolve-admin-project, shared/lib/project/project-cookie
+ */
+
+
 'use client'
+import { ADMIN_MEMBERS_PAGE_COPY } from '@/features/admin/config'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -57,7 +67,7 @@ export function AdminMembersPage() {
         })
         if (resolved) setSelectedProjectId(resolved)
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری اعضا ناموفق بود')
+        if (!cancelled) setError(err instanceof Error ? err.message : ADMIN_MEMBERS_PAGE_COPY.loadFailed)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -177,9 +187,9 @@ export function AdminMembersPage() {
                 <ShieldAlert className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-amber-950">مسئول ایمنی تعریف نشده</p>
+                <p className="text-sm font-semibold text-amber-950">{ADMIN_MEMBERS_PAGE_COPY.hseMissingTitle}</p>
                 <p className="text-xs text-amber-900/80 mt-0.5">
-                  نقش «مسئول ایمنی» را به یک عضو اختصاص دهید تا داشبورد HSE برای او فعال شود.
+                  {ADMIN_MEMBERS_PAGE_COPY.hseMissingHint}
                 </p>
               </div>
             </div>
@@ -188,7 +198,7 @@ export function AdminMembersPage() {
               className="bg-amber-800 hover:bg-amber-900 text-white"
               onClick={() => goToAddMember('hse_officer')}
             >
-              تعریف مسئول ایمنی
+              {ADMIN_MEMBERS_PAGE_COPY.defineHse}
             </Button>
           </CardContent>
         </Card>
@@ -211,8 +221,8 @@ export function AdminMembersPage() {
                     <th className="text-left font-medium text-muted-foreground px-4 py-3">{t.username}</th>
                     <th className="text-left font-medium text-muted-foreground px-4 py-3">{t.email}</th>
                     <th className="text-left font-medium text-muted-foreground px-4 py-3">{t.initialPassword}</th>
-                    <th className="text-left font-medium text-muted-foreground px-4 py-3">وضعیت</th>
-                    <th className="text-right font-medium text-muted-foreground px-4 py-3">عملیات</th>
+                    <th className="text-left font-medium text-muted-foreground px-4 py-3">{ADMIN_MEMBERS_PAGE_COPY.status}</th>
+                    <th className="text-right font-medium text-muted-foreground px-4 py-3">{ADMIN_MEMBERS_PAGE_COPY.actions}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -249,7 +259,7 @@ export function AdminMembersPage() {
                         <Button asChild variant="ghost" size="sm">
                           <Link href={`/admin/projects/${member.project_id}/members/${member.id}`}>
                             <Pencil className="h-3.5 w-3.5 mr-1" />
-                            ویرایش
+                            {ADMIN_MEMBERS_PAGE_COPY.edit}
                           </Link>
                         </Button>
                       </td>

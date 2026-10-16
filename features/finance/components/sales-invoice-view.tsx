@@ -1,9 +1,18 @@
+/**
+ * @file features/finance/components/sales-invoice-view.tsx
+ * @purpose کامپوننت UI — حسابداری، هزینه،overhead و صورت‌وضعیت (sales-invoice-view)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/schedule/components/formatted-date, features/finance/lib/expense-types, features/finance/lib/invoice-weekday, features/finance/lib/persian-amount-words, shared/lib/utils
+ */
+
 'use client'
 
 import { FormattedDate } from '@/features/schedule/components/formatted-date'
 import type { AccountingDocument, ExpenseItem } from '@/features/finance/lib/expense-types'
 import { formatInvoiceNumber, getInvoiceWeekday } from '@/features/finance/lib/invoice-weekday'
 import { rialToToman, tomanAmountToPersianWords } from '@/features/finance/lib/persian-amount-words'
+import { SALES_INVOICE_COPY } from '@/features/finance/config'
 import { cn } from '@/shared/lib/utils'
 
 export interface SalesInvoiceViewProps {
@@ -43,31 +52,7 @@ export function SalesInvoiceView({
     : `${formatInvoiceNumber(totalToman, 'en')} Tomans`
 
   const labels = isFa
-    ? {
-        title: 'فاکتور فروش',
-        invoiceNo: 'شماره فاکتور',
-        date: 'تاریخ',
-        day: 'روز',
-        buyer: 'خریدار',
-        project: 'پروژه',
-        phone: 'شماره تماس',
-        row: 'ردیف',
-        desc: 'شرح کالا',
-        unit: 'واحد',
-        qty: 'تعداد',
-        unitPrice: 'فی (تومان)',
-        multiply: 'ضرب',
-        lineTotal: 'مبلغ کل (تومان)',
-        grandTotal: 'جمع کل',
-        amountWords: 'مبلغ به حروف',
-        sellerSign: 'امضاء فروشنده',
-        sellerStamp: 'مهر و امضاء فروشنده',
-        buyerSign: 'امضاء خریدار',
-        disclaimer:
-          'کالاهای فوق سالم تحویل گردید و خریدار از نظر تعداد و قیمت تأیید می‌نماید.',
-        noLines: 'ردیفی ثبت نشده است.',
-        supplierAsSeller: 'فروشنده',
-      }
+    ? SALES_INVOICE_COPY
     : {
         title: 'Sales Invoice',
         invoiceNo: 'Invoice No.',

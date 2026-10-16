@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/schedule-alerts-api.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (schedule-alerts-api)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/float-alerts, features/site-ops/lib/auth, features/workshop/lib/domain, features/schedule/lib/dates
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ScheduleAlertSeverity } from '@/features/schedule/lib/float-alerts'
 import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'

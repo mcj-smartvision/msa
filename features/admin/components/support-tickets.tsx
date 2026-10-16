@@ -1,8 +1,17 @@
+/**
+ * @file features/admin/components/support-tickets.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (support-tickets)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/types/admin, shared/lib/utils, features/admin/config
+ */
+
 'use client'
 
 import type { AdminCriticalAlert, AdminSupportTicket } from '@/shared/types/admin'
 import { cn } from '@/shared/lib/utils'
 import { MessageSquare, ShieldCheck } from 'lucide-react'
+import { ADMIN_SUPPORT_COPY } from '@/features/admin/config'
 
 const priorityStyles = {
   low: 'bg-slate-100 text-slate-700 border-slate-200',
@@ -18,25 +27,11 @@ const statusStyles = {
   closed: 'bg-muted text-muted-foreground',
 }
 
-const statusLabels = {
-  open: 'فوری',
-  in_progress: 'اخیر',
-  resolved: 'حل‌شده',
-  closed: 'بسته‌شده',
-}
-
-const priorityLabels = {
-  low: 'کم',
-  medium: 'متوسط',
-  high: 'بالا',
-  critical: 'بحرانی',
-}
-
 export function SupportTicketsPanel({ tickets }: { tickets: AdminSupportTicket[] }) {
   if (tickets.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-6 text-center">
-        هنوز پیامی ثبت نشده است.
+        {ADMIN_SUPPORT_COPY.noTickets}
       </p>
     )
   }
@@ -53,10 +48,10 @@ export function SupportTicketsPanel({ tickets }: { tickets: AdminSupportTicket[]
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <span className="text-xs font-mono text-muted-foreground">{ticket.id}</span>
                 <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium', priorityStyles[ticket.priority])}>
-                  {priorityLabels[ticket.priority]}
+                  {ADMIN_SUPPORT_COPY.priority[ticket.priority]}
                 </span>
                 <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium', statusStyles[ticket.status])}>
-                  {statusLabels[ticket.status]}
+                  {ADMIN_SUPPORT_COPY.status[ticket.status]}
                 </span>
                 {ticket.topic ? (
                   <span className="text-xs text-muted-foreground capitalize">{ticket.topic}</span>
@@ -96,7 +91,7 @@ export function CriticalAlertsPanel({
         <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
           <ShieldCheck className="h-6 w-6" />
         </span>
-        <p className="text-sm font-medium text-emerald-800">در حال حاضر هشدار حل‌نشده‌ای وجود ندارد.</p>
+        <p className="text-sm font-medium text-emerald-800">{ADMIN_SUPPORT_COPY.noAlerts}</p>
       </div>
     )
   }
@@ -115,10 +110,10 @@ export function CriticalAlertsPanel({
             </span>
             <span className="text-xs text-muted-foreground">
               {alert.time === 'now'
-                ? 'الان'
+                ? ADMIN_SUPPORT_COPY.now
                 : alert.time === '—'
                   ? alert.time
-                  : `${alert.time} پیش`}
+                  : ADMIN_SUPPORT_COPY.ago(alert.time)}
             </span>
           </div>
         </div>

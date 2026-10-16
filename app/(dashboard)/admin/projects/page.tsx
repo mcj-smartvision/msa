@@ -1,3 +1,11 @@
+/**
+ * @file app/(dashboard)/admin/projects/page.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (page)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/hooks/use-supabase, features/admin/services/admin, features/admin/lib/control-center, features/admin/lib/projects-ops, features/admin/components/shared, features/admin/components/projects-control/control-chrome, features/admin/components/projects-control/project-row, features/admin/components/activity-feed, shared/components/ui/button, features/account/lib/open-account-page
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -30,6 +38,7 @@ import { ActivityFeed } from '@/features/admin/components/activity-feed'
 import { Button } from '@/shared/components/ui/button'
 import { openProjectDirectory } from '@/features/account/lib/open-account-page'
 import { sortProjectsRecent } from '@/features/admin/components/project-directory-table'
+import { ADMIN_COPY, ADMIN_CONTROL_CENTER_COPY as cc } from '@/features/admin/config'
 import type {
 AdminOpsMetrics,
 AdminProject,
@@ -95,10 +104,10 @@ export default function AdminProjectsPage() {
               () =>
                 reject(
                   new Error(
-                    'زمان بارگذاری تمام شد — اتصال Supabase را بررسی و صفحه را تازه کنید.'
+                    ADMIN_COPY.loadTimeout
                   )
                 ),
-              20000
+              ADMIN_COPY.loadTimeoutMs
             )
           ),
         ])
@@ -120,7 +129,7 @@ export default function AdminProjectsPage() {
         setOps(opsData)
         setAuthUsers(authRes.users ?? [])
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'بارگذاری پروژه‌ها ناموفق بود')
+        setError(err instanceof Error ? err.message : ADMIN_COPY.loadProjectsFailed)
       } finally {
         setLoading(false)
       }
@@ -171,7 +180,7 @@ export default function AdminProjectsPage() {
     window.localStorage.setItem(IDLE_DAYS_KEY, String(next))
   }
 
-  if (loading) return <LoadingBlock label="در حال بارگذاری مرکز کنترل پروژه‌ها..." />
+  if (loading) return <LoadingBlock label={ADMIN_COPY.loadingProjects} />
   if (error && projects.length === 0) {
     return <ErrorBlock message={error} onRetry={() => void loadProjects('initial')} />
   }
@@ -179,16 +188,16 @@ export default function AdminProjectsPage() {
   return (
     <div className="mx-auto max-w-[1200px] space-y-5 rounded-lg p-1 sm:p-0">
       <ProjectsControlHeader
-        eyebrow="مرکز کنترل سامانه"
-        title="پروژه‌ها"
-        description="پایش کاربران، امنیت، منابع پلن و فهرست پروژه‌ها در سطح ادمین سیستم."
+        eyebrow={cc.eyebrow}
+        title={cc.title}
+        description={cc.description}
         actions={
           <>
             <Button
               asChild
               className="h-8 border-0 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
             >
-              <Link href="/admin/projects/initialize">راه‌اندازی پیشرفته</Link>
+              <Link href="/admin/projects/initialize">{cc.advancedInit}</Link>
             </Button>
             <Button
               asChild
@@ -196,7 +205,7 @@ export default function AdminProjectsPage() {
             >
               <Link href="/admin/projects/new">
                 <Plus className="h-4 w-4" />
-                پروژه جدید
+                {cc.newProject}
               </Link>
             </Button>
           </>
@@ -207,31 +216,31 @@ export default function AdminProjectsPage() {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <ControlKpiCard
-          label="کاربران فعال / در انتظار تأیید"
+          label={cc.kpis.users}
           value={`${kpis.activeUsers} / ${kpis.pendingApprovals}`}
-          hint={`${kpis.pendingApprovals} عضو هنوز ورود اول یا تغییر رمز نکرده‌اند`}
+          hint={cc.kpis.usersHint(kpis.pendingApprovals)}
           icon={Users}
           tone="success"
-          help="کاربران فعال یعنی اعضای مجاز پروژه‌ها. در انتظار تأیید همان اعضایی است که هنوز رمز دعوت را عوض نکرده‌اند."
+          help={cc.kpis.usersHelp}
         />
         <ControlKpiCard
-          label="نشست‌های زنده"
+          label={cc.kpis.live}
           value={kpis.liveSessions}
-          hint={`${kpis.onSiteNow} حاضر در سایت همین حالا`}
+          hint={cc.kpis.liveHint(kpis.onSiteNow)}
           icon={Radio}
           tone="info"
-          help="ورود موفق به سامانه در 30 دقیقه اخیر. اگر ورود اخیر نباشد، تعداد حاضر در گیت نمایش داده می‌شود. نشست وب‌سوکت جداگانه‌ای در سیستم نیست."
+          help={cc.kpis.liveHelp}
         />
         <ControlKpiCard
-          label="کاربران غیرفعال"
+          label={cc.kpis.idle}
           value={kpis.idleUsers}
-          hint={`بیش از ${idleDays} روز بدون ورود`}
+          hint={cc.kpis.idleHint(idleDays)}
           icon={UserX}
           tone={kpis.idleUsers > 0 ? 'warning' : 'neutral'}
-          help="بر اساس آخرین ورود واقعی حساب (Supabase). اگر ورود ثبت نشده باشد، تاریخ عضویت ملاک است. آستانه را می‌توانید عوض کنید."
+          help={cc.kpis.idleHelp}
           extra={
             <label className="flex items-center gap-2 text-[11px] text-[#667085]">
-              آستانه
+              {cc.kpis.threshold}
               <input
                 type="number"
                 min={1}
@@ -239,43 +248,43 @@ export default function AdminProjectsPage() {
                 value={idleDays}
                 onChange={(e) => handleIdleDaysChange(e.target.value)}
                 className="h-7 w-16 rounded border border-[#E4E7EC] bg-white px-1.5 text-[12px] tabular-nums"
-                aria-label="تعداد روز بی‌تحرکی"
+                aria-label={cc.kpis.idleAria}
               />
-              روز
+              {cc.kpis.days}
             </label>
           }
         />
         <ControlKpiCard
-          label="خطاها و Job ناموفق"
+          label={cc.kpis.failedJobs}
           value={kpis.failedJobs24h}
-          hint="24 ساعت اخیر"
+          hint={cc.kpis.failedJobsHint}
           icon={ServerCrash}
           tone={kpis.failedJobs24h > 0 ? 'warning' : 'neutral'}
-          help="جمع واردات زمان‌بندی ناموفق، ایمیل گیت ناموفق، و تحلیل تصویر ناموفق در 24 ساعت گذشته. عدد ساختگی نیست."
+          help={cc.kpis.failedJobsHelp}
         />
         <ControlKpiCard
-          label="مصرف منابع پلن"
+          label={cc.kpis.plan}
           value={`${kpis.activeProjects} / ${kpis.aiActionsThisMonth}`}
-          hint="پروژه فعال · اقدام AI این ماه"
+          hint={cc.kpis.planHint}
           icon={Cpu}
           tone="info"
-          help="سقف اشتراک جداگانه‌ای در سامانه تعریف نشده. این کارت تعداد پروژه‌های فعال و تعداد اقدام‌های هوش مصنوعی ثبت‌شده در همین ماه را نشان می‌دهد."
+          help={cc.kpis.planHelp}
         />
         <ControlKpiCard
-          label="رویدادهای امنیتی"
+          label={cc.kpis.security}
           value={kpis.securityEvents24h}
-          hint="شناسایی ناموفق گیت و لاگ ممیزی، 24 ساعت"
+          hint={cc.kpis.securityHint}
           icon={ShieldAlert}
           tone={kpis.securityEvents24h > 0 ? 'warning' : 'neutral'}
-          help="ورود ناموفق حساب کاربری در این نسخه جداگانه ذخیره نمی‌شود. رویدادها از شناسایی ناموفق گیت و جدول ممیزی (اگر داده داشته باشد) می‌آیند."
+          help={cc.kpis.securityHelp}
         />
       </div>
 
       <section className="rounded-lg border border-[#E4E7EC] bg-white shadow-sm overflow-hidden">
         <div className="border-b border-[#E4E7EC] px-4 py-3">
-          <h2 className="text-sm font-semibold text-[#17202A]">آخرین فعالیت‌ها</h2>
+          <h2 className="text-sm font-semibold text-[#17202A]">{cc.recentActivity}</h2>
           <p className="text-[11px] text-[#667085] mt-0.5">
-            اقدامات واقعی کاربران در همه پروژه‌ها، با زمان دقیق رویداد
+            {cc.recentActivityHint}
           </p>
         </div>
         <div className="p-4 max-h-[360px] overflow-y-auto">
@@ -290,7 +299,7 @@ export default function AdminProjectsPage() {
             onClick={() => openProjectDirectory()}
             className="h-10 rounded-[10px] bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
           >
-            فهرست پروژه‌ها
+            {cc.projectDirectory}
           </button>
         </div>
 

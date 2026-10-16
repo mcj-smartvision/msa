@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/components/math-formula.tsx
+ * @purpose کامپوننت UI — داشبورد مدیر پروژه و KPI (math-formula)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on nothing
+ */
+
 import type { ReactNode } from 'react';
 
 /** Light-blue block that lays out one or more formula lines in textbook notation. */

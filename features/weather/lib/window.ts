@@ -1,3 +1,11 @@
+/**
+ * @file features/weather/lib/window.ts
+ * @purpose منطق دامنه — هوای کارگاه (window)
+ * @safe-to-edit CAREFUL
+ * @affects هوای کارگاه
+ * @depends-on shared/lib/time/tehran
+ */
+
 import { tehranDateIso, tehranMidnight, todayTehranIso } from '@/shared/lib/time/tehran'
 
 const DAY_MS = 86_400_000

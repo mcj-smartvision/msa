@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/progress-pace.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (progress-pace)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/dates
+ */
+
 import { diffDaysIso, toIsoDateOnly } from '@/features/schedule/lib/dates'
 
 export type PaceStatus = 'good' | 'warning' | 'bad'

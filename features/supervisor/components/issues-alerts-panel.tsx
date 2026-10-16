@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/issues-alerts-panel.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (issues-alerts-panel)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/admin/components/shared, shared/components/ui/badge, shared/components/ui/button, features/schedule/components/formatted-date, features/supervisor/lib/types, shared/lib/i18n/site-supervisor
+ */
+
 'use client'
 
 import { SectionCard } from '@/features/admin/components/shared'
@@ -32,7 +40,9 @@ export function IssuesAlertsPanel({ issues, labels, onDraftPmComment }: IssuesAl
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">{issue.description}</p>
                 {issue.related_task_name ? (
-                  <p className="text-xs text-muted-foreground mt-1">فعالیت: {issue.related_task_name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {labels.relatedActivityPrefix} {issue.related_task_name}
+                  </p>
                 ) : null}
                 <p className="text-xs text-muted-foreground mt-1">
                   <FormattedDate value={issue.created_at.slice(0, 10)} />

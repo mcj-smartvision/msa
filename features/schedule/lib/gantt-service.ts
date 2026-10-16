@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/gantt-service.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (gantt-service)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/dates, features/schedule/lib/cascade-successors, features/schedule/lib/gantt-parent-expand, features/schedule/lib/gantt-link-paths, features/schedule/lib/gantt-tone, features/schedule/lib/progress-alert-quadrant, features/schedule/lib/physical-progress, features/schedule/lib/float-alerts, features/schedule/lib/predecessor-format, shared/types/schedule
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { toIsoDateOnly } from '@/features/schedule/lib/dates'
 import {

@@ -1,3 +1,11 @@
+/**
+ * @file app/(auth)/login/login-page-client.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (login-page-client)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/client, shared/components/i18n/locale-provider, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/alert, shared/lib/auth/login-identifier, shared/lib/brand, shared/components/brand/brand-logo
+ */
+
 'use client'
 
 import { useState } from 'react'
@@ -13,6 +21,7 @@ import { Lock, User, ArrowRight } from 'lucide-react'
 import { normalizeLoginIdentifier } from '@/shared/lib/auth/login-identifier'
 import { APP_TAGLINE } from '@/shared/lib/brand'
 import { BrandLogo } from '@/shared/components/brand/brand-logo'
+import { AUTH_COPY } from '@/shared/lib/i18n/auth'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -40,11 +49,9 @@ export default function LoginPage() {
       if (signInError) {
         const msg = signInError.message.toLowerCase()
         if (msg.includes('fetch failed') || msg.includes('network') || msg.includes('failed to fetch')) {
-          setError(
-            'ارتباط با سرور برقرار نشد. اینترنت/VPN را بررسی کنید، صفحه را رفرش کنید و دوباره وارد شوید.'
-          )
+          setError(AUTH_COPY.networkError)
         } else if (msg.includes('invalid login credentials')) {
-          setError('ایمیل یا رمز عبور نادرست است.')
+          setError(AUTH_COPY.badCredentials)
         } else {
           setError(signInError.message)
         }
@@ -61,7 +68,7 @@ export default function LoginPage() {
         const res = await fetch('/api/auth/post-login')
         const data = await res.json().catch(() => ({} as { redirectTo?: string }))
         if (!res.ok || !data.redirectTo || data.redirectTo === '/login') {
-          setError('ورود ناقص ماند. صفحه را رفرش کنید و دوباره تلاش کنید.')
+          setError(AUTH_COPY.incomplete)
           return
         }
         router.push(data.redirectTo)
@@ -70,7 +77,7 @@ export default function LoginPage() {
       }
       router.refresh()
     } catch {
-      setError('ورود انجام نشد. صفحه را رفرش کنید و دوباره تلاش کنید.')
+      setError(AUTH_COPY.failed)
     } finally {
       setLoading(false)
     }
@@ -89,7 +96,7 @@ export default function LoginPage() {
         <div className="space-y-2 mb-6 text-center">
           <h2 className="text-lg font-semibold">{app.signIn}</h2>
           <p className="text-muted-foreground text-sm">
-            برای ادامه، اطلاعات ورود خود را وارد کنید.
+            {AUTH_COPY.subtitle}
           </p>
         </div>
 
@@ -105,7 +112,7 @@ export default function LoginPage() {
                 onChange={(e) => setIdentifier(e.target.value)}
                 required
                 className="pl-10 h-11"
-                placeholder="ایمیل یا نام کاربری"
+                placeholder={AUTH_COPY.identifierPlaceholder}
                 autoComplete="username"
               />
             </div>
@@ -140,7 +147,7 @@ export default function LoginPage() {
           ) : null}
 
           <Button type="submit" className="w-full h-11" disabled={loading}>
-            {loading ? 'در حال ورود...' : (
+            {loading ? AUTH_COPY.signingIn : (
               <>
                 {app.signIn}
                 <ArrowRight className="h-4 w-4" />
@@ -150,7 +157,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          ورود فقط با دعوت‌نامه.
+          {AUTH_COPY.inviteOnly}
         </p>
       </div>
     </div>

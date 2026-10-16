@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/components/site-ops-shell.tsx
+ * @purpose کامپوننت UI — عملیات کارگاه، دستورکار و برنامه روزانه (site-ops-shell)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on shared/lib/supabase/client, shared/lib/project/project-cookie, shared/lib/project/resolve-active-project, features/admin/components/shared, features/site-ops/config
+ */
+
 'use client'
 
 import Link from 'next/link'
@@ -7,22 +15,11 @@ import { createClient } from '@/shared/lib/supabase/client'
 import { readProjectCookie, writeProjectCookie } from '@/shared/lib/project/project-cookie'
 import { resolveActiveProjectId } from '@/shared/lib/project/resolve-active-project'
 import { PageHeader } from '@/features/admin/components/shared'
-
-const PRIMARY = [
-  { href: '/site-ops/schedule', label: 'برنامه' },
-  { href: '/site-ops/approvals', label: 'تأییدات' },
-  { href: '/site-ops/prepared', label: 'لیست‌ها' },
-  { href: '/site-ops/today', label: 'امروز' },
-  { href: '/site-ops/flags', label: 'پرچم‌ها' },
-]
-
-const ADVANCED = [
-  { href: '/site-ops/cre-runs', label: 'اجراهای CRE' },
-  { href: '/site-ops/daily-plans', label: 'برنامه روزانه (پیشرفته)' },
-  { href: '/site-ops/reports/daily', label: 'گزارش روزانه' },
-  { href: '/site-ops/exceptions', label: 'استثناها' },
-  { href: '/dashboard/technical-office', label: 'دفتر فنی (پیشرفته)' },
-]
+import {
+  SITE_OPS_COPY,
+  SITE_OPS_NAV_ADVANCED,
+  SITE_OPS_NAV_PRIMARY,
+} from '@/features/site-ops/config'
 
 export function SiteOpsShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -104,16 +101,16 @@ export function SiteOpsShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="space-y-5" dir="rtl">
       <PageHeader
-        title="کارگاه روزانه"
+        title={SITE_OPS_COPY.title}
         description={
           readOnly
-            ? 'نمای سرپرست کارگاه — فقط مشاهده؛ ویرایش برای دفتر فنی است.'
-            : 'برنامه را ببینید، زیرمجموعه بسازید، به امروز بفرستید، عملکرد ثبت کنید.'
+            ? SITE_OPS_COPY.supervisorDescription
+            : SITE_OPS_COPY.editorDescription
         }
       />
       <header className="space-y-3 border-b border-slate-200 pb-4">
         <nav className="flex flex-wrap gap-2">
-          {PRIMARY.map((link) => {
+          {SITE_OPS_NAV_PRIMARY.map((link) => {
             const active = pathname === link.href || pathname.startsWith(link.href + '/')
             return (
               <Link
@@ -133,11 +130,11 @@ export function SiteOpsShell({ children }: { children: React.ReactNode }) {
           onClick={() => setShowAdvanced((v) => !v)}
           className="text-xs text-slate-500 underline underline-offset-2"
         >
-          {showAdvanced ? 'مخفی کردن ابزار پیشرفته' : 'ابزار پیشرفته'}
+          {showAdvanced ? SITE_OPS_COPY.hideAdvanced : SITE_OPS_COPY.showAdvanced}
         </button>
         {showAdvanced && (
           <nav className="flex flex-wrap gap-2 pt-1">
-            {ADVANCED.map((link) => (
+            {SITE_OPS_NAV_ADVANCED.map((link) => (
               <Link
                 key={link.href}
                 href={link.href.startsWith('/dashboard') ? link.href : `${link.href}${q}`}

@@ -1,7 +1,16 @@
+/**
+ * @file features/supervisor/components/supervisor-workspace-shell.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (supervisor-workspace-shell)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on shared/lib/utils, shared/components/layout/last-presence-sidebar-footer
+ */
+
 'use client'
 
 import { cn } from '@/shared/lib/utils'
 import { LastPresenceSidebarFooter } from '@/shared/components/layout/last-presence-sidebar-footer'
+import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
 
 export type SupervisorNavId =
   | 'safety'
@@ -42,6 +51,7 @@ export function SupervisorWorkspaceShell({
   children: React.ReactNode
   className?: string
 }) {
+  const t = getSiteSupervisorMessages('fa')
   const active = items.find((i) => i.id === activeId)
 
   return (
@@ -55,10 +65,10 @@ export function SupervisorWorkspaceShell({
       {/* سمت راست: تیترها */}
       <div className="flex flex-col gap-2 lg:sticky lg:top-3">
         <nav
-          aria-label="بخش‌های داشبورد سرپرست"
+          aria-label={t.navAria}
           className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm"
         >
-          <p className="mb-2 px-2 text-[11px] font-semibold text-slate-500">فهرست بخش‌ها</p>
+          <p className="mb-2 px-2 text-[11px] font-semibold text-slate-500">{t.sectionsList}</p>
           <ul className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
             {items.map((item) => {
               const selected = item.id === activeId
@@ -89,7 +99,7 @@ export function SupervisorWorkspaceShell({
                               : 'bg-slate-200 text-slate-700'
                         )}
                         title={item.badgeTitle}
-                        aria-label={item.badgeTitle ?? `${item.badge} اعلان`}
+                        aria-label={item.badgeTitle ?? t.notificationCount(item.badge)}
                       >
                         {item.badge}
                       </span>

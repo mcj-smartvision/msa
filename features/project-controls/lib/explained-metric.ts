@@ -1,3 +1,11 @@
+/**
+ * @file features/project-controls/lib/explained-metric.ts
+ * @purpose منطق دامنه — موتور کنترل پروژه و شاخص‌های توضیح‌پذیر (explained-metric)
+ * @safe-to-edit CAREFUL
+ * @affects موتور کنترل پروژه و شاخص‌های توضیح‌پذیر
+ * @depends-on shared/types/project-controls
+ */
+
 import type { DataQuality, ExplainedKpi, KpiStatus, RagStatus, SnapshotField } from '@/shared/types/project-controls';
 
 export const KPI_STATUS_TOKENS: Record<KpiStatus, { bg: string; text: string; border: string; label_fa: string }> = {

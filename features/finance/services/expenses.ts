@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/services/expenses.ts
+ * @purpose سرویس داده — حسابداری، هزینه،overhead و صورت‌وضعیت (expenses)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/finance/lib/expense-duplicates, features/finance/lib/expense-types, features/finance/lib/types, features/finance/services/costs, features/finance/services/payables
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { findDuplicateMatches } from '@/features/finance/lib/expense-duplicates'
 import type {

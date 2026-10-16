@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/i18n/storekeeper.ts
+ * @purpose تنظیمات و برچسب‌ها — زیرساخت مشترک سامانه (storekeeper)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/project-init/lib/i18n/types
+ */
+
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 
 const EN = {
@@ -55,6 +63,12 @@ const EN = {
   invoiceNumberOptional: 'Optional',
   invoiceDateRequired: 'Invoice date is required.',
   itemsToReceive: 'Items to Receive',
+  defaultUnit: 'pcs',
+  manualInvoiceNote: 'Manual invoice entry',
+  manualDispatchNote: 'Manual dispatch entry',
+  aiReceiptNote: 'AI invoice receipt',
+  aiDispatchNote: 'AI dispatch document',
+  invoicePreviewAlt: 'Invoice preview',
 } as const
 
 const FA = {
@@ -112,6 +126,12 @@ const FA = {
   invoiceNumberOptional: 'اختیاری',
   invoiceDateRequired: 'تاریخ فاکتور الزامی است.',
   itemsToReceive: 'اقلام ورودی',
+  defaultUnit: 'عدد',
+  manualInvoiceNote: 'ثبت دستی فاکتور',
+  manualDispatchNote: 'ثبت دستی خروج',
+  aiReceiptNote: 'رسید فاکتور با هوش مصنوعی',
+  aiDispatchNote: 'سند خروج با هوش مصنوعی',
+  invoicePreviewAlt: 'پیش‌نمایش فاکتور',
 }
 
 export function getStorekeeperMessages(locale: FormLocale): typeof EN {

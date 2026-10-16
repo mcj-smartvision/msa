@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/components/qc-drawing-thumb.tsx
+ * @purpose کامپوننت UI — کنترل کیفیت و عدم انطباق (qc-drawing-thumb)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on shared/lib/utils, features/qc/engine/drawing-file, features/qc/engine/pdfjs
+ */
+
 'use client'
 
 import { useEffect, useRef, useState } from 'react'

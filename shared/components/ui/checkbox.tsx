@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/ui/checkbox.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (checkbox)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/lib/utils
+ */
+
 import * as React from 'react'
 import { cn } from '@/shared/lib/utils'
 

@@ -1,0 +1,34 @@
+/**
+ * @file features/hse/config.ts
+ * @purpose برچسب صفحات ایمنی، بهداشت و محیط زیست
+ * @safe-to-edit YES
+ * @affects صفحات HSE
+ * @depends-on features/hse/lib/ui-copy
+ */
+
+export {
+  HSE_SHELL_COPY,
+  HSE_COMMON_COPY,
+  HSE_BADGE_COPY,
+  HSE_ACTION_COPY,
+  HSE_VERDICT_COPY,
+  HSE_SOURCE_COPY,
+  HSE_CA_STATUS_COPY,
+  HSE_ROLE_COPY,
+  HSE_CHANNEL_COPY,
+  HSE_ALERT_RESULT_COPY,
+  HSE_IP_STATUS_COPY,
+  HSE_OVERVIEW_COPY,
+  HSE_ALERTS_COPY,
+  HSE_INCIDENTS_COPY,
+  HSE_INCIDENT_DETAIL_COPY,
+  HSE_LIVE_COPY,
+  HSE_CAMERAS_COPY,
+  HSE_CAMERA_CONNECTION_COPY,
+  HSE_DOCS_COPY,
+  HSE_REPORTS_COPY,
+  HSE_RULES_COPY,
+  HSE_SETTINGS_COPY,
+  HSE_ZONES_COPY,
+  HSE_SAFETY_ALERTS_COPY,
+} from './lib/ui-copy'

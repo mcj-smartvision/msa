@@ -1,10 +1,21 @@
+/**
+ * @file shared/components/auth/logout-button.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (logout-button)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/lib/supabase/client, shared/components/ui/button, shared/lib/i18n/chrome
+ */
+
 'use client'
 
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/shared/lib/supabase/client';
 import { Button } from '@/shared/components/ui/button';
+import { getChromeMessages } from '@/shared/lib/i18n/chrome';
 
-export function LogoutButton({ label = 'خروج', className }: { label?: string; className?: string }) {
+const DEFAULT_LOGOUT_LABEL = getChromeMessages('fa').signOut
+
+export function LogoutButton({ label = DEFAULT_LOGOUT_LABEL, className }: { label?: string; className?: string }) {
   const router = useRouter()
 
   async function handleLogout() {

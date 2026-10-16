@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/components/sections/project-info.tsx
+ * @purpose کامپوننت UI — راه‌اندازی پروژه (project-info)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on features/project-init/lib/schema
+ */
+
 'use client'
 
 import dynamic from 'next/dynamic'

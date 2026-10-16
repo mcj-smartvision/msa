@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/zone-map-svg.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (zone-map-svg)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/components/drawing-file-preview, features/supervisor/lib/drawings-zoning-mock, features/technical-office/lib/drawings-shared, shared/lib/utils
+ */
+
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'

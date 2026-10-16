@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/domain/packages.ts
+ * @purpose منطق دامنه — عملیات کارگاه، دستورکار و برنامه روزانه (packages)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on nothing
+ */
+
 import { SiteOpsError } from './errors'
 import { assertPermission, type SiteOpsRole } from './permissions'
 

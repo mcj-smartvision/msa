@@ -1,3 +1,11 @@
+/**
+ * @file app/(dashboard)/first-login/first-login-client.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (first-login-client)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/client, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/alert, shared/lib/dashboard/redirect, shared/lib/dashboard/user-context
+ */
+
 'use client'
 
 import { useState } from 'react'
@@ -10,6 +18,8 @@ import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 import { resolvePostLoginPath } from '@/shared/lib/dashboard/redirect'
 import { fetchDashboardUserContext } from '@/shared/lib/dashboard/user-context'
 import { HardHat, ShieldCheck, Lock } from 'lucide-react'
+import { AUTH_COPY } from '@/shared/lib/i18n/auth'
+import { COMMON_UI } from '@/shared/lib/i18n/common-ui'
 
 export default function FirstLoginClient() {
   const router = useRouter()
@@ -22,12 +32,12 @@ export default function FirstLoginClient() {
     e.preventDefault()
     setError(null)
 
-    if (newPassword.length < 6) {
-      setError('رمز عبور باید حداقل 6 کاراکتر باشد.')
+    if (newPassword.length < AUTH_COPY.minPasswordLength) {
+      setError(AUTH_COPY.firstLogin.passwordShort)
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('رمزها یکسان نیستند.')
+      setError(AUTH_COPY.firstLogin.mismatch)
       return
     }
 
@@ -38,7 +48,7 @@ export default function FirstLoginClient() {
     } = await supabase.auth.getUser()
 
     if (!user?.email) {
-      setError('نشست منقضی شده است. لطفاً دوباره وارد شوید.')
+      setError(AUTH_COPY.firstLogin.sessionExpired)
       setLoading(false)
       return
     }
@@ -71,16 +81,16 @@ export default function FirstLoginClient() {
                 <ShieldCheck className="h-7 w-7" />
               </div>
             </div>
-            <h1 className="text-xl font-bold">حساب خود را امن کنید</h1>
+            <h1 className="text-xl font-bold">{AUTH_COPY.firstLogin.title}</h1>
             <p className="text-sm text-white/70 mt-2">
-              ادمین حساب شما را ساخته است. قبل از ادامه، یک رمز شخصی تنظیم کنید.
+              {AUTH_COPY.firstLogin.hint}
             </p>
           </div>
 
           <div className="p-6 space-y-5">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="new-password">رمز جدید</Label>
+                <Label htmlFor="new-password">{AUTH_COPY.firstLogin.newPassword}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -89,14 +99,14 @@ export default function FirstLoginClient() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={AUTH_COPY.minPasswordLength}
                     className="pl-10 h-11"
-                    placeholder="حداقل 6 کاراکتر"
+                    placeholder={AUTH_COPY.firstLogin.placeholderMin}
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirm-password">تأیید رمز</Label>
+                <Label htmlFor="confirm-password">{AUTH_COPY.firstLogin.confirmPassword}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -105,9 +115,9 @@ export default function FirstLoginClient() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    minLength={6}
+                    minLength={AUTH_COPY.minPasswordLength}
                     className="pl-10 h-11"
-                    placeholder="رمز را دوباره وارد کنید"
+                    placeholder={AUTH_COPY.firstLogin.placeholderRepeat}
                   />
                 </div>
               </div>
@@ -119,13 +129,13 @@ export default function FirstLoginClient() {
               ) : null}
 
               <Button type="submit" className="w-full h-11" disabled={loading}>
-                {loading ? 'در حال ذخیره...' : 'ادامه به داشبورد'}
+                {loading ? COMMON_UI.saving : AUTH_COPY.firstLogin.continue}
               </Button>
             </form>
 
             <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
               <HardHat className="h-3.5 w-3.5" />
-              MSA · امنیت اولین ورود
+              {AUTH_COPY.firstLogin.footer}
             </div>
           </div>
         </div>

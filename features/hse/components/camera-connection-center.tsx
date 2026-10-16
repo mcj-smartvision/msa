@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/components/camera-connection-center.tsx
+ * @purpose کامپوننت UI — ایمنی، بهداشت و محیط زیست (camera-connection-center)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on features/hse/components/badges, features/hse/components/ui, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/select, features/attendance/lib/camera, features/hse/lib/types, shared/lib/utils, features/hse/config
+ */
+
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -32,6 +40,11 @@ type BrowserCamera,
 } from '@/features/attendance/lib/camera'
 import type { CameraSource, HseCamera } from '@/features/hse/lib/types'
 import { cn } from '@/shared/lib/utils'
+import {
+  HSE_CAMERA_CONNECTION_COPY,
+  HSE_IP_STATUS_COPY,
+  HSE_SOURCE_COPY,
+} from '@/features/hse/config'
 
 const BINDINGS_KEY = 'hse_camera_usb_bindings'
 const IP_REGISTRY_KEY = 'hse_camera_ip_registry'
@@ -56,16 +69,12 @@ export type IpRegistryEntry = {
 }
 
 const SOURCE_LABEL: Record<Exclude<CameraSource, 'edge_usb'>, string> = {
-  rtsp: 'آدرس استریم',
-  onvif: 'کشف خودکار شبکه',
-  nvr: 'ضبط‌کننده شبکه',
+  rtsp: HSE_SOURCE_COPY.rtsp,
+  onvif: HSE_SOURCE_COPY.onvif,
+  nvr: HSE_SOURCE_COPY.nvr,
 }
 
-const IP_STATUS_LABEL: Record<IpRegistryEntry['status'], string> = {
-  registered: 'ثبت‌شده',
-  awaiting_edge: 'در انتظار همگام‌سازی لبه',
-  verified: 'تأییدشده',
-}
+const IP_STATUS_LABEL: Record<IpRegistryEntry['status'], string> = HSE_IP_STATUS_COPY
 
 function loadBindings(): UsbBinding[] {
   if (typeof window === 'undefined') return []
@@ -144,7 +153,7 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
       const list = await listBrowserCameras()
       setDevices(list)
       if (list.length === 0) {
-        setError('دوربین محلی یافت نشد. اجازهٔ دسترسی مرورگر را بدهید و دوباره تلاش کنید.')
+        setError(HSE_CAMERA_CONNECTION_COPY.noLocalCameras)
         return
       }
       const preferred =
@@ -152,9 +161,9 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
         list[0]?.deviceId ??
         ''
       setDeviceId(preferred)
-      setNote(`${list.length} دوربین محلی کشف شد — مناسب برای نمایش و راه‌اندازی اولیه.`)
+      setNote(HSE_CAMERA_CONNECTION_COPY.discovered(list.length))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'کشف دوربین ناموفق بود')
+      setError(e instanceof Error ? e.message : HSE_CAMERA_CONNECTION_COPY.discoverFailed)
     } finally {
       setScanning(false)
     }
@@ -173,9 +182,9 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
         await videoRef.current.play().catch(() => undefined)
       }
       setPreviewOn(true)
-      setNote('پیش‌نمایش زنده فعال است (لپ‌تاپ / یو‌اس‌بی). در تولید، دریافت از لبه جایگزین این مسیر می‌شود.')
+      setNote(HSE_CAMERA_CONNECTION_COPY.previewNote)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'باز کردن دوربین ممکن نشد')
+      setError(e instanceof Error ? e.message : HSE_CAMERA_CONNECTION_COPY.openFailed)
     } finally {
       setBusy(false)
     }
@@ -183,11 +192,11 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
 
   function bindToSlot() {
     if (!deviceId || !slotId) {
-      setError('ابتدا یک دوربین محلی و یک جایگاه دوربین ایمنی را انتخاب کنید.')
+      setError(HSE_CAMERA_CONNECTION_COPY.selectFirst)
       return
     }
     const device = devices.find((d) => d.deviceId === deviceId)
-    const label = device?.label || 'دوربین محلی'
+    const label = device?.label || HSE_CAMERA_CONNECTION_COPY.localCameraFallback
     const next: UsbBinding = {
       hseCameraId: slotId,
       deviceId,
@@ -198,7 +207,7 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
     setBindings(rows)
     saveBindings(rows)
     const slot = fleet.find((c) => c.id === slotId)
-    setNote(`«${label}» به ${slot?.name ?? slotId} متصل شد. کارفرما این جایگاه را به‌صورت آزمایشی متصل می‌بیند.`)
+    setNote(HSE_CAMERA_CONNECTION_COPY.boundNote(label, slot?.name ?? slotId))
     setError(null)
   }
 
@@ -206,13 +215,13 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
     const rows = bindings.filter((b) => b.hseCameraId !== hseCameraId)
     setBindings(rows)
     saveBindings(rows)
-    setNote('اتصال یو‌اس‌بی از جایگاه حذف شد.')
+    setNote(HSE_CAMERA_CONNECTION_COPY.unbound)
   }
 
   function addIpCamera(e: React.FormEvent) {
     e.preventDefault()
     if (!ipForm.name.trim() || !ipForm.hostOrUrl.trim()) {
-      setError('نام و آدرس استریم / کشف خودکار شبکه (یا میزبان) الزامی است.')
+      setError(HSE_CAMERA_CONNECTION_COPY.nameUrlRequired)
       return
     }
     const row: IpRegistryEntry = {
@@ -221,7 +230,7 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
       code: ipForm.code.trim() || `IP-${String(ipRows.length + 1).padStart(2, '0')}`,
       sourceType: ipForm.sourceType,
       hostOrUrl: ipForm.hostOrUrl.trim(),
-      location: ipForm.location.trim() || 'تخصیص‌نشده',
+      location: ipForm.location.trim() || HSE_CAMERA_CONNECTION_COPY.unassigned,
       username: ipForm.username.trim(),
       status: 'awaiting_edge',
       createdAt: new Date().toISOString(),
@@ -238,9 +247,7 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
       username: '',
     })
     setError(null)
-    setNote(
-      `${row.code} برای همگام‌سازی با لبه ثبت شد. جریان تصویر را عامل لبهٔ کارگاه می‌کشد — نه مرورگر.`
-    )
+    setNote(HSE_CAMERA_CONNECTION_COPY.ipRegistered(row.code))
   }
 
   function removeIp(id: string) {
@@ -254,8 +261,8 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
   return (
     <div className="space-y-4">
       <Panel
-        title="مرکز اتصال دوربین"
-        description="دو مسیر: یو‌اس‌بی / لپ‌تاپ برای نمایش همین حالا · ثبت دوربین‌های شبکه برای اتصال تولید از لبه."
+        title={HSE_CAMERA_CONNECTION_COPY.title}
+        description={HSE_CAMERA_CONNECTION_COPY.description}
         actions={
           note ? (
             <div className="max-w-md rounded border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-900">
@@ -266,27 +273,25 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
       >
         <div className="mb-3 grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 sm:grid-cols-2">
           <div>
-            <p className="font-semibold text-slate-900">مسیر الف — آزمون زنده (همین حالا)</p>
+            <p className="font-semibold text-slate-900">{HSE_CAMERA_CONNECTION_COPY.pathATitle}</p>
             <p className="mt-0.5">
-              وب‌کم یا دوربین یو‌اس‌بی این رایانه را کشف کنید، جریان را ببینید و به یک جایگاه دوربین
-              ایمنی وصل کنید تا کارفرما در نمایش، دستگاه واقعاً متصل را ببیند.
+              {HSE_CAMERA_CONNECTION_COPY.pathABody}
             </p>
           </div>
           <div>
-            <p className="font-semibold text-slate-900">مسیر ب — ثبت دوربین مداربسته (آماده برای لبه)</p>
+            <p className="font-semibold text-slate-900">{HSE_CAMERA_CONNECTION_COPY.pathBTitle}</p>
             <p className="mt-0.5">
-              نقاط انتهایی آدرس استریم / کشف خودکار شبکه / ضبط‌کننده شبکه را ثبت کنید. اعتبارنامه‌ها
-              برای عامل لبهٔ آینده می‌مانند؛ مرکز کنترل نیت ناوگان را نشان می‌دهد بدون باز کردن جریان در مرورگر.
+              {HSE_CAMERA_CONNECTION_COPY.pathBBody}
             </p>
           </div>
         </div>
 
         <div className="mb-3 flex gap-1 border-b border-slate-200 pb-2">
           <TabButton active={tab === 'live'} onClick={() => setTab('live')} icon={Radio}>
-            زنده — یو‌اس‌بی / لپ‌تاپ
+            {HSE_CAMERA_CONNECTION_COPY.tabLive}
           </TabButton>
           <TabButton active={tab === 'ip'} onClick={() => setTab('ip')} icon={Cable}>
-            ثبت دوربین شبکه / مداربسته
+            {HSE_CAMERA_CONNECTION_COPY.tabIp}
           </TabButton>
         </div>
 
@@ -302,7 +307,7 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
               <div className="flex flex-wrap gap-2">
                 <Button type="button" size="sm" onClick={() => void scanDevices()} disabled={scanning}>
                   {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                  کشف دوربین‌ها
+                  {HSE_CAMERA_CONNECTION_COPY.discover}
                 </Button>
                 <Button
                   type="button"
@@ -312,19 +317,19 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
                   disabled={busy || devices.length === 0}
                 >
                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
-                  شروع پیش‌نمایش زنده
+                  {HSE_CAMERA_CONNECTION_COPY.startPreview}
                 </Button>
                 <Button type="button" size="sm" variant="outline" onClick={stopPreview} disabled={!previewOn}>
                   <Square className="h-3.5 w-3.5" />
-                  توقف
+                  {HSE_CAMERA_CONNECTION_COPY.stop}
                 </Button>
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">دوربین محلی</Label>
+                <Label className="text-xs">{HSE_CAMERA_CONNECTION_COPY.localCamera}</Label>
                 <Select value={deviceId || undefined} onValueChange={setDeviceId} disabled={devices.length === 0}>
                   <SelectTrigger className="h-9">
-                    <SelectValue placeholder={devices.length ? 'انتخاب دوربین' : 'ابتدا کشف کنید'} />
+                    <SelectValue placeholder={devices.length ? HSE_CAMERA_CONNECTION_COPY.selectCamera : HSE_CAMERA_CONNECTION_COPY.discoverFirst} />
                   </SelectTrigger>
                   <SelectContent>
                     {devices.map((d) => (
@@ -337,10 +342,10 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">اتصال به جایگاه دوربین ایمنی</Label>
+                <Label className="text-xs">{HSE_CAMERA_CONNECTION_COPY.bindSlot}</Label>
                 <Select value={slotId || undefined} onValueChange={setSlotId}>
                   <SelectTrigger className="h-9">
-                    <SelectValue placeholder="انتخاب جایگاه ناوگان" />
+                    <SelectValue placeholder={HSE_CAMERA_CONNECTION_COPY.selectFleetSlot} />
                   </SelectTrigger>
                   <SelectContent>
                     {fleet.map((c) => (
@@ -355,19 +360,19 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
               <div className="flex flex-wrap gap-2">
                 <Button type="button" size="sm" onClick={bindToSlot} disabled={!deviceId || !slotId}>
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  اتصال به جایگاه
+                  {HSE_CAMERA_CONNECTION_COPY.bindToSlot}
                 </Button>
                 {activeBinding ? (
                   <Button type="button" size="sm" variant="outline" onClick={() => unbindSlot(slotId)}>
                     <Unplug className="h-3.5 w-3.5" />
-                    قطع اتصال جایگاه
+                    {HSE_CAMERA_CONNECTION_COPY.unbindSlot}
                   </Button>
                 ) : null}
               </div>
 
               {activeBinding ? (
                 <p className="rounded border border-sky-200 bg-sky-50 px-2.5 py-2 text-xs text-sky-900">
-                  جایگاه به <strong>{activeBinding.label}</strong> متصل است ·{' '}
+                  {HSE_CAMERA_CONNECTION_COPY.slotBoundPrefix}<strong>{activeBinding.label}</strong>{HSE_CAMERA_CONNECTION_COPY.slotBoundSuffix}
                   {new Date(activeBinding.boundAt).toLocaleString('fa-IR-u-nu-latn')}
                 </p>
               ) : null}
@@ -375,7 +380,7 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
               {bindings.length > 0 ? (
                 <div className="rounded border border-slate-200">
                   <p className="border-b border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-semibold tracking-wide text-slate-500">
-                    اتصالات فعال یو‌اس‌بی
+                    {HSE_CAMERA_CONNECTION_COPY.activeUsb}
                   </p>
                   <ul className="divide-y divide-slate-100 text-xs">
                     {bindings.map((b) => {
@@ -397,9 +402,9 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
 
             <div className="overflow-hidden rounded-md border border-slate-800 bg-slate-950">
               <div className="flex items-center justify-between border-b border-slate-800 px-3 py-1.5 text-[11px] text-slate-400">
-                <span className="font-semibold tracking-wide">پیش‌نمایش زنده</span>
+                <span className="font-semibold tracking-wide">{HSE_CAMERA_CONNECTION_COPY.livePreview}</span>
                 <span className={previewOn ? 'text-emerald-400' : 'text-slate-500'}>
-                  {previewOn ? '● سیگنال' : '○ آماده'}
+                  {previewOn ? HSE_CAMERA_CONNECTION_COPY.signal : HSE_CAMERA_CONNECTION_COPY.ready}
                 </span>
               </div>
               <div className="relative aspect-video bg-black">
@@ -407,7 +412,7 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
                 {!previewOn ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500">
                     <Camera className="h-8 w-8 opacity-40" />
-                    <p className="text-xs">دوربین را کشف کنید، سپس پیش‌نمایش را شروع کنید</p>
+                    <p className="text-xs">{HSE_CAMERA_CONNECTION_COPY.previewHint}</p>
                   </div>
                 ) : null}
               </div>
@@ -416,32 +421,31 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
             <form onSubmit={addIpCamera} className="space-y-3 rounded-md border border-slate-200 p-3">
-              <p className="text-sm font-semibold text-slate-900">ثبت دوربین مداربسته / شبکه</p>
+              <p className="text-sm font-semibold text-slate-900">{HSE_CAMERA_CONNECTION_COPY.registerTitle}</p>
               <p className="text-xs text-slate-600">
-                نیت اتصال برای عامل لبه ذخیره می‌شود. مرورگر مستقیماً آدرس استریم را باز نمی‌کند —
-                این رفتار به‌خاطر امنیت و پایداری عمداً طراحی شده است.
+                {HSE_CAMERA_CONNECTION_COPY.registerHint}
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="space-y-1 text-xs sm:col-span-2">
-                  <span className="font-medium text-slate-600">نام نمایشی</span>
+                  <span className="font-medium text-slate-600">{HSE_CAMERA_CONNECTION_COPY.displayName}</span>
                   <Input
                     className="h-8"
                     value={ipForm.name}
                     onChange={(e) => setIpForm((f) => ({ ...f, name: e.target.value }))}
-                    placeholder="دوربین پی‌تی‌زد آپرون جنوبی"
+                    placeholder={HSE_CAMERA_CONNECTION_COPY.placeholderName}
                   />
                 </label>
                 <label className="space-y-1 text-xs">
-                  <span className="font-medium text-slate-600">کد</span>
+                  <span className="font-medium text-slate-600">{HSE_CAMERA_CONNECTION_COPY.code}</span>
                   <Input
                     className="h-8"
                     value={ipForm.code}
                     onChange={(e) => setIpForm((f) => ({ ...f, code: e.target.value }))}
-                    placeholder="دوربین-09"
+                    placeholder={HSE_CAMERA_CONNECTION_COPY.placeholderCode}
                   />
                 </label>
                 <label className="space-y-1 text-xs">
-                  <span className="font-medium text-slate-600">منبع</span>
+                  <span className="font-medium text-slate-600">{HSE_CAMERA_CONNECTION_COPY.source}</span>
                   <Select
                     value={ipForm.sourceType}
                     onValueChange={(v) =>
@@ -459,48 +463,47 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
                   </Select>
                 </label>
                 <label className="space-y-1 text-xs sm:col-span-2">
-                  <span className="font-medium text-slate-600">آدرس / میزبان</span>
+                  <span className="font-medium text-slate-600">{HSE_CAMERA_CONNECTION_COPY.host}</span>
                   <Input
                     className="h-8 font-mono text-xs"
                     value={ipForm.hostOrUrl}
                     onChange={(e) => setIpForm((f) => ({ ...f, hostOrUrl: e.target.value }))}
-                    placeholder="آدرس استریم روی شبکه داخلی کارگاه"
+                    placeholder={HSE_CAMERA_CONNECTION_COPY.placeholderHost}
                   />
                 </label>
                 <label className="space-y-1 text-xs">
-                  <span className="font-medium text-slate-600">محل</span>
+                  <span className="font-medium text-slate-600">{HSE_CAMERA_CONNECTION_COPY.location}</span>
                   <Input
                     className="h-8"
                     value={ipForm.location}
                     onChange={(e) => setIpForm((f) => ({ ...f, location: e.target.value }))}
-                    placeholder="طبقه 2 — لبه شرقی"
+                    placeholder={HSE_CAMERA_CONNECTION_COPY.placeholderLocation}
                   />
                 </label>
                 <label className="space-y-1 text-xs">
-                  <span className="font-medium text-slate-600">نام کاربری (اختیاری)</span>
+                  <span className="font-medium text-slate-600">{HSE_CAMERA_CONNECTION_COPY.username}</span>
                   <Input
                     className="h-8"
                     value={ipForm.username}
                     onChange={(e) => setIpForm((f) => ({ ...f, username: e.target.value }))}
-                    placeholder="مدیرسیستم"
+                    placeholder={HSE_CAMERA_CONNECTION_COPY.placeholderUser}
                     autoComplete="off"
                   />
                 </label>
               </div>
               <Button type="submit" size="sm">
                 <Plus className="h-3.5 w-3.5" />
-                افزودن به فهرست
+                {HSE_CAMERA_CONNECTION_COPY.addToList}
               </Button>
             </form>
 
             <div className="rounded-md border border-slate-200">
               <p className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900">
-                دوربین‌های شبکه ثبت‌شده ({ipRows.length})
+                {HSE_CAMERA_CONNECTION_COPY.registeredTitle(ipRows.length)}
               </p>
               {ipRows.length === 0 ? (
                 <p className="px-3 py-8 text-center text-xs text-slate-500">
-                  هنوز دوربین شبکه‌ای ثبت نشده است. نقاط انتهایی آدرس استریم / کشف خودکار شبکه را اضافه کنید
-                  تا کارفرما مسیر تولید را از پیش تعریف‌شده ببیند.
+                  {HSE_CAMERA_CONNECTION_COPY.emptyIp}
                 </p>
               ) : (
                 <ul className="max-h-[360px] divide-y divide-slate-100 overflow-y-auto text-sm">
@@ -519,7 +522,7 @@ export function CameraConnectionCenter({ fleet }: { fleet: HseCamera[] }) {
                           </p>
                         </div>
                         <Button type="button" size="sm" variant="ghost" onClick={() => removeIp(row.id)}>
-                          حذف
+                          {HSE_CAMERA_CONNECTION_COPY.remove}
                         </Button>
                       </div>
                     </li>

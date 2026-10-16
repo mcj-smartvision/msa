@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/page-props.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (page-props)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on shared/lib/supabase/server, shared/lib/dashboard/load-role-page, features/schedule/lib/access, shared/lib/dashboard/roles, features/manager/lib/manager-nav
+ */
+
 import { redirect } from 'next/navigation'
 import { createClient } from '@/shared/lib/supabase/server'
 import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'

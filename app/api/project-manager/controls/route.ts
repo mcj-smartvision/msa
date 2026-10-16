@@ -1,3 +1,11 @@
+/**
+ * @file app/api/project-manager/controls/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/admin/lib/access, features/site-ops/lib/auth, features/site-ops/domain/errors, features/schedule/lib/access, features/schedule/lib/dates, features/workshop/lib/service, features/project-controls/server/get-controls-snapshot
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { isSystemAdmin } from '@/features/admin/lib/access'

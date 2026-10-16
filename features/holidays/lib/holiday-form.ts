@@ -1,3 +1,11 @@
+/**
+ * @file features/holidays/lib/holiday-form.ts
+ * @purpose منطق دامنه — تقویم تعطیلات (holiday-form)
+ * @safe-to-edit CAREFUL
+ * @affects تقویم تعطیلات
+ * @depends-on features/holidays/lib/types
+ */
+
 import type { HolidayInput } from '@/features/holidays/lib/types'
 
 export const END_BEFORE_START_ERROR = 'تاریخ پایان نباید قبل از تاریخ شروع باشد'

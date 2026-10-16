@@ -1,3 +1,11 @@
+/**
+ * @file features/dashboard/services/dashboard.ts
+ * @purpose سرویس داده — داشبورد نقش‌ها و ویجت‌ها (dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد نقش‌ها و ویجت‌ها
+ * @depends-on shared/lib/dashboard/roles, shared/types/admin
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getWidgetsForRole } from '@/shared/lib/dashboard/roles'
 import type { SiteRoleKey } from '@/shared/lib/dashboard/roles'

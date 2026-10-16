@@ -1,3 +1,11 @@
+/**
+ * @file features/dashboard/components/role-dashboard.tsx
+ * @purpose کامپوننت UI — داشبورد نقش‌ها و ویجت‌ها (role-dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد نقش‌ها و ویجت‌ها
+ * @depends-on shared/lib/dashboard/widget-registry, shared/lib/dashboard/roles, shared/types/dashboard, features/dashboard/components/widgets/widget-shell, features/admin/components/shared
+ */
+
 'use client'
 
 import { useMemo } from 'react'
@@ -6,6 +14,7 @@ import { SITE_ROLE_LABELS } from '@/shared/lib/dashboard/roles'
 import type { WidgetRenderContext } from '@/shared/types/dashboard'
 import { WidgetGrid, WidgetGridItem } from '@/features/dashboard/components/widgets/widget-shell'
 import { PageHeader } from '@/features/admin/components/shared'
+import { ROLE_DASHBOARD_COPY } from '@/features/dashboard/config'
 
 interface RoleDashboardProps {
   context: WidgetRenderContext
@@ -21,19 +30,20 @@ export function RoleDashboard({ context, widgetKeys }: RoleDashboardProps) {
     [widgetKeys]
   )
 
+  const copy = ROLE_DASHBOARD_COPY
   const roleLabel = context.user.primaryRole
     ? SITE_ROLE_LABELS[context.user.primaryRole]
-    : 'عضو تیم'
+    : copy.fallbackRole
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`داشبورد ${roleLabel}`}
-        description={`${context.user.fullName} عزیز، خوش آمدید. فضای کاری مطابق نقش شما تنظیم شده است.`}
+        title={`${copy.titlePrefix} ${roleLabel}`}
+        description={copy.welcome(context.user.fullName)}
       />
 
       {widgets.length === 0 ? (
-        <p className="text-sm text-muted-foreground">ویجتی برای نقش شما پیکربندی نشده است.</p>
+        <p className="text-sm text-muted-foreground">{copy.noWidgets}</p>
       ) : (
         <WidgetGrid>
           {widgets.map((widget) => {

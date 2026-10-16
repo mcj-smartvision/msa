@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule-intelligence/components/schedule-upload.tsx
+ * @purpose کامپوننت UI — تحلیل کیفیت برنامه و آپلود MSP (schedule-upload)
+ * @safe-to-edit CAREFUL
+ * @affects تحلیل کیفیت برنامه و آپلود MSP
+ * @depends-on shared/components/ui/button, shared/components/ui/input, features/schedule/components/schedule-download-button, features/schedule-intelligence/lib/config
+ */
+
 'use client'
 
 import { useCallback, useState } from 'react'
@@ -5,6 +13,7 @@ import { Upload, FileJson, FileSpreadsheet } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { ScheduleDownloadButton } from '@/features/schedule/components/schedule-download-button'
+import { SCHEDULE_INTELLIGENCE_COPY as copy } from '@/features/schedule-intelligence/lib/config'
 
 interface ScheduleUploadProps {
   onAnalyzed: (xml: string, fileName: string) => void
@@ -18,14 +27,14 @@ export function ScheduleUpload({ onAnalyzed, loading }: ScheduleUploadProps) {
     async (file: File) => {
       setError(null)
       if (!file.name.toLowerCase().endsWith('.xml')) {
-        setError('فقط فایل XML Microsoft Project پشتیبانی می‌شود')
+        setError(copy.xmlOnly)
         return
       }
       try {
         const text = await file.text()
         onAnalyzed(text, file.name)
       } catch {
-        setError('خواندن فایل ناموفق بود')
+        setError(copy.readFailed)
       }
     },
     [onAnalyzed]
@@ -36,11 +45,8 @@ export function ScheduleUpload({ onAnalyzed, loading }: ScheduleUploadProps) {
       <div className="flex items-start gap-3">
         <Upload className="h-8 w-8 text-primary shrink-0 mt-1" />
         <div>
-          <h3 className="font-semibold text-lg">بارگذاری فایل زمان‌بندی</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            فایل XML خروجی Microsoft Project — پردازش کاملاً محلی در مرورگر، بدون ارسال به سرور یا
-            هوش مصنوعی.
-          </p>
+          <h3 className="font-semibold text-lg">{copy.uploadTitle}</h3>
+          <p className="text-sm text-muted-foreground mt-1">{copy.uploadHint}</p>
         </div>
       </div>
       <label className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-8 cursor-pointer hover:bg-muted/30 transition-colors">
@@ -56,8 +62,8 @@ export function ScheduleUpload({ onAnalyzed, loading }: ScheduleUploadProps) {
           }}
         />
         <FileJson className="h-10 w-10 text-muted-foreground" />
-        <span className="text-sm font-medium">کلیک برای انتخاب XML</span>
-        <span className="text-xs text-muted-foreground">هر نام فایل — بدون محدودیت نام خاص</span>
+        <span className="text-sm font-medium">{copy.clickXml}</span>
+        <span className="text-xs text-muted-foreground">{copy.anyFileName}</span>
       </label>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </div>
@@ -80,7 +86,7 @@ export function ExportButtons({
           projectId={projectId}
           variant="outline"
           size="sm"
-          label="XML برنامه"
+          label={copy.xmlProgram}
         />
       ) : null}
       <Button type="button" variant="outline" size="sm" onClick={onExportJson}>

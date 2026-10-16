@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/components/activity-feed.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (activity-feed)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/types/admin, shared/lib/utils
+ */
+
 'use client'
 
 import type { AdminActivityItem } from '@/shared/types/admin'

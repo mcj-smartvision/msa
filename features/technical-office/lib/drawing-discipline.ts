@@ -1,3 +1,11 @@
+/**
+ * @file features/technical-office/lib/drawing-discipline.ts
+ * @purpose منطق دامنه — دفتر فنی (drawing-discipline)
+ * @safe-to-edit CAREFUL
+ * @affects دفتر فنی
+ * @depends-on features/technical-office/lib/drawings-shared
+ */
+
 import type { DrawingDiscipline } from '@/features/technical-office/lib/drawings-shared'
 
 const LABELS: Record<DrawingDiscipline, string> = {

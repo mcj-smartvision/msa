@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/load-period-comparison.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (load-period-comparison)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/evm/lib/load-project-evm, shared/lib/supabase/service, features/manager/lib/period-comparison, features/manager/lib/overview-types
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { loadProjectEvm } from '@/features/evm/lib/load-project-evm'
 import { createServiceClient } from '@/shared/lib/supabase/service'

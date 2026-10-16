@@ -1,3 +1,11 @@
+/**
+ * @file features/holidays/components/holidays-panel.tsx
+ * @purpose کامپوننت UI — تقویم تعطیلات (holidays-panel)
+ * @safe-to-edit CAREFUL
+ * @affects تقویم تعطیلات
+ * @depends-on shared/components/ui/button, shared/components/ui/card, shared/components/ui/input, shared/components/ui/label, shared/components/ui/textarea, shared/components/ui/select, shared/components/ui/skeleton, features/holidays/components/jalali-date-picker, features/holidays/hooks/use-holidays, features/holidays/lib/holiday-form
+ */
+
 'use client'
 
 import { useMemo, useState } from 'react'
@@ -16,6 +24,7 @@ import { HOLIDAY_TYPE_LABELS, type Holiday, type HolidayInput, type HolidayType 
 import { persianWeekday } from '@/features/holidays/lib/work-calendar'
 import { formatJalaliShort, PERSIAN_WEEKDAYS, latinDigits } from '@/shared/lib/time/jalali-month'
 import { cn } from '@/shared/lib/utils'
+import { HOLIDAYS_COPY as H } from '@/features/holidays/config'
 
 const EMPTY: HolidayInput = { type: 'official', startDate: '', endDate: null, title: '', description: null, isActive: true }
 
@@ -25,10 +34,10 @@ const dayCount = (h: Pick<Holiday, 'startDate' | 'endDate'>) =>
 function whenLabel(h: Holiday): string {
   if (h.type === 'weekly') {
     const day = PERSIAN_WEEKDAYS[persianWeekday(h.startDate)]
-    return `هر ${day} از ${formatJalaliShort(h.startDate)}${h.endDate ? ` تا ${formatJalaliShort(h.endDate)}` : ''}`
+    return H.weeklyRange(day, formatJalaliShort(h.startDate), h.endDate ? formatJalaliShort(h.endDate) : undefined)
   }
   if (!h.endDate || h.endDate === h.startDate) return formatJalaliShort(h.startDate)
-  return `${formatJalaliShort(h.startDate)} تا ${formatJalaliShort(h.endDate)} (${latinDigits(dayCount(h))} روز)`
+  return H.rangeDays(formatJalaliShort(h.startDate), formatJalaliShort(h.endDate), latinDigits(dayCount(h)))
 }
 
 async function send(url: string, method: string, body?: unknown) {
@@ -38,7 +47,7 @@ async function send(url: string, method: string, body?: unknown) {
     body: body ? JSON.stringify(body) : undefined,
   })
   const json = (await res.json().catch(() => ({}))) as { error?: string }
-  if (!res.ok) throw new Error(json.error || 'خطا در ذخیره')
+  if (!res.ok) throw new Error(json.error || H.saveFailed)
 }
 
 /** Organization holidays: everyone sees them; admins and project managers add, edit, switch off and delete. */
@@ -59,7 +68,7 @@ export function HolidaysPanel() {
       await action()
       await reload()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'خطا')
+      setError(err instanceof Error ? err.message : H.error)
     } finally {
       setBusy(null)
     }
@@ -88,14 +97,13 @@ export function HolidaysPanel() {
   return (
     <div className="space-y-4" dir="rtl">
       <p className="text-sm text-slate-600">
-        جمعه همیشه تعطیل است. تعطیلی‌هایی که اینجا ثبت می‌شوند در تقویم بالای صفحه قرمز دیده می‌شوند و در پیش‌بینی برنامه و
-        درصدهای اجباری گزارش روزانه روز کاری حساب نمی‌شوند. این فهرست برای همهٔ پروژه‌ها یکی است.
+        {H.intro}
       </p>
 
       {canManage ? (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">{editingId ? 'ویرایش تعطیلی' : 'ثبت تعطیلی'}</CardTitle>
+            <CardTitle className="text-base">{editingId ? H.editTitle : H.createTitle}</CardTitle>
           </CardHeader>
           <CardContent>
             <form
@@ -106,7 +114,7 @@ export function HolidaysPanel() {
               }}
             >
               <div className="space-y-1.5">
-                <Label htmlFor="holiday-type">نوع تعطیلی</Label>
+                <Label htmlFor="holiday-type">{H.typeLabel}</Label>
                 <Select value={form.type} onValueChange={(v) => setForm((f) => withDefaultEnd({ ...f, type: v as HolidayType }))}>
                   <SelectTrigger id="holiday-type" className="h-9">
                     <SelectValue />
@@ -121,7 +129,7 @@ export function HolidaysPanel() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="holiday-start">{weekly ? 'از تاریخ (روز هفتهٔ آن تکرار می‌شود)' : 'تاریخ'}</Label>
+                <Label htmlFor="holiday-start">{weekly ? H.startWeekly : H.startDate}</Label>
                 <JalaliDatePicker
                   id="holiday-start"
                   value={form.startDate}
@@ -130,13 +138,13 @@ export function HolidaysPanel() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="holiday-end">{weekly ? 'تا تاریخ (اختیاری)' : 'تاریخ پایان (برای چندروزه)'}</Label>
+                <Label htmlFor="holiday-end">{weekly ? H.endWeekly : H.endMulti}</Label>
                 <JalaliDatePicker
                   id="holiday-end"
                   value={form.endDate ?? ''}
                   onChange={(iso) => set('endDate', iso || null)}
                   holidays={holidays}
-                  placeholder={weekly ? 'بدون پایان' : 'یک‌روزه'}
+                  placeholder={weekly ? H.noEnd : H.oneDay}
                   min={form.startDate || undefined}
                   clearable
                 />
@@ -147,11 +155,11 @@ export function HolidaysPanel() {
                 ) : null}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="holiday-title">عنوان / مناسبت</Label>
-                <Input id="holiday-title" className="h-9" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="مثلاً نوروز" />
+                <Label htmlFor="holiday-title">{H.titleLabel}</Label>
+                <Input id="holiday-title" className="h-9" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder={H.titlePlaceholder} />
               </div>
               <div className="space-y-1.5 sm:col-span-2 lg:col-span-3">
-                <Label htmlFor="holiday-description">توضیحات</Label>
+                <Label htmlFor="holiday-description">{H.descriptionLabel}</Label>
                 <Textarea
                   id="holiday-description"
                   rows={2}
@@ -162,21 +170,21 @@ export function HolidaysPanel() {
               <div className="flex items-end gap-2">
                 <Button type="submit" size="sm" disabled={busy === 'form' || !form.startDate || !form.title.trim() || endBeforeStart}>
                   {busy === 'form' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-                  {editingId ? 'ذخیرهٔ تغییرات' : 'ثبت تعطیلی'}
+                  {editingId ? H.saveChanges : H.create}
                 </Button>
                 {editingId ? (
                   <Button type="button" size="sm" variant="outline" onClick={resetForm}>
-                    انصراف
+                    {H.cancel}
                   </Button>
                 ) : null}
               </div>
             </form>
-            {busy === 'form' ? <p className="mt-2 text-xs text-slate-500">ذخیره و به‌روزرسانی پیش‌بینی برنامهٔ پروژه‌ها…</p> : null}
+            {busy === 'form' ? <p className="mt-2 text-xs text-slate-500">{H.savingHint}</p> : null}
           </CardContent>
         </Card>
       ) : loaded ? (
         <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-          ثبت و ویرایش تعطیلات فقط برای ادمین و مدیر پروژه مجاز است.
+          {H.manageOnly}
         </p>
       ) : null}
 
@@ -184,37 +192,37 @@ export function HolidaysPanel() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">تعطیلات ثبت‌شده</CardTitle>
+          <CardTitle className="text-base">{H.listTitle}</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           {!loaded ? (
-            <div className="space-y-2" role="status" aria-label="در حال بارگذاری">
+            <div className="space-y-2" role="status" aria-label={H.loadingAria}>
               {Array.from({ length: 4 }, (_, i) => (
                 <Skeleton key={i} className="h-9 w-full" />
               ))}
             </div>
           ) : sorted.length === 0 ? (
-            <p className="text-sm text-slate-500">هنوز تعطیلی ثبت نشده است.</p>
+            <p className="text-sm text-slate-500">{H.empty}</p>
           ) : (
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b text-xs text-slate-500">
-                  <th className="py-2 text-start font-medium">عنوان</th>
-                  <th className="py-2 text-start font-medium">نوع</th>
-                  <th className="py-2 text-start font-medium">تاریخ</th>
-                  <th className="py-2 text-start font-medium">توضیحات</th>
-                  <th className="py-2 text-start font-medium">وضعیت</th>
+                  <th className="py-2 text-start font-medium">{H.colTitle}</th>
+                  <th className="py-2 text-start font-medium">{H.colType}</th>
+                  <th className="py-2 text-start font-medium">{H.colDate}</th>
+                  <th className="py-2 text-start font-medium">{H.colDescription}</th>
+                  <th className="py-2 text-start font-medium">{H.colStatus}</th>
                   {canManage ? <th className="py-2" /> : null}
                 </tr>
               </thead>
               <tbody>
                 {sorted.map((h) => (
                   <tr key={h.id} className={cn('border-b last:border-0', !h.isActive && 'text-slate-400')}>
-                    <td className="py-2 font-medium">{h.title.trim() || '—'}</td>
+                    <td className="py-2 font-medium">{h.title.trim() || H.dash}</td>
                     <td className="py-2">{HOLIDAY_TYPE_LABELS[h.type]}</td>
                     <td className="py-2">{whenLabel(h)}</td>
                     <td className="max-w-[220px] truncate py-2" title={h.description ?? undefined}>
-                      {h.description ?? '—'}
+                      {h.description ?? H.dash}
                     </td>
                     <td className="py-2">
                       {canManage ? (
@@ -229,18 +237,14 @@ export function HolidaysPanel() {
                             h.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
                           )}
                         >
-                          {busy === `toggle:${h.id}` ? '…' : h.isActive ? 'فعال' : 'غیرفعال'}
+                          {busy === `toggle:${h.id}` ? H.ellipsis : h.isActive ? H.active : H.inactive}
                         </button>
-                      ) : h.isActive ? (
-                        'فعال'
-                      ) : (
-                        'غیرفعال'
-                      )}
+                      ) : h.isActive ? H.active : H.inactive}
                     </td>
                     {canManage ? (
                       <td className="py-2">
                         <div className="flex justify-end gap-1">
-                          <Button type="button" size="icon" variant="ghost" onClick={() => startEdit(h)} title="ویرایش" aria-label="ویرایش">
+                          <Button type="button" size="icon" variant="ghost" onClick={() => startEdit(h)} title={H.edit} aria-label={H.edit}>
                             <Pencil className="h-4 w-4" aria-hidden />
                           </Button>
                           <Button
@@ -249,10 +253,10 @@ export function HolidaysPanel() {
                             variant="ghost"
                             className="text-red-600 hover:text-red-700"
                             disabled={busy === `delete:${h.id}`}
-                            title="حذف"
-                            aria-label="حذف"
+                            title={H.delete}
+                            aria-label={H.delete}
                             onClick={() => {
-                              if (!window.confirm(`تعطیلی «${h.title}» حذف شود؟`)) return
+                              if (!window.confirm(H.confirmDelete(h.title))) return
                               void run(`delete:${h.id}`, async () => {
                                 await send(`/api/holidays/${h.id}`, 'DELETE')
                                 if (editingId === h.id) resetForm()

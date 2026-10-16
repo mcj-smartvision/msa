@@ -1,3 +1,11 @@
+/**
+ * @file features/project-manager/services/subcontractors.ts
+ * @purpose سرویس داده — اتاق فرمان مدیر پروژه و کارتابل (subcontractors)
+ * @safe-to-edit CAREFUL
+ * @affects اتاق فرمان مدیر پروژه و کارتابل
+ * @depends-on features/project-manager/lib/subcontractor-types
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
 CreateContractInput,

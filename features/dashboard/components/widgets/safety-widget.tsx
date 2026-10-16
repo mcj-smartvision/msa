@@ -1,19 +1,29 @@
+/**
+ * @file features/dashboard/components/widgets/safety-widget.tsx
+ * @purpose ویجت ایمنی در داشبورد نقش
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد نقش‌ها
+ * @depends-on features/dashboard/config.ts, shared/types/dashboard
+ */
+
 'use client'
 
-import type { WidgetRenderContext } from '@/shared/types/dashboard';
-import { WidgetShell } from '@/features/dashboard/components/widgets/widget-shell';
+import type { WidgetRenderContext } from '@/shared/types/dashboard'
+import { WidgetShell } from '@/features/dashboard/components/widgets/widget-shell'
+import { SAFETY_WIDGET_COPY } from '@/features/dashboard/config'
 
 export function SafetyWidget({ context }: { context: WidgetRenderContext }) {
+  const copy = SAFETY_WIDGET_COPY
   return (
-    <WidgetShell title="نمای ایمنی" description="وضعیت HSE و مشاهدات باز">
+    <WidgetShell title={copy.title} description={copy.description}>
       {!context.projectId ? (
-        <p className="text-sm text-muted-foreground">پروژه‌ای انتخاب نشده است.</p>
+        <p className="text-sm text-muted-foreground">{copy.noProject}</p>
       ) : (
         <div className="grid grid-cols-2 gap-3 text-sm">
-          <SafetyStat label="روز بدون حادثه منجر به توقف" value="47" good />
-          <SafetyStat label="مشاهدات باز" value="3" />
-          <SafetyStat label="رعایت PPE" value="92%" good />
-          <SafetyStat label="جلسات ایمنی (هفته)" value="5" good />
+          <SafetyStat label={copy.labels.daysWithoutStoppage} value={copy.sample.daysWithoutStoppage} good />
+          <SafetyStat label={copy.labels.openObservations} value={copy.sample.openObservations} />
+          <SafetyStat label={copy.labels.ppeCompliance} value={copy.sample.ppeCompliance} good />
+          <SafetyStat label={copy.labels.toolboxTalks} value={copy.sample.toolboxTalks} good />
         </div>
       )}
     </WidgetShell>

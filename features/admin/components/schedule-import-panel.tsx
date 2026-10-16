@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/components/schedule-import-panel.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (schedule-import-panel)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/components/ui/button, shared/components/ui/card, shared/components/ui/badge, features/admin/components/actual-start-panel, features/admin/components/schedule-catch-up-panel, features/schedule/components/schedule-date-toolbar, features/schedule/components/schedule-preview-table, features/schedule/components/formatted-date, features/schedule/hooks/use-schedule-view-date, features/schedule/lib/wbs-utils, features/admin/config
+ */
+
 'use client'
 
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
@@ -31,6 +39,7 @@ import type { MspImportReportSummary, ProjectTask, ScheduleImport } from '@/shar
 import { CalendarRange, CheckCircle2, FileUp, Loader2, AlertTriangle, ClipboardList } from 'lucide-react'
 import { ScheduleDownloadButton } from '@/features/schedule/components/schedule-download-button'
 import { useScheduleCalendar } from '@/features/schedule/hooks/use-schedule-calendar'
+import { ADMIN_SCHEDULE_IMPORT_COPY as copy } from '@/features/admin/config'
 
 interface ScheduleImportPanelProps {
   projectId: string
@@ -43,10 +52,10 @@ interface ScheduleImportPanelProps {
 }
 
 function statusBadge(status: ScheduleImport['status']) {
-  if (status === 'completed') return <Badge className="bg-emerald-100 text-emerald-800">تکمیل‌شده</Badge>
-  if (status === 'failed') return <Badge variant="destructive">ناموفق</Badge>
-  if (status === 'processing') return <Badge variant="secondary">در حال پردازش</Badge>
-  return <Badge variant="outline">در انتظار</Badge>
+  if (status === 'completed') return <Badge className="bg-emerald-100 text-emerald-800">{copy.statusCompleted}</Badge>
+  if (status === 'failed') return <Badge variant="destructive">{copy.statusFailed}</Badge>
+  if (status === 'processing') return <Badge variant="secondary">{copy.statusProcessing}</Badge>
+  return <Badge variant="outline">{copy.statusPending}</Badge>
 }
 
 function sortTasks(
@@ -180,7 +189,7 @@ export function ScheduleImportPanel({
         { cache: 'no-store' }
       )
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'بارگذاری برنامه ناموفق بود')
+      if (!res.ok) throw new Error(data.error || copy.loadFailed)
       localRescheduleRef.current = false
       clientPreviewEpochRef.current = Date.now()
       setTasks(sortTasks((data.tasks ?? []) as ProjectTask[], data.predecessorLabels ?? {}))
@@ -323,12 +332,12 @@ export function ScheduleImportPanel({
 
   async function handlePreview() {
     if (!file) {
-      setError('ابتدا یک فایل MSP XML انتخاب کنید.')
+      setError(copy.pickXmlFirst)
       return
     }
 
     if (!file.name.toLowerCase().endsWith('.xml')) {
-      setError('فقط فایل‌های XML پشتیبانی می‌شوند. در Microsoft Project: File → Save As → XML.')
+      setError(copy.xmlOnly)
       return
     }
 
@@ -350,7 +359,7 @@ export function ScheduleImportPanel({
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'بررسی فایل ناموفق بود')
+      if (!response.ok) throw new Error(data.error || copy.previewFailed)
 
       setPreviewReport((data.report ?? null) as MspImportReportSummary | null)
       setPreviewMeta({
@@ -359,7 +368,7 @@ export function ScheduleImportPanel({
         file_name: String(data.file_name || file.name),
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'بررسی فایل ناموفق بود')
+      setError(err instanceof Error ? err.message : copy.previewFailed)
     } finally {
       setLoading(false)
     }
@@ -384,11 +393,9 @@ export function ScheduleImportPanel({
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'ورود فایل ناموفق بود')
+      if (!response.ok) throw new Error(data.error || copy.importFailed)
 
-      setImportSuccess(
-        `${data.tasks_imported} فعالیت و ${data.dependencies_imported} وابستگی وارد شد. برنامه قبلی پاک شد.`
-      )
+      setImportSuccess(copy.importSuccess(data.tasks_imported, data.dependencies_imported))
       setPreviewReport(null)
       setPreviewMeta(null)
       localRescheduleRef.current = false
@@ -400,7 +407,7 @@ export function ScheduleImportPanel({
       if (inputRef.current) inputRef.current.value = ''
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ورود فایل ناموفق بود')
+      setError(err instanceof Error ? err.message : copy.importFailed)
     } finally {
       setConfirming(false)
     }
@@ -416,10 +423,9 @@ export function ScheduleImportPanel({
                 <CalendarRange className="h-5 w-5" />
               </div>
               <div>
-                <CardTitle className="text-base">ورود برنامه MSP</CardTitle>
+                <CardTitle className="text-base">{copy.title}</CardTitle>
                 <CardDescription>
-                  ابتدا فایل را بررسی کنید؛ گزارش Import نمایش داده می‌شود. پس از تأیید، برنامه قبلی
-                  کاملاً جایگزین می‌شود.
+                  {copy.description}
                 </CardDescription>
               </div>
             </div>
@@ -437,7 +443,7 @@ export function ScheduleImportPanel({
         <CardContent className="pt-6 space-y-4">
           <div className="rounded-lg border border-dashed bg-muted/20 p-6 space-y-4">
             <p className="text-sm text-muted-foreground">
-              در Microsoft Project: <strong>File → Save As → XML</strong> (نه .mpp)
+              {copy.mspSaveHintBefore}<strong>{copy.mspSaveHintCode}</strong>{copy.mspSaveHintAfter}
             </p>
             <input
               ref={inputRef}
@@ -452,7 +458,7 @@ export function ScheduleImportPanel({
               }}
               className="block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
             />
-            {file ? <p className="text-xs text-muted-foreground">انتخاب‌شده: {file.name}</p> : null}
+            {file ? <p className="text-xs text-muted-foreground">{copy.selectedPrefix}{file.name}</p> : null}
           </div>
 
           {error ? (
@@ -480,11 +486,14 @@ export function ScheduleImportPanel({
               <div className="flex items-start gap-2">
                 <ClipboardList className="h-4 w-4 mt-0.5 shrink-0" />
                 <div>
-                  <p className="font-medium">گزارش بررسی Import</p>
+                  <p className="font-medium">{copy.previewReportTitle}</p>
                   {previewMeta ? (
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {previewMeta.file_name} · {previewMeta.tasks_found} فعالیت ·{' '}
-                      {previewMeta.dependencies_found} وابستگی
+                      {copy.previewMetaLine(
+                        previewMeta.file_name,
+                        previewMeta.tasks_found,
+                        previewMeta.dependencies_found
+                      )}
                     </p>
                   ) : null}
                 </div>
@@ -505,21 +514,21 @@ export function ScheduleImportPanel({
                           : 'text-amber-900 text-xs'
                       }
                     >
-                      {issue.severity === 'error' ? 'خطا: ' : 'هشدار: '}
+                      {issue.severity === 'error' ? copy.errorPrefix : copy.warnPrefix}
                       {issue.message}
                     </p>
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-emerald-700">مشکل مسدودکننده یا هشداری یافت نشد.</p>
+                <p className="text-xs text-emerald-700">{copy.noIssues}</p>
               )}
               {previewReport.blocked ? (
                 <p className="text-xs text-destructive font-medium">
-                  به‌خاطر حلقه در وابستگی‌ها، ورود قطعی ممکن نیست. فایل را در MSP اصلاح کنید.
+                  {copy.blockedCycle}
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  در صورت تأیید، برنامه قبلی پروژه کاملاً جایگزین می‌شود.
+                  {copy.confirmReplace}
                 </p>
               )}
             </div>
@@ -530,12 +539,12 @@ export function ScheduleImportPanel({
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  در حال بررسی...
+                  {copy.previewing}
                 </>
               ) : (
                 <>
                   <ClipboardList className="h-4 w-4 mr-2" />
-                  بررسی فایل
+                  {copy.previewFile}
                 </>
               )}
             </Button>
@@ -554,12 +563,12 @@ export function ScheduleImportPanel({
               {confirming ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  در حال ورود قطعی...
+                  {copy.confirming}
                 </>
               ) : (
                 <>
                   <FileUp className="h-4 w-4 mr-2" />
-                  تأیید و ورود قطعی
+                  {copy.confirmImport}
                 </>
               )}
             </Button>
@@ -576,13 +585,13 @@ export function ScheduleImportPanel({
       {bannerStart ? (
         <p className="text-sm rounded-lg border bg-primary/5 px-4 py-3">
           <span className="text-muted-foreground">
-            {actualStart ? 'شروع واقعی: ' : 'شروع پروژه: '}
+            {actualStart ? copy.actualStartPrefix : copy.projectStartPrefix}
           </span>
           <strong className="text-primary tabular-nums">
             <FormattedDate value={bannerStart} />
           </strong>
           {!actualStart && draftStart ? (
-            <span className="text-muted-foreground text-xs ms-2">(در انتظار اعمال)</span>
+            <span className="text-muted-foreground text-xs ms-2">{copy.pendingApply}</span>
           ) : null}
         </p>
       ) : null}
@@ -616,13 +625,13 @@ export function ScheduleImportPanel({
         <Card>
           <CardContent className="pt-5">
             <p className="text-2xl font-bold">{taskCount}</p>
-            <p className="text-xs text-muted-foreground">فعالیت‌های برنامه</p>
+            <p className="text-xs text-muted-foreground">{copy.taskCountLabel}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-5">
             <p className="text-2xl font-bold">{initialImports.filter((i) => i.status === 'completed').length}</p>
-            <p className="text-xs text-muted-foreground">ورودهای موفق</p>
+            <p className="text-xs text-muted-foreground">{copy.successfulImports}</p>
           </CardContent>
         </Card>
       </div>
@@ -631,11 +640,12 @@ export function ScheduleImportPanel({
         <Card className="w-full max-w-none shadow-sm overflow-hidden">
           <CardHeader className="border-b bg-muted/20 pb-3 px-4 py-3">
             <CardTitle className="text-base">
-              پیش‌نمایش برنامه ({displayTasks.length}
-              {taskCount > displayTasks.length ? ` از ${taskCount}` : ''})
+              {copy.previewTitle(displayTasks.length}
+              {taskCount > displayTasks.length ? copy.ofTotal(taskCount) : ''}
+              {copy.previewTitleEnd}
             </CardTitle>
             <CardDescription>
-              تیتر عمودی · همه ستون‌ها · خط بین ستون‌ها = عرض · ؟ = توضیح · «تنظیم خودکار عرض»
+              {copy.previewHint}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0 pt-0 w-full">
@@ -651,7 +661,7 @@ export function ScheduleImportPanel({
       {initialImports.length > 0 ? (
         <Card>
           <CardHeader className="border-b bg-muted/20 pb-4">
-            <CardTitle className="text-base">تاریخچه ورود</CardTitle>
+            <CardTitle className="text-base">{copy.historyTitle}</CardTitle>
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
             {initialImports.map((item) => (
@@ -661,7 +671,7 @@ export function ScheduleImportPanel({
                   <p className="text-xs text-muted-foreground">
                     <FormattedDate value={item.created_at} dateTime />
                     {item.status === 'completed'
-                      ? ` · ${item.tasks_imported} فعالیت، ${item.dependencies_imported} پیوند`
+                      ? copy.historyCompleted(item.tasks_imported, item.dependencies_imported)
                       : ''}
                     {item.error_message ? ` · ${item.error_message}` : ''}
                   </p>
@@ -675,7 +685,7 @@ export function ScheduleImportPanel({
                       originalOnly
                       variant="ghost"
                       size="sm"
-                      label="دانلود"
+                      label={copy.download}
                     />
                   ) : null}
                   {statusBadge(item.status)}

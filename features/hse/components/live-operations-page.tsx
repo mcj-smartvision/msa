@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/components/live-operations-page.tsx
+ * @purpose کامپوننت UI — ایمنی، بهداشت و محیط زیست (live-operations-page)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on features/hse/components/badges, features/hse/components/format, features/hse/components/ui, shared/components/ui/button, shared/components/ui/select, features/hse/lib/mock-data, features/hse/lib/types, shared/lib/utils, features/hse/config
+ */
+
 'use client'
 
 import { useMemo, useState } from 'react'
@@ -27,6 +35,12 @@ HSE_INCIDENTS,
 } from '@/features/hse/lib/mock-data'
 import type { DecisionAction, HseIncident, IncidentStatus, Severity } from '@/features/hse/lib/types'
 import { cn } from '@/shared/lib/utils'
+import {
+  HSE_ACTION_COPY,
+  HSE_COMMON_COPY,
+  HSE_LIVE_COPY,
+  HSE_VERDICT_COPY,
+} from '@/features/hse/config'
 
 const SEVERITIES: Array<Severity | 'all'> = ['all', 'critical', 'high', 'medium', 'low']
 const STATUSES: Array<IncidentStatus | 'all'> = [
@@ -54,19 +68,15 @@ const ACTION_STATUS: Record<
 }
 
 const ACTION_LABEL: Record<keyof typeof ACTION_STATUS, string> = {
-  acknowledge: 'دریافت',
-  confirm: 'تأیید',
-  dismiss: 'رد',
-  escalate: 'ارجاع',
-  assign: 'تخصیص',
-  close: 'بستن',
+  acknowledge: HSE_ACTION_COPY.acknowledge,
+  confirm: HSE_ACTION_COPY.confirm,
+  dismiss: HSE_ACTION_COPY.dismiss,
+  escalate: HSE_ACTION_COPY.escalate,
+  assign: HSE_ACTION_COPY.assign,
+  close: HSE_ACTION_COPY.close,
 }
 
-const VERDICT_LABEL: Record<HseIncident['aiVerdict'], string> = {
-  likely_violation: 'احتمال تخلف',
-  uncertain: 'نامشخص',
-  likely_false_positive: 'احتمال مثبت کاذب',
-}
+const VERDICT_LABEL: Record<HseIncident['aiVerdict'], string> = HSE_VERDICT_COPY
 
 export function LiveOperationsPage() {
   const [incidents, setIncidents] = useState<HseIncident[]>(() =>
@@ -94,8 +104,8 @@ export function LiveOperationsPage() {
     const nextStatus = ACTION_STATUS[action]
     const note =
       action === 'assign'
-        ? 'تخصیص به ناظر کشیک (نمایشی)'
-        : `${ACTION_LABEL[action]} اعمال شد (نمایشی)`
+        ? HSE_LIVE_COPY.assignNote
+        : HSE_LIVE_COPY.actionApplied(ACTION_LABEL[action])
     const now = new Date().toISOString()
 
     setIncidents((prev) =>
@@ -105,14 +115,14 @@ export function LiveOperationsPage() {
           ...inc,
           status: nextStatus,
           updatedAt: now,
-          assignee: action === 'assign' ? 'مرتضی بل' : inc.assignee,
+          assignee: action === 'assign' ? HSE_LIVE_COPY.demoAssignee : inc.assignee,
           falsePositive: action === 'dismiss' ? true : inc.falsePositive,
           decisionLog: [
             ...inc.decisionLog,
             {
               id: `dl-live-${Date.now()}`,
               at: now,
-              actor: 'شما (اپراتور)',
+              actor: HSE_LIVE_COPY.actorYou,
               action,
               note,
             },
@@ -128,12 +138,12 @@ export function LiveOperationsPage() {
   return (
     <div className="space-y-4" dir="rtl" lang="fa">
       <HsePageHeader
-        title="عملیات زنده"
-        description="فهرست قابل پالایش حوادث با پیش‌نمایش شواهد و اقدامات ناظر. تغییرات فقط در وضعیت نشست محلی اعمال می‌شود."
+        title={HSE_LIVE_COPY.title}
+        description={HSE_LIVE_COPY.description}
         actions={
           lastAction ? (
             <div className="rounded border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900">
-              آخرین اقدام: {lastAction}
+              {HSE_LIVE_COPY.lastActionPrefix}{lastAction}
             </div>
           ) : null
         }
@@ -141,8 +151,8 @@ export function LiveOperationsPage() {
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
         <Panel
-          title="فهرست حوادث"
-          description={`${filtered.length} مورد مطابق`}
+          title={HSE_LIVE_COPY.listTitle}
+          description={HSE_LIVE_COPY.matching(filtered.length)}
           actions={
             <div className="flex flex-wrap gap-2">
               <Select
@@ -150,12 +160,12 @@ export function LiveOperationsPage() {
                 onValueChange={(v) => setSeverityFilter(v as Severity | 'all')}
               >
                 <SelectTrigger className="h-8 w-[130px] text-xs">
-                  <SelectValue placeholder="شدت" />
+                  <SelectValue placeholder={HSE_COMMON_COPY.severity} />
                 </SelectTrigger>
                 <SelectContent>
                   {SEVERITIES.map((s) => (
                     <SelectItem key={s} value={s}>
-                      {s === 'all' ? 'همه شدت‌ها' : severityLabel[s]}
+                      {s === 'all' ? HSE_COMMON_COPY.allSeverities : severityLabel[s]}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -165,12 +175,12 @@ export function LiveOperationsPage() {
                 onValueChange={(v) => setStatusFilter(v as IncidentStatus | 'all')}
               >
                 <SelectTrigger className="h-8 w-[150px] text-xs">
-                  <SelectValue placeholder="وضعیت" />
+                  <SelectValue placeholder={HSE_COMMON_COPY.status} />
                 </SelectTrigger>
                 <SelectContent>
                   {STATUSES.map((s) => (
                     <SelectItem key={s} value={s}>
-                      {s === 'all' ? 'همه وضعیت‌ها' : statusLabel[s]}
+                      {s === 'all' ? HSE_COMMON_COPY.allStatuses : statusLabel[s]}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -179,7 +189,7 @@ export function LiveOperationsPage() {
           }
         >
           {filtered.length === 0 ? (
-            <EmptyRow>هیچ حادثه‌ای با پالایش فعلی مطابقت ندارد.</EmptyRow>
+            <EmptyRow>{HSE_LIVE_COPY.empty}</EmptyRow>
           ) : (
             <ul className="max-h-[70vh] space-y-1 overflow-y-auto">
               {filtered.map((inc) => {
@@ -215,11 +225,11 @@ export function LiveOperationsPage() {
         </Panel>
 
         <Panel
-          title="جزئیات حادثه"
-          description={selected ? selected.code : 'یک حادثه را انتخاب کنید'}
+          title={HSE_LIVE_COPY.detailTitle}
+          description={selected ? selected.code : HSE_LIVE_COPY.selectIncident}
         >
           {!selected ? (
-            <EmptyRow>یک حادثه را از فهرست انتخاب کنید.</EmptyRow>
+            <EmptyRow>{HSE_LIVE_COPY.selectFromList}</EmptyRow>
           ) : (
             <div className="space-y-4">
               <div>
@@ -227,20 +237,20 @@ export function LiveOperationsPage() {
                   <SeverityBadge value={selected.severity} />
                   <StatusBadge value={selected.status} />
                   <span className="text-xs text-slate-500">
-                    اطمینان {Math.round(selected.confidence * 100)}٪
+                    {HSE_LIVE_COPY.confidence(Math.round(selected.confidence * 100))}
                   </span>
                 </div>
                 <h3 className="mt-2 text-base font-semibold text-slate-900">{selected.title}</h3>
                 <p className="mt-1 text-xs text-slate-600">
-                  زون: {getZone(selected.zoneId)?.name ?? selected.zoneId} · دوربین:{' '}
-                  {getCamera(selected.cameraId)?.name ?? selected.cameraId} · تشخیص در{' '}
+                  {HSE_LIVE_COPY.zonePrefix}{getZone(selected.zoneId)?.name ?? selected.zoneId} · {HSE_LIVE_COPY.cameraPrefix}
+                  {getCamera(selected.cameraId)?.name ?? selected.cameraId} · {HSE_LIVE_COPY.detectedPrefix}
                   {formatDateTime(selected.detectedAt)}
                 </p>
               </div>
 
               <div>
                 <p className="mb-1.5 text-[11px] font-semibold tracking-wide text-slate-500">
-                  پیش‌نمایش شواهد
+                  {HSE_LIVE_COPY.evidencePreview}
                 </p>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {selected.evidenceFrames.map((frame) => (
@@ -264,11 +274,11 @@ export function LiveOperationsPage() {
 
               <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2.5">
                 <p className="text-[11px] font-semibold tracking-wide text-slate-500">
-                  خلاصه / رأی هوش مصنوعی
+                  {HSE_LIVE_COPY.aiSummary}
                 </p>
                 <p className="mt-1 text-sm text-slate-800">{selected.aiSummary}</p>
                 <p className="mt-2 text-xs font-medium text-slate-700">
-                  رأی:{' '}
+                  {HSE_LIVE_COPY.verdictPrefix}
                   <span className="tracking-wide">
                     {VERDICT_LABEL[selected.aiVerdict]}
                   </span>{' '}
@@ -278,32 +288,32 @@ export function LiveOperationsPage() {
 
               <div>
                 <p className="mb-1.5 text-[11px] font-semibold tracking-wide text-slate-500">
-                  اقدامات
+                  {HSE_LIVE_COPY.actions}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="secondary" onClick={() => applyAction('acknowledge')}>
                     <Check className="h-3.5 w-3.5" />
-                    دریافت
+                    {HSE_ACTION_COPY.acknowledge}
                   </Button>
                   <Button size="sm" variant="default" onClick={() => applyAction('confirm')}>
                     <ShieldAlert className="h-3.5 w-3.5" />
-                    تأیید
+                    {HSE_ACTION_COPY.confirm}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => applyAction('dismiss')}>
                     <X className="h-3.5 w-3.5" />
-                    رد
+                    {HSE_ACTION_COPY.dismiss}
                   </Button>
                   <Button size="sm" variant="destructive" onClick={() => applyAction('escalate')}>
                     <Zap className="h-3.5 w-3.5" />
-                    ارجاع
+                    {HSE_ACTION_COPY.escalate}
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => applyAction('assign')}>
                     <UserPlus className="h-3.5 w-3.5" />
-                    تخصیص
+                    {HSE_ACTION_COPY.assign}
                   </Button>
                   <Button size="sm" variant="secondary" onClick={() => applyAction('close')}>
                     <ClipboardList className="h-3.5 w-3.5" />
-                    بستن
+                    {HSE_ACTION_COPY.close}
                   </Button>
                 </div>
               </div>

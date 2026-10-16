@@ -1,3 +1,11 @@
+/**
+ * @file app/(dashboard)/dashboard/storekeeper/page.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (page)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, shared/lib/dashboard/user-context, shared/lib/project/project-cookie, features/storekeeper/components/storekeeper-dashboard
+ */
+
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createClient } from '@/shared/lib/supabase/server'

@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule-intelligence/lib/cpm-engine.ts
+ * @purpose منطق دامنه — تحلیل کیفیت برنامه و آپلود MSP (cpm-engine)
+ * @safe-to-edit CAREFUL
+ * @affects تحلیل کیفیت برنامه و آپلود MSP
+ * @depends-on shared/types/schedule-intelligence, features/schedule-intelligence/lib/graph, features/schedule-intelligence/lib/duration-utils
+ */
+
 import type {
 CpmResult,
 NormalizedSchedule,
@@ -12,6 +20,7 @@ forwardConstraintMinutes,
 freeFloatFromSuccessor,
 } from '@/features/schedule-intelligence/lib/graph'
 import { durationDaysFromMinutes } from '@/features/schedule-intelligence/lib/duration-utils'
+import { SCHEDULE_LIB_COPY as L } from '@/features/schedule-intelligence/lib/config'
 
 /**
  * Deterministic CPM (Activity-on-Node).
@@ -39,7 +48,7 @@ export function runCpmEngine(
     errors.push({
       code: 'CYCLE_DETECTED',
       severity: 'error',
-      message: 'شبکه وابستگی حلقه دارد — CPM معتبر نیست',
+      message: L.cycleDetected,
       details: graph.cycleNodes.join(', '),
     })
     return {

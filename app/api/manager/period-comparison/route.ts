@@ -1,3 +1,11 @@
+/**
+ * @file app/api/manager/period-comparison/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, shared/lib/supabase/service, features/site-ops/lib/auth, features/site-ops/domain/errors, features/manager/lib/access, features/manager/lib/load-period-comparison, features/manager/lib/overview-types, features/workshop/lib/service
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { createServiceClient } from '@/shared/lib/supabase/service'

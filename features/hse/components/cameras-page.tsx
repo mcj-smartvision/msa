@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/components/cameras-page.tsx
+ * @purpose کامپوننت UI — ایمنی، بهداشت و محیط زیست (cameras-page)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on features/hse/components/camera-connection-center, features/hse/components/badges, features/hse/components/format, features/hse/components/ui, shared/components/ui/button, shared/components/ui/input, shared/components/ui/textarea, features/hse/lib/mock-data, features/hse/lib/types, shared/lib/utils, features/hse/config
+ */
+
 'use client'
 
 import { Fragment, useEffect, useState } from 'react'
@@ -12,15 +20,11 @@ import { Textarea } from '@/shared/components/ui/textarea'
 import { getZone, HSE_CAMERAS } from '@/features/hse/lib/mock-data'
 import type { CameraSource, HseCamera } from '@/features/hse/lib/types'
 import { cn } from '@/shared/lib/utils'
+import { HSE_CAMERAS_COPY, HSE_COMMON_COPY, HSE_SOURCE_COPY } from '@/features/hse/config'
 
 const BINDINGS_KEY = 'hse_camera_usb_bindings'
 
-const SOURCE_LABEL: Record<CameraSource, string> = {
-  rtsp: 'آدرس استریم',
-  onvif: 'کشف خودکار شبکه',
-  nvr: 'ضبط‌کننده شبکه',
-  edge_usb: 'یو‌اس‌بی یا لپ‌تاپ',
-}
+const SOURCE_LABEL: Record<CameraSource, string> = HSE_SOURCE_COPY
 
 export function CamerasPage() {
   const [cameras, setCameras] = useState<HseCamera[]>(() =>
@@ -67,7 +71,7 @@ export function CamerasPage() {
   function saveCalibration(id: string) {
     const cam = cameras.find((c) => c.id === id)
     if (!cam) return
-    setSavedNote(`کالیبراسیون ${cam.code} ذخیره شد (فقط نشست محلی)`)
+    setSavedNote(HSE_CAMERAS_COPY.savedNote(cam.code))
   }
 
   function effectiveHealth(cam: HseCamera) {
@@ -78,8 +82,8 @@ export function CamerasPage() {
   return (
     <div className="space-y-4" dir="rtl" lang="fa">
       <HsePageHeader
-        title="دوربین‌ها"
-        description="اکنون دوربین‌های آزمایشی یو‌اس‌بی / لپ‌تاپ را وصل کنید، نقاط انتهایی مداربسته را برای لبهٔ تولید ثبت کنید و کالیبراسیون ناوگان را مدیریت کنید."
+        title={HSE_CAMERAS_COPY.title}
+        description={HSE_CAMERAS_COPY.description}
         actions={
           savedNote ? (
             <div className="rounded border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-900">
@@ -92,22 +96,22 @@ export function CamerasPage() {
       <CameraConnectionCenter fleet={cameras} />
 
       <Panel
-        title="ناوگان دوربین"
-        description={`${cameras.length} دستگاه برنامه‌ریزی‌شده · ${bindings.length} متصل با یو‌اس‌بی`}
+        title={HSE_CAMERAS_COPY.fleetTitle}
+        description={HSE_CAMERAS_COPY.fleetDesc(cameras.length, bindings.length)}
       >
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1000px] text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-[11px] tracking-wide text-slate-500">
                 <th className="w-8 pb-2 pl-2 font-semibold" />
-                <th className="pb-2 pl-3 font-semibold">نام</th>
-                <th className="pb-2 pl-3 font-semibold">وضعیت</th>
-                <th className="pb-2 pl-3 font-semibold">منبع</th>
-                <th className="pb-2 pl-3 font-semibold">اتصال زنده</th>
-                <th className="pb-2 pl-3 font-semibold">محل</th>
-                <th className="pb-2 pl-3 font-semibold">ضربان</th>
-                <th className="pb-2 pl-3 font-semibold">زون‌ها</th>
-                <th className="pb-2 font-semibold">فریم بر ثانیه / وضوح</th>
+                <th className="pb-2 pl-3 font-semibold">{HSE_CAMERAS_COPY.colName}</th>
+                <th className="pb-2 pl-3 font-semibold">{HSE_CAMERAS_COPY.colStatus}</th>
+                <th className="pb-2 pl-3 font-semibold">{HSE_CAMERAS_COPY.colSource}</th>
+                <th className="pb-2 pl-3 font-semibold">{HSE_CAMERAS_COPY.colLive}</th>
+                <th className="pb-2 pl-3 font-semibold">{HSE_CAMERAS_COPY.colLocation}</th>
+                <th className="pb-2 pl-3 font-semibold">{HSE_CAMERAS_COPY.colHeartbeat}</th>
+                <th className="pb-2 pl-3 font-semibold">{HSE_CAMERAS_COPY.colZones}</th>
+                <th className="pb-2 font-semibold">{HSE_CAMERAS_COPY.colFps}</th>
               </tr>
             </thead>
             <tbody>
@@ -125,7 +129,7 @@ export function CamerasPage() {
                       <td className="py-2 pl-2">
                         <button
                           type="button"
-                          aria-label={open ? 'بستن کالیبراسیون' : 'باز کردن کالیبراسیون'}
+                          aria-label={open ? HSE_CAMERAS_COPY.collapseAria : HSE_CAMERAS_COPY.expandAria}
                           onClick={() => setExpandedId(open ? null : cam.id)}
                           className="rounded p-0.5 text-slate-500 hover:bg-slate-200 hover:text-slate-800"
                         >
@@ -161,10 +165,10 @@ export function CamerasPage() {
                       </td>
                       <td className="max-w-[180px] py-2 pl-3 text-slate-700">{cam.location}</td>
                       <td className="py-2 pl-3 whitespace-nowrap text-xs tabular-nums text-slate-600">
-                        {binding ? 'همین الان (یو‌اس‌بی)' : formatDateTime(cam.lastHeartbeat)}
+                        {binding ? HSE_CAMERAS_COPY.nowUsb : formatDateTime(cam.lastHeartbeat)}
                       </td>
                       <td className="py-2 pl-3 text-xs text-slate-700">
-                        {cam.zoneIds.map((zid) => getZone(zid)?.code ?? zid).join('، ')}
+                        {cam.zoneIds.map((zid) => getZone(zid)?.code ?? zid).join(HSE_COMMON_COPY.listSep)}
                       </td>
                       <td className="py-2 tabular-nums text-slate-700">
                         {cam.fps} / {cam.resolution}
@@ -176,16 +180,16 @@ export function CamerasPage() {
                           <div className="rounded border border-slate-200 bg-white p-3">
                             <div className="mb-2 flex items-center justify-between gap-2">
                               <p className="text-sm font-semibold text-slate-900">
-                                کالیبراسیون — {cam.code}
+                                {HSE_CAMERAS_COPY.calibrationTitle(cam.code)}
                               </p>
                               <Button size="sm" onClick={() => saveCalibration(cam.id)}>
                                 <Save className="h-3.5 w-3.5" />
-                                ذخیره محلی
+                                {HSE_CAMERAS_COPY.saveLocal}
                               </Button>
                             </div>
                             <div className="grid gap-3 sm:grid-cols-4">
                               <label className="space-y-1 text-xs">
-                                <span className="font-medium text-slate-600">شیب (درجه)</span>
+                                <span className="font-medium text-slate-600">{HSE_CAMERAS_COPY.tilt}</span>
                                 <Input
                                   type="number"
                                   className="h-8 text-sm"
@@ -196,7 +200,7 @@ export function CamerasPage() {
                                 />
                               </label>
                               <label className="space-y-1 text-xs">
-                                <span className="font-medium text-slate-600">چرخش افقی (درجه)</span>
+                                <span className="font-medium text-slate-600">{HSE_CAMERAS_COPY.pan}</span>
                                 <Input
                                   type="number"
                                   className="h-8 text-sm"
@@ -207,7 +211,7 @@ export function CamerasPage() {
                                 />
                               </label>
                               <label className="space-y-1 text-xs">
-                                <span className="font-medium text-slate-600">بزرگ‌نمایی</span>
+                                <span className="font-medium text-slate-600">{HSE_CAMERAS_COPY.zoom}</span>
                                 <Input
                                   type="number"
                                   step="0.1"
@@ -220,7 +224,7 @@ export function CamerasPage() {
                               </label>
                               <div className="sm:col-span-4">
                                 <label className="space-y-1 text-xs">
-                                  <span className="font-medium text-slate-600">یادداشت ناحیه مورد نظر</span>
+                                  <span className="font-medium text-slate-600">{HSE_CAMERAS_COPY.roiNotes}</span>
                                   <Textarea
                                     className="min-h-[72px] text-sm"
                                     value={cam.calibration.roiNotes}

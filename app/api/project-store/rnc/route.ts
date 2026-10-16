@@ -1,3 +1,11 @@
+/**
+ * @file app/api/project-store/rnc/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, shared/lib/supabase/service, features/site-ops/lib/auth, features/site-ops/domain/errors, features/holidays/lib/work-calendar, features/project-store/lib/load-snapshot, features/project-store/lib/load-rnc, features/project-store/lib/weekly-engine, features/schedule/lib/week-commitment-windows, features/supervisor/lib/daily-report-activities
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { createServiceClient } from '@/shared/lib/supabase/service'

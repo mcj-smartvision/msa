@@ -1,7 +1,16 @@
+/**
+ * @file features/admin/components/online-users-panel.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (online-users-panel)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/types/admin, shared/lib/utils, features/admin/config
+ */
+
 'use client'
 
 import type { OnlineUser } from '@/shared/types/admin'
 import { cn } from '@/shared/lib/utils'
+import { ADMIN_ONLINE_USERS_COPY } from '@/features/admin/config'
 
 const statusStyles = {
   online: 'bg-emerald-500',
@@ -9,17 +18,11 @@ const statusStyles = {
   offline: 'bg-slate-300',
 }
 
-const statusHint = {
-  online: 'حاضر',
-  idle: 'خارج‌شده امروز',
-  offline: 'غایب',
-}
-
 export function OnlineUsersPanel({ users }: { users: OnlineUser[] }) {
   if (users.length === 0) {
     return (
       <p className="text-sm text-muted-foreground py-6 text-center">
-        عضوی برای نمایش حضور وجود ندارد.
+        {ADMIN_ONLINE_USERS_COPY.empty}
       </p>
     )
   }
@@ -31,33 +34,24 @@ export function OnlineUsersPanel({ users }: { users: OnlineUser[] }) {
           key={user.id}
           className="flex items-center gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-slate-50"
         >
-          <div className="relative shrink-0">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
-              {user.name
-                .split(' ')
-                .map((n) => n[0])
-                .join('')
-                .slice(0, 2)}
-            </div>
-            <span
-              className={cn(
-                'absolute -bottom-0.5 -end-0.5 h-2.5 w-2.5 rounded-full border-2 border-white',
-                statusStyles[user.status]
-              )}
-              title={statusHint[user.status]}
-            />
-          </div>
+          <span
+            className={cn('h-2.5 w-2.5 shrink-0 rounded-full', statusStyles[user.status])}
+            title={ADMIN_ONLINE_USERS_COPY[user.status]}
+            aria-label={ADMIN_ONLINE_USERS_COPY[user.status]}
+          />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-slate-900 truncate">{user.name}</p>
-            <p className="text-xs text-muted-foreground truncate mt-0.5">
+            <p className="truncate text-sm font-medium text-slate-900">{user.name}</p>
+            <p className="truncate text-xs text-muted-foreground">
               {user.role}
-              <span className="mx-1.5 text-slate-300">·</span>
-              {user.currentPage}
+              {user.currentPage ? ` · ${user.currentPage}` : ''}
             </p>
           </div>
-          <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
-            {user.lastSeen}
-          </span>
+          <div className="shrink-0 text-end">
+            <p className="text-xs text-muted-foreground">{ADMIN_ONLINE_USERS_COPY[user.status]}</p>
+            {user.lastSeen ? (
+              <p className="text-[11px] text-slate-400 tabular-nums">{user.lastSeen}</p>
+            ) : null}
+          </div>
         </div>
       ))}
     </div>

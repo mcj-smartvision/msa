@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/progress-ledger.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (progress-ledger)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/lib/daily-report-activities, features/workshop/lib/types
+ */
+
 import type { DailyReportActivity } from '@/features/supervisor/lib/daily-report-activities'
 import type { ScheduleTreeNode, WorkshopPackageNode } from '@/features/workshop/lib/types'
 

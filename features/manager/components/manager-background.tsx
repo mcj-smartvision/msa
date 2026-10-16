@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/components/manager-background.tsx
+ * @purpose کامپوننت UI — داشبورد مدیر پروژه و KPI (manager-background)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/evm/lib/load-project-evm, features/manager/lib/overview-types, features/manager/lib/format, features/supervisor/lib/daily-progress-storage, features/project-store/use-store-progress, features/supervisor/lib/daily-report-activities, features/workshop/lib/types, shared/lib/time/tehran, features/schedule/lib/weight-consistency, features/project-controls/lib/earned-schedule
+ */
+
 'use client'
 
 import Link from 'next/link'
@@ -27,6 +35,7 @@ import type { WeeklyPlanLoad } from '@/features/project-controls/lib/load-weekly
 import { buildEarnedScheduleKpis, buildPpcKpi, buildTcpiKpi, type EarnedScheduleKpiKey } from '@/features/project-controls/lib/kpis'
 import { StoreInspector } from '@/features/project-store/components/store-inspector'
 import { EmptyNote, LoadingRows, SectionCard } from './manager-ui'
+import { BACKGROUND_COPY, MANAGER_PUNCT } from '@/features/manager/config'
 import { Frac, MathBlock, MathLine, Num, Op, Sum, V } from './math-formula'
 
 type Load<T> = { state: 'loading' } | { state: 'ok'; data: T } | { state: 'error'; message: string }
@@ -42,13 +51,13 @@ function useJson<T>(url: string | null): Load<T> {
         const body = await response.json().catch(() => null)
         if (cancelled) return
         if (!response.ok || body?.error) {
-          setResult({ state: 'error', message: body?.error ?? `خطای ${response.status}` })
+          setResult({ state: 'error', message: body?.error ?? BACKGROUND_COPY.httpError(response.status) })
         } else {
           setResult({ state: 'ok', data: body as T })
         }
       })
       .catch((error: unknown) => {
-        if (!cancelled) setResult({ state: 'error', message: error instanceof Error ? error.message : 'خطای شبکه' })
+        if (!cancelled) setResult({ state: 'error', message: error instanceof Error ? error.message : BACKGROUND_COPY.network })
       })
     return () => {
       cancelled = true
@@ -57,12 +66,7 @@ function useJson<T>(url: string | null): Load<T> {
   return result
 }
 
-const BASIS_LABEL: Record<string, string> = {
-  technical_office_cost: 'ستون «هزینه» برنامهٔ دفتر فنی؛ BAC = جمع هزینهٔ فعالیت‌های برگ',
-  contract_value: 'مبلغ قرارداد (BAC) به نسبت وزن فعالیت‌ها پخش شده',
-  weighted_project_budget: 'بودجهٔ پروژه به نسبت وزن فعالیت‌ها پخش شده',
-  none: 'بودجه ثبت نشده — PV و EV بر مبنای وزن',
-}
+const BASIS_LABEL: Record<string, string> = BACKGROUND_COPY.basis
 
 function n(value: number | null | undefined, digits = 2): string {
   return value == null || !Number.isFinite(value) ? '—' : faNumber(value, digits)
@@ -146,7 +150,7 @@ function Table({ head, rows, foot }: { head: string[]; rows: ReactNode[][]; foot
 
 function StateNote({ load }: { load: Load<unknown> }) {
   if (load.state === 'loading') return <LoadingRows rows={4} />
-  if (load.state === 'error') return <EmptyNote tone="error" title="داده بارگذاری نشد" description={load.message} />
+  if (load.state === 'error') return <EmptyNote tone="error" title={BACKGROUND_COPY.loadFailed} description={load.message} />
   return null
 }
 
@@ -155,7 +159,7 @@ function activityLabel(a: { wbs: string | null; name: string; kind?: string }) {
     <span>
       {a.wbs ? <span className="text-slate-500">{a.wbs} · </span> : null}
       {a.name}
-      {a.kind === 'package' ? <span className="mr-1 rounded bg-amber-100 px-1 text-[10px] text-amber-800">بسته</span> : null}
+      {a.kind === 'package' ? <span className="mr-1 rounded bg-amber-100 px-1 text-[10px] text-amber-800">{BACKGROUND_COPY.pkg}</span> : null}
     </span>
   )
 }
@@ -163,17 +167,9 @@ function activityLabel(a: { wbs: string | null; name: string; kind?: string }) {
 /* ------------------------------------------------------------- Conventions */
 
 function ConventionsCard() {
-  const items: [string, string][] = [
-    ['منبع درصد رسمی', 'درصد پیشرفت فیزیکی ذخیره‌شده در برنامهٔ زمان‌بندی (project_tasks و schedule_fields بسته‌ها).'],
-    ['برنامه (PV)', 'همیشه از baseline منجمد؛ اگر baseline خالی باشد تاریخ برنامه‌ریزی‌شده. تاریخ‌های جاری در برنامه دخالت ندارند.'],
-    ['شمارش روز', 'روز تقویمی، هر دو سر بازه شمرده می‌شود: روز اول بازهٔ 10 روزه = 10٪، روز پایان = 100٪. قبل از شروع 0 و بعد از پایان 100.'],
-    ['منطقهٔ زمانی', 'Asia/Tehran (UTC+03:30) برای «امروز»، شروع هفته (شنبه) و ماه شمسی.'],
-    ['وزن پیشرفت', 'وزن زمان‌بندی (schedule_weight) هر فعالیت برگ؛ جمع وزن‌ها مخرج میانگین است. پیشرفت تجمعی، PV٪، EV٪ و SPI همه روی همین مبنا هستند؛ بودجه فقط برای هزینه (CPI و TCPI).'],
-    ['وزن بسته‌ها', 'وزن بسته مطلق است (درصد کل پروژه) و جمع بسته‌های هر والد باید با وزن والد برابر باشد؛ مغایرت به وزن والد مقیاس و در Data Quality ثبت می‌شود.'],
-    ['گرد کردن', 'محاسبات بدون گرد کردن انجام می‌شود؛ فقط هنگام نمایش گرد می‌شود.'],
-  ]
+  const items = BACKGROUND_COPY.conventions
   return (
-    <SectionCard title="قراردادهای محاسبه" icon={<BookOpen className="h-4 w-4" aria-hidden />}>
+    <SectionCard title={BACKGROUND_COPY.conventionsTitle} icon={<BookOpen className="h-4 w-4" aria-hidden />}>
       <dl className="grid gap-2 sm:grid-cols-2">
         {items.map(([k, v]) => (
           <div key={k} className="rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-inset ring-slate-200">
@@ -202,7 +198,7 @@ function CumulativeCard({
   const totalDone = rows.reduce((s, a) => s + a.weight * a.physicalPercent, 0)
   const result = totalWeight > 0 ? totalDone / totalWeight : null
   return (
-    <SectionCard title="پیشرفت تجمعی (کارت مدیر)" icon={<Sigma className="h-4 w-4" aria-hidden />}>
+    <SectionCard title={BACKGROUND_COPY.cumulativeTitle} icon={<Sigma className="h-4 w-4" aria-hidden />}>
       <div className="space-y-3">
         <MathBlock>
           <MathLine>
@@ -217,27 +213,27 @@ function CumulativeCard({
               <Num>{lat(result)}%</Num>
             </MathLine>
           ) : null}
-          <p dir="rtl" className="font-sans text-[11px] text-slate-500">w = وزن زمان‌بندی فعالیت · p = درصد پیشرفت فیزیکی</p>
+          <p dir="rtl" className="font-sans text-[11px] text-slate-500">{BACKGROUND_COPY.wpNote}</p>
         </MathBlock>
         <Table
-          head={['فعالیت', 'وزن', 'درصد فیزیکی', 'وزن × درصد']}
+          head={[BACKGROUND_COPY.cols.activity, BACKGROUND_COPY.cols.weight, BACKGROUND_COPY.cols.physical, BACKGROUND_COPY.cols.wxp]}
           rows={rows.map((a) => [activityLabel(a), n(a.weight), faPercent(a.physicalPercent, 1), n(a.weight * a.physicalPercent)])}
-          foot={['جمع', n(totalWeight), '', n(totalDone)]}
+          foot={[BACKGROUND_COPY.total, n(totalWeight), '', n(totalDone)]}
         />
         <div className="grid gap-2 sm:grid-cols-3">
-          <Result label="محاسبه" value={`${n(totalDone)} ÷ ${n(totalWeight)}`} />
-          <Result label="نتیجه" value={result == null ? '—' : faPercent(result, 2)} />
-          <Result label="عدد کارت داشبورد" value={cardValue == null ? '—' : faPercent(cardValue, 2)} />
+          <Result label={BACKGROUND_COPY.calc} value={`${n(totalDone)} ÷ ${n(totalWeight)}`} />
+          <Result label={BACKGROUND_COPY.result} value={result == null ? '—' : faPercent(result, 2)} />
+          <Result label={BACKGROUND_COPY.cardValue} value={cardValue == null ? '—' : faPercent(cardValue, 2)} />
         </div>
         {weightIssues.length > 0 ? (
           weightIssues.map((issue) => (
             <p key={`${issue.code}:${issue.parentId ?? ''}`} className="flex items-start gap-1.5 text-xs text-amber-700">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-              خطای کیفیت داده{issue.parentLabel ? ` («${issue.parentLabel}»)` : ''}: {issue.message_fa}
+              {BACKGROUND_COPY.dqError(issue.parentLabel ? BACKGROUND_COPY.parentQuote(issue.parentLabel) : '')}{issue.message_fa}
             </p>
           ))
         ) : (
-          <p className="text-xs text-emerald-700">اعتبارسنجی وزن‌ها: جمع وزن بسته‌های هر والد با وزن والد و جمع کل برگ‌ها با 100 برابر است.</p>
+          <p className="text-xs text-emerald-700">{BACKGROUND_COPY.weightsOk}</p>
         )}
       </div>
     </SectionCard>
@@ -255,11 +251,12 @@ function EvmCard({ snapshot }: { snapshot: ProjectEvmSnapshot }) {
   const sumEarned = rows.reduce((s, a) => s + weightOf(a) * a.physicalPercent, 0) / 100
   const W = byWeight ? 'w' : 'Budget'
   return (
-    <SectionCard title="PV، EV و SPI" icon={<Calculator className="h-4 w-4" aria-hidden />}>
+    <SectionCard title={BACKGROUND_COPY.evmTitle} icon={<Calculator className="h-4 w-4" aria-hidden />}>
       <div className="space-y-3">
         <p className="text-xs text-slate-600">
-          مبنای پیشرفت: {byWeight ? 'وزن زمان‌بندی (MSP)' : 'بودجه (هیچ فعالیتی وزن ندارد)'} · مبنای بودجه برای هزینه:{' '}
-          {BASIS_LABEL[m.budgetBasis] ?? m.budgetBasis} · تاریخ محاسبه {jalaliDate(m.asOf)}
+          {BACKGROUND_COPY.progressBasis(byWeight)}
+          {BASIS_LABEL[m.budgetBasis] ?? m.budgetBasis}
+          {BACKGROUND_COPY.asOf(jalaliDate(m.asOf))}
         </p>
         <MathBlock>
           <MathLine>
@@ -342,11 +339,11 @@ function EvmCard({ snapshot }: { snapshot: ProjectEvmSnapshot }) {
             ) : null}
           </MathLine>
           <p dir="rtl" className="font-sans text-[11px] text-slate-500">
-            SPI و پیشرفت تجمعی هر دو با وزن زمان‌بندی نرمال‌شده محاسبه می‌شوند؛ بودجه فقط برای هزینه (CPI و TCPI) به کار می‌رود · روزها با هر دو سر بازه شمرده می‌شوند · Start و Finish تاریخ‌های baseline هستند
+            {BACKGROUND_COPY.evmNote}
           </p>
         </MathBlock>
         <Table
-          head={['فعالیت', byWeight ? 'وزن' : 'بودجه', 'شروع مبنا', 'پایان مبنا', 'برنامه٪', 'وزن × برنامه٪', 'فیزیکی٪', 'وزن × فیزیکی٪', 'بودجه']}
+          head={[BACKGROUND_COPY.cols.activity, byWeight ? BACKGROUND_COPY.cols.weight : BACKGROUND_COPY.budget, BACKGROUND_COPY.startBase, BACKGROUND_COPY.finishBase, BACKGROUND_COPY.planPct, BACKGROUND_COPY.wPlan, BACKGROUND_COPY.physicalPct, BACKGROUND_COPY.wPhysical, BACKGROUND_COPY.budget]}
           rows={rows.map((a) => [
             activityLabel(a),
             n(weightOf(a), 2),
@@ -358,15 +355,15 @@ function EvmCard({ snapshot }: { snapshot: ProjectEvmSnapshot }) {
             n((weightOf(a) * a.physicalPercent) / 100, 3),
             a.budget > 0 ? n(a.budget) : '—',
           ])}
-          foot={['جمع', n(m.totalWeight, 2), '', '', '', n(sumPlanned, 3), '', n(sumEarned, 3), m.bac > 0 ? n(m.bac) : '—']}
+          foot={[BACKGROUND_COPY.total, n(m.totalWeight, 2), '', '', '', n(sumPlanned, 3), '', n(sumEarned, 3), m.bac > 0 ? n(m.bac) : '—']}
         />
         <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          <Result label="PV٪ (برنامه)" value={faPercent(m.plannedPercent, 2)} />
-          <Result label="EV٪ (کسب‌شده)" value={faPercent(m.earnedPercent, 2)} />
-          <Result label="SPI = EV٪ ÷ PV٪" value={n(m.spi, 3)} />
-          <Result label="BAC" value={m.bac > 0 ? n(m.bac) : 'ثبت نشده'} />
-          <Result label="AC (هزینهٔ واقعی)" value={m.ac > 0 ? compactToman(m.ac) : 'ثبت نشده'} />
-          <Result label="CPI = EV ریالی ÷ AC" value={m.cpi == null ? 'ثبت نشده' : n(m.cpi, 3)} />
+          <Result label={BACKGROUND_COPY.pvPct} value={faPercent(m.plannedPercent, 2)} />
+          <Result label={BACKGROUND_COPY.evPct} value={faPercent(m.earnedPercent, 2)} />
+          <Result label={BACKGROUND_COPY.spiFormula} value={n(m.spi, 3)} />
+          <Result label={BACKGROUND_COPY.bac} value={m.bac > 0 ? n(m.bac) : BACKGROUND_COPY.notRecorded} />
+          <Result label={BACKGROUND_COPY.ac} value={m.ac > 0 ? compactToman(m.ac) : BACKGROUND_COPY.notRecorded} />
+          <Result label={BACKGROUND_COPY.cpiFormula} value={m.cpi == null ? BACKGROUND_COPY.notRecorded : n(m.cpi, 3)} />
         </div>
       </div>
     </SectionCard>
@@ -379,7 +376,7 @@ function ForecastCard({ overview }: { overview: ManagerOverview }) {
   const evm = overview.evm.status === 'ok' ? overview.evm.data : null
   const f = evm?.scheduleForecast ?? null
   return (
-    <SectionCard title="تأخیر و پیش‌بینی پایان" icon={<CalendarClock className="h-4 w-4" aria-hidden />}>
+    <SectionCard title={BACKGROUND_COPY.forecastTitle} icon={<CalendarClock className="h-4 w-4" aria-hidden />}>
       {evm ? (
         <div className="space-y-3">
           <MathBlock>
@@ -441,26 +438,26 @@ function ForecastCard({ overview }: { overview: ManagerOverview }) {
               ) : null}
             </MathLine>
             <p dir="rtl" className="font-sans text-[11px] text-slate-500">
-              AT روزهای سپری‌شده از شروع مبنا و ES روزی است که منحنی PV وزنی مبنا به EV٪ امروز می‌رسید؛ پیش‌بینی اول فرض می‌کند باقی کار با سرعت برنامه پیش برود و دومی با سرعت واقعی تاکنون (SPI(t))
+              {BACKGROUND_COPY.forecastNote}
             </p>
           </MathBlock>
           <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            <Result label="EV٪ امروز" value={faPercent(evm.earnedPercent, 2)} />
-            <Result label="عقب‌افتادگی (روز)" value={evm.scheduleVarianceDays == null ? '—' : faNumber(evm.scheduleVarianceDays)} />
+            <Result label={BACKGROUND_COPY.evToday} value={faPercent(evm.earnedPercent, 2)} />
+            <Result label={BACKGROUND_COPY.lagDays} value={evm.scheduleVarianceDays == null ? '—' : faNumber(evm.scheduleVarianceDays)} />
             <Result label="SPI(t) = ES ÷ AT" value={n(f?.spiT, 3)} />
-            <Result label="پایان برنامهٔ مبنا" value={jalaliDate(f?.plannedFinish)} />
-            <Result label="پیش‌بینی پایان (با فرض سرعت برنامه)" value={jalaliDate(f?.forecastFinish)} />
-            <Result label="پیش‌بینی پایان (با روند فعلی)" value={f?.trendFinish ? jalaliDate(f.trendFinish) : '—'} />
+            <Result label={BACKGROUND_COPY.baselineFinish} value={jalaliDate(f?.plannedFinish)} />
+            <Result label={BACKGROUND_COPY.forecastPlan} value={jalaliDate(f?.forecastFinish)} />
+            <Result label={BACKGROUND_COPY.forecastTrend} value={f?.trendFinish ? jalaliDate(f.trendFinish) : '—'} />
           </div>
-          {f ? <p className="text-xs text-slate-500">شروع برنامهٔ مبنا: {jalaliDate(f.start)}</p> : null}
+          {f ? <p className="text-xs text-slate-500">{BACKGROUND_COPY.baselineStart(jalaliDate(f.start))}</p> : null}
           {f?.planPeriodEnded ? (
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-200">
-              دورهٔ برنامه تمام شده؛ بازنگری مبنا (re-baseline) را بررسی کنید
+              {BACKGROUND_COPY.planEnded}
             </p>
           ) : null}
         </div>
       ) : (
-        <EmptyNote title="شاخص EVM در دسترس نیست" />
+        <EmptyNote title={BACKGROUND_COPY.evmMissing} />
       )}
     </SectionCard>
   )
@@ -657,10 +654,10 @@ function EarnedScheduleCard({ snapshot }: { snapshot: ProjectEvmSnapshot }) {
   const headlineTokens = KPI_STATUS_TOKENS[headline.status]
   return (
     <SectionCard
-      title="شاخص‌های زمان‌محور (Earned Schedule)"
+      title={BACKGROUND_COPY.esTitle}
       icon={<CalendarClock className="h-4 w-4" aria-hidden />}
       action={
-        <div className="flex gap-1" role="group" aria-label="واحد دوره">
+        <div className="flex gap-1" role="group" aria-label={BACKGROUND_COPY.periodUnit}>
           {(['months', 'weeks', 'days'] as const).map((u) => (
             <button
               key={u}
@@ -673,7 +670,7 @@ function EarnedScheduleCard({ snapshot }: { snapshot: ProjectEvmSnapshot }) {
                   : 'rounded-full bg-white px-2.5 py-0.5 text-[11px] text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50'
               }
             >
-              {u === 'months' ? 'ماه' : u === 'weeks' ? 'هفته' : 'روز'}
+              {u === 'months' ? BACKGROUND_COPY.month : u === 'weeks' ? BACKGROUND_COPY.week : BACKGROUND_COPY.day}
             </button>
           ))}
         </div>
@@ -685,8 +682,7 @@ function EarnedScheduleCard({ snapshot }: { snapshot: ProjectEvmSnapshot }) {
           {headline.interpretation_fa} {kpis.delay_forecast.data_quality === 'ok' ? kpis.delay_forecast.interpretation_fa : ''}
         </div>
         <p className="text-xs text-slate-600">
-          ورودی‌ها: شروع مبنا {jalaliDate(controls.projectStart.value)} · پایان مبنا {jalaliDate(controls.baselineFinish.value)} · تاریخ وضعیت{' '}
-          {jalaliDate(controls.asOf)} · EV = {n(controls.ev.value)} · نقاط منحنی {faNumber(controls.pvCurve.value?.length ?? 0)}
+          {BACKGROUND_COPY.inputs(jalaliDate(controls.projectStart.value), jalaliDate(controls.baselineFinish.value), jalaliDate(controls.asOf), n(controls.ev.value), faNumber(controls.pvCurve.value?.length ?? 0))}
         </p>
         <div className="grid gap-3 lg:grid-cols-2">
           {order.map((key) => (
@@ -730,14 +726,14 @@ function KpiBlock({ kpi, math, digits }: { kpi: ExplainedKpi; math: ReactNode; d
         <StatusBadge kpi={kpi} />
       </div>
       <p className={`text-lg font-bold tabular-nums ${usable ? 'text-slate-900' : 'text-slate-400'}`}>
-        {!usable ? DATA_QUALITY_FA[kpi.data_quality] : kpi.value == null ? 'تعریف‌نشده' : faNumber(kpi.value, digits)}{' '}
+        {!usable ? DATA_QUALITY_FA[kpi.data_quality] : kpi.value == null ? BACKGROUND_COPY.undefined : faNumber(kpi.value, digits)}{' '}
         {usable ? <span className="text-xs font-normal text-slate-500">{kpi.unit}</span> : null}
       </p>
       <MathBlock>{math}</MathBlock>
       <p className="text-xs leading-5 text-slate-700">{kpi.interpretation_fa}</p>
       {usable && kpi.actionable_decision_fa ? (
         <div className={`rounded-lg border px-3 py-2 text-xs leading-5 ${t.bg} ${t.text} ${t.border}`}>
-          <span className="font-semibold">اقدام مدیریتی خودکار: </span>
+          <span className="font-semibold">{BACKGROUND_COPY.autoAction}</span>
           {kpi.actionable_decision_fa}
         </div>
       ) : null}
@@ -748,7 +744,7 @@ function KpiBlock({ kpi, math, digits }: { kpi: ExplainedKpi; math: ReactNode; d
         </p>
       ))}
       <p className="text-[10px] leading-4 text-slate-400">
-        کیفیت داده: {DATA_QUALITY_FA[kpi.data_quality]} · تاریخ شواهد {jalaliDate(kpi.evidence.asOf)} · منبع: {kpi.evidence.sources.join(' / ')}
+        {BACKGROUND_COPY.dataQuality(DATA_QUALITY_FA[kpi.data_quality], jalaliDate(kpi.evidence.asOf), kpi.evidence.sources.join(' / '))}
       </p>
     </div>
   )
@@ -794,7 +790,7 @@ function TcpiMath({ metric }: { metric: ExplainedKpi }) {
         </MathLine>
       )}
       <p dir="rtl" className="font-sans text-[11px] text-slate-500">
-        BAC = بودجهٔ مصوب مبنا · EV = ارزش کسب‌شدهٔ تجمعی · AC = هزینهٔ واقعی تجمعی
+        {BACKGROUND_COPY.tcpiNote}
       </p>
     </>
   )
@@ -840,14 +836,14 @@ function TcpiPpcCard({ snapshot, projectId }: { snapshot: ProjectEvmSnapshot; pr
         weekly.state === 'ok' && weekly.data.status === 'missing'
           ? weekly.data.reason_fa
           : weekly.state === 'error'
-            ? `خواندن برنامهٔ هفتگی ناموفق بود: ${weekly.message}`
+            ? BACKGROUND_COPY.weeklyFailed(weekly.message)
             : undefined,
     })
     return { tcpi: buildTcpiKpi(controls), ppc: buildPpcKpi(controls) }
   }, [snapshot, weekly])
 
   return (
-    <SectionCard title="TCPI و PPC (شاخص‌های اقدام‌محور)" icon={<Sigma className="h-4 w-4" aria-hidden />}>
+    <SectionCard title={BACKGROUND_COPY.tcpiPpc} icon={<Sigma className="h-4 w-4" aria-hidden />}>
       <div className="grid gap-3 lg:grid-cols-2">
         <KpiBlock kpi={tcpi} math={<TcpiMath metric={tcpi} />} digits={3} />
         {weekly.state === 'loading' ? <LoadingRows /> : <KpiBlock kpi={ppc} math={<PpcMath metric={ppc} />} digits={1} />}
@@ -861,7 +857,7 @@ function TcpiPpcCard({ snapshot, projectId }: { snapshot: ProjectEvmSnapshot; pr
 function DailyCard({ overview }: { overview: ManagerOverview }) {
   const d = overview.daily.status === 'ok' ? overview.daily.data : null
   return (
-    <SectionCard title="عملکرد 24 ساعت گذشته" icon={<CalendarClock className="h-4 w-4" aria-hidden />}>
+    <SectionCard title={BACKGROUND_COPY.dailyTitle} icon={<CalendarClock className="h-4 w-4" aria-hidden />}>
       {d ? (
         <div className="space-y-3">
           <MathBlock>
@@ -886,21 +882,20 @@ function DailyCard({ overview }: { overview: ManagerOverview }) {
               <Op>×</Op>
               <Num>100</Num>
             </MathLine>
-            <p dir="rtl" className="font-sans text-[11px] text-slate-500">Plan = برنامهٔ وزنی تجمعی روی baseline · Δp = پیشرفت ثبت‌شده در 24 ساعت گذشته</p>
+            <p dir="rtl" className="font-sans text-[11px] text-slate-500">{BACKGROUND_COPY.dailyNote}</p>
           </MathBlock>
           <div className="grid gap-2 sm:grid-cols-4">
-            <Result label="شروع پنجره" value={jalaliDateTime(d.windowStart)} />
-            <Result label="برنامهٔ مصوب امروز" value={faPercent(d.plannedPercent, 2)} note={d.baselineEnded ? 'دورهٔ برنامهٔ مبنا تمام شده' : undefined} />
-            <Result label="ثبت‌شده در 24 ساعت" value={faPercent(d.actualPercent, 2)} />
-            <Result label="درصد تحقق" value={d.fulfillmentPercent == null ? '—' : faPercent(d.fulfillmentPercent, 0)} />
+            <Result label={BACKGROUND_COPY.windowStart} value={jalaliDateTime(d.windowStart)} />
+            <Result label={BACKGROUND_COPY.plannedToday} value={faPercent(d.plannedPercent, 2)} note={d.baselineEnded ? BACKGROUND_COPY.baselineEnded : undefined} />
+            <Result label={BACKGROUND_COPY.recorded24} value={faPercent(d.actualPercent, 2)} />
+            <Result label={BACKGROUND_COPY.fulfillment} value={d.fulfillmentPercent == null ? '—' : faPercent(d.fulfillmentPercent, 0)} />
           </div>
           <p className="text-xs text-slate-600">
-            فعالیت‌های دارای برنامه امروز: {faNumber(d.plannedActivities)} · گزارش‌شده از آن‌ها: {faNumber(d.plannedReportedActivities)} · کل
-            فعالیت‌های گزارش‌شده: {faNumber(d.reportedActivities)} · عقب از پایان مبنا: {faNumber(d.overdueActivities)}
+            {BACKGROUND_COPY.dailyMeta(faNumber(d.plannedActivities), faNumber(d.plannedReportedActivities), faNumber(d.reportedActivities), faNumber(d.overdueActivities))}
           </p>
         </div>
       ) : (
-        <EmptyNote title="داده در دسترس نیست" description={overview.daily.status === 'ok' ? undefined : 'reason' in overview.daily ? overview.daily.reason : overview.daily.message} />
+        <EmptyNote title={BACKGROUND_COPY.unavailable} description={overview.daily.status === 'ok' ? undefined : 'reason' in overview.daily ? overview.daily.reason : overview.daily.message} />
       )}
     </SectionCard>
   )
@@ -912,15 +907,13 @@ function PackageWeightsCard({ nodes }: { nodes: ScheduleTreeNode[] }) {
   const parents = nodes.filter((node) => (node.packages ?? []).length > 0)
   if (parents.length === 0) return null
   return (
-    <SectionCard title="وزن بسته‌های کاری" icon={<Layers className="h-4 w-4" aria-hidden />}>
+    <SectionCard title={BACKGROUND_COPY.pkgWeights} icon={<Layers className="h-4 w-4" aria-hidden />}>
       <div className="space-y-3">
         <p className="text-xs leading-5 text-slate-600">
-          وزن بسته‌ها «مطلق» است: هم‌واحد با وزن فعالیت والد، و جمع وزن بسته‌های یک والد باید دقیقاً برابر وزن والد باشد. بستهٔ بدون وزن،
-          باقی‌ماندهٔ وزن والد را به‌تساوی با هم‌ردیف‌های بی‌وزن تقسیم می‌کند. اگر جمع نخواند، وزن‌ها به نسبت تا وزن والد مقیاس می‌شوند و
-          خطای کیفیت داده ثبت می‌شود؛ محاسبه متوقف نمی‌شود. برنامهٔ (PV) هر بسته از baseline فعالیت والد خوانده می‌شود.
+          {BACKGROUND_COPY.pkgIntro}
         </p>
         <Table
-          head={['فعالیت والد', 'وزن والد', 'بسته', 'وزن ثبت‌شده', 'درصد فیزیکی بسته', 'وزن مؤثر در محاسبه']}
+          head={[BACKGROUND_COPY.pkgCols.parent, BACKGROUND_COPY.pkgCols.parentW, BACKGROUND_COPY.pkgCols.pkg, BACKGROUND_COPY.pkgCols.recorded, BACKGROUND_COPY.pkgCols.physical, BACKGROUND_COPY.pkgCols.effective]}
           rows={parents.flatMap((node) => {
             const parentWeight = Number(node.scheduleWeight) || 0
             const packages = node.packages ?? []
@@ -932,7 +925,7 @@ function PackageWeightsCard({ nodes }: { nodes: ScheduleTreeNode[] }) {
                 index === 0 ? activityLabel({ wbs: node.wbs, name: node.name }) : '',
                 index === 0 ? n(parentWeight) : '',
                 pkg.name,
-                pkg.weightPercent == null ? 'بدون وزن' : n(Number(pkg.weightPercent)),
+                pkg.weightPercent == null ? BACKGROUND_COPY.noWeight : n(Number(pkg.weightPercent)),
                 faPercent(pct, 0),
                 n(weights[index] ?? 0),
               ]
@@ -946,8 +939,7 @@ function PackageWeightsCard({ nodes }: { nodes: ScheduleTreeNode[] }) {
           const { issue } = resolveSiblingWeights(parentWeight, packages.map((p) => p.weightPercent))
           return (
             <p key={node.id} className={`text-xs ${issue ? 'text-amber-700' : 'text-emerald-700'}`}>
-              {node.wbs} {node.name}: جمع وزن بسته‌ها {n(sum)} در برابر وزن والد {n(parentWeight)} ·{' '}
-              {issue ? issue.message_fa : 'سازگار است'}
+              {node.wbs} {node.name}: {BACKGROUND_COPY.pkgSum(n(sum), n(parentWeight), issue ? issue.message_fa : BACKGROUND_COPY.compatible)}
             </p>
           )
         })}
@@ -988,10 +980,10 @@ function SupervisorCard({
       const own = latestEntry(entries, activity.id, today)
       const used = progressForSCurveAsOf(activity, entries, today, today, packages)
       const source = own
-        ? `گزارش ذخیره‌شده در این مرورگر (${jalaliDate(own.reportDate)})`
+        ? BACKGROUND_COPY.browser(jalaliDate(own.reportDate))
         : packages.some((p) => p.parentTaskId === activity.parentTaskId && latestEntry(entries, p.id, today))
-          ? 'گزارش بسته‌ها در این مرورگر'
-          : 'درصد برنامهٔ زمان‌بندی'
+          ? BACKGROUND_COPY.pkgReports
+          : BACKGROUND_COPY.schedulePct
       return { activity, used, source }
     })
     const value = calculateSCurveActualProgress(curve, entries, today, today, packages)
@@ -1000,7 +992,7 @@ function SupervisorCard({
   }, [nodes, orphanPackages, projectId, storeProgress.entries])
 
   return (
-    <SectionCard title="پیشرفت در کارتابل سرپرست کارگاه" icon={<HardHat className="h-4 w-4" aria-hidden />}>
+    <SectionCard title={BACKGROUND_COPY.supervisorTitle} icon={<HardHat className="h-4 w-4" aria-hidden />}>
       <div className="space-y-3">
         <MathBlock>
           <MathLine>
@@ -1012,16 +1004,14 @@ function SupervisorCard({
             <Num>{lat(computed.value)}%</Num>
           </MathLine>
           <p dir="rtl" className="font-sans text-[11px] text-slate-500">
-            فقط فعالیت‌های برگ MSP شمرده می‌شوند و بسته‌ها ردیف جدا ندارند · p = درصد استفاده‌شده (ستون جدول زیر)
+            {BACKGROUND_COPY.supervisorNote}
           </p>
         </MathBlock>
         <p className="text-xs leading-5 text-slate-600">
-          «درصد استفاده‌شده» اگر برای فعالیت در همین مرورگر گزارشی ذخیره شده باشد از آن گزارش می‌آید، وگرنه درصد برنامهٔ زمان‌بندی (گرد
-          شده به عدد صحیح). به همین دلیل این عدد در مرورگرهای مختلف می‌تواند فرق کند. گزارش‌های ذخیره‌شده در این مرورگر:{' '}
-          {faNumber(computed.localCount)}.
+          {BACKGROUND_COPY.supervisorIntro(faNumber(computed.localCount))}
         </p>
         <Table
-          head={['فعالیت', 'وزن', 'درصد برنامهٔ زمان‌بندی', 'درصد استفاده‌شده', 'منبع']}
+          head={[BACKGROUND_COPY.cols.activity, BACKGROUND_COPY.cols.weight, BACKGROUND_COPY.schedulePct, BACKGROUND_COPY.usedPct, BACKGROUND_COPY.source]}
           rows={computed.rows.map(({ activity, used, source }) => [
             activityLabel({ wbs: activity.wbs, name: activity.name }),
             n(activity.progressWeight),
@@ -1029,15 +1019,15 @@ function SupervisorCard({
             faPercent(used, 1),
             source,
           ])}
-          foot={['جمع وزن', n(computed.totalWeight), '', '', '']}
+          foot={[BACKGROUND_COPY.weightTotal, n(computed.totalWeight), '', '', '']}
         />
         <div className="grid gap-2 sm:grid-cols-3">
-          <Result label="پیشرفت سرپرست (در این مرورگر)" value={faPercent(computed.value, 2)} />
-          <Result label="پیشرفت تجمعی مدیر" value={managerValue == null ? '—' : faPercent(managerValue, 2)} />
+          <Result label={BACKGROUND_COPY.supervisorProgress} value={faPercent(computed.value, 2)} />
+          <Result label={BACKGROUND_COPY.managerProgress} value={managerValue == null ? '—' : faPercent(managerValue, 2)} />
           <Result
-            label="اختلاف"
-            value={managerValue == null ? '—' : `${faNumber(managerValue - computed.value, 2)} واحد`}
-            note="علت: شمارش متفاوت بسته‌ها، جمع وزن متفاوت و گزارش‌های ذخیره‌شده در مرورگر"
+            label={BACKGROUND_COPY.diff}
+            value={managerValue == null ? '—' : BACKGROUND_COPY.units(faNumber(managerValue - computed.value, 2))}
+            note={BACKGROUND_COPY.diffNote}
           />
         </div>
       </div>
@@ -1070,14 +1060,14 @@ export function ManagerBackgroundView({
           className="inline-flex items-center gap-1 rounded text-sm font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
         >
           <ArrowRight className="h-4 w-4" aria-hidden />
-          بازگشت به داشبورد
+          {BACKGROUND_COPY.back}
         </Link>
-        <h1 className="text-sm font-bold text-slate-800">بک‌گراند محاسبات — ریز هر عدد داشبورد با داده‌های واقعی پروژه</h1>
+        <h1 className="text-sm font-bold text-slate-800">{BACKGROUND_COPY.pageTitle}</h1>
       </div>
 
       <ConventionsCard />
 
-      {!projectId ? <EmptyNote title="پروژه‌ای انتخاب نشده است" /> : <StoreInspector projectId={projectId} />}
+      {!projectId ? <EmptyNote title={BACKGROUND_COPY.noProject} /> : <StoreInspector projectId={projectId} />}
 
       {projectId ? (
         evm.state === 'ok' ? (
@@ -1088,7 +1078,7 @@ export function ManagerBackgroundView({
             <TcpiPpcCard snapshot={evm.data} projectId={projectId} />
           </>
         ) : (
-          <SectionCard title="پیشرفت تجمعی و EVM" icon={<Calculator className="h-4 w-4" aria-hidden />}>
+          <SectionCard title={BACKGROUND_COPY.evmSection} icon={<Calculator className="h-4 w-4" aria-hidden />}>
             <StateNote load={evm} />
           </SectionCard>
         )
@@ -1115,7 +1105,7 @@ export function ManagerBackgroundView({
             />
           </>
         ) : (
-          <SectionCard title="وزن بسته‌ها و پیشرفت سرپرست" icon={<HardHat className="h-4 w-4" aria-hidden />}>
+          <SectionCard title={BACKGROUND_COPY.pkgSupervisor} icon={<HardHat className="h-4 w-4" aria-hidden />}>
             <StateNote load={tree} />
           </SectionCard>
         )

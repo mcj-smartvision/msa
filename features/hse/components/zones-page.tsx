@@ -1,32 +1,41 @@
+/**
+ * @file features/hse/components/zones-page.tsx
+ * @purpose کامپوننت UI — ایمنی، بهداشت و محیط زیست (zones-page)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on features/hse/components/badges, features/hse/components/ui, features/hse/lib/mock-data, features/hse/config
+ */
+
 'use client'
 
 import { MapPinned } from 'lucide-react'
 import { RiskBadge } from '@/features/hse/components/badges'
 import { EmptyRow, HsePageHeader, Panel } from '@/features/hse/components/ui'
 import { getCamera, getRule, HSE_ZONES } from '@/features/hse/lib/mock-data'
+import { HSE_COMMON_COPY, HSE_ZONES_COPY } from '@/features/hse/config'
 
 export function ZonesPage() {
   return (
     <div className="space-y-4" dir="rtl" lang="fa">
       <HsePageHeader
-        title="زون‌ها"
-        description="مناطق کاری طبقه‌بندی‌شده بر اساس ریسک، متصل به دوربین‌ها و قوانین تشخیص."
+        title={HSE_ZONES_COPY.title}
+        description={HSE_ZONES_COPY.description}
       />
 
-      <Panel title="ثبت زون‌ها" description={`${HSE_ZONES.length} زون`}>
+      <Panel title={HSE_ZONES_COPY.panelTitle} description={HSE_ZONES_COPY.zoneCount(HSE_ZONES.length)}>
         {HSE_ZONES.length === 0 ? (
-          <EmptyRow>زونی پیکربندی نشده است.</EmptyRow>
+          <EmptyRow>{HSE_ZONES_COPY.empty}</EmptyRow>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-[11px] tracking-wide text-slate-500">
-                  <th className="pb-2 pl-3 font-semibold">زون</th>
-                  <th className="pb-2 pl-3 font-semibold">ریسک</th>
-                  <th className="pb-2 pl-3 font-semibold">محدوده</th>
-                  <th className="pb-2 pl-3 font-semibold">دوربین‌ها</th>
-                  <th className="pb-2 pl-3 font-semibold">قوانین</th>
-                  <th className="pb-2 font-semibold">یادداشت‌ها</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_ZONES_COPY.colZone}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_ZONES_COPY.colRisk}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_ZONES_COPY.colArea}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_ZONES_COPY.colCameras}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_ZONES_COPY.colRules}</th>
+                  <th className="pb-2 font-semibold">{HSE_ZONES_COPY.colNotes}</th>
                 </tr>
               </thead>
               <tbody>
@@ -43,13 +52,13 @@ export function ZonesPage() {
                     <td className="py-2.5 pl-3">
                       <p className="font-semibold tabular-nums text-slate-900">{zone.cameraIds.length}</p>
                       <p className="mt-0.5 text-[11px] text-slate-500">
-                        {zone.cameraIds.map((id) => getCamera(id)?.code ?? id).join('، ')}
+                        {zone.cameraIds.map((id) => getCamera(id)?.code ?? id).join(HSE_COMMON_COPY.listSep)}
                       </p>
                     </td>
                     <td className="py-2.5 pl-3">
                       <p className="font-semibold tabular-nums text-slate-900">{zone.ruleIds.length}</p>
                       <p className="mt-0.5 text-[11px] text-slate-500">
-                        {zone.ruleIds.map((id) => getRule(id)?.code ?? id).join('، ')}
+                        {zone.ruleIds.map((id) => getRule(id)?.code ?? id).join(HSE_COMMON_COPY.listSep)}
                       </p>
                     </td>
                     <td className="max-w-[280px] py-2.5 text-xs leading-snug text-slate-600">
@@ -64,8 +73,8 @@ export function ZonesPage() {
       </Panel>
 
       <Panel
-        title="ویرایشگر زون (جایگزین موقت)"
-        description="ترسیم ناحیه مورد نظر چندضلعی به دستگاه لبه متصل می‌شود — هنوز در این پوسته رابط کاربری موجود نیست"
+        title={HSE_ZONES_COPY.editorTitle}
+        description={HSE_ZONES_COPY.editorDesc}
       >
         <div className="rounded border border-slate-300 bg-slate-50 px-4 py-5">
           <div className="flex items-start gap-3">
@@ -73,23 +82,19 @@ export function ZonesPage() {
               <MapPinned className="h-5 w-5 text-slate-600" />
             </div>
             <div className="min-w-0 space-y-2 text-sm text-slate-700">
-              <p className="font-semibold text-slate-900">ناحیه مورد نظر چندضلعی وابسته به لبه</p>
+              <p className="font-semibold text-slate-900">{HSE_ZONES_COPY.editorHeading}</p>
               <p>
-                هندسه زون روی نمای کالیبره‌شده دوربین ترسیم و به گره لبهٔ کارگاه ارسال می‌شود. مرکز کنترل
-                فراداده زون (ریسک، دوربین‌های متصل، قوانین) را نگه می‌دارد؛ رأس‌های چندضلعی و ماسک‌های
-                فضای پیکسل روی لبه می‌مانند تا اگر پیوند ابری قطع شد، استنتاج ادامه یابد.
+                {HSE_ZONES_COPY.editorBody}
               </p>
               <ul className="list-disc space-y-1 pr-5 text-xs text-slate-600">
                 <li>
-                  نصاب چندضلعی بسته‌ای روی فریم کالیبراسیون ثابت از دوربین انتخاب‌شده رسم یا وارد می‌کند.
+                  {HSE_ZONES_COPY.editorLi1}
                 </li>
                 <li>
-                  به‌روزرسانی ناحیه مورد نظر تا دریافت تأیید همگام‌سازی از لبه، قوانین آن زون با اطمینان کامل
-                  از سر گرفته نمی‌شوند.
+                  {HSE_ZONES_COPY.editorLi2}
                 </li>
                 <li>
-                  تا زمان عرضه ویرایشگر، یادداشت‌های موقت ناحیه مورد نظر را در فیلدهای کالیبراسیون هر دوربین
-                  ثبت کنید و علامت‌گذاری کارگاهی را با برچسب محدوده بالا هم‌راستا نگه دارید.
+                  {HSE_ZONES_COPY.editorLi3}
                 </li>
               </ul>
             </div>

@@ -1,3 +1,11 @@
+/**
+ * @file features/project-manager/components/controls-kpi-cards.tsx
+ * @purpose کامپوننت UI — اتاق فرمان مدیر پروژه و کارتابل (controls-kpi-cards)
+ * @safe-to-edit CAREFUL
+ * @affects اتاق فرمان مدیر پروژه و کارتابل
+ * @depends-on shared/types/project-controls, features/project-controls/lib/explained-metric, features/manager/lib/format, features/project-controls/lib/kpis, features/project-controls/server/get-controls-snapshot, shared/lib/utils, features/project-manager/config
+ */
+
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -8,12 +16,15 @@ import { faNumber, jalaliDate } from '@/features/manager/lib/format'
 import { spiDivergenceWarning } from '@/features/project-controls/lib/kpis'
 import type { ControlsKpiKey, ControlsSnapshotResult } from '@/features/project-controls/server/get-controls-snapshot'
 import { cn } from '@/shared/lib/utils'
+import { CONTROLS_KPI_COPY } from '@/features/project-manager/config'
+
+const C = CONTROLS_KPI_COPY
 
 const CARDS: { key: ControlsKpiKey; label: string; digits: number }[] = [
   { key: 'spi_t', label: 'SPI(t)', digits: 3 },
   { key: 'sv_t', label: 'SV(t)', digits: 2 },
   { key: 'eac_t', label: 'EAC(t)', digits: 2 },
-  { key: 'delay_forecast', label: 'تأخیر پیش‌بینی‌شده', digits: 0 },
+  { key: 'delay_forecast', label: C.delayForecast, digits: 0 },
   { key: 'tcpi_bac', label: 'TCPI (BAC)', digits: 3 },
   { key: 'ppc', label: 'PPC', digits: 1 },
 ]
@@ -37,10 +48,10 @@ export function useProjectControls(projectId: string | null): ProjectControlsSta
     try {
       const response = await fetch(`/api/project-manager/controls?projectId=${encodeURIComponent(projectId)}`, { cache: 'no-store' })
       const body = await response.json()
-      if (!response.ok) throw new Error(body.error || 'بارگذاری شاخص‌های کنترل پروژه ناموفق بود')
+      if (!response.ok) throw new Error(body.error || C.loadFailed)
       setData(body as ControlsSnapshotResult)
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'بارگذاری شاخص‌های کنترل پروژه ناموفق بود')
+      setError(loadError instanceof Error ? loadError.message : C.loadFailed)
     } finally {
       setLoading(false)
     }
@@ -78,7 +89,7 @@ function KpiCard({ label, kpi, digits, onDetails }: { label: string; kpi: Explai
         <p className="mt-3 text-xs leading-5 text-slate-600">{kpi.reason_fa ?? kpi.interpretation_fa}</p>
       )}
 
-      {kpi.data_quality === 'stale' ? <p className="mt-1 text-[11px] text-amber-700">داده‌ها قدیمی‌اند؛ تاریخ مبنا {jalaliDate(kpi.evidence.asOf)}</p> : null}
+      {kpi.data_quality === 'stale' ? <p className="mt-1 text-[11px] text-amber-700">{C.staleData(jalaliDate(kpi.evidence.asOf))}</p> : null}
 
       <button
         type="button"
@@ -87,7 +98,7 @@ function KpiCard({ label, kpi, digits, onDetails }: { label: string; kpi: Explai
         aria-haspopup="dialog"
       >
         <Info className="h-3.5 w-3.5" aria-hidden />
-        جزئیات
+        {C.details}
       </button>
     </div>
   )
@@ -121,43 +132,43 @@ export function KpiDetails({ label, kpi, onClose }: { label: string; kpi: Explai
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div role="dialog" aria-modal="true" aria-label={`جزئیات ${label}`} className="w-full max-w-2xl rounded-2xl bg-white text-start shadow-2xl">
+      <div role="dialog" aria-modal="true" aria-label={C.detailsAria(label)} className="w-full max-w-2xl rounded-2xl bg-white text-start shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
           <div>
             <p className="text-base font-bold text-slate-900">{label}</p>
             <p className="text-xs text-slate-500">{kpi.title_fa}</p>
           </div>
-          <button ref={closeRef} type="button" onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="بستن">
+          <button ref={closeRef} type="button" onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label={C.close}>
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="space-y-4 px-5 py-4 text-sm text-slate-800">
           <div className="flex flex-wrap items-center gap-2">
             <span className={cn('rounded-full border px-2 py-0.5 text-xs font-medium', tone.bg, tone.text, tone.border)}>{tone.label_fa}</span>
-            <span className="text-xs text-slate-500">کیفیت داده: {DATA_QUALITY_FA[kpi.data_quality]}</span>
-            <span className="text-xs text-slate-500">· تاریخ مبنا {jalaliDate(kpi.evidence.asOf)}</span>
+            <span className="text-xs text-slate-500">{C.dataQuality(DATA_QUALITY_FA[kpi.data_quality])}</span>
+            <span className="text-xs text-slate-500">{C.asOfDate(jalaliDate(kpi.evidence.asOf))}</span>
           </div>
-          <Row title="فرمول">
+          <Row title={C.formula}>
             <p dir="ltr" className="rounded-lg bg-sky-50 px-3 py-2 text-left font-mono text-[13px] text-slate-900">{kpi.formula}</p>
           </Row>
-          <Row title="جایگذاری">
+          <Row title={C.substitution}>
             <p dir="ltr" className="rounded-lg bg-sky-50 px-3 py-2 text-left font-mono text-[13px] text-slate-900">{kpi.substitution}</p>
           </Row>
-          <Row title="تفسیر">
+          <Row title={C.interpretation}>
             <p className="leading-6">{kpi.interpretation_fa}</p>
           </Row>
           {kpi.actionable_decision_fa ? (
-            <Row title="اقدام پیشنهادی">
+            <Row title={C.action}>
               <p className="leading-6">{kpi.actionable_decision_fa}</p>
             </Row>
           ) : null}
           {kpi.reason_fa ? (
-            <Row title="علت کمبود داده">
+            <Row title={C.missingReason}>
               <p className="leading-6 text-slate-700">{kpi.reason_fa}</p>
             </Row>
           ) : null}
           {kpi.assumptions?.length ? (
-            <Row title="فرض‌ها">
+            <Row title={C.assumptions}>
               <ul className="list-inside list-disc space-y-0.5 text-xs text-slate-600">
                 {kpi.assumptions.map((item) => (
                   <li key={item}>{item}</li>
@@ -165,7 +176,7 @@ export function KpiDetails({ label, kpi, onClose }: { label: string; kpi: Explai
               </ul>
             </Row>
           ) : null}
-          <Row title="منابع داده">
+          <Row title={C.sources}>
             <ul className="list-inside list-disc space-y-0.5 text-xs text-slate-600">
               {kpi.evidence.sources.map((source) => (
                 <li key={source}>{source}</li>
@@ -179,7 +190,7 @@ export function KpiDetails({ label, kpi, onClose }: { label: string; kpi: Explai
 }
 
 /**
- * «زمان‌بندی» card: SPI(t) is the schedule control value, SPI (EVM) is shown smaller beside it.
+ * Schedule card: SPI(t) is the schedule control value, SPI (EVM) is shown smaller beside it.
  * Each has its own details dialog; a divergence note appears when SPI looks fine but SPI(t) does not.
  */
 export function ScheduleSpiCard({ state }: { state: ProjectControlsState }) {
@@ -194,7 +205,7 @@ export function ScheduleSpiCard({ state }: { state: ProjectControlsState }) {
   return (
     <div className={cn('flex flex-col rounded-xl border p-4 shadow-sm', spiT?.value != null ? 'border-slate-200 bg-white' : 'border-slate-200 bg-slate-50')}>
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs font-medium text-slate-500">زمان‌بندی — SPI(t)</p>
+        <p className="text-xs font-medium text-slate-500">{C.scheduleTitle}</p>
         {spiT ? (
           <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium', tone.bg, tone.text, tone.border)}>
             {spiT.value != null ? tone.label_fa : DATA_QUALITY_FA[spiT.data_quality]}
@@ -205,7 +216,7 @@ export function ScheduleSpiCard({ state }: { state: ProjectControlsState }) {
       {!spiT ? (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
           {state.loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          {state.error ?? 'در حال محاسبه…'}
+          {state.error ?? C.calculating}
         </p>
       ) : spiT.value != null ? (
         <p className={cn('mt-1.5 text-2xl font-bold tabular-nums', tone.text)}>{faNumber(spiT.value, 3)}</p>
@@ -234,11 +245,11 @@ export function ScheduleSpiCard({ state }: { state: ProjectControlsState }) {
         <div className="mt-auto flex flex-wrap gap-x-3 pt-2">
           <button type="button" onClick={() => setOpen('spi_t')} aria-haspopup="dialog" className="inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900">
             <Info className="h-3.5 w-3.5" aria-hidden />
-            جزئیات SPI(t)
+            {C.detailsSpiT}
           </button>
           <button type="button" onClick={() => setOpen('spi')} aria-haspopup="dialog" className="inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900">
             <Info className="h-3.5 w-3.5" aria-hidden />
-            جزئیات SPI
+            {C.detailsSpi}
           </button>
         </div>
       ) : null}
@@ -259,8 +270,8 @@ export function ControlsKpiCards({ state }: { state: ProjectControlsState }) {
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-bold text-slate-900">شاخص‌های کنترل پروژه</h2>
-        {data ? <span className="text-xs text-slate-500">تاریخ وضعیت {jalaliDate(data.statusDate)}</span> : null}
+        <h2 className="text-lg font-bold text-slate-900">{C.sectionTitle}</h2>
+        {data ? <span className="text-xs text-slate-500">{C.statusDate(jalaliDate(data.statusDate))}</span> : null}
       </div>
       {error ? <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
       {data ? (
@@ -272,7 +283,7 @@ export function ControlsKpiCards({ state }: { state: ProjectControlsState }) {
       ) : loading ? (
         <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500">
           <Loader2 className="h-4 w-4 animate-spin" />
-          در حال محاسبهٔ شاخص‌ها…
+          {C.calculatingKpis}
         </div>
       ) : null}
       {open && data ? <KpiDetails label={open.label} kpi={data.kpis[open.key]} onClose={close} /> : null}

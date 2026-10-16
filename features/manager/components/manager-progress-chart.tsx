@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/components/manager-progress-chart.tsx
+ * @purpose کامپوننت UI — داشبورد مدیر پروژه و KPI (manager-progress-chart)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on shared/lib/utils, features/manager/lib/format, features/manager/lib/overview-types, features/project-controls/lib/ev-forecast, features/manager/config
+ */
+
 'use client'
 
 import { useMemo, useState } from 'react'
@@ -16,29 +24,25 @@ import { cn } from '@/shared/lib/utils'
 import { faNumber, faPercent, jalaliDate, jalaliMonthLabel } from '@/features/manager/lib/format'
 import type { ManagerCurve } from '@/features/manager/lib/overview-types'
 import type { EvForecast } from '@/features/project-controls/lib/ev-forecast'
+import { CHART_COPY, MANAGER_UI_NUMBERS } from '@/features/manager/config'
 
 type ChartRange = '1m' | '6m' | '12m' | 'all'
 
-const RANGES: { id: ChartRange; label: string }[] = [
-  { id: '1m', label: '1 ماه اخیر' },
-  { id: '6m', label: '6 ماه' },
-  { id: '12m', label: '12 ماه' },
-  { id: 'all', label: 'کل پروژه' },
-]
+const RANGES: { id: ChartRange; label: string }[] = CHART_COPY.ranges.map((r) => ({ id: r.id, label: r.label }))
 
 /** Months of plan shown after today in the windowed ranges. */
-const FORWARD_MONTHS = 3
+const FORWARD_MONTHS = MANAGER_UI_NUMBERS.chartForwardMonths
 
 /** Recorded history shorter than this opens on the one-month range, where its points are readable. */
-const RECENT_HISTORY_DAYS = 45
+const RECENT_HISTORY_DAYS = MANAGER_UI_NUMBERS.recentHistoryDays
 
 const SERIES = [
-  { key: 'planned', label: 'برنامه (PV)', color: '#1e3a8a', dash: undefined, width: 1.5, fill: 0.08 },
-  { key: 'actual', label: 'واقعی ثبت‌شده', color: '#10b981', dash: undefined, width: 1.5, fill: 0.1 },
-  { key: 'earned', label: 'ارزش کسب‌شده (EV)', color: '#fb923c', dash: '5 4', width: 1.5, fill: 0.08 },
+  { key: 'planned', label: CHART_COPY.series.planned, color: '#1e3a8a', dash: undefined, width: 1.5, fill: 0.08 },
+  { key: 'actual', label: CHART_COPY.series.actual, color: '#10b981', dash: undefined, width: 1.5, fill: 0.1 },
+  { key: 'earned', label: CHART_COPY.series.earned, color: '#fb923c', dash: '5 4', width: 1.5, fill: 0.08 },
 ] as const
 
-const FORECAST = { key: 'forecast', label: 'پیش‌بینی EV', color: '#c2410c', dash: '2 5' } as const
+const FORECAST = { key: 'forecast', label: CHART_COPY.series.forecast, color: '#c2410c', dash: '2 5' } as const
 
 type SeriesKey = (typeof SERIES)[number]['key'] | typeof FORECAST.key
 
@@ -104,18 +108,18 @@ function ForecastPanel({ forecast }: { forecast: EvForecast }) {
   if (forecast.status !== 'ok') {
     return (
       <aside className="rounded-2xl border border-slate-200/80 bg-slate-50 p-3.5 text-xs leading-7 text-slate-600 lg:w-72 lg:shrink-0">
-        <p className="font-medium text-slate-700">پیش‌بینی رسم نشد</p>
+        <p className="font-medium text-slate-700">{CHART_COPY.forecastNone}</p>
         <p className="mt-1">{forecast.reason_fa}</p>
       </aside>
     )
   }
-  const unitFa = forecast.periodUnit === 'months' ? 'ماه' : forecast.periodUnit === 'weeks' ? 'هفته' : 'روز'
+  const unitFa = forecast.periodUnit === 'months' ? CHART_COPY.month : forecast.periodUnit === 'weeks' ? CHART_COPY.week : CHART_COPY.day
   const late = forecast.delayDays > 0
   const rows: { label: string; value: string }[] = [
-    { label: 'پایان مبنا (Baseline)', value: jalaliDate(forecast.baselineFinish) },
+    { label: CHART_COPY.baseline, value: jalaliDate(forecast.baselineFinish) },
     {
       label: 'DelayDays',
-      value: forecast.delayDays === 0 ? 'بدون تأخیر' : `${faNumber(Math.abs(forecast.delayDays))} روز ${late ? 'تأخیر' : 'جلوتر'}`,
+      value: forecast.delayDays === 0 ? CHART_COPY.noDelay : CHART_COPY.delayDays(faNumber(Math.abs(forecast.delayDays)), late),
     },
     { label: 'SPI(t) = ES ÷ AT', value: faNumber(forecast.spiT, 3) },
     { label: 'EAC(t) = PD ÷ SPI(t)', value: `${faNumber(forecast.eacT, 2)} ${unitFa}` },
@@ -123,9 +127,9 @@ function ForecastPanel({ forecast }: { forecast: EvForecast }) {
   return (
     <aside
       className="rounded-2xl border border-orange-200/80 bg-orange-50/60 p-3.5 text-xs leading-7 text-slate-600 lg:w-72 lg:shrink-0"
-      aria-label="پیش‌بینی تاریخ پایان"
+      aria-label={CHART_COPY.forecastAria}
     >
-      <p className="text-slate-500">تاریخ پایان پیش‌بینی‌شده</p>
+      <p className="text-slate-500">{CHART_COPY.forecastDate}</p>
       <p className={cn('mt-0.5 text-lg font-semibold tabular-nums', late ? 'text-orange-700' : 'text-emerald-700')}>
         {jalaliDate(forecast.finishDate)}
       </p>
@@ -138,8 +142,7 @@ function ForecastPanel({ forecast }: { forecast: EvForecast }) {
         ))}
       </dl>
       <p className="mt-2 border-t border-orange-200/70 pt-2 text-[11px] leading-6 text-slate-500">
-        پایان = پایان مبنا + DelayDays. خط‌چین: EV(d) = PV مبنا در (ES + Δt × SPI(t))؛ یعنی کار باقی‌مانده با همان کارایی زمانی
-        امروز پیش می‌رود. نقطهٔ شروع، EV امروز است و هیچ نقطه‌ای خارج از snapshot ساخته نمی‌شود.
+        {CHART_COPY.forecastNote}
       </p>
     </aside>
   )
@@ -157,8 +160,8 @@ export function ManagerProgressChart({ curve }: { curve: ManagerCurve }) {
   const data = useMemo(() => {
     let slice = curve.points
     if (range === '1m' && today) {
-      const from = tsOf(today.date) - 31 * DAY_MS
-      const to = tsOf(today.date) + 10 * DAY_MS
+      const from = tsOf(today.date) - MANAGER_UI_NUMBERS.chartOneMonthBackDays * DAY_MS
+      const to = tsOf(today.date) + MANAGER_UI_NUMBERS.chartOneMonthForwardDays * DAY_MS
       slice = curve.points.filter((p) => tsOf(p.date) >= from && tsOf(p.date) <= to)
     } else if (range !== 'all' && today) {
       const back = range === '6m' ? 6 : 12
@@ -188,7 +191,7 @@ export function ManagerProgressChart({ curve }: { curve: ManagerCurve }) {
   return (
     <div className="flex flex-1 flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <ul className="flex flex-wrap items-center gap-2" aria-label="راهنمای نمودار و مقادیر امروز">
+        <ul className="flex flex-wrap items-center gap-2" aria-label={CHART_COPY.legend}>
           {visible.map((s) => (
             <li
               key={s.key}
@@ -224,7 +227,7 @@ export function ManagerProgressChart({ curve }: { curve: ManagerCurve }) {
             </li>
           ) : null}
         </ul>
-        <div role="radiogroup" aria-label="بازهٔ نمودار" className="inline-flex rounded-xl border border-slate-200/80 bg-slate-50 p-0.5">
+        <div role="radiogroup" aria-label={CHART_COPY.rangeGroup} className="inline-flex rounded-xl border border-slate-200/80 bg-slate-50 p-0.5">
           {RANGES.map((option) => (
             <button
               key={option.id}
@@ -251,8 +254,12 @@ export function ManagerProgressChart({ curve }: { curve: ManagerCurve }) {
         className="relative min-h-[300px] w-full flex-1"
         aria-label={
           today
-            ? `منحنی S پیشرفت؛ امروز برنامه ${faPercent(today.planned)}، واقعی ${today.actual != null ? faPercent(today.actual) : 'ثبت نشده'}، ارزش کسب‌شده ${today.earned != null ? faPercent(today.earned) : 'ثبت نشده'}. زمان از چپ به راست.`
-            : 'منحنی S پیشرفت پروژه؛ زمان از چپ به راست'
+            ? CHART_COPY.sCurveAria(
+                faPercent(today.planned),
+                today.actual != null ? faPercent(today.actual) : CHART_COPY.notRecorded,
+                today.earned != null ? faPercent(today.earned) : CHART_COPY.notRecorded
+              )
+            : CHART_COPY.sCurveAriaEmpty
         }
       >
         <div className="absolute inset-0" dir="ltr">
@@ -296,7 +303,7 @@ export function ManagerProgressChart({ curve }: { curve: ManagerCurve }) {
                   x={tsOf(today.date)}
                   stroke="#cbd5e1"
                   strokeDasharray="4 4"
-                  label={{ value: 'امروز', position: 'top', fill: '#334155', fontSize: 11, fontWeight: 500 }}
+                  label={{ value: CHART_COPY.today, position: 'top', fill: '#334155', fontSize: 11, fontWeight: 500 }}
                 />
               ) : null}
               <Tooltip
@@ -316,14 +323,14 @@ export function ManagerProgressChart({ curve }: { curve: ManagerCurve }) {
                 labelFormatter={(_value, payload) => {
                   const point = payload?.[0]?.payload as { date?: string; kind?: string } | undefined
                   if (!point?.date) return ''
-                  if (point.kind === 'today') return `امروز — ${jalaliDate(point.date)}`
-                  if (point.kind === 'record') return `گزارش ${jalaliDate(point.date)}`
-                  if (point.kind === 'forecast') return `پایان پیش‌بینی‌شده — ${jalaliDate(point.date)}`
-                  return `پایان ${jalaliMonthLabel(point.date)}`
+                  if (point.kind === 'today') return CHART_COPY.todayLabel(jalaliDate(point.date))
+                  if (point.kind === 'record') return CHART_COPY.reportLabel(jalaliDate(point.date))
+                  if (point.kind === 'forecast') return CHART_COPY.forecastEnd(jalaliDate(point.date))
+                  return CHART_COPY.monthEnd(jalaliMonthLabel(point.date))
                 }}
                 formatter={(value, name) => {
                   const label = name === FORECAST.key ? FORECAST.label : SERIES.find((s) => s.key === name)?.label
-                  return [value == null ? 'ثبت نشده' : faPercent(Number(value)), label ?? String(name)]
+                  return [value == null ? CHART_COPY.notRecorded : faPercent(Number(value)), label ?? String(name)]
                 }}
               />
               {forecast.status === 'ok' ? (
@@ -332,7 +339,7 @@ export function ManagerProgressChart({ curve }: { curve: ManagerCurve }) {
                   stroke={FORECAST.color}
                   strokeOpacity={0.5}
                   strokeDasharray="2 4"
-                  label={{ value: 'پایان پیش‌بینی', position: 'top', fill: FORECAST.color, fontSize: 11, fontWeight: 500 }}
+                  label={{ value: CHART_COPY.forecastMark, position: 'top', fill: FORECAST.color, fontSize: 11, fontWeight: 500 }}
                 />
               ) : null}
               {visible.map((s) => (
@@ -388,23 +395,21 @@ export function ManagerProgressChart({ curve }: { curve: ManagerCurve }) {
       <div className="space-y-1 text-[11px] leading-5 text-slate-500">
         {!curve.hasHistory ? (
           <p>
-            تاریخچهٔ پیشرفت هنوز ثبت نشده است؛ برای «واقعی» و «EV» فقط نقطهٔ امروز رسم شده و خطی حدسی کشیده نمی‌شود.
+            {CHART_COPY.noHistory}
           </p>
         ) : curve.historyStart ? (
           <p>
-            خط «واقعی» و «EV» از گزارش‌های ثبت‌شدهٔ پیشرفت ساخته شده و از اولین گزارش ({jalaliDate(curve.historyStart)}) تا امروز
-            رسم می‌شود؛ پیش از آن گزارشی ثبت نشده و خطی حدس زده نمی‌شود.
+            {CHART_COPY.historyFrom(jalaliDate(curve.historyStart))}
           </p>
         ) : null}
         {forecast.status === 'ok' && range === '1m' ? (
-          <p>خط‌چین پیش‌بینی EV تا {jalaliDate(forecast.finishDate)} ادامه دارد؛ برای دیدن کامل آن بازهٔ 12 ماه یا کل پروژه را انتخاب کنید.</p>
+          <p>{CHART_COPY.forecastClipped(jalaliDate(forecast.finishDate))}</p>
         ) : null}
         {sameLine && visible.length < SERIES.length ? (
-          <p>بودجهٔ این پروژه به نسبت وزن فعالیت‌ها پخش شده، به همین دلیل پیشرفت واقعی و EV یکسان‌اند و یک خط نمایش داده می‌شود.</p>
+          <p>{CHART_COPY.sameLine}</p>
         ) : null}
         <p>
-          برنامه = میانگین وزنی درصد برنامه طبق baseline · EV = میانگین وزنی پیشرفت تأییدشده (وزن زمان‌بندی) · محور افقی ماه شمسی (از چپ به راست) · مقادیر امروز
-          دقیقاً همان کارت‌های بالای صفحه‌اند.
+          {CHART_COPY.footer}
         </p>
       </div>
     </div>

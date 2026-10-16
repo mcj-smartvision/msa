@@ -1,3 +1,11 @@
+/**
+ * @file features/project-controls/lib/load-weekly-plan.ts
+ * @purpose منطق دامنه — موتور کنترل پروژه و شاخص‌های توضیح‌پذیر (load-weekly-plan)
+ * @safe-to-edit CAREFUL
+ * @affects موتور کنترل پروژه و شاخص‌های توضیح‌پذیر
+ * @depends-on shared/types/project-controls
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { WeeklyPlanCounts } from '@/shared/types/project-controls';
 

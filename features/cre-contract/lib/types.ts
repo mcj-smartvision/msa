@@ -1,3 +1,11 @@
+/**
+ * @file features/cre-contract/lib/types.ts
+ * @purpose تعاریف نوع — قرارداد و پیمانکاران (types)
+ * @safe-to-edit YES
+ * @affects قرارداد و پیمانکاران
+ * @depends-on nothing
+ */
+
 /** Shared CRE Phase 1 export contract (Liparta → Layer 2). */
 
 export type CreGate = 'CONTROL_READY' | 'NOT_CONTROL_READY'

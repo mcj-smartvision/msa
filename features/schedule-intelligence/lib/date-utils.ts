@@ -1,4 +1,13 @@
+/**
+ * @file features/schedule-intelligence/lib/date-utils.ts
+ * @purpose منطق دامنه — تحلیل کیفیت برنامه و آپلود MSP (date-utils)
+ * @safe-to-edit CAREFUL
+ * @affects تحلیل کیفیت برنامه و آپلود MSP
+ * @depends-on shared/types/schedule-intelligence
+ */
+
 import type { ScheduleAnalysisConfig } from '@/shared/types/schedule-intelligence'
+import { SCHEDULE_LIB_COPY as L } from '@/features/schedule-intelligence/lib/config'
 
 /** Parse ISO date/time to UTC date parts (avoid local TZ off-by-one in comparisons). */
 export function parseIsoToUtcMs(value: string | null | undefined): number | null {
@@ -58,7 +67,7 @@ export function minutesToDisplayDays(minutes: number, minutesPerDay: number): nu
 export function formatMinutesAsDays(minutes: number | null, minutesPerDay: number): string {
   if (minutes == null) return '—'
   const days = minutesToDisplayDays(minutes, minutesPerDay)
-  return `${days.toLocaleString('fa-IR-u-nu-latn')} روز`
+  return L.daysSuffix(days.toLocaleString('fa-IR-u-nu-latn'))
 }
 
 export function formatPercentFa(value: number): string {

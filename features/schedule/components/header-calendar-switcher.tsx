@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/components/header-calendar-switcher.tsx
+ * @purpose کامپوننت UI — زمان‌بندی، WBS و گانت (header-calendar-switcher)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/components/ui/select, shared/components/i18n/locale-provider, features/schedule/hooks/use-schedule-calendar, features/schedule/lib/calendar-preference, shared/components/layout/header-chip, shared/lib/utils, features/schedule/config
+ */
+
 'use client'
 
 import { Calendar } from 'lucide-react'
@@ -13,10 +21,11 @@ import { useScheduleCalendar } from '@/features/schedule/hooks/use-schedule-cale
 import type { ScheduleCalendar } from '@/features/schedule/lib/calendar-preference'
 import { HEADER_CHIP } from '@/shared/components/layout/header-chip'
 import { cn } from '@/shared/lib/utils'
+import { CALENDAR_SWITCHER_COPY } from '@/features/schedule/config'
 
 const CALENDAR_OPTIONS: { value: ScheduleCalendar; labelEn: string; labelFa: string; short: string }[] = [
-  { value: 'gregorian', labelEn: 'Gregorian', labelFa: 'میلادی', short: 'G' },
-  { value: 'jalali', labelEn: 'Shamsi (Jalali)', labelFa: 'هجری شمسی', short: 'J' },
+  { value: 'gregorian', labelEn: 'Gregorian', labelFa: CALENDAR_SWITCHER_COPY.gregorian, short: 'G' },
+  { value: 'jalali', labelEn: 'Shamsi (Jalali)', labelFa: CALENDAR_SWITCHER_COPY.jalali, short: 'J' },
 ]
 
 /** Global calendar switcher — same placement pattern as language switcher. */

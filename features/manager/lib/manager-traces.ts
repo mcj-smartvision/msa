@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/manager-traces.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (manager-traces)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/evm/lib/metrics, features/evm/lib/load-project-evm, features/calc-trace/lib/build, features/calc-trace/lib/types
+ */
+
 import type { EvmBudgetBasis } from '@/features/evm/lib/metrics'
 import type { ProjectEvmSnapshot } from '@/features/evm/lib/load-project-evm'
 import {

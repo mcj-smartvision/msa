@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/progress-forecast.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (progress-forecast)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule, features/holidays/lib/work-calendar
+ */
+
 import type { TaskRelationType } from '@/shared/types/schedule'
 import {
   addWorkdays,

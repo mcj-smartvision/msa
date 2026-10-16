@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/dashboard/redirect.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (redirect)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/types/dashboard, features/admin/lib/role-dashboard-routes, shared/lib/dashboard/roles, shared/lib/dashboard/accountant-shell
+ */
+
 import type { DashboardUserContext } from '@/shared/types/dashboard'
 import { getRoleDashboardRoute } from '@/features/admin/lib/role-dashboard-routes'
 import { resolvePrimaryRole } from '@/shared/lib/dashboard/roles'

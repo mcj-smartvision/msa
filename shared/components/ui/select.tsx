@@ -1,3 +1,11 @@
+/**
+ * @file shared/components/ui/select.tsx
+ * @purpose کامپوننت UI — زیرساخت مشترک سامانه (select)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on shared/lib/utils
+ */
+
 'use client'
 
 import * as React from 'react'

@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/predecessor-labels.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (predecessor-labels)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule, features/schedule/lib/dependency-explain, features/schedule/lib/predecessor-format
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { TaskRelationType } from '@/shared/types/schedule'
 import { explainDependencyLink } from '@/features/schedule/lib/dependency-explain'

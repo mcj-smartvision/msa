@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/components/schedule-workspace.tsx
+ * @purpose کامپوننت UI — بسته‌های اجرایی و تأیید کارگاه (schedule-workspace)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on features/workshop/lib/approvals, features/workshop/lib/types, features/workshop/lib/wbs-numbering, features/admin/components/shared, features/schedule/components/schedule-download-button, features/workshop/components/uom-display, features/workshop/lib/package-weight, features/schedule/lib/wbs-utils, features/workshop/components/msp-dependency-dialog, features/workshop/lib/header-rules, features/workshop/config
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -38,6 +46,7 @@ collectMspSuccessors,
 MspDependencyDialog,
 } from '@/features/workshop/components/msp-dependency-dialog'
 import { collectDateEnvelope } from '@/features/workshop/lib/header-rules'
+import { WORKSHOP_COPY, type WorkshopQuantityCertainty } from '@/features/workshop/config'
 import {
 applyParentWeightSum,
 isDescendantWbs,
@@ -85,7 +94,7 @@ type InlineDraft = {
   previewWbs: string
   name: string
   quantity: string
-  quantityCertainty: 'حدودی' | 'قطعی'
+  quantityCertainty: WorkshopQuantityCertainty
   unitPrice: string
   uom: string
   location: string
@@ -103,7 +112,7 @@ type InlineDraft = {
 type EditDraft = {
   name: string
   quantity: string
-  quantityCertainty: 'حدودی' | 'قطعی'
+  quantityCertainty: WorkshopQuantityCertainty
   unitPrice: string
   uom: string
   location: string
@@ -151,8 +160,7 @@ const SCHEDULE_STICKY_NAME_HEAD =
 const SCHEDULE_STICKY_WBS_CELL = `${SCHEDULE_CELL} sticky z-10`
 const SCHEDULE_STICKY_NAME_CELL =
   `${SCHEDULE_CELL} sticky z-10 border-l-2 border-slate-500`
-const TOTAL_PRICE_HELP =
-  'از ضرب مقدار در قیمت واحد همان ردیف به‌دست می‌آید. سرشاخه‌ای که زیرشاخه دارد کارکرد ندارد.'
+const TOTAL_PRICE_HELP = WORKSHOP_COPY.schedule.totalPriceHelp
 
 function isScheduleHeader(node: ScheduleTreeNode, expandableIds?: Set<string>): boolean {
   if (expandableIds?.has(node.id)) return true
@@ -208,38 +216,38 @@ type ExtraTaskField = {
 }
 
 const EXTRA_TASK_FIELDS: ExtraTaskField[] = [
-  { key: 'contractor', label: 'پیمانکار', type: 'contractor' },
-  { key: 'duration_days', label: 'مدت', property: 'duration_days' },
+  { key: 'contractor', label: WORKSHOP_COPY.schedule.extraContractor, type: 'contractor' },
+  { key: 'duration_days', label: WORKSHOP_COPY.schedule.extraDuration, property: 'duration_days' },
   /** Read-only — filled daily from site-supervisor reports (physical %). */
-  { key: 'percent_complete', label: '٪ پیشرفت فیزیکی', property: 'percent_complete' },
-  { key: 'free_float_days', label: 'شناوری آزاد', property: 'free_float_days' },
-  { key: 'is_critical', label: 'بحرانی', property: 'is_critical' },
-  { key: 'is_milestone', label: 'مایلستون', property: 'is_milestone' },
-  { key: 'remaining_duration_days', label: 'مدت باقی', property: 'remaining_duration_days' },
-  { key: 'external_id', label: 'شناسه خارجی', property: 'external_id' },
+  { key: 'percent_complete', label: WORKSHOP_COPY.schedule.extraPhysical, property: 'percent_complete' },
+  { key: 'free_float_days', label: WORKSHOP_COPY.schedule.extraFreeFloat, property: 'free_float_days' },
+  { key: 'is_critical', label: WORKSHOP_COPY.schedule.extraCritical, property: 'is_critical' },
+  { key: 'is_milestone', label: WORKSHOP_COPY.schedule.extraMilestone, property: 'is_milestone' },
+  { key: 'remaining_duration_days', label: WORKSHOP_COPY.schedule.extraRemaining, property: 'remaining_duration_days' },
+  { key: 'external_id', label: WORKSHOP_COPY.schedule.extraExternalId, property: 'external_id' },
   { key: 'msp_uid', label: 'UID', property: 'msp_uid' },
   { key: 'outline_number', label: 'Outline', property: 'outline_number' },
-  { key: 'outline_level', label: 'سطح', property: 'outline_level' },
+  { key: 'outline_level', label: WORKSHOP_COPY.schedule.extraLevel, property: 'outline_level' },
   { key: 'obs_code', label: 'OBS', property: 'obs_code', type: 'text' },
   { key: 'cbs_code', label: 'CBS', property: 'cbs_code', type: 'text' },
-  { key: 'constraint_type', label: 'نوع قید', property: 'constraint_type', type: 'text' },
-  { key: 'constraint_date', label: 'تاریخ قید', property: 'constraint_date', type: 'date' },
-  { key: 'deadline', label: 'مهلت', property: 'deadline', type: 'date' },
-  { key: 'baseline_start', label: 'شروع خط مبنا', property: 'baseline_start', type: 'date' },
-  { key: 'baseline_finish', label: 'پایان خط مبنا', property: 'baseline_finish', type: 'date' },
-  { key: 'baseline_duration_days', label: 'مدت خط مبنا', property: 'baseline_duration_days' },
-  { key: 'baseline_cost', label: 'هزینه خط مبنا', property: 'baseline_cost', type: 'number' },
-  { key: 'baseline_work_hours', label: 'کار خط مبنا', property: 'baseline_work_hours', type: 'number' },
-  { key: 'actual_start', label: 'شروع واقعی', property: 'actual_start', type: 'date' },
-  { key: 'actual_finish', label: 'پایان واقعی', property: 'actual_finish', type: 'date' },
-  { key: 'work_hours', label: 'ساعت کار', property: 'work_hours', type: 'number' },
-  { key: 'cost', label: 'هزینه', property: 'cost', type: 'number' },
-  { key: 'notes', label: 'یادداشت', property: 'notes', type: 'text' },
-  { key: 'flag', label: 'پرچم', property: 'flag', type: 'boolean' },
-  { key: 'priority', label: 'اولویت', property: 'priority', type: 'number' },
-  { key: 'is_manual_scheduled', label: 'دستی', property: 'is_manual_scheduled', type: 'boolean' },
-  { key: 'has_split', label: 'شکاف', property: 'has_split' },
-  { key: 'is_recurring_master', label: 'تکرارشونده', property: 'is_recurring_master' },
+  { key: 'constraint_type', label: WORKSHOP_COPY.schedule.extraConstraintType, property: 'constraint_type', type: 'text' },
+  { key: 'constraint_date', label: WORKSHOP_COPY.schedule.extraConstraintDate, property: 'constraint_date', type: 'date' },
+  { key: 'deadline', label: WORKSHOP_COPY.schedule.extraDeadline, property: 'deadline', type: 'date' },
+  { key: 'baseline_start', label: WORKSHOP_COPY.schedule.extraBaselineStart, property: 'baseline_start', type: 'date' },
+  { key: 'baseline_finish', label: WORKSHOP_COPY.schedule.extraBaselineFinish, property: 'baseline_finish', type: 'date' },
+  { key: 'baseline_duration_days', label: WORKSHOP_COPY.schedule.extraBaselineDuration, property: 'baseline_duration_days' },
+  { key: 'baseline_cost', label: WORKSHOP_COPY.schedule.extraBaselineCost, property: 'baseline_cost', type: 'number' },
+  { key: 'baseline_work_hours', label: WORKSHOP_COPY.schedule.extraBaselineWork, property: 'baseline_work_hours', type: 'number' },
+  { key: 'actual_start', label: WORKSHOP_COPY.schedule.extraActualStart, property: 'actual_start', type: 'date' },
+  { key: 'actual_finish', label: WORKSHOP_COPY.schedule.extraActualFinish, property: 'actual_finish', type: 'date' },
+  { key: 'work_hours', label: WORKSHOP_COPY.schedule.extraWorkHours, property: 'work_hours', type: 'number' },
+  { key: 'cost', label: WORKSHOP_COPY.schedule.extraCost, property: 'cost', type: 'number' },
+  { key: 'notes', label: WORKSHOP_COPY.schedule.extraNotes, property: 'notes', type: 'text' },
+  { key: 'flag', label: WORKSHOP_COPY.schedule.extraFlag, property: 'flag', type: 'boolean' },
+  { key: 'priority', label: WORKSHOP_COPY.schedule.extraPriority, property: 'priority', type: 'number' },
+  { key: 'is_manual_scheduled', label: WORKSHOP_COPY.schedule.extraManual, property: 'is_manual_scheduled', type: 'boolean' },
+  { key: 'has_split', label: WORKSHOP_COPY.schedule.extraSplit, property: 'has_split' },
+  { key: 'is_recurring_master', label: WORKSHOP_COPY.schedule.extraRecurring, property: 'is_recurring_master' },
 ]
 
 function extraTaskValue(field: ExtraTaskField, task: ProjectTask): unknown {
@@ -556,7 +564,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         isParent: true,
         help:
           unitPriceRollup.explanations.get(entityId)?.text ??
-          'جمع قیمت کل زیرشاخه‌ها (مقدار × قیمت واحد هر زیرشاخه)',
+          WORKSHOP_COPY.schedule.parentTotalHelp,
       }
     }
     const live = commercialInputs[entityId]
@@ -565,7 +573,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     return {
       value: quantityTimesUnitPrice(qty, price),
       isParent: false,
-      help: 'مقدار × قیمت واحد',
+      help: WORKSHOP_COPY.schedule.qtyTimesPrice,
     }
   }
 
@@ -740,7 +748,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
           })
         }
       }
-      if (!treeRes.ok) throw new Error(data.error || 'خطا در بارگذاری')
+      if (!treeRes.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.loadFailed)
       const loadedNodes = enrichScheduleTreeWithWbs(data.nodes ?? [])
       const applyContractorAssignments = (items: ScheduleTreeNode[]) => {
         for (const node of items) {
@@ -782,7 +790,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       setHelpProgressParentId(null)
       return loadedNodes
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'خطا')
+      setMessage(e instanceof Error ? e.message : WORKSHOP_COPY.genericError)
       return []
     } finally {
       setLoading(false)
@@ -871,7 +879,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         quantity?: number | null
         unitPrice?: number | null
         uom?: string | null
-        quantityCertainty?: 'حدودی' | 'قطعی'
+        quantityCertainty?: WorkshopQuantityCertainty
       }
     > = {}
 
@@ -1005,7 +1013,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
   ) {
     if (readOnly) return
     if (!canEditWorkshopPackageRow(pkg.approvalStatus, pkg.origin ?? 'user_added')) {
-      setMessage('این مورد قابل ویرایش نیست')
+      setMessage(WORKSHOP_COPY.schedule.notEditable)
       return
     }
     setSelected({ kind: 'package', id: pkg.id, name: pkg.name, pkg })
@@ -1033,7 +1041,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     if (row.kind === 'schedule') {
       const node = findScheduleNode(nodes, row.id)
       if (!node?.taskId) {
-        setMessage('یک فعالیت مشخص را انتخاب کنید')
+        setMessage(WORKSHOP_COPY.schedule.pickActivity)
         return
       }
       setExpanded((x) => ({ ...x, [node.id]: true }))
@@ -1053,7 +1061,9 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         quantity:
           firstChild && parentQty != null && Number(parentQty) > 0 ? String(parentQty) : '',
         quantityCertainty:
-          firstChild && node.task?.quantity_certainty === 'قطعی' ? 'قطعی' : 'حدودی',
+          firstChild && node.task?.quantity_certainty === WORKSHOP_COPY.schedule.qtyExact
+            ? WORKSHOP_COPY.schedule.qtyExact
+            : WORKSHOP_COPY.schedule.qtyApprox,
         unitPrice:
           firstChild && node.task?.unit_price != null
             ? String(Number(node.task.unit_price) || 0)
@@ -1090,7 +1100,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       previewWbs: nextFreeChildWbs(pkg.wbs, pkg.children.map((c) => c.wbs)),
       name: '',
       quantity: firstChild && Number(pkg.quantity) > 0 ? String(pkg.quantity) : '',
-      quantityCertainty: firstChild ? pkg.quantityCertainty : 'حدودی',
+      quantityCertainty: firstChild ? pkg.quantityCertainty : WORKSHOP_COPY.schedule.qtyApprox,
       unitPrice: firstChild ? String(Number(pkg.unitPrice) || 0) : '0',
       uom: firstChild ? pkg.uom || 'm2' : 'm2',
       location: '',
@@ -1136,7 +1146,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     if (inlineDraft?.previewWbs) {
       items.push({
         wbs: inlineDraft.previewWbs,
-        name: inlineDraft.name || 'زیرشاخه جدید',
+        name: inlineDraft.name || WORKSHOP_COPY.schedule.newSubbranch,
         label: inlineDraft.predecessorLabel,
       })
     }
@@ -1161,12 +1171,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         return
       }
       const pkg = findPackageInTree(nodes, predDialog.id)
-      if (!pkg) throw new Error('زیرشاخه پیدا نشد')
+      if (!pkg) throw new Error(WORKSHOP_COPY.schedule.packageNotFound)
       setEditField(pkg.id, pkg, { predecessorLabel: label })
       await savePackagePredFloat(pkg, { predecessorLabel: label })
       setPredDialog(null)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'ذخیره وابستگی ناموفق بود')
+      setMessage(error instanceof Error ? error.message : WORKSHOP_COPY.schedule.depSaveFailed)
     } finally {
       setPredDialogSaving(false)
     }
@@ -1264,12 +1274,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'ذخیره نشد')
-      setMessage('ذخیره شد — در ارسال برنامه نیز اعمال شد')
+      if (!res.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.notSaved)
+      setMessage(WORKSHOP_COPY.schedule.savedAlsoSchedule)
       publishScheduleViewSync(projectId)
       await load()
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'خطا')
+      setMessage(err instanceof Error ? err.message : WORKSHOP_COPY.genericError)
     } finally {
       setSaving(false)
     }
@@ -1293,7 +1303,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       body: JSON.stringify({ projectId, taskId, ...patch }),
     })
     const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'ذخیره فعالیت ناموفق بود')
+    if (!res.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.taskSaveFailed)
     if (data.weightWarning !== undefined) {
       setServerWeightWarning(typeof data.weightWarning === 'string' ? data.weightWarning : null)
     }
@@ -1311,7 +1321,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       const raw = patch.totalFloat.trim()
       fields.total_float_days = raw === '' ? null : Number(raw)
       if (raw !== '' && !Number.isFinite(Number(raw))) {
-        setMessage('شناوری نامعتبر است')
+        setMessage(WORKSHOP_COPY.schedule.floatInvalid)
         return
       }
     }
@@ -1323,11 +1333,11 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         body: JSON.stringify({ scheduleFields: fields }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'ذخیره ناموفق بود')
+      if (!res.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.saveFailed)
       publishScheduleViewSync(projectId)
       await load()
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'ذخیره پیش‌نیاز/شناوری ناموفق بود')
+      setMessage(error instanceof Error ? error.message : WORKSHOP_COPY.schedule.predFloatSaveFailed)
     } finally {
       setSavingExtraCell(null)
     }
@@ -1381,7 +1391,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
           }),
         })
         const data = await response.json()
-        if (!response.ok) throw new Error(data.error || 'ذخیره پیمانکار ناموفق بود')
+        if (!response.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.contractorSaveFailed)
         const assignment = (data.assignments ?? []).find(
           (item: { id: string }) => item.id === task.id
         )
@@ -1402,13 +1412,13 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
           }),
         })
         const data = await response.json()
-        if (!response.ok) throw new Error(data.error || 'ذخیره مقدار ناموفق بود')
+        if (!response.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.qtySaveFailed)
         replaceTaskInNodes(data.task as ProjectTask)
       }
       publishScheduleViewSync(projectId)
-      setMessage('تغییر ذخیره شد و در ارسال برنامه نیز اعمال شد')
+      setMessage(WORKSHOP_COPY.schedule.changeSavedAlsoSchedule)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'ذخیره مقدار ناموفق بود')
+      setMessage(error instanceof Error ? error.message : WORKSHOP_COPY.schedule.qtySaveFailed)
     } finally {
       setSavingExtraCell(null)
     }
@@ -1434,12 +1444,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         ),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'ذخیره زیرشاخه ناموفق بود')
+      if (!response.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.packageSaveFailed)
       await load()
       publishScheduleViewSync(projectId)
-      setMessage('اطلاعات زیرشاخه ذخیره شد — در ارسال برنامه نیز اعمال شد')
+      setMessage(WORKSHOP_COPY.schedule.packageSavedAlsoSchedule)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'ذخیره زیرشاخه ناموفق بود')
+      setMessage(error instanceof Error ? error.message : WORKSHOP_COPY.schedule.packageSaveFailed)
     } finally {
       setSavingExtraCell(null)
     }
@@ -1447,7 +1457,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
 
   async function saveTaskQuantityCertainty(
     task: ProjectTask,
-    value: 'حدودی' | 'قطعی'
+    value: WorkshopQuantityCertainty
   ) {
     const cellKey = `${task.id}:quantity_certainty`
     setSavingExtraCell(cellKey)
@@ -1464,11 +1474,11 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         }),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'ذخیره وضعیت مقدار ناموفق بود')
+      if (!response.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.qtyStatusSaveFailed)
       replaceTaskInNodes(data.task as ProjectTask)
       publishScheduleViewSync(projectId)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'ذخیره وضعیت مقدار ناموفق بود')
+      setMessage(error instanceof Error ? error.message : WORKSHOP_COPY.schedule.qtyStatusSaveFailed)
     } finally {
       setSavingExtraCell(null)
     }
@@ -1490,11 +1500,11 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         }),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'ذخیره واحد ناموفق بود')
+      if (!response.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.uomSaveFailed)
       replaceTaskInNodes(data.task as ProjectTask)
       publishScheduleViewSync(projectId)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'ذخیره واحد ناموفق بود')
+      setMessage(error instanceof Error ? error.message : WORKSHOP_COPY.schedule.uomSaveFailed)
     } finally {
       setSavingExtraCell(null)
     }
@@ -1511,11 +1521,11 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         body: JSON.stringify({ uom: value }),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'ذخیره واحد ناموفق بود')
+      if (!response.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.uomSaveFailed)
       await load()
       publishScheduleViewSync(projectId)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'ذخیره واحد ناموفق بود')
+      setMessage(error instanceof Error ? error.message : WORKSHOP_COPY.schedule.uomSaveFailed)
     } finally {
       setSavingExtraCell(null)
     }
@@ -1537,7 +1547,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         }),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'ذخیره قیمت واحد ناموفق بود')
+      if (!response.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.unitPriceSaveFailed)
       replaceTaskInNodes({
         ...(data.task as ProjectTask),
         unit_price: value,
@@ -1550,9 +1560,9 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         },
       }))
       publishScheduleViewSync(projectId)
-      setMessage('قیمت واحد در برنامه و ارسال برنامه ذخیره شد')
+      setMessage(WORKSHOP_COPY.schedule.unitPriceSavedAlso)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'ذخیره قیمت واحد ناموفق بود')
+      setMessage(error instanceof Error ? error.message : WORKSHOP_COPY.schedule.unitPriceSaveFailed)
     } finally {
       setSavingExtraCell(null)
     }
@@ -1574,7 +1584,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         }),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'ذخیره مقدار ناموفق بود')
+      if (!response.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.qtySaveFailed)
       replaceTaskInNodes({
         ...(data.task as ProjectTask),
         quantity: value,
@@ -1587,12 +1597,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         },
       }))
       publishScheduleViewSync(projectId)
-      setMessage('مقدار ذخیره شد')
+      setMessage(WORKSHOP_COPY.schedule.qtySaved)
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'ذخیره مقدار ناموفق بود'
+      const msg = error instanceof Error ? error.message : WORKSHOP_COPY.schedule.qtySaveFailed
       setMessage(
         /column.*quantity|quantity.*column|schema cache/i.test(msg)
-          ? 'ستون quantity در Supabase نیست — فایل database/91-schedule-qty-unit-price.sql را اجرا کنید'
+          ? WORKSHOP_COPY.schedule.qtyColumnMissing
           : msg
       )
     } finally {
@@ -1611,12 +1621,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         body: JSON.stringify({ quantity: value }),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'ذخیره مقدار ناموفق بود')
+      if (!response.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.qtySaveFailed)
       await load()
       publishScheduleViewSync(projectId)
-      setMessage('مقدار ذخیره شد — در ارسال برنامه نیز اعمال شد')
+      setMessage(WORKSHOP_COPY.schedule.qtySavedAlsoSchedule)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'ذخیره مقدار ناموفق بود')
+      setMessage(error instanceof Error ? error.message : WORKSHOP_COPY.schedule.qtySaveFailed)
     } finally {
       setSavingExtraCell(null)
     }
@@ -1624,7 +1634,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
 
   async function savePackageQuantityCertainty(
     pkg: WorkshopPackageNode,
-    value: 'حدودی' | 'قطعی'
+    value: WorkshopQuantityCertainty
   ) {
     const cellKey = `pkg:${pkg.id}:quantity_certainty`
     setSavingExtraCell(cellKey)
@@ -1636,12 +1646,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         body: JSON.stringify({ quantityCertainty: value }),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'ذخیره وضعیت مقدار ناموفق بود')
+      if (!response.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.qtyStatusSaveFailed)
       await load()
       publishScheduleViewSync(projectId)
-      setMessage('وضعیت مقدار ذخیره شد')
+      setMessage(WORKSHOP_COPY.schedule.qtyStatusSaved)
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'ذخیره وضعیت مقدار ناموفق بود')
+      setMessage(error instanceof Error ? error.message : WORKSHOP_COPY.schedule.qtyStatusSaveFailed)
     } finally {
       setSavingExtraCell(null)
     }
@@ -1686,9 +1696,9 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       try {
         await load()
         publishScheduleViewSync(projectId)
-        setMessage('برنامه بروزرسانی شد')
+        setMessage(WORKSHOP_COPY.schedule.scheduleUpdated)
       } catch (err) {
-        setMessage(err instanceof Error ? err.message : 'بروزرسانی ناموفق بود')
+        setMessage(err instanceof Error ? err.message : WORKSHOP_COPY.schedule.updateFailed)
       } finally {
         setSaving(false)
       }
@@ -1702,7 +1712,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         const name = inlineDraft.name.trim()
         const quantity = Number(inlineDraft.quantity)
         if (!name || !(quantity > 0)) {
-          throw new Error('نام و مقدار زیرمجموعه را کامل کنید')
+          throw new Error(WORKSHOP_COPY.schedule.completeNameQty)
         }
         const res = await fetch('/api/workshop/packages', {
           method: 'POST',
@@ -1738,7 +1748,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
           }),
         })
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'ایجاد زیرمجموعه ناموفق بود')
+        if (!res.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.createChildFailed)
         setInlineDraft(null)
       }
 
@@ -1766,7 +1776,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
           }),
         })
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'ذخیره پکیج ناموفق بود')
+        if (!res.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.packagePersistFailed)
       }
 
       // Each date save re-chains its successors, so earlier tasks go first and every edited
@@ -1800,10 +1810,10 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         /* dates already saved; float refresh is best-effort */
       }
       publishScheduleViewSync(projectId)
-      setMessage('به‌روزرسانی شد — تغییرات در گانت و ارسال برنامه هم اعمال شد')
+      setMessage(WORKSHOP_COPY.schedule.updatedGanttToo)
       await load()
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'خطا در ثبت نهایی')
+      setMessage(err instanceof Error ? err.message : WORKSHOP_COPY.schedule.finalSaveFailed)
     } finally {
       setSaving(false)
     }
@@ -1831,11 +1841,11 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
     const name = inlineDraft.name.trim()
     const quantity = Number(inlineDraft.quantity)
     if (!name) {
-      setMessage('نام زیرمجموعه را وارد کنید')
+      setMessage(WORKSHOP_COPY.schedule.enterChildName)
       return
     }
     if (!Number.isFinite(quantity) || quantity <= 0) {
-      setMessage('مقدار باید بزرگ‌تر از صفر باشد')
+      setMessage(WORKSHOP_COPY.schedule.qtyMustBePositive)
       return
     }
 
@@ -1880,11 +1890,11 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'ذخیره نشد')
+      if (!res.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.notSaved)
 
       const createdId = data.package?.id ? String(data.package.id) : null
       setInlineDraft(null)
-      setMessage(`زیرمجموعه ${inlineDraft.previewWbs} ذخیره شد — در ارسال برنامه نیز اعمال شد`)
+      setMessage(WORKSHOP_COPY.schedule.childSavedAlso(inlineDraft.previewWbs))
       publishScheduleViewSync(projectId)
       const loadedNodes = await load(expandAfter)
       if (createdId) {
@@ -1900,7 +1910,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         }
       }
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'خطا')
+      setMessage(err instanceof Error ? err.message : WORKSHOP_COPY.genericError)
     } finally {
       setSaving(false)
     }
@@ -1913,7 +1923,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
   const expandableIds = useMemo(() => scheduleExpandableIds(nodes), [nodes])
 
   if (!projectId) {
-    return <p className="text-sm text-slate-600">پروژه را از بالا انتخاب کنید.</p>
+    return <p className="text-sm text-slate-600">{WORKSHOP_COPY.schedule.pickProjectTop}</p>
   }
 
   return (
@@ -1921,11 +1931,11 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
       {showBanner ? (
         <PageHeader
           showBanner={showBanner}
-          title="برنامه"
+          title={WORKSHOP_COPY.schedule.title}
           description={
             readOnly
-              ? 'نمای فقط‌خواندنی سرپرست کارگاه — برای ویرایش به دفتر فنی مراجعه کنید.'
-              : 'در همین جدول ویرایش کنید. برای ثبت تغییرات «به‌روزرسانی» را بزنید.'
+              ? WORKSHOP_COPY.schedule.readOnlyDesc
+              : WORKSHOP_COPY.schedule.editDesc
           }
           actions={
             projectId ? (
@@ -1948,18 +1958,17 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
         <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-950 space-y-1">
           {forceSupervisorView && canWriteServer ? (
             <>
-              <p>در حال مشاهده نمای سرپرست — افزودن زیرشاخه در این حالت غیرفعال است.</p>
+              <p>{WORKSHOP_COPY.schedule.supervisorViewHint}</p>
               <Link
                 href={`/site-ops/schedule?projectId=${encodeURIComponent(projectId)}`}
                 className="font-medium text-sky-800 underline underline-offset-2"
               >
-                برو به حالت ویرایش (دفتر فنی)
+                {WORKSHOP_COPY.schedule.goEditTo}
               </Link>
             </>
           ) : (
             <p>
-              شما به‌عنوان سرپرست کارگاه فقط مشاهده می‌کنید. تغییر و ارسال فقط برای دفتر فنی /
-              مدیر است.
+              {WORKSHOP_COPY.schedule.supervisorReadOnly}
             </p>
           )}
         </div>
@@ -1971,21 +1980,21 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
 
       {dependencyLinkCount > 0 ? (
         <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-xs text-sky-950">
-          وابستگی MSP: <strong>{dependencyLinkCount}</strong> پیوند روی{' '}
-          <strong>{tasksWithPredecessors}</strong> فعالیت — ستون «پیش‌نیاز» را ببینید (مثال:{' '}
+          {WORKSHOP_COPY.schedule.mspDepsLead} <strong>{dependencyLinkCount}</strong>{' '}
+          {WORKSHOP_COPY.schedule.mspDepsMid}{' '}
+          <strong>{tasksWithPredecessors}</strong> {WORKSHOP_COPY.schedule.mspDepsTail}{' '}
           <span className="font-mono" dir="ltr">
             1.2FS
           </span>{' '}
-          یعنی بعد از پایان 1.2 شروع می‌شود؛{' '}
+          {WORKSHOP_COPY.schedule.mspDepsAfterFs}{' '}
           <span className="font-mono" dir="ltr">
             SS+2d
           </span>{' '}
-          یعنی هم‌زمان با شروع پیش‌نیاز + 2 روز).
+          {WORKSHOP_COPY.schedule.mspDepsAfterSs}
         </div>
       ) : projectId && !loading ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950">
-          برای این پروژه پیوند وابستگی‌ای در دیتابیس نیست — یا MSP بدون PredecessorLink ایمپورت
-          شده، یا هنوز ایمپورت نشده. بدون پیوند، فقط جابه‌جایی تقریبی فعالیت‌های بعدی اعمال می‌شود.
+          {WORKSHOP_COPY.schedule.noDeps}
         </div>
       ) : null}
 
@@ -1997,13 +2006,14 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
             >
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>
-                خطای وزن‌دهی: جمع وزن سرتیترها و فعالیت‌های بدون‌فرزند سطح پروژه{' '}
-                <strong className="tabular-nums">{projectWeightCheck.sum}</strong> است؛ باید{' '}
-                <strong>100</strong> باشد
+                {WORKSHOP_COPY.schedule.weightErrorLead}{' '}
+                <strong className="tabular-nums">{projectWeightCheck.sum}</strong>{' '}
+                {WORKSHOP_COPY.schedule.weightErrorMust}{' '}
+                <strong>100</strong> {WORKSHOP_COPY.schedule.weightErrorBe}
                 {projectWeightCheck.gap !== 0 ? (
                   <>
                     {' '}
-                    (اختلاف{' '}
+                    ({WORKSHOP_COPY.schedule.weightGapLead}{' '}
                     <strong className="tabular-nums">
                       {projectWeightCheck.gap > 0 ? '+' : ''}
                       {projectWeightCheck.gap}
@@ -2030,7 +2040,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
               className="overflow-x-auto overflow-y-hidden [scrollbar-width:thin]"
               style={{ height: 14 }}
               onScroll={() => syncHorizontalScroll('top')}
-              aria-label="اسکرول افقی جدول"
+              aria-label={WORKSHOP_COPY.schedule.hScrollAria}
             >
               <div
                 style={{ width: Math.max(tableScrollWidth, 1), height: 1 }}
@@ -2080,44 +2090,44 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                       boxShadow: STICKY_NAME_EDGE_SHADOW,
                     }}
                   >
-                    نام
+                    {WORKSHOP_COPY.schedule.colName}
                   </th>
                   <th
                     className={SCHEDULE_HEAD}
                     style={{ width: SCHEDULE_COL_WIDTHS[2] }}
-                    title="پیش‌نیاز قابل ویرایش — مثلاً 3FS+4d یا 4.1FS, 5SS"
+                    title={WORKSHOP_COPY.schedule.predTitle}
                   >
-                    پیش‌نیاز
+                    {WORKSHOP_COPY.schedule.colPred}
                   </th>
                   <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[3] }}>
                     <div className="leading-tight">
-                      <span className="block">تاریخ</span>
+                      <span className="block">{WORKSHOP_COPY.schedule.colDate}</span>
                       <span className="mt-0.5 flex font-normal text-[9px] text-slate-500">
-                        <span className="flex-1">شروع</span>
-                        <span className="flex-1">پایان</span>
+                        <span className="flex-1">{WORKSHOP_COPY.schedule.colStart}</span>
+                        <span className="flex-1">{WORKSHOP_COPY.schedule.colFinish}</span>
                       </span>
                     </div>
                   </th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[4] }}>شناوری</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[5] }}>محل</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[6] }}>مقدار</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[7] }}>واحد</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[4] }}>{WORKSHOP_COPY.schedule.colFloat}</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[5] }}>{WORKSHOP_COPY.schedule.colLocation}</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[6] }}>{WORKSHOP_COPY.schedule.colQty}</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[7] }}>{WORKSHOP_COPY.schedule.colUom}</th>
                   <th
                     className={`${SCHEDULE_HEAD} relative`}
                     style={{ width: SCHEDULE_COL_WIDTHS[8] }}
                     title={TOTAL_PRICE_HELP}
                   >
-                    کارکرد
+                    {WORKSHOP_COPY.schedule.colWork}
                   </th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[9] }}>قیمت واحد</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[10] }}>وزن</th>
-                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[11] }}>وضعیت</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[9] }}>{WORKSHOP_COPY.schedule.colUnitPrice}</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[10] }}>{WORKSHOP_COPY.schedule.colWeight}</th>
+                  <th className={SCHEDULE_HEAD} style={{ width: SCHEDULE_COL_WIDTHS[11] }}>{WORKSHOP_COPY.schedule.colStatus}</th>
                   {visibleExtraTaskFields.map((field) => (
                     <th key={field.key} className={`${SCHEDULE_HEAD} min-w-[112px]`}>
                       {field.label}
                       {!field.type ? (
                         <span className="block text-[8px] font-normal text-slate-400">
-                          فقط‌خواندنی
+                          {WORKSHOP_COPY.schedule.readOnlyHint}
                         </span>
                       ) : null}
                     </th>
@@ -2128,14 +2138,14 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                 {loading && visibleRows.length === 0 && (
                   <tr>
                     <td colSpan={scheduleColCount} className="px-3 py-8 text-center text-slate-500">
-                      در حال بارگذاری…
+                      {WORKSHOP_COPY.loading}
                     </td>
                   </tr>
                 )}
                 {!loading && visibleRows.length === 0 && !inlineDraft && (
                   <tr>
                     <td colSpan={scheduleColCount} className="px-3 py-8 text-center text-slate-500">
-                      برنامه‌ای برای این پروژه import نشده.
+                      {WORKSHOP_COPY.schedule.emptyImport}
                     </td>
                   </tr>
                 )}
@@ -2240,7 +2250,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               {!readOnly && n.taskId && (
                                 <button
                                   type="button"
-                                  title="افزودن زیرشاخه"
+                                  title={WORKSHOP_COPY.schedule.addSubbranch}
                                   className="relative z-20 ms-1 rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900 shrink-0"
                                   onClick={(e) => {
                                     e.preventDefault()
@@ -2263,7 +2273,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             title={
                               n.predecessorTooltip?.trim() ||
                               n.predecessorLabel ||
-                              'مثال: 3FS+4d یا 4.1FS, 5SS'
+                              WORKSHOP_COPY.schedule.predExample
                             }
                           >
                             {n.taskId ? (
@@ -2271,7 +2281,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 type="button"
                                 dir="ltr"
                                 className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] text-center font-mono hover:border-sky-400 hover:bg-sky-50"
-                                title="باز کردن پنجره وابستگی مثل MSP"
+                                title={WORKSHOP_COPY.schedule.openMsp}
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   const label =
@@ -2383,7 +2393,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                       ? String(n.task.quantity)
                                       : '')
                                   }
-                                  placeholder="مقدار"
+                                  placeholder={WORKSHOP_COPY.schedule.qtyPlaceholder}
                                   disabled={savingExtraCell === `${n.task.id}:quantity`}
                                   onChange={(event) => {
                                     setCommercialField(n.task!.id, 'quantity', event.target.value, {
@@ -2412,17 +2422,21 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 />
                                 <select
                                   className="w-[52px] shrink-0 rounded border border-slate-200 bg-white px-0.5 py-0.5 text-[10px] text-center"
-                                  value={n.task.quantity_certainty ?? 'حدودی'}
+                                  value={n.task.quantity_certainty ?? WORKSHOP_COPY.schedule.qtyApprox}
                                   disabled={savingExtraCell === `${n.task.id}:quantity_certainty`}
                                   onChange={(event) =>
                                     void saveTaskQuantityCertainty(
                                       n.task!,
-                                      event.target.value as 'حدودی' | 'قطعی'
+                                      event.target.value as WorkshopQuantityCertainty
                                     )
                                   }
                                 >
-                                  <option value="حدودی">حدودی</option>
-                                  <option value="قطعی">قطعی</option>
+                                  <option value={WORKSHOP_COPY.schedule.qtyApprox}>
+                                    {WORKSHOP_COPY.schedule.qtyApprox}
+                                  </option>
+                                  <option value={WORKSHOP_COPY.schedule.qtyExact}>
+                                    {WORKSHOP_COPY.schedule.qtyExact}
+                                  </option>
                                 </select>
                               </div>
                             ) : (
@@ -2544,10 +2558,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                   title={
                                     !projectWeightCheck.ok &&
                                     projectWeightCheck.contributorIds.has(n.taskId)
-                                      ? `این وزن در جمع سطح پروژه (${projectWeightCheck.sum}) شرکت دارد — باید مجموع 100 شود`
+                                      ? WORKSHOP_COPY.schedule.weightInProjectSum(
+                                          String(projectWeightCheck.sum)
+                                        )
                                       : weightRollup.parentIds.has(n.taskId)
-                                        ? 'وزن سرشاخه = جمع فرزندان (زنده؛ قابل ویرایش دستی)'
-                                        : 'وزن فعالیت'
+                                        ? WORKSHOP_COPY.schedule.parentWeightLive
+                                        : WORKSHOP_COPY.schedule.activityWeight
                                   }
                                   onClick={(e) => e.stopPropagation()}
                                   onChange={(ev) => {
@@ -2562,8 +2578,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                   <button
                                     type="button"
                                     className="absolute inset-y-0 end-0 flex items-center px-0.5 text-sky-700 hover:text-sky-900"
-                                    title="وزن سرشاخه از کجا آمده؟"
-                                    aria-label="وزن سرشاخه از کجا آمده؟"
+                                    title={WORKSHOP_COPY.schedule.parentWeightOrigin}
+                                    aria-label={WORKSHOP_COPY.schedule.parentWeightOrigin}
                                     onClick={(e) => {
                                       e.stopPropagation()
                                       setHelpWeightParentId((id) =>
@@ -2586,7 +2602,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                   <button
                                     type="button"
                                     className="absolute inset-y-0 end-0 flex items-center px-0.5 text-sky-700 hover:text-sky-900"
-                                    title="وزن سرشاخه از کجا آمده؟"
+                                    title={WORKSHOP_COPY.schedule.parentWeightOrigin}
                                     onClick={(e) => {
                                       e.stopPropagation()
                                       setHelpWeightParentId((id) =>
@@ -2619,7 +2635,9 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               </div>
                             ) : null}
                           </td>
-                          <td className={`${SCHEDULE_CELL} text-slate-500 text-[11px]`}>پایه</td>
+                          <td className={`${SCHEDULE_CELL} text-slate-500 text-[11px]`}>
+                            {WORKSHOP_COPY.schedule.baseline}
+                          </td>
                           {visibleExtraTaskFields.map((field) => {
                             const task = n.task
                             const isProgressParent =
@@ -2672,8 +2690,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                       )}
                                       title={
                                         isProgressParent
-                                          ? '٪ پیشرفت سرشاخه = میانگین وزنی فرزندان'
-                                          : 'از گزارش روزانه سرپرست کارگاه'
+                                          ? WORKSHOP_COPY.schedule.parentProgressFormula
+                                          : WORKSHOP_COPY.schedule.fromSupervisor
                                       }
                                     >
                                       {value == null ? '—' : `${value}`}
@@ -2682,8 +2700,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                       <button
                                         type="button"
                                         className="absolute inset-y-0 end-0 flex items-center px-0.5 text-sky-700 hover:text-sky-900"
-                                        title="فرمول پیشرفت سرشاخه"
-                                        aria-label="فرمول پیشرفت سرشاخه"
+                                        title={WORKSHOP_COPY.schedule.parentProgressTitle}
+                                        aria-label={WORKSHOP_COPY.schedule.parentProgressTitle}
                                         onClick={(e) => {
                                           e.stopPropagation()
                                           setHelpProgressParentId((id) =>
@@ -2706,7 +2724,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                         <button
                                           type="button"
                                           className="shrink-0 text-[11px] leading-none text-sky-700 hover:text-sky-900"
-                                          aria-label="بستن"
+                                          aria-label={WORKSHOP_COPY.close}
                                           onClick={() => setHelpProgressParentId(null)}
                                         >
                                           ×
@@ -2728,8 +2746,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                   >
                                     {typeof value === 'boolean'
                                       ? value
-                                        ? 'بله'
-                                        : '—'
+                                        ? WORKSHOP_COPY.yes
+                                        : WORKSHOP_COPY.dash
                                       : field.type === 'date'
                                         ? formatScheduleDate(
                                             value == null ? null : String(value),
@@ -2750,8 +2768,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                       )
                                     }
                                   >
-                                    <option value="false">خیر</option>
-                                    <option value="true">بله</option>
+                                    <option value="false">{WORKSHOP_COPY.no}</option>
+                                    <option value="true">{WORKSHOP_COPY.yes}</option>
                                   </select>
                                 ) : field.type === 'contractor' ? (
                                   isScheduleHeader(n, expandableIds) ? (
@@ -2768,7 +2786,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                     <option value="">
                                       {inheritedContractor
                                         ? inheritedContractor
-                                        : 'بدون پیمانکار'}
+                                        : WORKSHOP_COPY.schedule.noContractor}
                                     </option>
                                     {contractors.map((contractor) => (
                                       <option key={contractor.id} value={contractor.id}>
@@ -2837,7 +2855,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                   kind: 'draft',
                                   id: 'inline',
                                   wbs: inlineDraft.previewWbs,
-                                  name: inlineDraft.name || 'زیرشاخه جدید',
+                                  name: inlineDraft.name || WORKSHOP_COPY.schedule.newSubbranch,
                                   label: inlineDraft.predecessorLabel,
                                 })
                               }
@@ -2915,7 +2933,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             {!readOnly && (
                               <button
                                 type="button"
-                                title="افزودن زیرشاخه"
+                                title={WORKSHOP_COPY.schedule.addSubbranch}
                                 className="relative z-20 rounded p-1 text-emerald-700 hover:bg-emerald-100 shrink-0"
                                 onClick={(ev) => {
                                   ev.preventDefault()
@@ -2934,7 +2952,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             {canEditPermission && !isRowEditing && (
                               <button
                                 type="button"
-                                title="ویرایش"
+                                title={WORKSHOP_COPY.edit}
                                 className="rounded p-1 text-sky-700 hover:bg-sky-100"
                                 onClick={(ev) => {
                                   ev.stopPropagation()
@@ -2947,7 +2965,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             {isRowEditing && (
                               <button
                                 type="button"
-                                title="ذخیره مجدد فعالیت"
+                                title={WORKSHOP_COPY.schedule.reSaveActivity}
                                 className="rounded p-1 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
                                 disabled={saving || !isDirty(p, dateFallback)}
                                 onClick={(ev) => {
@@ -2981,7 +2999,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                             type="button"
                             dir="ltr"
                             className="w-full rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] text-center font-mono hover:border-sky-400 hover:bg-sky-50"
-                            title="باز کردن پنجره وابستگی مثل MSP"
+                            title={WORKSHOP_COPY.schedule.openMsp}
                             onClick={(ev) => {
                               ev.stopPropagation()
                               setPredDialog({
@@ -3043,14 +3061,14 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                       }),
                                     })
                                     const data = await res.json()
-                                    if (!res.ok) throw new Error(data.error || 'ذخیره تاریخ ناموفق بود')
+                                    if (!res.ok) throw new Error(data.error || WORKSHOP_COPY.schedule.dateSaveFailed)
                                     const keepId = p.id
                                     await load()
                                     setEditingPackageId(keepId)
-                                    setMessage('تاریخ ذخیره شد')
+                                    setMessage(WORKSHOP_COPY.schedule.dateSaved)
                                   } catch (err) {
                                     setMessage(
-                                      err instanceof Error ? err.message : 'خطا در ذخیره تاریخ'
+                                      err instanceof Error ? err.message : WORKSHOP_COPY.schedule.dateSaveError
                                     )
                                   } finally {
                                     setSaving(false)
@@ -3079,7 +3097,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 saving ||
                                 savingExtraCell === `pkg:${p.id}:pred-float`
                               }
-                              title="شناوری (روز)"
+                              title={WORKSHOP_COPY.schedule.floatDays}
                               onClick={(ev) => ev.stopPropagation()}
                               onChange={(ev) => {
                                 setEditField(p.id, p, { totalFloat: ev.target.value })
@@ -3106,7 +3124,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               onChange={(ev) =>
                                 setEditField(p.id, p, { location: ev.target.value })
                               }
-                              placeholder="محل"
+                              placeholder={WORKSHOP_COPY.schedule.locationPlaceholder}
                             />
                           ) : (
                             p.location ?? '—'
@@ -3129,7 +3147,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 value={
                                   commercialInputs[p.id]?.quantity ?? String(p.quantity)
                                 }
-                                placeholder="مقدار"
+                                placeholder={WORKSHOP_COPY.schedule.qtyPlaceholder}
                                 disabled={
                                   readOnly || savingExtraCell === `pkg:${p.id}:quantity`
                                 }
@@ -3149,7 +3167,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                     setCommercialField(p.id, 'quantity', String(p.quantity), {
                                       unitPrice: String(Number(p.unitPrice) || 0),
                                     })
-                                    setMessage('مقدار باید بزرگ‌تر از صفر باشد')
+                                    setMessage(WORKSHOP_COPY.schedule.qtyMustBePositive)
                                     return
                                   }
                                   if (value !== Number(p.quantity)) {
@@ -3172,7 +3190,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 savingExtraCell === `pkg:${p.id}:quantity_certainty`
                               }
                               onChange={(event) => {
-                                const value = event.target.value as 'حدودی' | 'قطعی'
+                                const value = event.target.value as WorkshopQuantityCertainty
                                 if (isRowEditing) {
                                   setEditField(p.id, p, { quantityCertainty: value })
                                 } else {
@@ -3180,8 +3198,12 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 }
                               }}
                             >
-                              <option value="حدودی">حدودی</option>
-                              <option value="قطعی">قطعی</option>
+                              <option value={WORKSHOP_COPY.schedule.qtyApprox}>
+                                {WORKSHOP_COPY.schedule.qtyApprox}
+                              </option>
+                              <option value={WORKSHOP_COPY.schedule.qtyExact}>
+                                {WORKSHOP_COPY.schedule.qtyExact}
+                              </option>
                             </select>
                           </div>
                           )}
@@ -3282,19 +3304,19 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                         const data = await res.json()
                                         if (!res.ok) {
                                           throw new Error(
-                                            data.error || 'ذخیره قیمت واحد ناموفق بود'
+                                            data.error || WORKSHOP_COPY.schedule.unitPriceSaveFailed
                                           )
                                         }
                                         await load()
                                         publishScheduleViewSync(projectId)
                                         setMessage(
-                                          'قیمت واحد ذخیره شد — جمع سرشاخه بروزرسانی شد'
+                                          WORKSHOP_COPY.schedule.unitPriceSavedParent
                                         )
                                       } catch (err) {
                                         setMessage(
                                           err instanceof Error
                                             ? err.message
-                                            : 'ذخیره قیمت واحد ناموفق بود'
+                                            : WORKSHOP_COPY.schedule.unitPriceSaveFailed
                                         )
                                       } finally {
                                         setSavingExtraCell(null)
@@ -3319,7 +3341,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                               onChange={(ev) =>
                                 setEditField(p.id, p, { weightPercent: ev.target.value })
                               }
-                              placeholder="وزن"
+                              placeholder={WORKSHOP_COPY.schedule.weightPlaceholder}
                             />
                           ) : (
                             <span className="tabular-nums text-xs">
@@ -3374,7 +3396,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                   className="text-[10px] text-slate-600 tabular-nums"
                                   title={
                                     field.key === 'percent_complete'
-                                      ? 'از گزارش روزانه سرپرست کارگاه'
+                                      ? WORKSHOP_COPY.schedule.fromSupervisor
                                       : undefined
                                   }
                                 >
@@ -3382,7 +3404,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                     ? value == null
                                       ? '—'
                                       : String(value)
-                                    : 'خودکار'}
+                                    : WORKSHOP_COPY.schedule.automatic}
                                 </span>
                               ) : field.type === 'contractor' ? (
                                 p.children.length > 0 ? (
@@ -3397,7 +3419,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                   }
                                 >
                                   <option value="">
-                                    {inheritedName ?? 'بدون پیمانکار'}
+                                    {inheritedName ?? WORKSHOP_COPY.schedule.noContractor}
                                   </option>
                                   {contractors.map((contractor) => (
                                     <option key={contractor.id} value={contractor.id}>
@@ -3419,8 +3441,8 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                     )
                                   }
                                 >
-                                  <option value="false">خیر</option>
-                                  <option value="true">بله</option>
+                                  <option value="false">{WORKSHOP_COPY.no}</option>
+                                  <option value="true">{WORKSHOP_COPY.yes}</option>
                                 </select>
                               ) : field.type === 'date' ? (
                                 <CompactScheduleDateField
@@ -3474,7 +3496,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 kind: 'draft',
                                 id: 'inline',
                                 wbs: inlineDraft.previewWbs,
-                                name: inlineDraft.name || 'زیرشاخه جدید',
+                                name: inlineDraft.name || WORKSHOP_COPY.schedule.newSubbranch,
                                 label: inlineDraft.predecessorLabel,
                               })
                             }
@@ -3491,7 +3513,7 @@ export function ScheduleWorkspace({ showBanner = true }: { showBanner?: boolean 
             className="sticky bottom-0 z-40 overflow-x-auto overflow-y-hidden border-t border-slate-300 bg-slate-200/95 shadow-[0_-4px_12px_-4px_rgba(15,23,42,0.18)] [scrollbar-width:thin]"
             style={{ height: 16 }}
             onScroll={() => syncHorizontalScroll('bottom')}
-            aria-label="اسکرول افقی پایین جدول"
+            aria-label={WORKSHOP_COPY.schedule.bottomHScrollAria}
           >
             <div
               style={{ width: Math.max(tableScrollWidth, 1), height: 1 }}
@@ -3574,7 +3596,7 @@ function InlineCreateRow({
           <input
             autoFocus
             className="min-w-0 w-full rounded border border-sky-200 bg-white px-1 py-0.5 text-xs"
-            placeholder="نام *"
+            placeholder={WORKSHOP_COPY.schedule.nameRequired}
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           />
@@ -3585,7 +3607,7 @@ function InlineCreateRow({
           type="button"
           dir="ltr"
           className="h-7 w-full rounded border border-sky-200 bg-white px-1 text-center text-[10px] font-mono hover:border-sky-400"
-          title="باز کردن پنجره وابستگی مثل MSP"
+          title={WORKSHOP_COPY.schedule.openMsp}
           onClick={(e) => {
             e.stopPropagation()
             onPredClick?.()
@@ -3620,13 +3642,13 @@ function InlineCreateRow({
           className="h-7 w-full rounded border border-sky-200 bg-white px-1 text-center text-[10px]"
           value={draft.totalFloat}
           onChange={(event) => setDraft({ ...draft, totalFloat: event.target.value })}
-          placeholder="شناوری"
+          placeholder={WORKSHOP_COPY.schedule.floatPlaceholder}
         />
       </td>
       <td className={SCHEDULE_CELL}>
         <input
           className="w-full rounded border border-sky-200 bg-white px-1 py-0.5 text-xs"
-          placeholder="محل"
+          placeholder={WORKSHOP_COPY.location}
           value={draft.location}
           onChange={(e) => setDraft({ ...draft, location: e.target.value })}
         />
@@ -3636,7 +3658,7 @@ function InlineCreateRow({
           <input
             type="number"
             className="min-w-0 flex-1 rounded border border-sky-200 bg-white px-1 py-0.5 text-xs text-center"
-            placeholder="مقدار *"
+            placeholder={WORKSHOP_COPY.schedule.qtyRequired}
             value={draft.quantity}
             onChange={(e) => setDraft({ ...draft, quantity: e.target.value })}
           />
@@ -3646,12 +3668,16 @@ function InlineCreateRow({
             onChange={(event) =>
               setDraft({
                 ...draft,
-                quantityCertainty: event.target.value as 'حدودی' | 'قطعی',
+                quantityCertainty: event.target.value as WorkshopQuantityCertainty,
               })
             }
           >
-            <option value="حدودی">حدودی</option>
-            <option value="قطعی">قطعی</option>
+            <option value={WORKSHOP_COPY.schedule.qtyApprox}>
+              {WORKSHOP_COPY.schedule.qtyApprox}
+            </option>
+            <option value={WORKSHOP_COPY.schedule.qtyExact}>
+              {WORKSHOP_COPY.schedule.qtyExact}
+            </option>
           </select>
         </div>
       </td>
@@ -3678,7 +3704,7 @@ function InlineCreateRow({
           min={0}
           step="1"
           className="w-full rounded border border-sky-200 bg-white px-1 py-0.5 text-center text-xs"
-          placeholder="قیمت واحد"
+          placeholder={WORKSHOP_COPY.schedule.unitPricePlaceholder}
           value={draft.unitPrice}
           onChange={(event) => setDraft({ ...draft, unitPrice: event.target.value })}
         />
@@ -3689,7 +3715,7 @@ function InlineCreateRow({
           min={0}
           step={0.01}
           className="w-full rounded border border-sky-200 bg-white px-1 py-0.5 text-xs tabular-nums"
-          placeholder="وزن"
+          placeholder={WORKSHOP_COPY.schedule.weightPlaceholder}
           value={draft.weightPercent}
           onChange={(e) => setDraft({ ...draft, weightPercent: e.target.value })}
         />
@@ -3702,17 +3728,17 @@ function InlineCreateRow({
             onClick={onSave}
             className="rounded bg-slate-900 px-2 py-1 text-xs text-white disabled:opacity-40"
           >
-            ذخیره
+            {WORKSHOP_COPY.save}
           </button>
           <button
             type="button"
             onClick={onCancel}
             className="rounded border px-2 py-1 text-xs"
           >
-            انصراف
+            {WORKSHOP_COPY.cancel}
           </button>
           {!canSave ? (
-            <span className="text-[10px] text-rose-700">نام و مقدار الزامی</span>
+            <span className="text-[10px] text-rose-700">{WORKSHOP_COPY.schedule.nameQtyRequired}</span>
           ) : null}
         </div>
       </td>
@@ -3721,12 +3747,12 @@ function InlineCreateRow({
           {field.key === 'percent_complete' ? (
             <span
               className="text-[10px] tabular-nums text-slate-600"
-              title="آیتم جدید با پیشرفت صفر ثبت می‌شود تا سرپرست کارگاه بعداً وارد کند"
+              title={WORKSHOP_COPY.schedule.newItemZeroProgress}
             >
               0
             </span>
           ) : !field.type ? (
-            <span className="text-slate-400">خودکار</span>
+            <span className="text-slate-400">{WORKSHOP_COPY.schedule.automatic}</span>
           ) : field.type === 'contractor' ? (
             <select
               className="h-7 w-full rounded border border-sky-200 bg-white px-1 text-[10px]"
@@ -3738,7 +3764,7 @@ function InlineCreateRow({
               <option value="">
                 {contractors.find(
                   (contractor) => contractor.id === draft.inheritedSubcontractorId
-                )?.name ?? 'بدون پیمانکار'}
+                )?.name ?? WORKSHOP_COPY.schedule.noContractor}
               </option>
               {contractors.map((contractor) => (
                 <option key={contractor.id} value={contractor.id}>
@@ -3760,8 +3786,8 @@ function InlineCreateRow({
                 })
               }
             >
-              <option value="false">خیر</option>
-              <option value="true">بله</option>
+              <option value="false">{WORKSHOP_COPY.no}</option>
+              <option value="true">{WORKSHOP_COPY.yes}</option>
             </select>
           ) : field.type === 'date' ? (
             <CompactScheduleDateField
@@ -3859,7 +3885,11 @@ function CompactScheduleDateField({
       dir="ltr"
       disabled={disabled}
       placeholder={placeholder}
-      title={calendar === 'jalali' ? 'تاریخ شمسی — مثال 1403/01/15' : 'تاریخ میلادی'}
+      title={
+        calendar === 'jalali'
+          ? WORKSHOP_COPY.schedule.jalaliDateTitle
+          : WORKSHOP_COPY.schedule.gregorianDateTitle
+      }
       className={
         className ??
         `h-7 w-full rounded border bg-white px-1 text-[10px] text-center tabular-nums ${
@@ -3956,13 +3986,17 @@ function CompactJalaliDateRange({
   }
 
   const placeholder = calendar === 'jalali' ? '1403/01/15' : '2026-04-21'
-  const orderErrorText = 'تاریخ پایان نباید قبل از تاریخ شروع باشد'
+  const orderErrorText = WORKSHOP_COPY.schedule.finishBeforeStart
 
   return (
     <div className="flex w-full min-w-0 flex-col items-stretch" onClick={(e) => e.stopPropagation()}>
       <div
         className="flex items-center justify-center gap-0.5 min-w-0 w-full"
-        title={calendar === 'jalali' ? 'تاریخ شمسی — مثال 1403/01/15' : 'تاریخ میلادی'}
+        title={
+          calendar === 'jalali'
+            ? WORKSHOP_COPY.schedule.jalaliDateTitle
+            : WORKSHOP_COPY.schedule.gregorianDateTitle
+        }
       >
         <input
           type="text"
@@ -4011,13 +4045,13 @@ function CompactJalaliDateRange({
 
 function statusFa(s: string) {
   const map: Record<string, string> = {
-    draft: 'پیش‌نویس',
-    ready: 'آماده',
-    in_progress: 'در حال اجرا',
-    partial: 'ناقص',
-    done: 'انجام شد',
-    blocked: 'مسدود',
-    needs_review: 'نیاز به بررسی',
+    draft: WORKSHOP_COPY.schedule.statusDraft,
+    ready: WORKSHOP_COPY.schedule.statusReady,
+    in_progress: WORKSHOP_COPY.schedule.statusInProgress,
+    partial: WORKSHOP_COPY.schedule.statusPartial,
+    done: WORKSHOP_COPY.schedule.statusDone,
+    blocked: WORKSHOP_COPY.schedule.statusBlocked,
+    needs_review: WORKSHOP_COPY.schedule.statusNeedsReview,
   }
   return map[s] ?? s
 }

@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/monthly-project-progress.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (monthly-project-progress)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on nothing
+ */
+
 export type MonthlyProjectProgressRow = {
   month: string
   plannedWeight: number

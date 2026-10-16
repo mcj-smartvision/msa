@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/milestone-forecast.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (milestone-forecast)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/dates, features/schedule/lib/cpm-calculate
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { addDaysIso, toIsoDateOnly } from '@/features/schedule/lib/dates'
 import type { CpmActivityResult } from '@/features/schedule/lib/cpm-calculate'

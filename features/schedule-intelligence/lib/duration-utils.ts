@@ -1,4 +1,12 @@
 /**
+ * @file features/schedule-intelligence/lib/duration-utils.ts
+ * @purpose منطق دامنه — تحلیل کیفیت برنامه و آپلود MSP (duration-utils)
+ * @safe-to-edit CAREFUL
+ * @affects تحلیل کیفیت برنامه و آپلود MSP
+ * @depends-on nothing
+ */
+
+/**
  * ISO 8601 duration → integer minutes.
  * Supports PT8H0M0S, PT2295H0M0S, P5D, P1DT8H0M0S
  */

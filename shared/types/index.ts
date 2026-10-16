@@ -1,3 +1,11 @@
+/**
+ * @file shared/types/index.ts
+ * @purpose تعاریف نوع — زیرساخت مشترک سامانه (index)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 export interface Project {
   id: string
   name: string

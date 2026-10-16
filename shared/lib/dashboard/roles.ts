@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/dashboard/roles.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (roles)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 /** Canonical site role keys — aligned with `positions.key` in the database. */
 export const SITE_ROLES = {
   PROJECT_MANAGER: 'project_manager',

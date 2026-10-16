@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/engine/pending-marked.ts
+ * @purpose منطق دامنه — کنترل کیفیت و عدم انطباق (pending-marked)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on nothing
+ */
+
 export type QcPendingMarked = {
   id: string
   sourceDrawingId: string

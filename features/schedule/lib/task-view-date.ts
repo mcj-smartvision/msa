@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/task-view-date.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (task-view-date)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/dates, shared/lib/time/tehran, features/schedule/lib/wbs-utils, shared/types/schedule
+ */
+
 import { toIsoDateOnly } from '@/features/schedule/lib/dates'
 import { todayTehranIso } from '@/shared/lib/time/tehran'
 import { compareWbs } from '@/features/schedule/lib/wbs-utils'

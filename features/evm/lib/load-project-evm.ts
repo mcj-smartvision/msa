@@ -1,3 +1,11 @@
+/**
+ * @file features/evm/lib/load-project-evm.ts
+ * @purpose منطق دامنه — ارزش کسب‌شده (CPI، SPI، EAC) (load-project-evm)
+ * @safe-to-edit CAREFUL
+ * @affects ارزش کسب‌شده (CPI، SPI، EAC)
+ * @depends-on features/finance/lib/live-workshop-cost, features/finance/lib/overhead-months, features/schedule/lib/dates, features/schedule/lib/leaf-activities, features/schedule/lib/physical-progress, features/schedule/lib/weighted-progress, features/schedule/lib/weight-consistency, features/workshop/lib/package-commercial, features/workshop/lib/package-weight
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { accrueOverheadAsOf, buildLiveCostBreakdown } from '@/features/finance/lib/live-workshop-cost'
 import { loadOverheadMonths } from '@/features/finance/lib/overhead-months'

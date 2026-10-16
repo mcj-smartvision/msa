@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/lib/schedule-commitments.ts
+ * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (schedule-commitments)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on features/schedule/lib/week-commitment-windows, features/supervisor/lib/daily-report-activities, features/supervisor/lib/weekly-activity-progress, features/project-store/lib/weekly-engine, features/wwp/lib/policy
+ */
+
 import type { ActivityWindows } from '@/features/schedule/lib/week-commitment-windows'
 import type { DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
 import { siteWeekStart } from '@/features/supervisor/lib/weekly-activity-progress'

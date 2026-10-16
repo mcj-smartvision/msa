@@ -1,3 +1,11 @@
+/**
+ * @file features/project-store/lib/export.ts
+ * @purpose منطق دامنه — ذخیره پیشرفت و overlay اعداد داشبورد (export)
+ * @safe-to-edit CAREFUL
+ * @affects ذخیره پیشرفت و overlay اعداد داشبورد
+ * @depends-on nothing
+ */
+
 import type { EvmIndices } from './derive'
 import { TASK_COLUMNS, type TaskItem } from './schema'
 import type { WeekPpc } from './weekly-engine'

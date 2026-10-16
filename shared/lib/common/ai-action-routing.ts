@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/common/ai-action-routing.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (ai-action-routing)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/supervisor/lib/types, features/project-manager/lib/types
+ */
+
 import type { AiActionType } from '@/features/supervisor/lib/types'
 import type { ApprovalItemType } from '@/features/project-manager/lib/types'
 

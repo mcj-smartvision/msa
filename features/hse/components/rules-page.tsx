@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/components/rules-page.tsx
+ * @purpose کامپوننت UI — ایمنی، بهداشت و محیط زیست (rules-page)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on features/hse/components/badges, features/hse/components/ui, shared/components/ui/button, shared/components/ui/input, shared/components/ui/select, features/hse/lib/mock-data, features/hse/lib/types, shared/lib/utils, features/hse/config
+ */
+
 'use client'
 
 import { useState } from 'react'
@@ -16,6 +24,7 @@ SelectValue,
 import { HSE_RULES, HSE_ZONES } from '@/features/hse/lib/mock-data'
 import type { HseRule, Severity } from '@/features/hse/lib/types'
 import { cn } from '@/shared/lib/utils'
+import { HSE_COMMON_COPY, HSE_RULES_COPY } from '@/features/hse/config'
 
 const SEVERITIES: Severity[] = ['critical', 'high', 'medium', 'low']
 
@@ -45,14 +54,14 @@ export function RulesPage() {
 
   function saveRule() {
     if (!selected) return
-    setSavedNote(`پیکربندی ${selected.code} ذخیره شد (فقط نشست محلی)`)
+    setSavedNote(HSE_RULES_COPY.savedNote(selected.code))
   }
 
   return (
     <div className="space-y-4" dir="rtl" lang="fa">
       <HsePageHeader
-        title="قوانین تشخیص"
-        description="آستانه‌ها، دوره‌های خنک‌سازی و اتصال زون برای خط لوله لبه و تأیید."
+        title={HSE_RULES_COPY.title}
+        description={HSE_RULES_COPY.description}
         actions={
           savedNote ? (
             <div className="rounded border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-900">
@@ -63,17 +72,17 @@ export function RulesPage() {
       />
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <Panel title="جدول قوانین" description={`${rules.length} سیاست`}>
+        <Panel title={HSE_RULES_COPY.tableTitle} description={HSE_RULES_COPY.policyCount(rules.length)}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-[11px] tracking-wide text-slate-500">
-                  <th className="pb-2 pl-3 font-semibold">قانون</th>
-                  <th className="pb-2 pl-3 font-semibold">شدت</th>
-                  <th className="pb-2 pl-3 font-semibold">اطمینان</th>
-                  <th className="pb-2 pl-3 font-semibold">مدت</th>
-                  <th className="pb-2 pl-3 font-semibold">خنک‌سازی</th>
-                  <th className="pb-2 font-semibold">فعال</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_RULES_COPY.colRule}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_RULES_COPY.colSeverity}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_RULES_COPY.colConfidence}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_RULES_COPY.colDuration}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_RULES_COPY.colCooldown}</th>
+                  <th className="pb-2 font-semibold">{HSE_RULES_COPY.colEnabled}</th>
                 </tr>
               </thead>
               <tbody>
@@ -104,7 +113,7 @@ export function RulesPage() {
                         {rule.durationThresholdSec}ث
                       </td>
                       <td className="py-2 pl-3 tabular-nums text-slate-700">{rule.cooldownSec}ث</td>
-                      <td className="py-2 text-slate-700">{rule.enabled ? 'بله' : 'خیر'}</td>
+                      <td className="py-2 text-slate-700">{rule.enabled ? HSE_COMMON_COPY.yes : HSE_COMMON_COPY.no}</td>
                     </tr>
                   )
                 })}
@@ -114,19 +123,19 @@ export function RulesPage() {
         </Panel>
 
         <Panel
-          title="پیکربندی قانون"
-          description={selected ? selected.code : 'یک قانون را انتخاب کنید'}
+          title={HSE_RULES_COPY.configTitle}
+          description={selected ? selected.code : HSE_RULES_COPY.selectRule}
           actions={
             selected ? (
               <Button size="sm" onClick={saveRule}>
                 <Save className="h-3.5 w-3.5" />
-                ذخیره
+                {HSE_COMMON_COPY.save}
               </Button>
             ) : null
           }
         >
           {!selected ? (
-            <EmptyRow>برای ویرایش آستانه‌ها و اتصال زون، یک قانون را انتخاب کنید.</EmptyRow>
+            <EmptyRow>{HSE_RULES_COPY.empty}</EmptyRow>
           ) : (
             <div className="space-y-3">
               <div>
@@ -135,7 +144,7 @@ export function RulesPage() {
               </div>
 
               <label className="block space-y-1 text-xs">
-                <span className="font-medium text-slate-600">شدت</span>
+                <span className="font-medium text-slate-600">{HSE_RULES_COPY.severity}</span>
                 <Select
                   value={selected.severity}
                   onValueChange={(v) => patchSelected({ severity: v as Severity })}
@@ -155,7 +164,7 @@ export function RulesPage() {
 
               <div className="grid grid-cols-3 gap-2">
                 <label className="space-y-1 text-xs">
-                  <span className="font-medium text-slate-600">اطمینان (0–1)</span>
+                  <span className="font-medium text-slate-600">{HSE_RULES_COPY.confidence}</span>
                   <Input
                     type="number"
                     step="0.01"
@@ -169,7 +178,7 @@ export function RulesPage() {
                   />
                 </label>
                 <label className="space-y-1 text-xs">
-                  <span className="font-medium text-slate-600">مدت (ثانیه)</span>
+                  <span className="font-medium text-slate-600">{HSE_RULES_COPY.duration}</span>
                   <Input
                     type="number"
                     min={0}
@@ -181,7 +190,7 @@ export function RulesPage() {
                   />
                 </label>
                 <label className="space-y-1 text-xs">
-                  <span className="font-medium text-slate-600">خنک‌سازی (ثانیه)</span>
+                  <span className="font-medium text-slate-600">{HSE_RULES_COPY.cooldown}</span>
                   <Input
                     type="number"
                     min={0}
@@ -201,11 +210,11 @@ export function RulesPage() {
                   checked={selected.enabled}
                   onChange={(e) => patchSelected({ enabled: e.target.checked })}
                 />
-                قانون فعال است
+                {HSE_RULES_COPY.ruleEnabled}
               </label>
 
               <div>
-                <p className="mb-1.5 text-xs font-medium text-slate-600">زون‌های فعال</p>
+                <p className="mb-1.5 text-xs font-medium text-slate-600">{HSE_RULES_COPY.activeZones}</p>
                 <ul className="space-y-1.5 rounded border border-slate-200 p-2">
                   {HSE_ZONES.map((zone) => (
                     <li key={zone.id}>

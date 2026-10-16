@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/daily-progress-sync.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (daily-progress-sync)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/lib/daily-report-activities, features/schedule/lib/schedule-view-sync, features/weather/lib/types
+ */
+
 import type { DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
 import { publishScheduleViewSync } from '@/features/schedule/lib/schedule-view-sync'
 import type { DailyWeatherSnapshot } from '@/features/weather/lib/types'

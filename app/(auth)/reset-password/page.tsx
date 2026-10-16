@@ -1,3 +1,11 @@
+/**
+ * @file app/(auth)/reset-password/page.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (page)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/client, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/card, shared/components/ui/alert
+ */
+
 'use client'
 
 import { useState } from 'react'
@@ -9,6 +17,8 @@ import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
+import { AUTH_COPY } from '@/shared/lib/i18n/auth'
+import { COMMON_UI } from '@/shared/lib/i18n/common-ui'
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -22,12 +32,12 @@ export default function ResetPasswordPage() {
     setError(null)
 
     if (password !== confirmPassword) {
-      setError('رمزها یکسان نیستند.')
+      setError(AUTH_COPY.firstLogin.mismatch)
       return
     }
 
-    if (password.length < 6) {
-      setError('رمز عبور باید حداقل 6 کاراکتر باشد.')
+    if (password.length < AUTH_COPY.minPasswordLength) {
+      setError(AUTH_COPY.firstLogin.passwordShort)
       return
     }
 
@@ -58,31 +68,31 @@ export default function ResetPasswordPage() {
     <main className="min-h-screen flex items-center justify-center p-4 bg-muted/30">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>تنظیم رمز جدید</CardTitle>
-          <CardDescription>برای حساب خود یک رمز جدید انتخاب کنید.</CardDescription>
+          <CardTitle>{AUTH_COPY.reset.title}</CardTitle>
+          <CardDescription>{AUTH_COPY.reset.hint}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="password">رمز جدید</Label>
+              <Label htmlFor="password">{AUTH_COPY.firstLogin.newPassword}</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={AUTH_COPY.minPasswordLength}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirm-password">تأیید رمز</Label>
+              <Label htmlFor="confirm-password">{AUTH_COPY.firstLogin.confirmPassword}</Label>
               <Input
                 id="confirm-password"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={AUTH_COPY.minPasswordLength}
               />
             </div>
             {error ? (
@@ -91,12 +101,12 @@ export default function ResetPasswordPage() {
               </Alert>
             ) : null}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'در حال ذخیره...' : 'ذخیره رمز جدید'}
+              {loading ? COMMON_UI.saving : AUTH_COPY.reset.save}
             </Button>
           </form>
           <p className="text-sm text-muted-foreground mt-4 text-center">
             <Link href="/login" className="text-primary underline">
-              بازگشت به ورود
+              {AUTH_COPY.forgot.backToLogin}
             </Link>
           </p>
         </CardContent>

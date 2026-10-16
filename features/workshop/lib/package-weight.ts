@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/lib/package-weight.ts
+ * @purpose منطق دامنه — بسته‌های اجرایی و تأیید کارگاه (package-weight)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on nothing
+ */
+
 /** Format MSP schedule_weight for display (percent-points, e.g. 0.06 or 1.85). */
 export function formatScheduleWeightDisplay(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return '—'

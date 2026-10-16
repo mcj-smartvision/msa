@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/persist-progress-pace.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (persist-progress-pace)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/lib/time/tehran, features/schedule/lib/progress-pace, features/schedule/lib/float-alerts, features/schedule/lib/progress-alert-quadrant, features/schedule/lib/run-float-alerts, features/schedule/lib/notify-urgent-progress-alerts, features/schedule/lib/dates
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { todayTehranIso } from '@/shared/lib/time/tehran'
 import {

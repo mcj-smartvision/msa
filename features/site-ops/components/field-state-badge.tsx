@@ -1,10 +1,14 @@
+/**
+ * @file features/site-ops/components/field-state-badge.tsx
+ * @purpose کامپوننت UI — عملیات کارگاه، دستورکار و برنامه روزانه (field-state-badge)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on features/site-ops/config
+ */
+
 'use client'
 
-const STATE_LABEL_FA: Record<string, string> = {
-  VALID: 'معتبر',
-  MISSING: 'ناموجود',
-  UNUSABLE: 'غیرقابل استفاده',
-}
+import { FIELD_STATE_COPY } from '@/features/site-ops/config'
 
 export function FieldStateBadge({ state }: { state?: string }) {
   const s = (state ?? 'MISSING').toUpperCase()
@@ -18,7 +22,7 @@ export function FieldStateBadge({ state }: { state?: string }) {
           : 'bg-rose-100 text-rose-800'
   return (
     <span className={`inline-flex rounded px-1.5 py-0.5 text-[11px] font-medium ${tone}`}>
-      {STATE_LABEL_FA[s] ?? s}
+      {FIELD_STATE_COPY[s as keyof typeof FIELD_STATE_COPY] ?? s}
     </span>
   )
 }

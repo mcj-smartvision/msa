@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/parse-daily-report-voice.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (parse-daily-report-voice)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on nothing
+ */
+
 export type DailyReportVoiceActivityRef = {
   id: string
   wbs: string | null

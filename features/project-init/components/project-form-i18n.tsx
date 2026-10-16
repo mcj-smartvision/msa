@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/components/project-form-i18n.tsx
+ * @purpose کامپوننت UI — راه‌اندازی پروژه (project-form-i18n)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on shared/components/i18n/locale-provider, features/project-init/lib/constants, features/project-init/lib/i18n/types, features/project-init/lib/i18n/utils
+ */
+
 'use client'
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react'

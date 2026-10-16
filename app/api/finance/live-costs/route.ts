@@ -1,3 +1,11 @@
+/**
+ * @file app/api/finance/live-costs/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, shared/lib/supabase/service, features/site-ops/lib/auth, features/admin/lib/access, features/workshop/lib/domain, features/workshop/lib/service, features/finance/lib/live-workshop-cost, features/finance/lib/workshop-cost-curve, features/finance/lib/load-live-cost-inputs, features/finance/lib/live-cost-traces
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { createServiceClient } from '@/shared/lib/supabase/service'

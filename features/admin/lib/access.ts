@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/lib/access.ts
+ * @purpose منطق دامنه — کنترل سنتر و مدیریت اعضا/پروژه (access)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on shared/types/admin, features/admin/lib/defaults
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { SystemRole } from '@/shared/types/admin'
 import { ADMIN_EMAIL } from '@/features/admin/lib/defaults'

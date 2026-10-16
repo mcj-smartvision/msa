@@ -1,9 +1,18 @@
+/**
+ * @file features/supervisor/components/modal-overlay.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (modal-overlay)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on shared/components/ui/button, shared/lib/utils
+ */
+
 'use client'
 
 import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { cn } from '@/shared/lib/utils'
+import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
 
 interface ModalOverlayProps {
   open: boolean
@@ -34,7 +43,7 @@ export function ModalOverlay({ open, onClose, title, children, className, overla
       >
         <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-100 px-4 py-3">
           <h2 className="text-base font-semibold text-slate-900">{title}</h2>
-          <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="بستن">
+          <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label={getSiteSupervisorMessages('fa').close}>
             <X className="h-4 w-4" />
           </Button>
         </div>

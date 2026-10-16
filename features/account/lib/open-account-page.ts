@@ -1,3 +1,11 @@
+/**
+ * @file features/account/lib/open-account-page.ts
+ * @purpose منطق دامنه — حساب کاربری (open-account-page)
+ * @safe-to-edit CAREFUL
+ * @affects حساب کاربری
+ * @depends-on features/account/lib/copy
+ */
+
 import { ACCOUNT_PATHS, type AccountSection } from '@/features/account/lib/copy'
 
 const POPUP_FEATURES = 'popup=yes,width=720,height=840,scrollbars=yes,resizable=yes'

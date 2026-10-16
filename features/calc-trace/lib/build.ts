@@ -1,3 +1,11 @@
+/**
+ * @file features/calc-trace/lib/build.ts
+ * @purpose منطق دامنه — دفتر رد محاسبه شاخص‌ها (build)
+ * @safe-to-edit CAREFUL
+ * @affects دفتر رد محاسبه شاخص‌ها
+ * @depends-on features/manager/lib/format
+ */
+
 import { faNumber, jalaliDate } from '@/features/manager/lib/format'
 import type { CalcTrace, CalcTraceInput, CalcTraceStatus, CalcTraceUnit } from './types'
 

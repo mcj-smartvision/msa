@@ -1,3 +1,11 @@
+/**
+ * @file app/api/schedule/preview/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/site-ops/lib/auth, features/schedule/lib/preview-with-packages, features/schedule/lib/apply-actual-start, features/schedule/lib/predecessor-labels, features/schedule/lib/wbs-utils, features/workshop/lib/domain, features/workshop/lib/service
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { assertProjectAccess, requireUser } from '@/features/site-ops/lib/auth'

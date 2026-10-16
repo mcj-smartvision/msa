@@ -1,3 +1,11 @@
+/**
+ * @file features/weather/components/weather-icon.tsx
+ * @purpose کامپوننت UI — هوای کارگاه (weather-icon)
+ * @safe-to-edit CAREFUL
+ * @affects هوای کارگاه
+ * @depends-on shared/lib/utils
+ */
+
 import {
   Cloud,
   CloudDrizzle,

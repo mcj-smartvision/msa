@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/lib/http.ts
+ * @purpose منطق دامنه — عملیات کارگاه، دستورکار و برنامه روزانه (http)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on features/site-ops/domain/errors
+ */
+
 import { NextResponse } from 'next/server'
 import { SiteOpsError } from '@/features/site-ops/domain/errors'
 

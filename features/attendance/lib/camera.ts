@@ -1,3 +1,11 @@
+/**
+ * @file features/attendance/lib/camera.ts
+ * @purpose منطق دامنه — حضور و غیاب و چهره (camera)
+ * @safe-to-edit CAREFUL
+ * @affects حضور و غیاب و چهره
+ * @depends-on nothing
+ */
+
 /** Browser camera helpers for gate attendance */
 
 export type BrowserCamera = {

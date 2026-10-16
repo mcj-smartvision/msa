@@ -1,3 +1,11 @@
+/**
+ * @file features/reports/services/reports.ts
+ * @purpose سرویس داده — گزارش‌ها و بایگانی (reports)
+ * @safe-to-edit CAREFUL
+ * @affects گزارش‌ها و بایگانی
+ * @depends-on shared/types
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AIAnalysisResponse, ReportWithAnalysis } from '@/shared/types'
 

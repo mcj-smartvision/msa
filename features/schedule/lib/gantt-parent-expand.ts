@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/gantt-parent-expand.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (gantt-parent-expand)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/dates
+ */
+
 import { addDaysIso, diffDaysIso, toIsoDateOnly } from '@/features/schedule/lib/dates'
 
 export interface GanttDateNode {

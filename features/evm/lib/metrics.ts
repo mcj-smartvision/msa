@@ -1,3 +1,11 @@
+/**
+ * @file features/evm/lib/metrics.ts
+ * @purpose منطق دامنه — ارزش کسب‌شده (CPI، SPI، EAC) (metrics)
+ * @safe-to-edit CAREFUL
+ * @affects ارزش کسب‌شده (CPI، SPI، EAC)
+ * @depends-on features/schedule/lib/dates, features/schedule/lib/planned-progress
+ */
+
 import { toIsoDateOnly } from '@/features/schedule/lib/dates'
 import { CALENDAR_DAYS, plannedPercentInWindow, type WorkCalendar } from '@/features/schedule/lib/planned-progress'
 

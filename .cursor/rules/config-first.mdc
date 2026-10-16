@@ -1,0 +1,30 @@
+---
+description: No hardcoded Persian copy or magic numbers — extract to domain config
+alwaysApply: true
+---
+
+# Config-first
+
+Never hardcode UI copy or numeric business rules in JSX.
+
+```ts
+// ❌
+<h1>داشبورد مدیر پروژه</h1>
+if (cpi < 0.8) warn()
+
+// ✅ features/manager/config.ts (or lib/*-config.ts)
+export const DASHBOARD_CONFIG = {
+  title: 'داشبورد مدیر پروژه',
+} as const
+
+// ✅ already in this repo: features/evm/lib/rag-status.ts
+export const DEFAULT_RAG_THRESHOLDS = { onTrack: 0.95, critical: 0.85 }
+```
+
+In the component: `{DASHBOARD_CONFIG.title}` and `DEFAULT_RAG_THRESHOLDS.critical`.
+
+## Also required in UI
+
+- Latin digits: `fa-IR-u-nu-latn` (via existing `faNumber` / format helpers)
+- Primary actions stay orange (`primary` / existing tokens)
+- Do not paste secrets or commit `scripts/.msp-curve-probe.txt`

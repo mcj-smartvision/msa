@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/progress-history.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (progress-history)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/supervisor/lib/daily-report-activities, features/supervisor/lib/weekly-activity-progress
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
 import { historyFromServer, type ServerProgressRow } from '@/features/supervisor/lib/weekly-activity-progress'

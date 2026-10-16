@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/msp-export.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (msp-export)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule, features/schedule/lib/msp-weight
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ProjectTask, TaskDependency, TaskRelationType } from '@/shared/types/schedule'
 import {

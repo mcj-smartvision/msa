@@ -1,4 +1,12 @@
 /**
+ * @file features/attendance/lib/face-detect.ts
+ * @purpose منطق دامنه — حضور و غیاب و چهره (face-detect)
+ * @safe-to-edit CAREFUL
+ * @affects حضور و غیاب و چهره
+ * @depends-on nothing
+ */
+
+/**
  * Client-side face detection (bounding boxes) via MediaPipe Face Detector.
  * Used for overlay + multi-person crops before recognition.
  */

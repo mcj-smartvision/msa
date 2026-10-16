@@ -1,3 +1,11 @@
+/**
+ * @file features/technical-office/components/technical-office-legacy-panel.tsx
+ * @purpose کامپوننت UI — دفتر فنی (technical-office-legacy-panel)
+ * @safe-to-edit CAREFUL
+ * @affects دفتر فنی
+ * @depends-on shared/components/i18n/locale-provider, shared/lib/i18n/technical-office, features/technical-office/components/project-drawings-panel
+ */
+
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'

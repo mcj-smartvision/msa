@@ -1,15 +1,24 @@
+/**
+ * @file features/hse/components/documentation-page.tsx
+ * @purpose کامپوننت UI — ایمنی، بهداشت و محیط زیست (documentation-page)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on features/hse/lib/docs-data, features/hse/components/ui, shared/lib/utils, features/hse/config
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
 import { documentationData, type DocSection } from '@/features/hse/lib/docs-data'
 import { HsePageHeader } from '@/features/hse/components/ui'
 import { cn } from '@/shared/lib/utils'
+import { HSE_DOCS_COPY } from '@/features/hse/config'
 
 const AUDIENCE_CLASS: Record<DocSection['audience'], string> = {
-  همه: 'bg-slate-100 text-slate-700 border-slate-300',
-  کارفرما: 'bg-indigo-50 text-indigo-800 border-indigo-200',
-  'مسئول ایمنی': 'bg-amber-50 text-amber-900 border-amber-200',
-  'تیم فنی': 'bg-sky-50 text-sky-800 border-sky-200',
+  [HSE_DOCS_COPY.audience.all]: 'bg-slate-100 text-slate-700 border-slate-300',
+  [HSE_DOCS_COPY.audience.client]: 'bg-indigo-50 text-indigo-800 border-indigo-200',
+  [HSE_DOCS_COPY.audience.safetyOfficer]: 'bg-amber-50 text-amber-900 border-amber-200',
+  [HSE_DOCS_COPY.audience.tech]: 'bg-sky-50 text-sky-800 border-sky-200',
 }
 
 export function DocumentationPage() {
@@ -37,14 +46,14 @@ export function DocumentationPage() {
   return (
     <div className="space-y-4" dir="rtl" lang="fa">
       <HsePageHeader
-        title="راهنمای عملیات ایمنی"
-        description="این راهنما نحوه استقرار، بهره‌برداری و نگهداری سامانه پایش هوشمند ایمنی MSA را توضیح می‌دهد."
+        title={HSE_DOCS_COPY.title}
+        description={HSE_DOCS_COPY.description}
       />
 
       <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
         <aside className="lg:sticky lg:top-3 lg:self-start">
           <nav className="rounded-md border border-slate-200 bg-white p-2 shadow-sm">
-            <p className="mb-2 px-2 text-[11px] font-semibold text-slate-500">فهرست مطالب</p>
+            <p className="mb-2 px-2 text-[11px] font-semibold text-slate-500">{HSE_DOCS_COPY.toc}</p>
             <ul className="space-y-0.5">
               {documentationData.map((section) => (
                 <li key={section.id}>
@@ -81,7 +90,7 @@ export function DocumentationPage() {
                     AUDIENCE_CLASS[section.audience]
                   )}
                 >
-                  مخاطب: {section.audience}
+                  {HSE_DOCS_COPY.audiencePrefix}{section.audience}
                 </span>
               </div>
               <div className="space-y-3 text-sm leading-7 text-slate-700 text-justify">

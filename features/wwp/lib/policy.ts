@@ -1,4 +1,12 @@
 /**
+ * @file features/wwp/lib/policy.ts
+ * @purpose منطق دامنه — برنامه هفتگی متعهد (WWP) (policy)
+ * @safe-to-edit CAREFUL
+ * @affects برنامه هفتگی متعهد (WWP)
+ * @depends-on nothing
+ */
+
+/**
  * Weekly Work Plan governance (Last Planner). Mirrors the triggers in
  * database/100-weekly-work-plans.sql so the API can refuse early with a clear message;
  * the database stays the final authority.

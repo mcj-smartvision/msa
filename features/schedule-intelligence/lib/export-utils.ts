@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule-intelligence/lib/export-utils.ts
+ * @purpose منطق دامنه — تحلیل کیفیت برنامه و آپلود MSP (export-utils)
+ * @safe-to-edit CAREFUL
+ * @affects تحلیل کیفیت برنامه و آپلود MSP
+ * @depends-on shared/types/schedule-intelligence
+ */
+
 import type { ScheduleTask } from '@/shared/types/schedule-intelligence'
 
 export function exportTasksToCsv(tasks: ScheduleTask[], minutesPerDay: number): string {

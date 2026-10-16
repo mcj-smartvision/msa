@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/run-float-alerts.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (run-float-alerts)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/float-alerts, features/schedule/lib/cpm-calculate
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
 DEFAULT_PROJECT_ALERT_SETTINGS,

@@ -1,4 +1,12 @@
 /**
+ * @file features/project-store/lib/schema.ts
+ * @purpose منطق دامنه — ذخیره پیشرفت و overlay اعداد داشبورد (schema)
+ * @safe-to-edit CAREFUL
+ * @affects ذخیره پیشرفت و overlay اعداد داشبورد
+ * @depends-on nothing
+ */
+
+/**
  * Standard activity record of the project store. `id` is the only key between views: the daily-report
  * activity id (`schedule:<project_tasks.id>` or `package:<workshop_packages.id>`). Database column names
  * (percent_complete, physical_weight, name, …) are mapped to these names once, in `derive.ts`.

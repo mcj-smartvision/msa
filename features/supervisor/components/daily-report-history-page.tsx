@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/daily-report-history-page.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (daily-report-history-page)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on shared/hooks/use-synced-project-id, shared/hooks/use-supabase, features/schedule/hooks/use-schedule-calendar, shared/components/ui/button, shared/components/ui/input, shared/components/ui/skeleton, features/supervisor/lib/daily-report-history, features/supervisor/lib/daily-progress-storage, features/weather/lib/report-stamp, features/weather/lib/types
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -39,6 +47,10 @@ type DailyReportActivity,
 } from '@/features/supervisor/lib/daily-report-activities'
 import type { ScheduleTreeNode, WorkshopPackageNode } from '@/features/workshop/lib/types'
 import { cn } from '@/shared/lib/utils'
+import { SUPERVISOR_COPY } from '@/features/supervisor/config'
+import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+
+const t = getSiteSupervisorMessages('fa')
 
 function faNum(n: number): string {
   return n.toLocaleString('fa-IR-u-nu-latn')
@@ -58,7 +70,7 @@ function prevPercentBeforeDay(
   return prev?.percentComplete ?? null
 }
 
-const DROP_TITLE = 'کاهش پیشرفت نسبت به گزارش قبلی'
+const DROP_TITLE = t.dropTitle
 
 function ReportProgressRow({
   name,
@@ -84,11 +96,13 @@ function ReportProgressRow({
               <AlertTriangle className="h-4 w-4 text-red-600" aria-hidden="true" />
             </span>
           ) : null}
-          <span className={cn('font-bold', dropped ? 'text-red-600' : 'text-slate-900')}>{faNum(currentPct)}٪</span>
+          <span className={cn('font-bold', dropped ? 'text-red-600' : 'text-slate-900')}>
+            {SUPERVISOR_COPY.pct(faNum(currentPct))}
+          </span>
           {shownPrevious !== currentPct ? (
             <>
               <span className="text-slate-300" aria-hidden="true">←</span>
-              <span className="text-slate-400">{faNum(shownPrevious)}٪</span>
+              <span className="text-slate-400">{SUPERVISOR_COPY.pct(faNum(shownPrevious))}</span>
             </>
           ) : null}
         </div>
@@ -254,15 +268,15 @@ export function DailyReportHistoryPage() {
           <Button type="button" variant="ghost" size="sm" className="-mr-2 text-slate-600" asChild>
             <Link href="/dashboard/site-supervisor">
               <ArrowRight className="h-4 w-4 ml-1" aria-hidden="true" />
-              بازگشت به داشبورد سرپرست
+              {t.backToDashboard}
             </Link>
           </Button>
 
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">تاریخچه گزارش‌های روزانه</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{t.historyTitle}</h1>
               <p className="mt-1 text-sm text-slate-500">
-                {faNum(dayReports.length)} گزارش ثبت‌شده
+                {t.reportsRecorded(faNum(dayReports.length))}
                 {projectName ? (
                   <>
                     <span className="mx-1.5 text-slate-300">·</span>
@@ -282,7 +296,7 @@ export function DailyReportHistoryPage() {
               <Input
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="جستجوی فعالیت…"
+                placeholder={t.searchActivity}
                 className="pr-9 bg-white border-slate-200"
               />
             </div>
@@ -304,17 +318,17 @@ export function DailyReportHistoryPage() {
               }}
             >
               <Filter className="h-4 w-4 ml-1" aria-hidden="true" />
-              {monthFilter ? 'حذف فیلتر تاریخ' : 'فیلتر ماه جاری'}
+              {monthFilter ? t.clearDateFilter : t.filterCurrentMonth}
             </Button>
           </div>
         </div>
 
         {!projectId ? (
           <p className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-600">
-            پروژه مشخص نیست — از داشبورد سرپرست وارد شوید.
+            {t.projectUnknown}
           </p>
         ) : loading ? (
-          <ul className="space-y-4" aria-busy="true" aria-label="در حال بارگذاری…">
+          <ul className="space-y-4" aria-busy="true" aria-label={t.loading}>
             {[0, 1, 2].map((i) => (
               <li key={i} className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm space-y-3">
                 <div className="flex items-center gap-3">
@@ -334,8 +348,8 @@ export function DailyReportHistoryPage() {
         ) : filteredReports.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-600">
             {dayReports.length === 0
-              ? 'هنوز گزارشی ثبت نشده است.'
-              : 'گزارشی با این جستجو یا فیلتر پیدا نشد.'}
+              ? t.noReportsYet
+              : t.noFilterResults}
           </p>
         ) : (
           <>
@@ -373,12 +387,12 @@ export function DailyReportHistoryPage() {
                         <p className="text-xs text-slate-500 tabular-nums mt-0.5">
                           {timeLabel ?? '—'}
                           <span className="mx-1.5 text-slate-300">·</span>
-                          سرپرست کارگاه
+                          {t.supervisorRole}
                         </p>
                       </div>
                     </div>
                     <span className="rounded-full bg-sky-50 border border-sky-100 px-3 py-1 text-xs font-medium text-sky-800 shrink-0">
-                      {faNum(day.entries.length)} آیتم گزارش‌شده
+                      {t.itemsReported(faNum(day.entries.length))}
                     </span>
                   </div>
 
@@ -434,10 +448,13 @@ export function DailyReportHistoryPage() {
                 className="min-h-11 bg-white"
                 onClick={() => setVisibleCount((n) => n + HISTORY_PAGE_SIZE)}
               >
-                نمایش بیشتر
+                {t.showMore}
               </Button>
               <p className="text-xs text-slate-500 tabular-nums">
-                {`${visibleCount.toLocaleString('en-US')} از ${filteredReports.length.toLocaleString('en-US')} گزارش`}
+                {t.ofReports(
+                  visibleCount.toLocaleString('en-US'),
+                  filteredReports.length.toLocaleString('en-US')
+                )}
               </p>
             </div>
           ) : null}

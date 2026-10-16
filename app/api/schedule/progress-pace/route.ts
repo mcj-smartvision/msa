@@ -1,3 +1,11 @@
+/**
+ * @file app/api/schedule/progress-pace/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/schedule/lib/persist-progress-pace, features/schedule/lib/progress-pace, features/schedule/lib/float-alerts, features/schedule/lib/progress-alert-quadrant, features/schedule/lib/run-float-alerts, features/schedule/lib/dates, features/schedule/lib/wbs-utils, features/schedule/lib/parent-progress-rollup, features/schedule/lib/parent-weight-rollup
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { persistProjectProgressPace } from '@/features/schedule/lib/persist-progress-pace'

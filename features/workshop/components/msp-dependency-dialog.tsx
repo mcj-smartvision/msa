@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/components/msp-dependency-dialog.tsx
+ * @purpose کامپوننت UI — بسته‌های اجرایی و تأیید کارگاه (msp-dependency-dialog)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on features/supervisor/components/modal-overlay, features/schedule/lib/predecessor-format, features/schedule/lib/wbs-utils, features/workshop/lib/types, shared/types/schedule, shared/lib/utils
+ */
+
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
@@ -12,6 +20,7 @@ import { displayActivityName } from '@/features/schedule/lib/wbs-utils'
 import type { ScheduleTreeNode, WorkshopPackageNode } from '@/features/workshop/lib/types'
 import type { TaskRelationType } from '@/shared/types/schedule'
 import { cn } from '@/shared/lib/utils'
+import { WORKSHOP_COPY } from '@/features/workshop/lib/ui-copy'
 
 export function collectMspActivities(nodes: ScheduleTreeNode[]): MspActivityOption[] {
   const out: MspActivityOption[] = []
@@ -79,10 +88,10 @@ export type MspSuccessorRow = {
 }
 
 const RELATION_OPTIONS: Array<{ value: TaskRelationType; label: string }> = [
-  { value: 'FS', label: 'FS — پایان به شروع' },
-  { value: 'SS', label: 'SS — شروع به شروع' },
-  { value: 'FF', label: 'FF — پایان به پایان' },
-  { value: 'SF', label: 'SF — شروع به پایان' },
+  { value: 'FS', label: WORKSHOP_COPY.msp.fs },
+  { value: 'SS', label: WORKSHOP_COPY.msp.ss },
+  { value: 'FF', label: WORKSHOP_COPY.msp.ff },
+  { value: 'SF', label: WORKSHOP_COPY.msp.sf },
 ]
 
 type EditorRow = ParsedPredecessorLink & { key: string }
@@ -173,7 +182,7 @@ export function MspDependencyDialog({
     <ModalOverlay
       open={open}
       onClose={onClose}
-      title="اطلاعات فعالیت"
+      title={WORKSHOP_COPY.msp.title}
       className="sm:max-w-3xl bg-white"
     >
       <div className="space-y-3" dir="rtl">
@@ -194,7 +203,7 @@ export function MspDependencyDialog({
             )}
             onClick={() => setTab('predecessors')}
           >
-            پیش‌نیازها
+            {WORKSHOP_COPY.msp.predecessors}
           </button>
           <button
             type="button"
@@ -206,23 +215,23 @@ export function MspDependencyDialog({
             )}
             onClick={() => setTab('successors')}
           >
-            پس‌نیازها
+            {WORKSHOP_COPY.msp.successors}
           </button>
         </div>
 
         {tab === 'predecessors' ? (
           <div className="space-y-2">
             <p className="text-[11px] text-slate-500">
-              مثل Microsoft Project برای هر پیوند فعالیت، نوع FS / SS / FF / SF و تأخیر روزانه را مشخص کنید.
+              {WORKSHOP_COPY.msp.help}
             </p>
             <div className="overflow-x-auto rounded-lg border border-slate-200">
               <table className="w-full min-w-[720px] text-xs">
                 <thead className="bg-slate-100 text-slate-700">
                   <tr>
                     <th className="px-2 py-2 text-center w-28">WBS</th>
-                    <th className="px-2 py-2 text-right">نام فعالیت</th>
-                    <th className="px-2 py-2 text-center w-44">نوع</th>
-                    <th className="px-2 py-2 text-center w-24">تأخیر (روز)</th>
+                    <th className="px-2 py-2 text-right">{WORKSHOP_COPY.msp.colName}</th>
+                    <th className="px-2 py-2 text-center w-44">{WORKSHOP_COPY.msp.colType}</th>
+                    <th className="px-2 py-2 text-center w-24">{WORKSHOP_COPY.msp.colLag}</th>
                     {!readOnly ? <th className="w-10" /> : null}
                   </tr>
                 </thead>
@@ -230,7 +239,7 @@ export function MspDependencyDialog({
                   {rows.length === 0 ? (
                     <tr>
                       <td colSpan={readOnly ? 4 : 5} className="px-3 py-6 text-center text-slate-400">
-                        پیش‌نیازی تعریف نشده است.
+                        {WORKSHOP_COPY.msp.noPred}
                       </td>
                     </tr>
                   ) : (
@@ -330,7 +339,7 @@ export function MspDependencyDialog({
                               <button
                                 type="button"
                                 className="rounded p-1 text-rose-700 hover:bg-rose-50"
-                                title="حذف پیوند"
+                                title={WORKSHOP_COPY.msp.deleteLink}
                                 onClick={() => removeRow(row.key)}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
@@ -352,7 +361,7 @@ export function MspDependencyDialog({
                 className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-40"
               >
                 <Plus className="h-3.5 w-3.5" />
-                افزودن پیش‌نیاز
+                {WORKSHOP_COPY.msp.addPred}
               </button>
             ) : null}
           </div>
@@ -362,16 +371,16 @@ export function MspDependencyDialog({
               <thead className="bg-slate-100 text-slate-700">
                 <tr>
                   <th className="px-2 py-2 text-center w-24">WBS</th>
-                  <th className="px-2 py-2 text-right">نام فعالیت</th>
-                  <th className="px-2 py-2 text-center w-28">نوع</th>
-                  <th className="px-2 py-2 text-center w-24">تأخیر (روز)</th>
+                  <th className="px-2 py-2 text-right">{WORKSHOP_COPY.msp.colName}</th>
+                  <th className="px-2 py-2 text-center w-28">{WORKSHOP_COPY.msp.colType}</th>
+                  <th className="px-2 py-2 text-center w-24">{WORKSHOP_COPY.msp.colLag}</th>
                 </tr>
               </thead>
               <tbody>
                 {successors.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-3 py-6 text-center text-slate-400">
-                      پس‌نیازی به این فعالیت وصل نیست.
+                      {WORKSHOP_COPY.msp.noSucc}
                     </td>
                   </tr>
                 ) : (
@@ -397,7 +406,7 @@ export function MspDependencyDialog({
             onClick={onClose}
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
           >
-            انصراف
+            {WORKSHOP_COPY.msp.cancel}
           </button>
           {!readOnly ? (
             <button
@@ -406,7 +415,7 @@ export function MspDependencyDialog({
               onClick={() => void handleSave()}
               className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm text-white disabled:opacity-40"
             >
-              {saving ? 'در حال ذخیره…' : 'تأیید'}
+              {saving ? WORKSHOP_COPY.saving : WORKSHOP_COPY.msp.confirm}
             </button>
           ) : null}
         </div>

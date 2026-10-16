@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/zone-session-storage.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (zone-session-storage)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/lib/drawings-zoning-mock, features/technical-office/lib/drawings-shared, features/supervisor/lib/zone-project-storage
+ */
+
 import type { DefinedZone } from '@/features/supervisor/lib/drawings-zoning-mock'
 import type { ProjectDrawing } from '@/features/technical-office/lib/drawings-shared'
 import { readProjectZoneState } from '@/features/supervisor/lib/zone-project-storage'

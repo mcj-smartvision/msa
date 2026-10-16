@@ -1,3 +1,11 @@
+/**
+ * @file features/dashboard/components/widgets/daily-report-widget.tsx
+ * @purpose کامپوننت UI — داشبورد نقش‌ها و ویجت‌ها (daily-report-widget)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد نقش‌ها و ویجت‌ها
+ * @depends-on shared/hooks/use-supabase, features/reports/services/reports, shared/types, shared/types/dashboard, features/dashboard/components/widgets/widget-shell, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/textarea, shared/components/ui/progress
+ */
+
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
@@ -23,6 +31,7 @@ import {
   formatWeatherReportLine,
   overlayWeatherAir,
 } from '@/features/weather/lib/report-stamp'
+import { DAILY_REPORT_WIDGET_COPY as copy } from '@/features/dashboard/config'
 
 export function DailyReportWidget({ context }: { context: WidgetRenderContext }) {
   const supabase = useSupabase()
@@ -59,15 +68,15 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
 
   async function handleAnalyze() {
     if (!projectId) {
-      setError('پروژه‌ای اختصاص داده نشده است.')
+      setError(copy.noProject)
       return
     }
     if (!description.trim()) {
-      setError('لطفاً شرح گزارش را وارد کنید.')
+      setError(copy.needDescription)
       return
     }
     if (!imageFile) {
-      setError('لطفاً عکس سایت را بارگذاری کنید.')
+      setError(copy.needPhoto)
       return
     }
 
@@ -80,7 +89,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
     setError(null)
     setLoading(true)
     setProgress(20)
-    setMessage('در حال بارگذاری عکس...')
+    setMessage(copy.uploading)
 
     try {
       const uploaded = await uploadReportImage(supabase, imageFile, projectId)
@@ -88,7 +97,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
       setStoragePath(uploaded.path)
 
       setProgress(55)
-      setMessage('در حال تحلیل با هوش مصنوعی...')
+      setMessage(copy.analyzing)
       const result = await analyzeReportImage(supabase, uploaded.publicUrl, projectId)
       if (weather) {
         result.extended_analysis_json = {
@@ -102,9 +111,9 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
       setSupervisorSummary(result.extended_analysis_json?.supervisor_summary_fa ?? '')
       setStep('review')
       setProgress(100)
-      setMessage('نتایج هوش مصنوعی را بررسی و قبل از نهایی‌سازی ویرایش کنید.')
+      setMessage(copy.reviewHint)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'تحلیل ناموفق بود')
+      setError(err instanceof Error ? err.message : copy.analyzeFailed)
     } finally {
       setLoading(false)
     }
@@ -115,13 +124,13 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
 
     setLoading(true)
     setError(null)
-    setMessage('در حال ذخیره گزارش...')
+    setMessage(copy.saving)
 
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser()
-      if (!user) throw new Error('احراز هویت نشده‌اید')
+      if (!user) throw new Error(copy.unauthenticated)
 
       const descriptionWithWeather = weather
         ? ensureWeatherLine(description.trim(), formatWeatherReportLine(weather))
@@ -172,9 +181,9 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
       }
 
       setStep('done')
-      setMessage('گزارش روزانه با موفقیت نهایی شد.')
+      setMessage(copy.saved)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ذخیره ناموفق بود')
+      setError(err instanceof Error ? err.message : copy.saveFailed)
     } finally {
       setLoading(false)
     }
@@ -198,8 +207,8 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
 
   return (
     <WidgetShell
-      title="گزارش روزانه"
-      description="کار سایت را شرح دهید، عکس پیوست کنید، خروجی هوش مصنوعی را بررسی و سپس نهایی کنید"
+      title={copy.title}
+      description={copy.description}
     >
       {projectId ? (
         <div className="mb-4">
@@ -207,29 +216,29 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
         </div>
       ) : null}
       {!projectId ? (
-        <p className="text-sm text-muted-foreground">برای ثبت گزارش روزانه باید پروژه اختصاص‌یافته داشته باشید.</p>
+        <p className="text-sm text-muted-foreground">{copy.needProject}</p>
       ) : step === 'done' ? (
         <div className="space-y-4">
           <Alert>
             <AlertDescription>{message}</AlertDescription>
           </Alert>
-          <Button onClick={resetForm}>ثبت گزارش دیگر</Button>
+          <Button onClick={resetForm}>{copy.another}</Button>
         </div>
       ) : step === 'compose' ? (
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="daily-description">شرح گزارش (وضعیت هوا خودکار درج می‌شود)</Label>
+            <Label htmlFor="daily-description">{copy.descriptionLabel}</Label>
             <Textarea
               id="daily-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="فعالیت‌ها، پیشرفت و مسائل امروز سایت را شرح دهید..."
+              placeholder={copy.descriptionPlaceholder}
               rows={4}
               disabled={loading}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="daily-photo">عکس سایت</Label>
+            <Label htmlFor="daily-photo">{copy.photoLabel}</Label>
             <Input
               ref={fileRef}
               id="daily-photo"
@@ -241,7 +250,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
             />
             {previewUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={previewUrl} alt="پیش‌نمایش" className="mt-2 max-h-40 rounded-md border object-cover" />
+              <img src={previewUrl} alt={copy.previewAlt} className="mt-2 max-h-40 rounded-md border object-cover" />
             ) : null}
           </div>
           {loading ? (
@@ -256,13 +265,13 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
             </Alert>
           ) : null}
           <Button onClick={handleAnalyze} disabled={loading}>
-            تحلیل و بررسی
+            {copy.analyze}
           </Button>
         </div>
       ) : (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            فیلدهای تولیدشده توسط هوش مصنوعی را ویرایش کنید، سپس گزارش را نهایی کنید.
+            {copy.reviewIntro}
           </p>
           {analysis?.extended_analysis_json?.weather_air?.notes_fa ||
           analysis?.extended_analysis_json?.weather_air?.weather_fa ? (
@@ -273,7 +282,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
           ) : null}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="activity-type">نوع فعالیت</Label>
+              <Label htmlFor="activity-type">{copy.activityType}</Label>
               <Input
                 id="activity-type"
                 value={activityType}
@@ -282,7 +291,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="workforce-count">تعداد نیروی کار</Label>
+              <Label htmlFor="workforce-count">{copy.workforce}</Label>
               <Input
                 id="workforce-count"
                 type="number"
@@ -294,7 +303,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="supervisor-summary">خلاصه سرپرست</Label>
+            <Label htmlFor="supervisor-summary">{copy.supervisorSummary}</Label>
             <Textarea
               id="supervisor-summary"
               value={supervisorSummary}
@@ -304,7 +313,7 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description-review">شرح گزارش (قابل ویرایش)</Label>
+            <Label htmlFor="description-review">{copy.descriptionReview}</Label>
             <Textarea
               id="description-review"
               value={description}
@@ -320,10 +329,10 @@ export function DailyReportWidget({ context }: { context: WidgetRenderContext })
           ) : null}
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setStep('compose')} disabled={loading}>
-              بازگشت
+              {copy.back}
             </Button>
             <Button onClick={handleFinalize} disabled={loading}>
-              {loading ? 'در حال ذخیره...' : 'نهایی‌سازی گزارش'}
+              {loading ? copy.savingButton : copy.finalize}
             </Button>
           </div>
         </div>

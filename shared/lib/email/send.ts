@@ -1,4 +1,12 @@
 /**
+ * @file shared/lib/email/send.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (send)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
+/**
  * Outbound email: Resend API and/or SMTP.
  * Set RESEND_API_KEY and/or SMTP_HOST (+ SMTP_USER/SMTP_PASS).
  * Optional ATTENDANCE_NOTIFY_EMAIL / EMAIL_FROM for From + security copy.

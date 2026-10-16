@@ -1,3 +1,11 @@
+/**
+ * @file features/security/components/gate-camera-panel.tsx
+ * @purpose کامپوننت UI — امنیت و ثبت چهره (gate-camera-panel)
+ * @safe-to-edit CAREFUL
+ * @affects امنیت و ثبت چهره
+ * @depends-on features/admin/components/shared, shared/components/ui/button, shared/components/ui/label, shared/components/ui/select, features/attendance/lib/camera, features/attendance/lib/face-detect, features/attendance/lib/face-embed.client, features/security/components/face-recognition-method-modal, features/attendance/lib/types, shared/lib/utils
+ */
+
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -33,6 +41,7 @@ extractFaceEmbeddingFromVideo,
 warmFaceEmbedder,
 } from '@/features/attendance/lib/face-embed.client'
 import { FaceRecognitionMethodModal } from '@/features/security/components/face-recognition-method-modal'
+import { GATE_CAMERA_COPY as copy } from '@/features/security/config'
 import type { AttendanceEnrollment, AttendanceGate, AttendanceTransit } from '@/features/attendance/lib/types'
 import { cn } from '@/shared/lib/utils'
 
@@ -96,7 +105,7 @@ export function GateCameraPanel({
       `/api/attendance/enrollments?projectId=${encodeURIComponent(projectId)}`
     )
     const json = await res.json()
-    if (!res.ok) throw new Error(json.error || 'خطا در لیست شناسایی‌ها')
+    if (!res.ok) throw new Error(json.error || copy.listFailed)
     setEnrollments(json.enrollments as AttendanceEnrollment[])
   }, [projectId])
 
@@ -180,7 +189,7 @@ export function GateCameraPanel({
         setPreviewOn(true)
         startBoxLoop()
       } catch (e) {
-        onError(e instanceof Error ? e.message : 'باز کردن دوربین ناموفق')
+        onError(e instanceof Error ? e.message : copy.openCameraFailed)
         setPreviewOn(false)
       }
     },
@@ -198,7 +207,7 @@ export function GateCameraPanel({
       lastBoxesRef.current = boxes
     }
     if (boxes.length === 0) {
-      setStatusText('پایش فعال — صورتی در قاب نیست')
+      setStatusText(copy.watchingNoFace)
       lastLabelsRef.current = []
       return
     }
@@ -212,7 +221,7 @@ export function GateCameraPanel({
     if (crops.length === 0) return
 
     recognizingRef.current = true
-    setStatusText(`استخراج بیومتریک ${Math.max(1, boxes.length)} صورت...`)
+    setStatusText(copy.extracting(Math.max(1, boxes.length)))
     try {
       const embeddings: number[][] = []
       // Prefer full-frame FaceNet (more reliable than tight crops)
@@ -225,7 +234,7 @@ export function GateCameraPanel({
         }
       }
       if (embeddings.length === 0) {
-        setStatusText('چهره دیده شد ولی بردار بیومتریک استخراج نشد — نور/زاویه را بهتر کنید')
+        setStatusText(copy.embedFailed)
         return
       }
 
@@ -241,7 +250,7 @@ export function GateCameraPanel({
       })
       const json = await res.json()
       if (!res.ok) {
-        setStatusText(json.error || 'خطا در شناسایی خودکار')
+        setStatusText(json.error || copy.autoRecognizeFailed)
         return
       }
 
@@ -280,16 +289,16 @@ export function GateCameraPanel({
           .filter((r) => r.matched && r.transit && !r.duplicate)
           .map((r) => r.personName)
           .filter(Boolean)
-        setStatusText(`ثبت شد: ${names.join('، ')}`)
+        setStatusText(copy.recorded(names.join(copy.listSep)))
       } else if (results.some((r) => r.matched && r.duplicate)) {
-        setStatusText('قبلاً ثبت شده — نزدیک گیت بمانید')
+        setStatusText(copy.alreadyRecorded)
       } else if (results.some((r) => r.reason?.includes('ambiguous'))) {
-        setStatusText('شباهت مبهم بین دو نفر — نزدیک‌تر و روبه‌رو بایستید')
+        setStatusText(copy.ambiguous)
       } else {
-        setStatusText('صورت دیده شد — هنوز با افراد ثبت‌شده جور نشد')
+        setStatusText(copy.unmatched)
       }
     } catch (e) {
-      setStatusText(e instanceof Error ? e.message : 'خطای پایش')
+      setStatusText(e instanceof Error ? e.message : copy.watchError)
     } finally {
       recognizingRef.current = false
     }
@@ -312,7 +321,7 @@ export function GateCameraPanel({
       const list = await listBrowserCameras()
       setCameras(list)
       if (list.length === 0) {
-        setStatusText('دوربینی پیدا نشد. اجازه دسترسی دوربین را بررسی کنید.')
+        setStatusText(copy.noCameras)
         return
       }
       const preferred =
@@ -320,10 +329,10 @@ export function GateCameraPanel({
         list[0]?.deviceId ||
         ''
       setDeviceId(preferred)
-      setStatusText(`${list.length} دوربین پیدا شد`)
+      setStatusText(copy.camerasFound(list.length))
       await startPreview(preferred)
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'جستجوی دوربین ناموفق')
+      onError(e instanceof Error ? e.message : copy.searchFailed)
     } finally {
       setScanning(false)
     }
@@ -331,7 +340,7 @@ export function GateCameraPanel({
 
   async function bindSelectedCamera() {
     if (!selectedGateId || !deviceId) {
-      onError('گیت و دوربین را انتخاب کنید')
+      onError(copy.pickGateAndCamera)
       return
     }
     setBusy(true)
@@ -350,11 +359,11 @@ export function GateCameraPanel({
         }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'اتصال دوربین ناموفق')
-      setStatusText(`دوربین «${cam?.label || 'انتخاب‌شده'}» به گیت وصل شد`)
+      if (!res.ok) throw new Error(json.error || copy.bindFailed)
+      setStatusText(copy.cameraBound(cam?.label || copy.selectedCamera))
       onEnrolled?.()
     } catch (e) {
-      onError(e instanceof Error ? e.message : 'اتصال دوربین ناموفق')
+      onError(e instanceof Error ? e.message : copy.bindFailed)
     } finally {
       setBusy(false)
     }
@@ -363,43 +372,43 @@ export function GateCameraPanel({
   async function startAutoWatch() {
     onError(null)
     if (enrollments.length === 0) {
-      onError('اول حداقل یک نفر را با «ثبت بیومتریک» ثبت کنید')
+      onError(copy.enrollSomeoneFirst)
       return
     }
     if (!enrollments.some((e) => e.hasEmbedding)) {
-      onError('ثبت‌های قبلی فقط عکس دارند — همه را دوباره با ثبت بیومتریک چندنمونه‌ای ثبت کنید')
+      onError(copy.photosOnlyReregister)
       return
     }
     if (!previewOn) {
       await searchCameras()
     }
-    setStatusText('بارگذاری مدل FaceNet…')
+    setStatusText(copy.loadingFacenet)
     try {
       await warmFaceEmbedder()
     } catch {
-      onError('بارگذاری مدل شناسایی چهره ناموفق بود — اینترنت/CDN را بررسی کنید')
+      onError(copy.facenetLoadFailed)
       return
     }
     watchRef.current = true
     setWatching(true)
-    setStatusText('پایش بیومتریک روشن شد — تردد با تطبیق بردار چهره ثبت می‌شود')
+    setStatusText(copy.watchStarted)
   }
 
   function stopAutoWatch() {
     watchRef.current = false
     setWatching(false)
-    setStatusText('پایش خودکار خاموش شد')
+    setStatusText(copy.watchStopped)
   }
 
   useEffect(() => {
     void loadEnrollments().catch((e) =>
-      onError(e instanceof Error ? e.message : 'خطا در لیست شناسایی‌ها')
+      onError(e instanceof Error ? e.message : copy.listFailed)
     )
     void fetch('/api/attendance/email-status')
       .then((r) => r.json())
       .then((j) => {
         if (j.email?.hint) setEmailHint(j.email.hint)
-        else if (j.email?.configured) setEmailHint('سرویس ایمیل آماده است')
+        else if (j.email?.configured) setEmailHint(copy.emailReady)
       })
       .catch(() => undefined)
     // Warm detectors + FaceNet so first enroll/recognize is not delayed
@@ -417,29 +426,29 @@ export function GateCameraPanel({
 
   return (
     <SectionCard
-      title="دوربین گیت — شناسایی بیومتریک"
-      description="ثبت چندنمونه‌ای FaceNet، تطبیق 1:N با آستانه و حاشیه ابهام — بدون حدس LLM"
+      title={copy.title}
+      description={copy.description}
     >
       <div className="space-y-4">
         {emailHint ? (
           <p
             className={cn(
               'text-xs rounded-md border px-3 py-2',
-              emailHint.includes('آماده')
+              emailHint.includes(copy.emailReadyToken)
                 ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
                 : 'border-amber-200 bg-amber-50 text-amber-950'
             )}
           >
-            ایمیل: {emailHint}
+            {copy.emailPrefix}{emailHint}
           </p>
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>گیت</Label>
+            <Label>{copy.gate}</Label>
             <Select value={selectedGateId || undefined} onValueChange={onGateChange}>
               <SelectTrigger>
-                <SelectValue placeholder="انتخاب گیت" />
+                <SelectValue placeholder={copy.pickGate} />
               </SelectTrigger>
               <SelectContent>
                 {gates.map((g) => (
@@ -452,7 +461,7 @@ export function GateCameraPanel({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>دوربین‌های پیدا شده</Label>
+            <Label>{copy.foundCameras}</Label>
             <div className="flex gap-2">
               <Select
                 value={deviceId || undefined}
@@ -462,7 +471,7 @@ export function GateCameraPanel({
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="بعد از جستجو انتخاب کنید" />
+                  <SelectValue placeholder={copy.pickAfterSearch} />
                 </SelectTrigger>
                 <SelectContent>
                   {cameras.map((c) => (
@@ -503,17 +512,17 @@ export function GateCameraPanel({
           {watching ? (
             <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-red-600/90 px-3 py-1 text-xs font-medium text-white">
               <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
-              زنده — پایش · {faceCount} صورت
+              {copy.liveWatch(faceCount)}
             </div>
           ) : faceCount > 0 ? (
             <div className="absolute top-3 left-3 rounded-full bg-emerald-700/90 px-3 py-1 text-xs font-medium text-white">
-              {faceCount} صورت در قاب
+              {copy.facesInFrame(faceCount)}
             </div>
           ) : null}
           {flashName ? (
             <div className="absolute inset-x-0 bottom-0 flex flex-col items-center justify-end pb-6 pointer-events-none">
               <div className="mx-4 w-full max-w-lg rounded-2xl bg-emerald-600/95 px-6 py-5 text-center shadow-2xl">
-                <p className="text-xs font-medium text-emerald-100">شناسایی شد</p>
+                <p className="text-xs font-medium text-emerald-100">{copy.recognized}</p>
                 <p className="mt-1 text-3xl font-bold text-white tracking-tight">{flashName}</p>
               </div>
             </div>
@@ -521,7 +530,7 @@ export function GateCameraPanel({
           {!previewOn ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/80 text-sm">
               <Camera className="h-8 w-8" />
-              <span>برای شروع، «جستجوی دوربین» را بزنید</span>
+              <span>{copy.startHint}</span>
             </div>
           ) : null}
         </div>
@@ -534,7 +543,7 @@ export function GateCameraPanel({
             onClick={() => void searchCameras()}
           >
             <Search className="h-4 w-4 ml-1" />
-            جستجوی دوربین‌ها
+            {copy.searchCameras}
           </Button>
           <Button
             type="button"
@@ -543,7 +552,7 @@ export function GateCameraPanel({
             onClick={() => void bindSelectedCamera()}
           >
             <Camera className="h-4 w-4 ml-1" />
-            اتصال به این گیت
+            {copy.bindToGate}
           </Button>
           <Button
             type="button"
@@ -552,7 +561,7 @@ export function GateCameraPanel({
             onClick={() => setMethodOpen(true)}
           >
             <Info className="h-4 w-4 ml-1" />
-            روش شناسایی
+            {copy.method}
           </Button>
           {!watching ? (
             <Button
@@ -562,12 +571,12 @@ export function GateCameraPanel({
               className="bg-emerald-700 hover:bg-emerald-800"
             >
               <Radio className="h-4 w-4 ml-1" />
-              روشن کردن پایش خودکار
+              {copy.startWatch}
             </Button>
           ) : (
             <Button type="button" variant="destructive" onClick={stopAutoWatch}>
               <Square className="h-4 w-4 ml-1" />
-              توقف پایش
+              {copy.stopWatch}
             </Button>
           )}
         </div>
@@ -575,18 +584,18 @@ export function GateCameraPanel({
         <div className="border-t pt-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold">ثبت بیومتریک افراد</p>
+              <p className="text-sm font-semibold">{copy.enrollTitle}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                در صفحه جدا، با راهنمای حرکات سر ثبت می‌شود — اینجا قاطی نمی‌شود
+                {copy.enrollHint}
               </p>
               <p className="text-[11px] text-muted-foreground mt-1">
-                {enrollments.filter((e) => e.hasEmbedding).length} نفر با بیومتریک فعال
+                {copy.activeEnrollments(enrollments.filter((e) => e.hasEmbedding).length)}
               </p>
             </div>
             <Button asChild className="shrink-0 bg-emerald-700 hover:bg-emerald-800">
               <Link href="/dashboard/security/enroll">
                 <UserPlus className="h-4 w-4 ml-1" />
-                باز کردن صفحه ثبت
+                {copy.openEnrollPage}
               </Link>
             </Button>
           </div>

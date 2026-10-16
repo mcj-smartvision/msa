@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/engine/pdfjs.ts
+ * @purpose منطق دامنه — کنترل کیفیت و عدم انطباق (pdfjs)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on nothing
+ */
+
 type PdfJsPage = {
   getViewport: (opts: { scale: number }) => { width: number; height: number }
   render: (opts: { canvasContext: CanvasRenderingContext2D; viewport: { width: number; height: number } }) => {

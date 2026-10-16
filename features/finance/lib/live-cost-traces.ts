@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/live-cost-traces.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (live-cost-traces)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/evm/lib/metrics, features/manager/lib/format, features/manager/lib/cost-estimate, features/calc-trace/lib/build, features/calc-trace/lib/types
+ */
+
 import type { EvmBudgetBasis } from '@/features/evm/lib/metrics'
 import { faNumber } from '@/features/manager/lib/format'
 import { WBS_BASIS_LABEL } from '@/features/manager/lib/cost-estimate'

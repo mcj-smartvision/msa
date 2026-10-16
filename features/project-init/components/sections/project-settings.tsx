@@ -1,3 +1,11 @@
+/**
+ * @file features/project-init/components/sections/project-settings.tsx
+ * @purpose کامپوننت UI — راه‌اندازی پروژه (project-settings)
+ * @safe-to-edit CAREFUL
+ * @affects راه‌اندازی پروژه
+ * @depends-on features/project-init/lib/schema
+ */
+
 'use client'
 
 import { FieldGrid, SectionHeader, SelectField, SubsectionTitle, SwitchField } from '../form-fields'

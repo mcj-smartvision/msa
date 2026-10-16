@@ -1,3 +1,11 @@
+/**
+ * @file app/api/workshop/schedule-tree/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, features/workshop/lib/service
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { getScheduleTree, workshopErrorResponse } from '@/features/workshop/lib/service'

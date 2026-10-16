@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/employer-purchases.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (employer-purchases)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on nothing
+ */
+
 /** Employer purchases (خرید کارفرمایی): amounts in whole toman, shared among schedule activities by percent. */
 
 export interface EmployerPurchaseAllocation {

@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/daily-report-history.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (daily-report-history)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/lib/daily-report-activities, features/schedule/lib/dates, features/weather/lib/report-stamp
+ */
+
 import type { DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
 import { formatScheduleDate } from '@/features/schedule/lib/dates'
 import { stripWeatherLine } from '@/features/weather/lib/report-stamp'

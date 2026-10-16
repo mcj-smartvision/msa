@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/components/qc-dashboard.tsx
+ * @purpose کامپوننت UI — کنترل کیفیت و عدم انطباق (qc-dashboard)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on shared/components/i18n/locale-provider, features/admin/components/shared, features/admin/components/stat-card, shared/components/common/ai-draft-viewer, shared/components/common/modal-overlay, shared/components/ui/button, shared/components/ui/badge, shared/components/ui/input, shared/components/ui/label, shared/components/ui/textarea
+ */
+
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'

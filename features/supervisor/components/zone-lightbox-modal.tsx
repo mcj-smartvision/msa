@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/zone-lightbox-modal.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (zone-lightbox-modal)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/components/modal-overlay, features/supervisor/components/zone-map-svg, features/supervisor/components/zone-levels-field, features/supervisor/components/drawing-file-preview, shared/components/ui/button, features/supervisor/lib/drawings-zoning-mock, features/technical-office/lib/drawings-shared
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -9,6 +17,9 @@ import { prefetchDrawingPreview } from '@/features/supervisor/components/drawing
 import { Button } from '@/shared/components/ui/button'
 import type { DefinedZone } from '@/features/supervisor/lib/drawings-zoning-mock'
 import type { ProjectDrawing } from '@/features/technical-office/lib/drawings-shared'
+import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+
+const t = getSiteSupervisorMessages('fa')
 
 type ZoneLightboxModalProps = {
   open: boolean
@@ -79,7 +90,7 @@ export function ZoneLightboxModal({
               {loadingMeta ? (
                 <div className="flex h-full items-center justify-center gap-2 text-sm text-slate-600">
                   <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-                  بارگذاری نقشه…
+                  {t.loadingDrawing}
                 </div>
               ) : resolvedDrawing ? (
                 <ZoneMapCanvas
@@ -89,17 +100,17 @@ export function ZoneLightboxModal({
                 />
               ) : (
                 <div className="flex h-full items-center justify-center px-4 text-sm text-rose-700">
-                  نقشه این زون در دسترس نیست.
+                  {t.zoneMapUnavailable}
                 </div>
               )}
             </div>
             <p className="border-t border-slate-100 px-3 py-2 text-xs text-slate-500">
-              شمای نقشه — محدوده علامت‌گذاری‌شده
+              {t.mapSchemaMarked}
             </p>
           </div>
 
           <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-bold text-slate-900">عملیات نقشه</p>
+            <p className="text-sm font-bold text-slate-900">{t.mapOps}</p>
             <Button
               type="button"
               className="w-full gap-2 bg-[#1e3a5f] hover:bg-[#152a45]"
@@ -109,7 +120,7 @@ export function ZoneLightboxModal({
               }}
             >
               <Download className="h-4 w-4 shrink-0" aria-hidden="true" />
-              دانلود نقشه
+              {t.downloadMap}
             </Button>
             {resolvedDrawing ? (
               <p className="text-xs leading-relaxed text-slate-600">
@@ -123,39 +134,39 @@ export function ZoneLightboxModal({
 
         <dl className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50/80 p-3 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-[11px] font-semibold text-slate-500">نام زون</dt>
+            <dt className="text-[11px] font-semibold text-slate-500">{t.zoneName}</dt>
             <dd className="font-semibold text-slate-900">{zone.name}</dd>
           </div>
           <div>
-            <dt className="text-[11px] font-semibold text-slate-500">کد زون</dt>
+            <dt className="text-[11px] font-semibold text-slate-500">{t.zoneCode}</dt>
             <dd className="font-mono font-semibold text-[#1e3a5f]">{zone.code?.trim() || '—'}</dd>
           </div>
           {zone.contractor?.trim() ? (
             <div>
-              <dt className="text-[11px] font-semibold text-slate-500">نام پیمانکار زون</dt>
+              <dt className="text-[11px] font-semibold text-slate-500">{t.zoneContractor}</dt>
               <dd className="text-slate-700">{zone.contractor}</dd>
             </div>
           ) : null}
           {zone.levels?.some((l) => l.trim()) ? (
             <div className="sm:col-span-2">
-              <dt className="text-[11px] font-semibold text-slate-500">تراز زون</dt>
+              <dt className="text-[11px] font-semibold text-slate-500">{t.zoneLevel}</dt>
               <dd className="text-slate-700">{formatZoneLevels(zone.levels)}</dd>
             </div>
           ) : null}
           {zone.supervisor?.trim() ? (
             <div>
-              <dt className="text-[11px] font-semibold text-slate-500">مسئول زون</dt>
+              <dt className="text-[11px] font-semibold text-slate-500">{t.zoneSupervisor}</dt>
               <dd className="text-slate-700">{zone.supervisor}</dd>
             </div>
           ) : null}
           {zone.description?.trim() ? (
             <div className="sm:col-span-2">
-              <dt className="text-[11px] font-semibold text-slate-500">توضیحات</dt>
+              <dt className="text-[11px] font-semibold text-slate-500">{t.description}</dt>
               <dd className="text-slate-700">{zone.description}</dd>
             </div>
           ) : null}
           <div className="sm:col-span-2">
-            <dt className="text-[11px] font-semibold text-slate-500">نقشه مبدأ</dt>
+            <dt className="text-[11px] font-semibold text-slate-500">{t.sourceDrawing}</dt>
             <dd className="font-medium text-slate-900">{zone.drawingTitle}</dd>
           </div>
         </dl>

@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/supervisor-drawings-zoning-panel.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (supervisor-drawings-zoning-panel)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/supervisor/components/zone-create-panel, features/supervisor/components/zone-lightbox-modal, features/supervisor/components/zone-list-drawing-thumb, features/supervisor/components/zone-levels-field, shared/components/ui/button, features/supervisor/lib/drawings-zoning-mock, features/technical-office/lib/drawing-discipline, features/supervisor/lib/zone-project-storage, features/technical-office/lib/drawings-shared, shared/lib/utils
+ */
+
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -27,16 +35,19 @@ writeProjectZoneState,
 } from '@/features/supervisor/lib/zone-project-storage'
 import type { ProjectDrawing } from '@/features/technical-office/lib/drawings-shared'
 import { cn } from '@/shared/lib/utils'
+import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+
+const t = getSiteSupervisorMessages('fa')
 
 const DISCIPLINES: Array<{
   id: DrawingDiscipline
   label: string
   icon: typeof Building2
 }> = [
-  { id: 'structure', label: 'سازه', icon: Building2 },
-  { id: 'architecture', label: 'معماری', icon: PenTool },
-  { id: 'electrical', label: 'برق', icon: Zap },
-  { id: 'mechanical', label: 'مکانیک', icon: Cog },
+  { id: 'structure', label: t.disciplineStructure, icon: Building2 },
+  { id: 'architecture', label: t.disciplineArchitecture, icon: PenTool },
+  { id: 'electrical', label: t.disciplineElectrical, icon: Zap },
+  { id: 'mechanical', label: t.disciplineMechanical, icon: Cog },
 ]
 
 function formatDrawingDate(iso: string): string {
@@ -55,7 +66,7 @@ function DrawingList({
 }) {
   if (drawings.length === 0) {
     return (
-      <p className="py-8 text-center text-sm text-slate-500">نقشه‌ای در این دسته ثبت نشده است.</p>
+      <p className="py-8 text-center text-sm text-slate-500">{t.noDrawingsInCategory}</p>
     )
   }
 
@@ -79,7 +90,7 @@ function DrawingList({
                 <span className="text-slate-300">·</span>
                 <span>{d.format.toUpperCase()}</span>
                 <span className="text-slate-300">·</span>
-                <span>بارگذاری {formatDrawingDate(d.createdAt)}</span>
+                <span>{t.uploadedPrefix} {formatDrawingDate(d.createdAt)}</span>
               </p>
             </div>
           </div>
@@ -89,7 +100,7 @@ function DrawingList({
             onClick={() => onDownload(d.id)}
           >
             <Download className="h-3.5 w-3.5" aria-hidden="true" />
-            دانلود
+            {t.download}
           </button>
         </li>
       ))}
@@ -138,12 +149,12 @@ function ZoneListRow({
                 color: zone.color,
               }}
             >
-              تراز {levelsText}
+              {t.levelPrefix} {levelsText}
             </span>
           ) : null}
           {zone.contractor?.trim() ? (
             <p className="text-sm font-semibold text-slate-800">
-              پیمانکار: <span className="font-medium text-slate-700">{zone.contractor}</span>
+              {t.contractorPrefix} <span className="font-medium text-slate-700">{zone.contractor}</span>
             </p>
           ) : null}
         </div>
@@ -161,7 +172,7 @@ function ZoneListRow({
               </>
             ) : null}
             <span className="mx-2 text-emerald-300">·</span>
-            <span>{zone.activityCount.toLocaleString('fa-IR-u-nu-latn')} فعالیت متصل</span>
+            <span>{zone.activityCount.toLocaleString('fa-IR-u-nu-latn')} {t.connectedActivities}</span>
           </p>
           {zone.description?.trim() ? (
             <p className="mt-2 border-t border-emerald-100 pt-2 text-sm leading-relaxed text-slate-800 sm:text-[15px]">
@@ -178,7 +189,7 @@ function ZoneListRow({
           size="icon"
           className="h-9 w-9 border-slate-200 bg-white"
           onClick={onEdit}
-          aria-label={`ویرایش زون ${zone.name}`}
+          aria-label={t.editZoneAria(zone.name)}
         >
           <Pencil className="h-4 w-4 text-slate-600" aria-hidden="true" />
         </Button>
@@ -188,7 +199,7 @@ function ZoneListRow({
           size="icon"
           className="h-9 w-9 border-slate-200 bg-white text-rose-600 hover:bg-rose-50 hover:text-rose-700"
           onClick={onDelete}
-          aria-label={`حذف زون ${zone.name}`}
+          aria-label={t.deleteZoneAria(zone.name)}
         >
           <Trash2 className="h-4 w-4" aria-hidden="true" />
         </Button>
@@ -253,13 +264,13 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
       const res = await fetch(`/api/technical-office/drawings?projectId=${encodeURIComponent(projectId)}`)
       const data = (await res.json().catch(() => ({}))) as { drawings?: ProjectDrawing[]; error?: string }
       if (!res.ok) {
-        setLoadError(data.error || 'بارگذاری نقشه‌ها انجام نشد.')
+        setLoadError(data.error || t.loadDrawingsFailed)
         setDrawings([])
         return
       }
       setDrawings(data.drawings ?? [])
     } catch {
-      setLoadError('ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید.')
+      setLoadError(t.serverUnreachable)
       setDrawings([])
     } finally {
       setLoading(false)
@@ -343,7 +354,7 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
   if (!projectId) {
     return (
       <p className="text-sm text-slate-500" dir="rtl" lang="fa">
-        ابتدا یک پروژه انتخاب کنید.
+        {t.selectProjectFirst}
       </p>
     )
   }
@@ -357,8 +368,8 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
       ) : null}
 
       <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <p className="mb-3 text-sm font-semibold text-slate-800">نقشه‌ها به تفکیک رشته</p>
-        <div className="flex flex-wrap gap-2" role="tablist" aria-label="رشته نقشه">
+        <p className="mb-3 text-sm font-semibold text-slate-800">{t.drawingsByDiscipline}</p>
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label={t.drawingDisciplineAria}>
           {DISCIPLINES.map((item) => {
             const selected = openDiscipline === item.id
             const Icon = item.icon
@@ -395,17 +406,17 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
         {openDiscipline !== null ? (
           <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50/50 p-4" role="tabpanel">
             <p className="mb-3 text-xs font-medium text-slate-600">
-              نقشه‌های رشته {DISCIPLINES.find((d) => d.id === openDiscipline)?.label ?? ''}
+              {t.drawingsOfDiscipline(DISCIPLINES.find((d) => d.id === openDiscipline)?.label ?? '')}
             </p>
             {loading ? (
-              <p className="py-8 text-center text-sm text-slate-500">در حال بارگذاری نقشه‌ها...</p>
+              <p className="py-8 text-center text-sm text-slate-500">{t.loadingDrawingsDots}</p>
             ) : (
               <DrawingList drawings={activeDrawings} onDownload={handleDownload} />
             )}
           </div>
         ) : (
           <p className="mt-3 text-center text-xs text-slate-500">
-            برای مشاهده لیست نقشه‌ها، یکی از رشته‌ها را انتخاب کنید.
+            {t.pickDisciplineHint}
           </p>
         )}
       </section>
@@ -413,11 +424,11 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
       {definedZones.length > 0 ? (
         <section
           className="rounded-xl border border-emerald-200/80 bg-emerald-50/40 p-4 shadow-sm sm:p-5"
-          aria-label="زون‌های تعریف‌شده"
+          aria-label={t.definedZonesAria}
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm font-semibold text-slate-900">
-              زون‌های تعریف‌شده ({definedZones.length.toLocaleString('fa-IR-u-nu-latn')})
+              {t.definedZonesTitle(definedZones.length.toLocaleString('fa-IR-u-nu-latn'))}
             </p>
             <Button
               type="button"
@@ -426,7 +437,7 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
               className="border-amber-300 text-amber-900 hover:bg-amber-50"
               onClick={openZoneForm}
             >
-              افزودن زون دیگر
+              {t.addAnotherZone}
             </Button>
           </div>
           <div className="space-y-3">
@@ -475,7 +486,7 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
           aria-expanded={zonesOpen}
         >
           <Layers className="h-4 w-4 shrink-0" aria-hidden="true" />
-          زون‌بندی پروژه
+          {t.zoningProject}
           <ChevronDown
             className={cn('h-4 w-4 shrink-0 transition-transform', zonesOpen && 'rotate-180')}
             aria-hidden="true"
@@ -485,14 +496,14 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
         {zonesOpen ? (
           <section
             className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
-            aria-label="زون‌بندی پروژه"
+            aria-label={t.zoningAria}
           >
             <div className="mb-5 flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <MapPinned className="h-5 w-5 text-[#1e3a5f]" aria-hidden="true" />
-                <p className="text-sm font-semibold text-slate-900">این پروژه به زون تقسیم می‌شود؟</p>
+                <p className="text-sm font-semibold text-slate-900">{t.projectSplitQuestion}</p>
               </div>
-              <div className="flex gap-2" role="group" aria-label="تقسیم به زون">
+              <div className="flex gap-2" role="group" aria-label={t.splitZoneAria}>
                 <button
                   type="button"
                   onClick={() => updateProjectUsesZones(true)}
@@ -503,7 +514,7 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   )}
                 >
-                  بله
+                  {t.yes}
                 </button>
                 <button
                   type="button"
@@ -515,14 +526,14 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   )}
                 >
-                  خیر
+                  {t.no}
                 </button>
               </div>
             </div>
 
             {projectUsesZones === false ? (
               <p className="rounded-lg border border-slate-100 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">
-                این پروژه بدون زون‌بندی مدیریت می‌شود.
+                {t.noZoningManaged}
               </p>
             ) : null}
 
@@ -535,7 +546,7 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
                       className="bg-amber-500 text-white hover:bg-amber-600"
                       onClick={openZoneForm}
                     >
-                      تعریف زون
+                      {t.defineZone}
                     </Button>
                   ) : null}
                   {definedZones.length > 0 ? (
@@ -545,20 +556,20 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
                       className="border-amber-300 text-amber-900 hover:bg-amber-50"
                       onClick={openZoneForm}
                     >
-                      افزودن زون دیگر
+                      {t.addAnotherZone}
                     </Button>
                   ) : null}
                 </div>
 
                 {zoneSaveHint ? (
                   <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                    زون ذخیره شد. می‌توانید زون‌های بیشتری اضافه کنید.
+                    {t.zoneSavedHint}
                   </p>
                 ) : null}
 
                 {!zoneFormOpen && definedZones.length === 0 ? (
                   <p className="text-center text-sm text-slate-500">
-                    هنوز زونی تعریف نشده — روی «تعریف زون» کلیک کنید.
+                    {t.noZonesYet}
                   </p>
                 ) : null}
               </div>
@@ -566,7 +577,7 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
 
             {projectUsesZones === null ? (
               <p className="text-center text-sm text-slate-500">
-                یکی از گزینه‌های بله یا خیر را انتخاب کنید.
+                {t.pickYesNo}
               </p>
             ) : null}
           </section>

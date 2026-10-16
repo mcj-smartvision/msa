@@ -1,3 +1,11 @@
+/**
+ * @file app/(account)/layout.tsx
+ * @purpose کامپوننت UI — مسیرها و layout (layout)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server
+ */
+
 import { redirect } from 'next/navigation'
 import { createClient } from '@/shared/lib/supabase/server'
 

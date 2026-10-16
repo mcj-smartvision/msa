@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/lib/project-status.ts
+ * @purpose منطق دامنه — کنترل سنتر و مدیریت اعضا/پروژه (project-status)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on nothing
+ */
+
 /** Shared status labels for admin project control center (Persian UI). */
 
 export type ProjectStatusKey = 'planning' | 'active' | 'completed' | 'suspended' | 'at_risk' | 'paused'

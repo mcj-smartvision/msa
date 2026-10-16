@@ -1,3 +1,11 @@
+/**
+ * @file features/weather/lib/report-stamp.ts
+ * @purpose منطق دامنه — هوای کارگاه (report-stamp)
+ * @safe-to-edit CAREFUL
+ * @affects هوای کارگاه
+ * @depends-on features/manager/lib/format, shared/types, features/weather/lib/types
+ */
+
 import { faNumber } from '@/features/manager/lib/format'
 import type { WeatherAirAnalysis } from '@/shared/types'
 import type { DailyWeatherSnapshot, WeatherPayload } from '@/features/weather/lib/types'

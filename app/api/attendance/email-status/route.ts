@@ -1,3 +1,11 @@
+/**
+ * @file app/api/attendance/email-status/route.ts
+ * @purpose ماژول — مسیرها و layout (route)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on shared/lib/supabase/server, shared/lib/email/send, features/site-ops/lib/auth, features/attendance/lib/service
+ */
+
 import { NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { getEmailRuntimeStatus } from '@/shared/lib/email/send'

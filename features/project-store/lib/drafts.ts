@@ -1,3 +1,11 @@
+/**
+ * @file features/project-store/lib/drafts.ts
+ * @purpose منطق دامنه — ذخیره پیشرفت و overlay اعداد داشبورد (drafts)
+ * @safe-to-edit CAREFUL
+ * @affects ذخیره پیشرفت و overlay اعداد داشبورد
+ * @depends-on features/supervisor/lib/daily-report-activities, features/supervisor/lib/daily-progress-storage, features/supervisor/lib/weekly-activity-progress
+ */
+
 import type { DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
 import { upsertDailyEntries } from '@/features/supervisor/lib/daily-progress-storage'
 import { cumulativeEntry, withoutDay } from '@/features/supervisor/lib/weekly-activity-progress'

@@ -1,3 +1,11 @@
+/**
+ * @file features/workshop/components/prepared-workspace.tsx
+ * @purpose کامپوننت UI — بسته‌های اجرایی و تأیید کارگاه (prepared-workspace)
+ * @safe-to-edit CAREFUL
+ * @affects بسته‌های اجرایی و تأیید کارگاه
+ * @depends-on features/workshop/lib/approvals, features/admin/components/shared, features/workshop/components/uom-display
+ */
+
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
@@ -5,6 +13,7 @@ import { useSearchParams } from 'next/navigation'
 import { approvalStatusFa } from '@/features/workshop/lib/approvals'
 import { PageHeader } from '@/features/admin/components/shared'
 import { QtyWithUom } from '@/features/workshop/components/uom-display'
+import { WORKSHOP_COPY } from '@/features/workshop/lib/ui-copy'
 
 type PreparedItem = {
   id: string
@@ -49,11 +58,11 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
     try {
       const res = await fetch(`/api/workshop/prepared?projectId=${projectId}`)
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'خطا')
+      if (!res.ok) throw new Error(data.error || WORKSHOP_COPY.genericError)
       setItems(data.items ?? [])
       if (data.currentUserId) setCurrentUserId(data.currentUserId)
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'خطا')
+      setMessage(e instanceof Error ? e.message : WORKSHOP_COPY.genericError)
     } finally {
       setLoading(false)
     }
@@ -64,11 +73,11 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
     try {
       const res = await fetch(`/api/workshop/packages/${packageId}/comments`)
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'خطا در کامنت‌ها')
+      if (!res.ok) throw new Error(data.error || WORKSHOP_COPY.commentsError)
       setComments(data.comments ?? [])
       if (data.currentUserId) setCurrentUserId(data.currentUserId)
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'خطا')
+      setMessage(e instanceof Error ? e.message : WORKSHOP_COPY.genericError)
       setComments([])
     } finally {
       setCommentsLoading(false)
@@ -104,7 +113,7 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
     })
     const data = await res.json()
     if (!res.ok) {
-      setMessage(data.error || 'کامنت ثبت نشد')
+      setMessage(data.error || WORKSHOP_COPY.commentNotSaved)
       return
     }
     setNewComment('')
@@ -121,7 +130,7 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
     })
     const data = await res.json()
     if (!res.ok) {
-      setMessage(data.error || 'ویرایش نشد')
+      setMessage(data.error || WORKSHOP_COPY.editFailed)
       return
     }
     setEditingId(null)
@@ -130,15 +139,15 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
   }
 
   if (!projectId) {
-    return <p className="text-sm text-slate-600">پروژه را از بالا انتخاب کنید.</p>
+    return <p className="text-sm text-slate-600">{WORKSHOP_COPY.selectProjectTop}</p>
   }
 
   return (
     <div className="space-y-4" dir="rtl">
       <PageHeader
         showBanner={showBanner}
-        title="لیست‌های تهیه‌شده"
-        description="سرپرست کارگاه — نوشته‌های دفتر فنی، وضعیت تأیید مدیر پروژه، و گفتگو با کامنت."
+        title={WORKSHOP_COPY.prepared.title}
+        description={WORKSHOP_COPY.prepared.description}
       />
 
       {message && (
@@ -151,25 +160,25 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
             <table className="w-full text-sm">
               <thead className="sticky top-0 border-b bg-slate-50 text-slate-500">
                 <tr className="text-right">
-                  <th className="px-3 py-2 font-medium">نام (دفتر فنی)</th>
-                  <th className="px-3 py-2 font-medium">محل</th>
-                  <th className="px-3 py-2 font-medium">مقدار</th>
-                  <th className="px-3 py-2 font-medium">گروه</th>
-                  <th className="px-3 py-2 font-medium">وضعیت تأیید PM</th>
+                  <th className="px-3 py-2 font-medium">{WORKSHOP_COPY.prepared.colName}</th>
+                  <th className="px-3 py-2 font-medium">{WORKSHOP_COPY.prepared.colLocation}</th>
+                  <th className="px-3 py-2 font-medium">{WORKSHOP_COPY.prepared.colQty}</th>
+                  <th className="px-3 py-2 font-medium">{WORKSHOP_COPY.prepared.colCrew}</th>
+                  <th className="px-3 py-2 font-medium">{WORKSHOP_COPY.prepared.colPmStatus}</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
                   <tr>
                     <td colSpan={5} className="px-3 py-8 text-center text-slate-500">
-                      در حال بارگذاری…
+                      {WORKSHOP_COPY.loading}
                     </td>
                   </tr>
                 )}
                 {!loading && items.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-3 py-8 text-center text-slate-500">
-                      هنوز موردی از دفتر فنی ثبت نشده.
+                      {WORKSHOP_COPY.prepared.empty}
                     </td>
                   </tr>
                 )}
@@ -214,22 +223,22 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
 
         <aside className="rounded-2xl border border-slate-200 bg-white p-4 h-fit space-y-4">
           {!selected ? (
-            <p className="text-sm text-slate-500">یک مورد را انتخاب کنید تا جزئیات و کامنت‌ها را ببینید.</p>
+            <p className="text-sm text-slate-500">{WORKSHOP_COPY.prepared.pickItem}</p>
           ) : (
             <>
               <div className="space-y-2">
                 <h2 className="font-semibold text-lg">{selected.name}</h2>
                 <dl className="text-sm space-y-1 text-slate-700">
-                  <div>محل: {selected.location ?? '—'}</div>
+                  <div>{WORKSHOP_COPY.prepared.locationPrefix} {selected.location ?? '—'}</div>
                   <div>
-                    مقدار: <QtyWithUom qty={selected.quantity} uom={selected.uom} />
+                    {WORKSHOP_COPY.prepared.qtyPrefix} <QtyWithUom qty={selected.quantity} uom={selected.uom} />
                   </div>
-                  <div>گروه: {selected.crew ?? '—'}</div>
-                  {selected.note && <div>یادداشت دفتر فنی: {selected.note}</div>}
+                  <div>{WORKSHOP_COPY.prepared.crewPrefix} {selected.crew ?? '—'}</div>
+                  {selected.note && <div>{WORKSHOP_COPY.prepared.toNotePrefix} {selected.note}</div>}
                 </dl>
                 <div className="rounded-lg border bg-slate-50 px-3 py-2 text-sm space-y-1">
                   <p>
-                    وضعیت تأیید:{' '}
+                    {WORKSHOP_COPY.prepared.approvalStatusPrefix}{' '}
                     <span className="font-medium">
                       {approvalStatusFa(selected.approval_status as never)}
                     </span>
@@ -237,23 +246,23 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
                   <p className="text-xs text-slate-600">{pmStatusLine(selected.approval_status)}</p>
                   {selected.last_pm_comment && (
                     <p className="text-xs text-amber-900 bg-amber-50 border border-amber-100 rounded p-2 mt-1">
-                      آخرین کامنت مدیر: {selected.last_pm_comment}
+                      {WORKSHOP_COPY.prepared.lastPmComment(selected.last_pm_comment)}
                     </p>
                   )}
                   {selected.approved_at && (
                     <p className="text-[11px] text-slate-500">
-                      زمان تأیید: {new Date(selected.approved_at).toLocaleString('fa-IR-u-nu-latn')}
+                      {WORKSHOP_COPY.prepared.approvedAt(new Date(selected.approved_at).toLocaleString('fa-IR-u-nu-latn'))}
                     </p>
                   )}
                 </div>
               </div>
 
               <div className="border-t pt-3 space-y-3">
-                <h3 className="font-semibold text-sm">گفتگو / کامنت‌ها</h3>
-                {commentsLoading && <p className="text-xs text-slate-500">بارگذاری کامنت…</p>}
+                <h3 className="font-semibold text-sm">{WORKSHOP_COPY.prepared.commentsTitle}</h3>
+                {commentsLoading && <p className="text-xs text-slate-500">{WORKSHOP_COPY.prepared.loadingComments}</p>}
                 <ul className="space-y-2 max-h-[280px] overflow-auto">
                   {!commentsLoading && comments.length === 0 && (
-                    <li className="text-xs text-slate-500">هنوز کامنتی نیست.</li>
+                    <li className="text-xs text-slate-500">{WORKSHOP_COPY.prepared.noComments}</li>
                   )}
                   {comments.map((c) => {
                     const mine = currentUserId && c.author_id === currentUserId
@@ -261,10 +270,10 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
                     return (
                       <li key={c.id} className="rounded-lg border px-3 py-2 text-sm space-y-1">
                         <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500">
-                          <span>{c.author_name || 'کاربر'}</span>
+                          <span>{c.author_name || WORKSHOP_COPY.user}</span>
                           <span>
                             {new Date(c.created_at).toLocaleString('fa-IR-u-nu-latn')}
-                            {c.edited_at ? ' · ویرایش‌شده' : ''}
+                            {c.edited_at ? WORKSHOP_COPY.prepared.edited : ''}
                           </span>
                         </div>
                         {editing ? (
@@ -280,7 +289,7 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 onClick={() => void saveEdit(c.id)}
                                 className="rounded bg-slate-900 px-2 py-1 text-xs text-white"
                               >
-                                ذخیره
+                                {WORKSHOP_COPY.save}
                               </button>
                               <button
                                 type="button"
@@ -290,7 +299,7 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 }}
                                 className="rounded border px-2 py-1 text-xs"
                               >
-                                انصراف
+                                {WORKSHOP_COPY.cancel}
                               </button>
                             </div>
                           </div>
@@ -306,7 +315,7 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
                                 }}
                                 className="text-[11px] text-sky-700 underline"
                               >
-                                ویرایش کامنت من
+                                {WORKSHOP_COPY.prepared.editMyComment}
                               </button>
                             )}
                           </>
@@ -319,7 +328,7 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
                 <div className="space-y-2">
                   <textarea
                     className="w-full rounded-lg border px-3 py-2 text-sm min-h-[70px]"
-                    placeholder="کامنت بگذارید — بقیه اعضا می‌بینند…"
+                    placeholder={WORKSHOP_COPY.prepared.commentPlaceholder}
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                   />
@@ -329,7 +338,7 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
                     disabled={!newComment.trim()}
                     className="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm text-white disabled:opacity-40"
                   >
-                    ثبت کامنت
+                    {WORKSHOP_COPY.prepared.postComment}
                   </button>
                 </div>
               </div>
@@ -344,15 +353,15 @@ export function PreparedWorkspace({ showBanner = true }: { showBanner?: boolean 
 function pmStatusLine(status: string): string {
   switch (status) {
     case 'approved':
-      return 'مدیر پروژه تأیید کرده است'
+      return WORKSHOP_COPY.prepared.pmApproved
     case 'pending_approval':
-      return 'منتظر تأیید مدیر پروژه'
+      return WORKSHOP_COPY.prepared.pmPending
     case 'rejected':
-      return 'مدیر پروژه رد کرده — دفتر فنی باید اصلاح کند'
+      return WORKSHOP_COPY.prepared.pmRejected
     case 'change_requested':
-      return 'درخواست تغییر در صف تأیید مدیر است'
+      return WORKSHOP_COPY.prepared.pmChangeQueued
     case 'draft':
-      return 'پیش‌نویس دفتر فنی — هنوز برای مدیر ارسال نشده'
+      return WORKSHOP_COPY.prepared.pmDraft
     default:
       return status
   }

@@ -1,3 +1,11 @@
+/**
+ * @file features/attendance/lib/service.ts
+ * @purpose منطق دامنه — حضور و غیاب و چهره (service)
+ * @safe-to-edit CAREFUL
+ * @affects حضور و غیاب و چهره
+ * @depends-on features/admin/lib/access, shared/lib/email/send, shared/lib/auth/login-identifier, features/site-ops/lib/auth, features/site-ops/domain/errors
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { isSystemAdmin } from '@/features/admin/lib/access'

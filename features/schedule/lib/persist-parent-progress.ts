@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/persist-parent-progress.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (persist-parent-progress)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/parent-progress-rollup, features/schedule/lib/parent-weight-rollup, features/schedule/lib/physical-progress
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { applyWeightedParentRollup } from '@/features/schedule/lib/parent-progress-rollup'
 import { applyParentWeightSum } from '@/features/schedule/lib/parent-weight-rollup'

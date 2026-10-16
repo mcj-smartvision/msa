@@ -1,4 +1,14 @@
+/**
+ * @file features/admin/components/construction-role-select.tsx
+ * @purpose کامپوننت UI — کنترل سنتر و مدیریت اعضا/پروژه (construction-role-select)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on features/admin/lib/construction-roles, shared/components/ui/select, shared/components/ui/label, shared/components/ui/button, shared/lib/i18n/position-labels, shared/components/i18n/locale-provider, shared/types/admin
+ */
+
+
 'use client'
+import { ADMIN_CONSTRUCTION_ROLE_COPY } from '@/features/admin/config'
 
 import { CONSTRUCTION_ROLES } from '@/features/admin/lib/construction-roles'
 import {
@@ -92,7 +102,7 @@ export function ConstructionRoleSelect({
         <div className="rounded-lg border border-dashed bg-amber-50/50 p-4 space-y-3">
           <p className="text-sm text-amber-900">
             {hasPositions
-              ? 'نقش «مسئول ایمنی» در این پروژه تعریف نشده. نقش‌های پیش‌فرض را به‌روز کنید تا در لیست ظاهر شود.'
+              ? ADMIN_CONSTRUCTION_ROLE_COPY.hseMissing
               : messages.noPositions}
           </p>
           <Button type="button" variant="outline" size="sm" onClick={() => onSeed()} disabled={seeding}>

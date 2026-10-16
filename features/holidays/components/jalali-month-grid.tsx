@@ -1,6 +1,15 @@
+/**
+ * @file features/holidays/components/jalali-month-grid.tsx
+ * @purpose کامپوننت UI — تقویم تعطیلات (jalali-month-grid)
+ * @safe-to-edit CAREFUL
+ * @affects تقویم تعطیلات
+ * @depends-on features/holidays/lib/types, features/holidays/lib/work-calendar, shared/lib/time/jalali-month, shared/lib/utils
+ */
+
 'use client'
 
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { JALALI_GRID_COPY } from '@/features/holidays/config'
 import type { Holiday } from '@/features/holidays/lib/types'
 import { holidaysOn } from '@/features/holidays/lib/work-calendar'
 import {
@@ -13,7 +22,7 @@ import {
 } from '@/shared/lib/time/jalali-month'
 import { cn } from '@/shared/lib/utils'
 
-const WEEKDAY_INITIALS = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'] as const
+const WEEKDAY_INITIALS = JALALI_GRID_COPY.weekdayInitials
 
 interface JalaliMonthGridProps {
   year: number
@@ -39,10 +48,10 @@ export function JalaliMonthGrid({ year, month, onMonthChange, todayIso, holidays
           type="button"
           onClick={() => onMonthChange(shiftJalaliMonth(year, month, -1))}
           className="inline-flex items-center gap-0.5 rounded-md px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
-          aria-label="ماه قبل"
+          aria-label={JALALI_GRID_COPY.prevMonth}
         >
           <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-          ماه قبل
+          {JALALI_GRID_COPY.prevMonth}
         </button>
         <div className="text-center leading-tight">
           <div className="text-sm font-bold text-slate-800">
@@ -56,9 +65,9 @@ export function JalaliMonthGrid({ year, month, onMonthChange, todayIso, holidays
           type="button"
           onClick={() => onMonthChange(shiftJalaliMonth(year, month, 1))}
           className="inline-flex items-center gap-0.5 rounded-md px-2 py-1 text-xs text-slate-600 hover:bg-slate-100"
-          aria-label="ماه بعد"
+          aria-label={JALALI_GRID_COPY.nextMonth}
         >
-          ماه بعد
+          {JALALI_GRID_COPY.nextMonth}
           <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
         </button>
       </div>
@@ -87,7 +96,7 @@ export function JalaliMonthGrid({ year, month, onMonthChange, todayIso, holidays
                 const isFriday = day.weekday === 6
                 const isToday = day.iso === todayIso
                 const isSelected = selectedIso === day.iso
-                const title = dayHolidays.map((h) => h.title).join('، ') || undefined
+                const title = dayHolidays.map((h) => h.title).join(JALALI_GRID_COPY.listSep) || undefined
                 const beforeMin = !!minIso && day.iso < minIso
                 const selectable = !!onSelect && !beforeMin
                 return (
@@ -130,12 +139,12 @@ export function JalaliMonthGrid({ year, month, onMonthChange, todayIso, holidays
 
       <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-2 text-[10px] text-slate-500">
         <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-2.5 rounded-sm bg-sky-600" /> امروز
+          <span className="h-2.5 w-2.5 rounded-sm bg-sky-600" /> {JALALI_GRID_COPY.today}
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="h-2.5 w-2.5 rounded-sm bg-red-500" /> تعطیل ثبت‌شده
+          <span className="h-2.5 w-2.5 rounded-sm bg-red-500" /> {JALALI_GRID_COPY.recordedHoliday}
         </span>
-        <span className="inline-flex items-center gap-1 text-red-500">جمعه</span>
+        <span className="inline-flex items-center gap-1 text-red-500">{JALALI_GRID_COPY.friday}</span>
       </div>
     </div>
   )

@@ -1,3 +1,11 @@
+/**
+ * @file features/manager/components/weekly-commitments-section.tsx
+ * @purpose کامپوننت UI — داشبورد مدیر پروژه و KPI (weekly-commitments-section)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد مدیر پروژه و KPI
+ * @depends-on shared/lib/utils, features/manager/lib/format, features/manager/lib/overview-types, shared/types/project-controls, features/wwp/lib/policy, features/manager/lib/weekly-commitments, features/project-store/use-project-store, features/project-store/lib/overview-overlay, features/calc-trace/components/calc-trace, features/calc-trace/lib/types
+ */
+
 'use client'
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -19,6 +27,7 @@ type WeeklyCommitmentsResult,
 import { useStoreWeeklyPpc } from '@/features/project-store/use-project-store'
 import { withStorePpc } from '@/features/project-store/lib/overview-overlay'
 import { LoadingRows, SectionCard } from './manager-ui'
+import { MANAGER_PUNCT, WEEKLY_COPY } from '@/features/manager/config'
 import { CalcTraceProvider, CalcTraceTrigger } from '@/features/calc-trace/components/calc-trace'
 import type { CalcTraceMap } from '@/features/calc-trace/lib/types'
 import {
@@ -39,8 +48,8 @@ const TONE_CHIP: Record<PpcTone, string> = {
   warn: 'bg-amber-50 text-amber-700',
   bad: 'bg-rose-50 text-rose-700',
 }
-const PPC_LABEL: Record<PpcTone, string> = { good: 'در هدف', warn: 'زیر هدف', bad: 'پایین' }
-const INDEX_LABEL: Record<PpcTone, string> = { good: 'طبق برنامه', warn: 'کمی عقب', bad: 'عقب از برنامه' }
+const PPC_LABEL: Record<PpcTone, string> = WEEKLY_COPY.ppcTone
+const INDEX_LABEL: Record<PpcTone, string> = WEEKLY_COPY.indexTone
 
 const CAUSE_COLOR: Record<RootCauseCategory, string> = {
   materials: '#e5484d',
@@ -71,11 +80,11 @@ function useJson<T>(url: string | null, refreshKey: string | null): Load<T> {
       .then(async (response) => {
         const body = await response.json().catch(() => null)
         if (cancelled) return
-        if (!response.ok || body?.error) setLoad({ state: 'error', message: body?.error ?? `خطای ${response.status}` })
+        if (!response.ok || body?.error) setLoad({ state: 'error', message: body?.error ?? WEEKLY_COPY.httpError(response.status) })
         else setLoad({ state: 'ok', data: body as T })
       })
       .catch((error: unknown) => {
-        if (!cancelled) setLoad({ state: 'error', message: error instanceof Error ? error.message : 'خطای شبکه' })
+        if (!cancelled) setLoad({ state: 'error', message: error instanceof Error ? error.message : WEEKLY_COPY.network })
       })
     return () => {
       cancelled = true
@@ -84,7 +93,7 @@ function useJson<T>(url: string | null, refreshKey: string | null): Load<T> {
   return load
 }
 
-const pct = (v: number) => `${faNumber(Math.round(v))}٪`
+const pct = (v: number) => `${faNumber(Math.round(v))}${MANAGER_PUNCT.percent}`
 const pctUpTo1 = (v: number) => pctDigits(v, 1)
 
 function Chip({ tone, label }: { tone: PpcTone | 'none'; label: string }) {
@@ -114,8 +123,8 @@ function HelpButton({ title, children }: { title: string; children: ReactNode })
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label={`راهنمای کامل ${title}`}
-        title="توضیح کامل"
+        aria-label={WEEKLY_COPY.helpAria(title)}
+        title={WEEKLY_COPY.helpTitle}
         className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-[#1e2a5e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
       >
         <CircleHelp className="h-4 w-4" aria-hidden />
@@ -134,7 +143,7 @@ function HelpButton({ title, children }: { title: string; children: ReactNode })
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="بستن"
+                aria-label={WEEKLY_COPY.close}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
               >
                 <X className="h-4 w-4" aria-hidden />
@@ -181,7 +190,7 @@ function Ghost({ reason, children }: { reason: string; children: ReactNode }) {
       <div className="relative select-none" aria-hidden>
         <div className="opacity-70">{children}</div>
         <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-dashed border-slate-300 bg-white/90 px-3 py-1 text-[11px] font-bold text-slate-500">
-          بدون داده
+          {WEEKLY_COPY.noDataOverlay}
         </span>
       </div>
       <p className="mt-2 text-[10.5px] leading-5 text-slate-400">{reason}</p>
@@ -193,7 +202,7 @@ function GhostValue() {
   return (
     <div className="mt-1">
       <p className="text-[22px] font-medium leading-none tabular-nums text-transparent" style={{ WebkitTextStroke: `1px ${GHOST_STROKE}` }}>
-        —٪
+        {WEEKLY_COPY.ghostPct}
       </p>
       <div className="mt-3 space-y-2">
         <div className="h-2.5 w-4/5 rounded-full border border-dashed border-slate-300" />
@@ -229,13 +238,13 @@ function GhostPpcTrend({ target }: { target: number }) {
         <g key={i}>
           <rect x={x(i)} y={y(100)} width={bw} height={H - PB - y(100)} rx={6} fill="none" stroke={GHOST_STROKE} strokeDasharray="4 4" />
           <text x={x(i) + bw / 2} y={H - 9} textAnchor="middle" fontSize={9.5} fill={GHOST_STROKE}>
-            هفتهٔ —
+            {WEEKLY_COPY.ghostWeek}
           </text>
         </g>
       ))}
       <line x1={PL} x2={W - PR} y1={y(target)} y2={y(target)} stroke="#94a3b8" strokeWidth={1.4} strokeDasharray="5 4" />
       <text x={PL + 2} y={y(target) - 5} fontSize={10} fontWeight={700} fill="#94a3b8">
-        {`هدف ${pct(target)}`}
+        {WEEKLY_COPY.target(pct(target))}
       </text>
     </svg>
   )
@@ -249,8 +258,8 @@ function GhostCommitments() {
           <div className="h-2.5 w-3/4 rounded-full border border-dashed border-slate-300" />
           <div className="mt-2 h-1.5 rounded-full border border-dashed border-slate-300" />
           <div className="mt-2 flex justify-between text-[10.5px] text-slate-300">
-            <span>—٪</span>
-            <span>علت —</span>
+            <span>{WEEKLY_COPY.ghostPct}</span>
+            <span>{WEEKLY_COPY.ghostCause}</span>
           </div>
         </div>
       ))}
@@ -269,7 +278,7 @@ function GhostDonut() {
         </text>
       </svg>
       <div>
-        {['مصالح', 'اکیپ', 'نقشه و اطلاعات فنی', 'تجهیزات'].map((label) => (
+        {WEEKLY_COPY.ghostCauses.map((label) => (
           <div key={label} className="grid grid-cols-[10px_1fr_auto] items-center gap-2 px-1 py-1.5 text-xs text-slate-300">
             <i className="h-2.5 w-2.5 rounded-[3px] border border-dashed border-slate-300" />
             <span>{label}</span>
@@ -284,7 +293,7 @@ function GhostDonut() {
 function GhostLockBars() {
   return (
     <div className="space-y-2.5">
-      {['مصالح', 'نقشه و اطلاعات فنی', 'اکیپ', 'تجهیزات', 'مجوز'].map((label) => (
+      {WEEKLY_COPY.ghostLocks.map((label) => (
         <div key={label} className="grid grid-cols-[110px_1fr_28px] items-center gap-2 text-xs text-slate-300">
           <span>{label}</span>
           <div className="h-4 rounded-md border border-dashed border-slate-300" />
@@ -335,7 +344,7 @@ function PpcTrend({ data }: { data: WeeklyCommitmentsData }) {
   const x = (i: number) => W - PR - (i + 1) * slot + (slot - bw) / 2
   const y = (v: number) => PT + ((100 - v) / 100) * (H - PT - PB)
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 block h-auto w-full" role="img" aria-label="روند هفتگی PPC">
+    <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 block h-auto w-full" role="img" aria-label={WEEKLY_COPY.trendAria}>
       {[0, 50, 100].map((v) => (
         <g key={v}>
           <line x1={PL} x2={W - PR} y1={y(v)} y2={y(v)} stroke="#eeece8" />
@@ -361,20 +370,20 @@ function PpcTrend({ data }: { data: WeeklyCommitmentsData }) {
               strokeWidth={last ? 2 : undefined}
               strokeDasharray={w.live ? '5 3' : undefined}
             >
-              <title>{`هفتهٔ ${faNumber(w.weekNumber)} (${jalaliDate(w.start)})${w.live ? ' · جاری، تا این لحظه' : ''}: ${faNumber(w.completed)} از ${faNumber(w.planned)} کار · ${w.ppc == null ? '—' : pct(w.ppc)}`}</title>
+              <title>{WEEKLY_COPY.weekLive(faNumber(w.weekNumber), jalaliDate(w.start), w.live ? WEEKLY_COPY.liveSuffix : '', faNumber(w.completed), faNumber(w.planned), w.ppc == null ? '—' : pct(w.ppc))}</title>
             </rect>
             <text x={x(i) + bw / 2} y={y(v) - 6} textAnchor="middle" fontSize={last ? 12 : 10} fontWeight={last ? 800 : 600} fill={last ? '#1c1b19' : '#8a867e'}>
               {w.ppc == null ? '—' : faNumber(Math.round(w.ppc))}
             </text>
             <text x={x(i) + bw / 2} y={H - 10} textAnchor="middle" fontSize={9.5} fontWeight={last ? 800 : 400} fill={last ? '#1c1b19' : '#8a867e'}>
-              {w.live ? 'هفتهٔ جاری' : `هفتهٔ ${faNumber(w.weekNumber)}`}
+              {w.live ? WEEKLY_COPY.currentWeek : WEEKLY_COPY.weekN(faNumber(w.weekNumber))}
             </text>
           </g>
         )
       })}
       <line x1={PL} x2={W - PR} y1={y(data.target)} y2={y(data.target)} stroke="#1c1b19" strokeWidth={1.6} strokeDasharray="5 4" />
       <text x={PL + 2} y={y(data.target) - 5} fontSize={10} fontWeight={700} fill="#1c1b19">
-        {`هدف ${pct(data.target)}`}
+        {WEEKLY_COPY.target(pct(data.target))}
       </text>
     </svg>
   )
@@ -385,7 +394,7 @@ function RncDonut({ data }: { data: WeeklyCommitmentsData }) {
   let offset = 0
   return (
     <div className="mt-2.5 grid grid-cols-1 items-center gap-3.5 sm:grid-cols-[170px_1fr]">
-      <svg viewBox="0 0 120 120" className="mx-auto block w-full max-w-[170px]" role="img" aria-label="سهم علل عدم تحقق">
+      <svg viewBox="0 0 120 120" className="mx-auto block w-full max-w-[170px]" role="img" aria-label={WEEKLY_COPY.rncAria}>
         {causes.map((c) => {
           const len = Math.max(c.share - 1, 0.1)
           const el = (
@@ -410,7 +419,7 @@ function RncDonut({ data }: { data: WeeklyCommitmentsData }) {
           {faNumber(total)}
         </text>
         <text x={60} y={74} textAnchor="middle" fontSize={9} fill="#8a867e">
-          کار ناتمام
+          {WEEKLY_COPY.unfinished}
         </text>
       </svg>
       <div>
@@ -429,8 +438,7 @@ function RncDonut({ data }: { data: WeeklyCommitmentsData }) {
   )
 }
 
-const LOCKS_MISSING =
-  'ثبت «قفل‌ها» (محدودیت‌های Look-ahead هر فعالیت: نوع قفل، تاریخ رفع مورد انتظار، وضعیت و اثر روی مسیر بحرانی) هنوز در سامانه وجود ندارد؛ بدون آن تعداد قفل‌ها و آمادگی کارهای هفته‌های آینده قابل محاسبه نیست.'
+const LOCKS_MISSING = WEEKLY_COPY.locksMissing
 
 function WeeklyCommitmentsBody({
   overview,
@@ -449,7 +457,7 @@ function WeeklyCommitmentsBody({
   const spiT = kpis?.spi_t ?? null
   const es = kpis?.es?.value ?? null
   const at = kpis?.at?.value ?? null
-  const unitFa = snapshot?.periodUnit === 'weeks' ? 'هفته' : snapshot?.periodUnit === 'days' ? 'روز' : 'ماه'
+  const unitFa = snapshot?.periodUnit === 'weeks' ? WEEKLY_COPY.unitWeek : snapshot?.periodUnit === 'days' ? WEEKLY_COPY.unitDay : WEEKLY_COPY.unitMonth
 
   const history = useMemo(() => {
     if (!snapshot || overview.progress.status !== 'ok') return { spi: [], spiT: [] }
@@ -470,26 +478,26 @@ function WeeklyCommitmentsBody({
   const serverPpc = wwp.state === 'ok' && wwp.data.status === 'ok' ? wwp.data.data : null
   const ppcData = useMemo(() => withStorePpc(serverPpc, livePpc), [serverPpc, livePpc])
   const ppcMissing =
-    wwp.state === 'error' ? `بارگذاری برنامهٔ هفتگی ناموفق بود: ${wwp.message}` : wwp.state === 'ok' && wwp.data.status === 'missing' ? wwp.data.reason_fa : null
+    wwp.state === 'error' ? WEEKLY_COPY.wwpFailed(wwp.message) : wwp.state === 'ok' && wwp.data.status === 'missing' ? wwp.data.reason_fa : null
   const current = ppcData?.current ?? null
   const ppc = current?.ppc ?? null
 
   const bannerParts: string[] = []
   if (ppcData && ppc != null) {
     const gap = ppcData.target - ppc
-    const which = current?.live ? 'هفتهٔ جاری تا این لحظه' : 'آخرین هفتهٔ بسته‌شده'
+    const which = current?.live ? WEEKLY_COPY.whichLive : WEEKLY_COPY.whichClosed
     bannerParts.push(
       gap > 0
-        ? `PPC ${which} ${pct(ppc)} است؛ ${faNumber(Math.round(gap))} واحد زیر هدف.`
-        : `PPC ${which} ${pct(ppc)} است و به هدف ${pct(ppcData.target)} رسیده.`
+        ? WEEKLY_COPY.ppcBelow(which, pct(ppc), faNumber(Math.round(gap)))
+        : WEEKLY_COPY.ppcMet(which, pct(ppc), pct(ppcData.target))
     )
     const top = ppcData.rnc.causes[0]
-    if (top) bannerParts.push(`علت ریشه‌ای اصلی در ${faNumber(ppcData.rnc.weeks)} هفتهٔ اخیر «${top.label}» بوده (${pct(top.share)}).`)
+    if (top) bannerParts.push(WEEKLY_COPY.topCause(faNumber(ppcData.rnc.weeks), top.label, pct(top.share)))
   } else if (ppcMissing) {
-    bannerParts.push(`PPC هنوز قابل محاسبه نیست: ${ppcMissing}.`)
+    bannerParts.push(WEEKLY_COPY.ppcUnknown(ppcMissing))
   }
   if (spi?.value != null && spiT?.value != null) {
-    bannerParts.push(`SPI برابر ${faNumber(spi.value, 2)} و SPI(t) برابر ${faNumber(spiT.value, 2)} است.`)
+    bannerParts.push(WEEKLY_COPY.spiPair(faNumber(spi.value, 2), faNumber(spiT.value, 2)))
   }
   const bannerTone: PpcTone =
     ppc != null ? ppcTone(ppc, ppcData!.target) : spiT?.value != null ? indexTone(spiT.value) : 'warn'
@@ -513,8 +521,7 @@ function WeeklyCommitmentsBody({
   return (
     <div className="space-y-3.5">
       <p className="max-w-3xl text-xs leading-6 text-slate-500">
-        PPC نشان می‌دهد کارگاه به قول‌های هفتگی‌اش چقدر پایبند بوده (شاخص پیشرو)؛ SPI و SPI(t) نشان می‌دهند پروژه نسبت به برنامهٔ مبنا کجاست
-        (شاخص پسرو). کنار هم، هم «چرا» را می‌بینی و هم «چقدر».
+        {WEEKLY_COPY.intro}
       </p>
 
       {bannerParts.length ? (
@@ -536,10 +543,10 @@ function WeeklyCommitmentsBody({
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
         <div className={CARD}>
           <CardTop
-            title="شاخص تعهدات هفتگی (PPC)"
-            en="Percent Plan Complete"
+            title={WEEKLY_COPY.ppcTitle}
+            en={WEEKLY_COPY.ppcEn}
             help={<PpcHelp ctx={helpCtx} />}
-            chip={ppcTn ? <Chip tone={ppcTn} label={PPC_LABEL[ppcTn]} /> : <Chip tone="none" label="بدون داده" />}
+            chip={ppcTn ? <Chip tone={ppcTn} label={PPC_LABEL[ppcTn]} /> : <Chip tone="none" label={WEEKLY_COPY.noData} />}
           />
           {wwp.state === 'loading' ? (
             <div className="mt-3">
@@ -551,20 +558,22 @@ function WeeklyCommitmentsBody({
                 {pct(ppc)}
               </p>
               <p className="min-h-[42px] text-[11.5px] leading-7 text-slate-500">
-                {current.live ? <span className="me-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10.5px] font-bold text-sky-700">تا این لحظه</span> : null}{' '}
+                {current.live ? <span className="me-1 rounded-full bg-sky-50 px-2 py-0.5 text-[10.5px] font-bold text-sky-700">{WEEKLY_COPY.liveChip}</span> : null}{' '}
                 <b className="text-slate-800">
-                  {faNumber(current.completed)} از {faNumber(current.planned)}
+                  {faNumber(current.completed)}
+                  {WEEKLY_COPY.ofPlanned}
+                  {faNumber(current.planned)}
                 </b>{' '}
                 {ppcData.source === 'schedule'
-                  ? `فعالیت برنامهٔ هفتهٔ ${faNumber(current.weekNumber)} (${jalaliDate(current.start)} تا ${jalaliDate(current.end)}) سهم هفته را کامل کرد`
-                  : `کار تعهدشدهٔ هفتهٔ ${faNumber(current.weekNumber)} (${jalaliDate(current.start)} تا ${jalaliDate(current.end)}) کامل شد`}
+                  ? WEEKLY_COPY.scheduleDone(faNumber(current.weekNumber), jalaliDate(current.start), jalaliDate(current.end))
+                  : WEEKLY_COPY.commitDone(faNumber(current.weekNumber), jalaliDate(current.start), jalaliDate(current.end))}
                 <br />
-                {delta != null ? `${delta < 0 ? '▼' : '▲'} ${faNumber(Math.abs(Math.round(delta)))} واحد درصد نسبت به هفتهٔ قبل` : 'هفتهٔ قبلی برای مقایسه نیست'}
-                {ppcData.average4 != null ? ` · میانگین ${faNumber(ppcData.rnc.weeks)} هفتهٔ بسته‌شده ${pct(ppcData.average4)}` : ''}
+                {delta != null ? WEEKLY_COPY.vsPrev(faNumber(Math.abs(Math.round(delta))), delta < 0) : WEEKLY_COPY.noPrev}
+                {ppcData.average4 != null ? WEEKLY_COPY.avg(faNumber(ppcData.rnc.weeks), pct(ppcData.average4)) : ''}
               </p>
             </>
           ) : (
-            <Ghost reason={ppcMissing ?? 'داده‌ای نیست'}>
+            <Ghost reason={ppcMissing ?? WEEKLY_COPY.noValue}>
               <GhostValue />
             </Ghost>
           )}
@@ -572,10 +581,10 @@ function WeeklyCommitmentsBody({
 
         <div className={CARD}>
           <CardTop
-            title="شاخص عملکرد زمانی (SPI)"
-            en="Schedule Performance Index"
+            title={WEEKLY_COPY.spiTitle}
+            en={WEEKLY_COPY.spiEn}
             help={<SpiHelp ctx={helpCtx} />}
-            chip={spi?.value != null ? <Chip tone={indexTone(spi.value)} label={INDEX_LABEL[indexTone(spi.value)]} /> : <Chip tone="none" label="بدون داده" />}
+            chip={spi?.value != null ? <Chip tone={indexTone(spi.value)} label={INDEX_LABEL[indexTone(spi.value)]} /> : <Chip tone="none" label={WEEKLY_COPY.noData} />}
           />
           {controls.state === 'loading' ? (
             <div className="mt-3">
@@ -589,25 +598,25 @@ function WeeklyCommitmentsBody({
               <p className="min-h-[42px] text-[11.5px] leading-7 text-slate-500">
                 {evPct != null && pvPct != null ? (
                   <>
-                    ارزش کار انجام‌شده <b className="text-slate-800">{faNumber(evPct, 1)}٪</b> از <b className="text-slate-800">{faNumber(pvPct, 1)}٪</b> برنامه‌شده
+                    {WEEKLY_COPY.evOfPv}<b className="text-slate-800">{faNumber(evPct, 1)}{MANAGER_PUNCT.percent}</b>{WEEKLY_COPY.ofPlanned}<b className="text-slate-800">{faNumber(pvPct, 1)}{MANAGER_PUNCT.percent}</b>{WEEKLY_COPY.plannedSuffix}
                     <br />
                   </>
                 ) : null}
-                یعنی هر 100 واحد کار برنامه‌شده، {faNumber(Math.round(spi.value * 100))} واحد انجام شده
+                {WEEKLY_COPY.meaning(faNumber(Math.round(spi.value * 100)))}
               </p>
               <Sparkline values={history.spi} />
             </>
           ) : (
-            <Missing text={controls.state === 'error' ? controls.message : spi?.reason_fa ?? 'داده‌ای نیست'} />
+            <Missing text={controls.state === 'error' ? controls.message : spi?.reason_fa ?? WEEKLY_COPY.noValue} />
           )}
         </div>
 
         <div className={CARD}>
           <CardTop
-            title="شاخص عملکرد زمانی (SPI(t))"
-            en="Time-based SPI · Earned Schedule"
+            title={WEEKLY_COPY.spitTitle}
+            en={WEEKLY_COPY.spitEn}
             help={<SpiTHelp ctx={helpCtx} />}
-            chip={spiT?.value != null ? <Chip tone={indexTone(spiT.value)} label={INDEX_LABEL[indexTone(spiT.value)]} /> : <Chip tone="none" label="بدون داده" />}
+            chip={spiT?.value != null ? <Chip tone={indexTone(spiT.value)} label={INDEX_LABEL[indexTone(spiT.value)]} /> : <Chip tone="none" label={WEEKLY_COPY.noData} />}
           />
           {controls.state === 'loading' ? (
             <div className="mt-3">
@@ -621,10 +630,10 @@ function WeeklyCommitmentsBody({
               <p className="min-h-[42px] text-[11.5px] leading-7 text-slate-500">
                 {es != null && at != null ? (
                   <>
-                    پیشرفت فعلی معادل {unitFa} <b className="text-slate-800">{faNumber(es, 1)}</b> برنامه است، در حالی که{' '}
-                    <b className="text-slate-800">{faNumber(at, 1)}</b> {unitFa} گذشته
+                    {WEEKLY_COPY.esAt(unitFa)}<b className="text-slate-800">{faNumber(es, 1)}</b>{WEEKLY_COPY.planIs}{' '}
+                    <b className="text-slate-800">{faNumber(at, 1)}</b>{WEEKLY_COPY.unitPassed(unitFa)}
                     <br />
-                    {at > es ? `حدود ${faNumber(at - es, 1)} ${unitFa} عقب‌تر از برنامه` : 'هم‌پای برنامه یا جلوتر'}
+                    {at > es ? WEEKLY_COPY.behind(faNumber(at - es, 1), unitFa) : WEEKLY_COPY.onOrAhead}
                   </>
                 ) : (
                   spiT.interpretation_fa
@@ -633,37 +642,37 @@ function WeeklyCommitmentsBody({
               <Sparkline values={history.spiT} />
             </>
           ) : (
-            <Missing text={controls.state === 'error' ? controls.message : spiT?.reason_fa ?? 'داده‌ای نیست'} />
+            <Missing text={controls.state === 'error' ? controls.message : spiT?.reason_fa ?? WEEKLY_COPY.noValue} />
           )}
         </div>
 
         <div className={cn(CARD, 'border-rose-200 bg-rose-50/60')}>
-          <CardTop title="قفل‌های هفتهٔ آینده" sub="کارهایی که به‌خاطر یک محدودیت هنوز آمادهٔ اجرا نیستند" help={<LocksHelp />} />
+          <CardTop title={WEEKLY_COPY.locksNext} sub={WEEKLY_COPY.locksNextSub} help={<LocksHelp />} />
           <div className="mt-2.5 flex items-center gap-3">
             <span className="grid h-[46px] w-[46px] shrink-0 place-items-center rounded-full border-[1.5px] border-rose-300 bg-rose-100">
               <AlertTriangle className="h-6 w-6 text-rose-500" aria-hidden />
             </span>
             <span className="text-[22px] font-medium text-slate-400">—</span>
           </div>
-          <p className="mt-2 text-[11.5px] leading-6 text-slate-600">قفل‌ها هنوز در سامانه ثبت نمی‌شوند؛ جزئیات در کادر «قفل‌های هفته‌های آینده».</p>
+          <p className="mt-2 text-[11.5px] leading-6 text-slate-600">{WEEKLY_COPY.locksNote}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[1.2fr_1fr]">
         <div className={CARD}>
           <CardTop
-            title="روند هفتگی PPC"
+            title={WEEKLY_COPY.trendTitle}
             help={<TrendHelp ctx={helpCtx} />}
             sub={
               ppcData
-                ? `${faNumber(ppcData.weeks.filter((w) => !w.live).length)} هفتهٔ بسته‌شدهٔ اخیر${ppcData.weeks.some((w) => w.live) ? ' و هفتهٔ جاری (خط‌چین)' : ''} در برابر هدف`
-                : 'هفته‌های بسته‌شدهٔ اخیر در برابر هدف'
+                ? WEEKLY_COPY.trendSub(faNumber(ppcData.weeks.filter((w) => !w.live).length), ppcData.weeks.some((w) => w.live))
+                : WEEKLY_COPY.trendEmpty
             }
           />
           {ppcData && ppcData.weeks.length ? (
             <PpcTrend data={ppcData} />
           ) : (
-            <Ghost reason={ppcMissing ?? 'هفتهٔ بسته‌شده‌ای نیست'}>
+            <Ghost reason={ppcMissing ?? WEEKLY_COPY.noClosedWeek}>
               <GhostPpcTrend target={ppcData?.target ?? 80} />
             </Ghost>
           )}
@@ -672,14 +681,14 @@ function WeeklyCommitmentsBody({
           <CardTop
             title={
               current
-                ? `${ppcData?.source === 'schedule' ? 'فعالیت‌های برنامهٔ' : 'کارهای تعهدشدهٔ'} ${current.live ? 'هفتهٔ جاری' : `هفتهٔ ${faNumber(current.weekNumber)}`}`
-                : 'کارهای تعهدشدهٔ آخرین هفته'
+                ? `${ppcData?.source === 'schedule' ? WEEKLY_COPY.scheduleActs : WEEKLY_COPY.commitActs} ${current.live ? WEEKLY_COPY.currentWeek : WEEKLY_COPY.weekN(faNumber(current.weekNumber))}`
+                : WEEKLY_COPY.lastWeekActs
             }
             help={<CommitmentsHelp ctx={helpCtx} />}
             sub={
               ppcData?.source === 'schedule'
-                ? 'هر کادر یک فعالیت است: درصد ثبت‌شده در برابر درصدی که برنامه تا پایان پنج‌شنبه می‌خواهد؛ عقب‌مانده‌ها اول آمده‌اند'
-                : 'هر کادر یک کار است؛ ناتمام‌ها اول آمده‌اند'
+                ? WEEKLY_COPY.scheduleSub
+                : WEEKLY_COPY.commitSub
             }
           />
           {current && current.commitments.length ? (
@@ -711,10 +720,10 @@ function WeeklyCommitmentsBody({
                       <div className="mt-1 flex items-center justify-between gap-1.5 text-[10.5px]">
                         <span className="text-[13px] font-extrabold text-rose-600">
                           {c.targetPercent != null && c.actualPercent != null
-                            ? `${pctUpTo1(c.actualPercent)} از ${pctUpTo1(c.targetPercent)} برنامه`
+                            ? WEEKLY_COPY.ofPlan(pctUpTo1(c.actualPercent), pctUpTo1(c.targetPercent))
                             : c.progressPercent != null
-                              ? `${pct(c.progressPercent)} پیشرفت`
-                              : 'انجام نشد'}
+                              ? WEEKLY_COPY.progress(pct(c.progressPercent))
+                              : WEEKLY_COPY.notDone}
                         </span>
                         {c.rootCause ? (
                           <span className="font-bold" style={{ color: CAUSE_COLOR[c.rootCause] }} title={c.rootCauseNote ?? undefined}>
@@ -728,12 +737,12 @@ function WeeklyCommitmentsBody({
               </div>
               <p className="mt-3 rounded-[10px] border border-slate-200 bg-[#faf9f7] px-3 py-2 text-xs leading-6 text-slate-500">
                 {ppcData?.source === 'schedule'
-                  ? 'فعالیتی نمره می‌گیرد که پیشرفت ثبت‌شده‌اش در این هفته (شنبه تا پنج‌شنبه) به سهم برنامهٔ هفته برسد یا از آن بیشتر شود؛ حتی کمی کمتر یعنی «انجام‌نشده» و ثبت علت لازم دارد.'
-                  : 'کار نیمه‌تمام در PPC صفر حساب می‌شود؛ حتی کاری که بخشی از آن پیش رفته هنوز «انجام‌نشده» است.'}
+                  ? WEEKLY_COPY.scoreRule
+                  : WEEKLY_COPY.halfZero}
               </p>
             </>
           ) : (
-            <Ghost reason={ppcMissing ?? 'برای این هفته تعهدی ثبت نشده است'}>
+            <Ghost reason={ppcMissing ?? WEEKLY_COPY.noCommit}>
               <GhostCommitments />
             </Ghost>
           )}
@@ -743,22 +752,24 @@ function WeeklyCommitmentsBody({
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[1fr_1.55fr]">
         <div className={CARD}>
           <CardTop
-            title="علل ریشه‌ای عدم تحقق (RNC)"
+            title={WEEKLY_COPY.rncTitle}
             help={<RncHelp />}
-            sub={`Reasons for Non-Completion · سهم هر علت در ${faNumber(ppcData?.rnc.weeks || 4)} هفتهٔ اخیر`}
+            sub={WEEKLY_COPY.rncSub(faNumber(ppcData?.rnc.weeks || 4))}
           />
           {ppcData && ppcData.rnc.total > 0 ? (
             <>
               <RncDonut data={ppcData} />
               {ppcData.rnc.top3Share != null ? (
                 <p className="mt-2.5 rounded-[10px] border border-slate-200 bg-[#faf9f7] px-3 py-2 text-[11.5px] leading-6 text-slate-500">
-                  <b className="text-slate-800">{pct(ppcData.rnc.top3Share)}</b> ناتمامی‌ها از{' '}
-                  {faNumber(Math.min(3, ppcData.rnc.causes.length))} علت ریشه‌ای اول است:{' '}
+                  <b className="text-slate-800">{pct(ppcData.rnc.top3Share)}</b>
+                  {WEEKLY_COPY.topShare}
+                  {faNumber(Math.min(3, ppcData.rnc.causes.length))}
+                  {WEEKLY_COPY.topCauses}
                   {ppcData.rnc.causes
                     .slice(0, 3)
                     .map((c) => c.label)
-                    .join('، ')}
-                  . روی همین‌ها تمرکز کنید.
+                    .join(MANAGER_PUNCT.list)}
+                  {WEEKLY_COPY.focus}
                 </p>
               ) : null}
             </>
@@ -766,10 +777,10 @@ function WeeklyCommitmentsBody({
             <Ghost
               reason={
                 ppcData?.source === 'schedule'
-                  ? 'ثبت علت عدم تحقق برای هر تعهد، همراه با ورود برنامهٔ تعهدات هفتگی در فاز بعد اضافه می‌شود.'
+                  ? WEEKLY_COPY.rncLater
                   : ppcData
-                    ? 'در این هفته‌ها همهٔ تعهدات انجام شده و علتی ثبت نشده است.'
-                    : ppcMissing ?? 'داده‌ای نیست'
+                    ? WEEKLY_COPY.rncNone
+                    : ppcMissing ?? WEEKLY_COPY.noValue
               }
             >
               <GhostDonut />
@@ -778,8 +789,8 @@ function WeeklyCommitmentsBody({
         </div>
         <div className={CARD}>
           <CardTop
-            title="قفل‌های هفته‌های آینده"
-            sub="تعداد کارهایی که به‌علت هر قفل (محدودیت) هنوز آماده اجرا نیستند"
+            title={WEEKLY_COPY.locksAhead}
+            sub={WEEKLY_COPY.locksAheadSub}
             help={<LocksHelp />}
           />
           <Ghost reason={LOCKS_MISSING}>
@@ -789,15 +800,15 @@ function WeeklyCommitmentsBody({
       </div>
 
       <details className={CARD}>
-        <summary className="cursor-pointer py-1 text-sm font-bold text-slate-800">این شاخص‌ها یعنی چه؟ (توضیح کامل)</summary>
+        <summary className="cursor-pointer py-1 text-sm font-bold text-slate-800">{WEEKLY_COPY.glossaryTitle}</summary>
         <div className="mt-3 grid grid-cols-1 gap-3 text-xs leading-7 text-slate-700 md:grid-cols-2">
           {[
-            ['PPC · شاخص تعهدات هفتگی', `فعلاً تعهدات هر هفته همان برنامهٔ زمان‌بندی است: هر فعالیتی که بازهٔ برنامه‌ای‌اش با هفته (شنبه تا پنج‌شنبه) هم‌پوشانی دارد، یک تعهد است. درصد لازم هر فعالیت تا پایان پنج‌شنبه، سهم روزهای گذشته از کل روزهای برنامه‌ای آن است (روز تقویمی، مثل منحنی S). اگر درصد ثبت‌شدهٔ سرپرست تا پایان پنج‌شنبه برابر یا بیشتر از آن باشد، فعالیت نمره می‌گیرد. PPC = فعالیت‌های نمره‌گرفته ÷ کل فعالیت‌های هفته؛ هدف رایج ${pct(ppcData?.target ?? 80)}. هفتهٔ جاری تا پنج‌شنبه با پیشرفت تا این لحظه نشان داده می‌شود. در فاز بعد، تعهدات هفتگی جداگانه وارد می‌شوند.`],
-            ['RNC · علل ریشه‌ای عدم تحقق', 'برای هر کار ناتمام یک علت ثبت می‌شود (مصالح، اکیپ، نقشه…). جمع این علت‌ها نشان می‌دهد کدام مشکل بیشترین کار را عقب انداخته؛ همان را اول حل کن.'],
-            ['قفل‌ها (محدودیت‌ها) و آمادگی کار', '«قفل» هر چیزی است که جلوی شروع یک کار را می‌گیرد: مصالح، نقشه، اکیپ، تجهیزات یا مجوز. کاری «آماده» است که همهٔ قفل‌هایش باز شده باشد.'],
-            ['SPI · شاخص عملکرد زمانی', 'SPI = EV ÷ PV؛ پیشرفت کسب‌شده تقسیم بر پیشرفتی که طبق برنامهٔ مبنا تا امروز باید انجام می‌شد. نزدیک پایان پروژه همیشه به 1 میل می‌کند، حتی اگر پروژه دیر تمام شود.'],
-            ['SPI(t) · بر پایهٔ زمان', 'SPI(t) = ES ÷ AT؛ زمان کسب‌شده (پیشرفت فعلی طبق برنامهٔ مبنا مربوط به کدام زمان بوده) تقسیم بر زمان واقعاً گذشته. تا آخر پروژه قابل اعتماد می‌ماند.'],
-            ['این‌ها چطور کنار هم خوانده شوند؟', 'PPC شاخص پیشرو است و SPI و SPI(t) پسرو. اگر PPC چند هفته پایین بماند، SPI معمولاً دنبالش پایین می‌آید. اگر SPI و SPI(t) فاصله بگیرند، به SPI(t) بیشتر اعتماد کن.'],
+            [WEEKLY_COPY.glossary.ppc, WEEKLY_COPY.glossary.ppcBody(pct(ppcData?.target ?? 80))],
+            [WEEKLY_COPY.glossary.rnc, WEEKLY_COPY.glossary.rncBody],
+            [WEEKLY_COPY.glossary.locks, WEEKLY_COPY.glossary.locksBody],
+            [WEEKLY_COPY.glossary.spi, WEEKLY_COPY.glossary.spiBody],
+            [WEEKLY_COPY.glossary.spit, WEEKLY_COPY.glossary.spitBody],
+            [WEEKLY_COPY.glossary.together, WEEKLY_COPY.glossary.togetherBody],
           ].map(([title, body]) => (
             <div key={title} className="rounded-xl border border-slate-200 bg-[#faf9f7] px-3.5 py-2.5">
               <b className="mb-0.5 block text-[13px]">{title}</b>
@@ -808,8 +819,7 @@ function WeeklyCommitmentsBody({
       </details>
 
       <p className="text-[11px] text-slate-500">
-        PPC = فعالیت‌هایی که پیشرفت هفته‌شان به سهم برنامهٔ هفته رسیده ÷ کل تعهدات هفته؛ ارزیابی پنج‌شنبه 16:00 (هدف {pct(ppcData?.target ?? 80)}، زیر {pct(PPC_LOW)} پایین). مرز رنگ SPI و
-        SPI(t): ≥1 سبز، 0.9 تا 1 زرد، زیر 0.9 قرمز. روند SPI و SPI(t) از نقاط ثبت‌شدهٔ منحنی S تا امروز است.
+        {WEEKLY_COPY.footer(pct(ppcData?.target ?? 80), pct(PPC_LOW))}
       </p>
     </div>
   )
@@ -840,13 +850,13 @@ export function WeeklyCommitmentsSection({
     <CalcTraceProvider traces={traces}>
     <SectionCard
       className={cn('border-2 border-[#1e2a5e] bg-[#eef4fb]', className)}
-      title="شاخص تعهدات هفتگی (PPC)"
+      title={WEEKLY_COPY.ppcTitle}
       icon={<CalendarCheck className="h-4 w-4" aria-hidden />}
       action={<CalcTraceTrigger metrics={['home.ppc', 'home.spi_t']} />}
-      hint="PPC از برنامهٔ زمان‌بندی و درصدهای گزارش روزانه (تعهد هر هفته = کار برنامه‌شدهٔ آن هفته)، SPI و SPI(t) از موتور کنترل پروژه با واحد هفته محاسبه می‌شوند."
+      hint={WEEKLY_COPY.cardHint}
     >
       {!overview ? (
-        loading ? <LoadingRows rows={6} /> : <Missing text="داده هنوز بارگذاری نشده است" />
+        loading ? <LoadingRows rows={6} /> : <Missing text={WEEKLY_COPY.notLoaded} />
       ) : (
         <WeeklyCommitmentsBody overview={overview} controls={controls} wwp={wwp} livePpc={livePpc} />
       )}

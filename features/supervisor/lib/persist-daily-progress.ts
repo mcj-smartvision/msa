@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/persist-daily-progress.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (persist-daily-progress)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/schedule/lib/refresh-after-progress, features/workshop/lib/domain, features/supervisor/lib/daily-report-activities
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { refreshScheduleAfterProgress } from '@/features/schedule/lib/refresh-after-progress'
 import { WorkshopError } from '@/features/workshop/lib/domain'

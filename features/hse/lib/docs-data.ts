@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/lib/docs-data.ts
+ * @purpose منطق دامنه — ایمنی، بهداشت و محیط زیست (docs-data)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on nothing
+ */
+
 export interface DocSection {
   id: string
   title: string

@@ -1,3 +1,11 @@
+/**
+ * @file features/admin/lib/construction-roles.ts
+ * @purpose منطق دامنه — کنترل سنتر و مدیریت اعضا/پروژه (construction-roles)
+ * @safe-to-edit CAREFUL
+ * @affects کنترل سنتر و مدیریت اعضا/پروژه
+ * @depends-on nothing
+ */
+
 /** Canonical construction site positions for dropdowns and role dashboards. */
 export interface ConstructionRole {
   key: string

@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/time/jalali-month.ts
+ * @purpose منطق دامنه — زیرساخت مشترک سامانه (jalali-month)
+ * @safe-to-edit CAREFUL
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on nothing
+ */
+
 import { jalaaliMonthLength, toGregorian, toJalaali } from 'jalaali-js'
 
 export const PERSIAN_MONTHS = [

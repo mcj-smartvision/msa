@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/components/reports-page.tsx
+ * @purpose کامپوننت UI — ایمنی، بهداشت و محیط زیست (reports-page)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on features/hse/components/badges, features/hse/components/format, features/hse/components/ui, shared/components/ui/button, shared/components/ui/select, features/hse/lib/mock-data, shared/lib/utils, features/hse/config
+ */
+
 'use client'
 
 import { useMemo, useState } from 'react'
@@ -15,6 +23,7 @@ SelectValue,
 } from '@/shared/components/ui/select'
 import { getCamera, getZone, HSE_INCIDENTS } from '@/features/hse/lib/mock-data'
 import { cn } from '@/shared/lib/utils'
+import { HSE_COMMON_COPY, HSE_REPORTS_COPY } from '@/features/hse/config'
 
 type Period = 'today' | '7d' | '30d'
 
@@ -51,17 +60,7 @@ export function ReportsPage() {
   const critical = filtered.filter((i) => i.severity === 'critical').length
 
   function exportCsv() {
-    const header = [
-      'کد',
-      'عنوان',
-      'شدت',
-      'وضعیت',
-      'زون',
-      'دوربین',
-      'اطمینان',
-      'زمان‌تشخیص',
-      'مثبت‌کاذب',
-    ]
+    const header = [...HSE_REPORTS_COPY.csvHeaders]
     const lines = [
       header.join(','),
       ...filtered.map((i) =>
@@ -74,7 +73,7 @@ export function ReportsPage() {
           getCamera(i.cameraId)?.code ?? i.cameraId,
           String(Math.round(i.confidence * 100)),
           i.detectedAt,
-          i.falsePositive ? 'بله' : 'خیر',
+          i.falsePositive ? HSE_COMMON_COPY.yes : HSE_COMMON_COPY.no,
         ]
           .map(csvEscape)
           .join(',')
@@ -92,8 +91,8 @@ export function ReportsPage() {
   return (
     <div className="space-y-4" dir="rtl" lang="fa">
       <HsePageHeader
-        title="گزارش‌ها"
-        description="خلاصه حوادث فیلترشده بر اساس دوره برای بازبینی ایمنی پروژه و جلسه پیمانکاران."
+        title={HSE_REPORTS_COPY.title}
+        description={HSE_REPORTS_COPY.description}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
@@ -101,47 +100,47 @@ export function ReportsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="today">امروز</SelectItem>
-                <SelectItem value="7d">7 روز اخیر</SelectItem>
-                <SelectItem value="30d">30 روز اخیر</SelectItem>
+                <SelectItem value="today">{HSE_REPORTS_COPY.today}</SelectItem>
+                <SelectItem value="7d">{HSE_REPORTS_COPY.last7}</SelectItem>
+                <SelectItem value="30d">{HSE_REPORTS_COPY.last30}</SelectItem>
               </SelectContent>
             </Select>
             <Button size="sm" onClick={exportCsv} disabled={filtered.length === 0}>
               <Download className="h-3.5 w-3.5" />
-              خروجی جدول
+              {HSE_REPORTS_COPY.exportTable}
             </Button>
           </div>
         }
       />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="حوادث در دوره" value={filtered.length} tone="neutral" />
-        <KpiCard label="بحرانی" value={critical} tone={critical > 0 ? 'bad' : 'good'} />
-        <KpiCard label="تأیید / ارجاع‌شده" value={confirmed} tone="warn" />
-        <KpiCard label="مثبت کاذب" value={falsePositives} tone="neutral" />
+        <KpiCard label={HSE_REPORTS_COPY.kpiIncidents} value={filtered.length} tone="neutral" />
+        <KpiCard label={HSE_REPORTS_COPY.kpiCritical} value={critical} tone={critical > 0 ? 'bad' : 'good'} />
+        <KpiCard label={HSE_REPORTS_COPY.kpiConfirmed} value={confirmed} tone="warn" />
+        <KpiCard label={HSE_REPORTS_COPY.kpiFalsePositive} value={falsePositives} tone="neutral" />
       </div>
 
       <Panel
-        title="حوادث در دوره"
+        title={HSE_REPORTS_COPY.panelTitle}
         description={
           period === 'today'
-            ? 'تشخیص‌شده از ابتدای روز نمایشی (ساعت آزمایشی)'
-            : `فیلتر بر اساس زمان تشخیص نسبت به نقطه مرجع نمایشی (${period === '7d' ? '7 روز' : '30 روز'})`
+            ? HSE_REPORTS_COPY.todayDesc
+            : HSE_REPORTS_COPY.periodDesc(period === '7d' ? HSE_REPORTS_COPY.days7 : HSE_REPORTS_COPY.days30)
         }
       >
         {filtered.length === 0 ? (
-          <EmptyRow>حادثه‌ای در این دوره نیست.</EmptyRow>
+          <EmptyRow>{HSE_REPORTS_COPY.empty}</EmptyRow>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-[11px] tracking-wide text-slate-500">
-                  <th className="pb-2 pl-3 font-semibold">کد</th>
-                  <th className="pb-2 pl-3 font-semibold">عنوان</th>
-                  <th className="pb-2 pl-3 font-semibold">شدت</th>
-                  <th className="pb-2 pl-3 font-semibold">وضعیت</th>
-                  <th className="pb-2 pl-3 font-semibold">زون</th>
-                  <th className="pb-2 font-semibold">زمان تشخیص</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_COMMON_COPY.code}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_COMMON_COPY.title}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_COMMON_COPY.severity}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_COMMON_COPY.status}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_COMMON_COPY.zone}</th>
+                  <th className="pb-2 font-semibold">{HSE_COMMON_COPY.detectedAt}</th>
                 </tr>
               </thead>
               <tbody>

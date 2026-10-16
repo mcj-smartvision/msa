@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/money-input.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (money-input)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/project-init/lib/i18n/types
+ */
+
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 
 const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹'

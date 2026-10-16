@@ -1,3 +1,11 @@
+/**
+ * @file features/hse/components/incident-detail-page.tsx
+ * @purpose کامپوننت UI — ایمنی، بهداشت و محیط زیست (incident-detail-page)
+ * @safe-to-edit CAREFUL
+ * @affects ایمنی، بهداشت و محیط زیست
+ * @depends-on features/hse/components/badges, features/hse/components/format, features/hse/components/ui, shared/components/ui/button, features/hse/lib/mock-data, features/hse/lib/nav, features/hse/lib/types, features/hse/config
+ */
+
 'use client'
 
 import Link from 'next/link'
@@ -16,39 +24,26 @@ getZone,
 } from '@/features/hse/lib/mock-data'
 import { HSE_BASE } from '@/features/hse/lib/nav'
 import type { DecisionAction, HseIncident } from '@/features/hse/lib/types'
+import {
+  HSE_ACTION_COPY,
+  HSE_CA_STATUS_COPY,
+  HSE_COMMON_COPY,
+  HSE_INCIDENT_DETAIL_COPY,
+  HSE_VERDICT_COPY,
+} from '@/features/hse/config'
 
-const VERDICT_LABEL: Record<HseIncident['aiVerdict'], string> = {
-  likely_violation: 'احتمال تخلف',
-  uncertain: 'نامشخص',
-  likely_false_positive: 'احتمال مثبت کاذب',
-}
-
-const ACTION_LABEL: Record<DecisionAction, string> = {
-  ai_verify: 'تأیید هوش مصنوعی',
-  acknowledge: 'دریافت',
-  confirm: 'تأیید',
-  dismiss: 'رد',
-  escalate: 'ارجاع',
-  assign: 'تخصیص',
-  close: 'بستن',
-  note: 'یادداشت',
-}
-
-const CA_STATUS_LABEL: Record<HseIncident['correctiveActions'][number]['status'], string> = {
-  open: 'باز',
-  in_progress: 'در حال انجام',
-  done: 'انجام‌شده',
-}
+const VERDICT_LABEL: Record<HseIncident['aiVerdict'], string> = HSE_VERDICT_COPY
+const ACTION_LABEL: Record<DecisionAction, string> = HSE_ACTION_COPY
+const CA_STATUS_LABEL: Record<HseIncident['correctiveActions'][number]['status'], string> =
+  HSE_CA_STATUS_COPY
 
 export function IncidentDetailPage({ id }: { id: string }) {
   const searchParams = useSearchParams()
   const returnTo = searchParams.get('returnTo')
   const backHref = returnTo?.startsWith('/') ? returnTo : `${HSE_BASE}/incidents`
   const backLabel = returnTo?.includes('site-supervisor')
-    ? 'بازگشت به ایمنی و اخطارها'
-    : returnTo
-      ? 'بازگشت'
-      : 'بازگشت'
+    ? HSE_INCIDENT_DETAIL_COPY.backToSafety
+    : HSE_INCIDENT_DETAIL_COPY.back
 
   const incident = getIncidentById(id)
 
@@ -56,12 +51,14 @@ export function IncidentDetailPage({ id }: { id: string }) {
     return (
       <div className="space-y-4" dir="rtl" lang="fa">
         <HsePageHeader
-          title="حادثه یافت نشد"
-          description="شناسه درخواست‌شده در مجموعه داده نمایشی نیست."
+          title={HSE_INCIDENT_DETAIL_COPY.notFoundTitle}
+          description={HSE_INCIDENT_DETAIL_COPY.notFoundDesc}
         />
-        <Panel title="رکورد موجود نیست">
+        <Panel title={HSE_INCIDENT_DETAIL_COPY.recordMissing}>
           <EmptyRow>
-            حادثه‌ای با شناسه <span className="font-mono">{id}</span> وجود ندارد.
+            {HSE_INCIDENT_DETAIL_COPY.noIncidentPrefix}
+            <span className="font-mono">{id}</span>
+            {HSE_INCIDENT_DETAIL_COPY.noIncidentSuffix}
           </EmptyRow>
           <div className="mt-2 text-center">
             <Button asChild size="sm" variant="outline">
@@ -96,7 +93,7 @@ export function IncidentDetailPage({ id }: { id: string }) {
       correctiveActions: incident!.correctiveActions,
     }
     console.info('[HSE] Export report', payload)
-    window.alert(`خروجی گزارش برای ${incident!.code} آماده شد. جزئیات در کنسول مرورگر است.`)
+    window.alert(HSE_INCIDENT_DETAIL_COPY.exportReady(incident!.code))
   }
 
   return (
@@ -114,7 +111,7 @@ export function IncidentDetailPage({ id }: { id: string }) {
             </Button>
             <Button size="sm" onClick={exportReport}>
               <Download className="h-3.5 w-3.5" />
-              خروجی گزارش
+              {HSE_INCIDENT_DETAIL_COPY.exportReport}
             </Button>
           </div>
         }
@@ -124,19 +121,19 @@ export function IncidentDetailPage({ id }: { id: string }) {
         <SeverityBadge value={incident.severity} />
         <StatusBadge value={incident.status} />
         <span className="text-xs text-slate-500">
-          تشخیص {formatDateTime(incident.detectedAt)} · به‌روزرسانی {formatDateTime(incident.updatedAt)}
+          {HSE_INCIDENT_DETAIL_COPY.detected} {formatDateTime(incident.detectedAt)} · {HSE_INCIDENT_DETAIL_COPY.updated} {formatDateTime(incident.updatedAt)}
         </span>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <Panel title="فراداده" description="زمینه این تشخیص">
+        <Panel title={HSE_INCIDENT_DETAIL_COPY.metadataTitle} description={HSE_INCIDENT_DETAIL_COPY.metadataDesc}>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-2.5 text-sm">
             <div>
-              <dt className="text-[11px] font-semibold tracking-wide text-slate-500">زون</dt>
+              <dt className="text-[11px] font-semibold tracking-wide text-slate-500">{HSE_INCIDENT_DETAIL_COPY.zone}</dt>
               <dd className="mt-0.5 text-slate-900">{zone?.name ?? incident.zoneId}</dd>
             </div>
             <div>
-              <dt className="text-[11px] font-semibold tracking-wide text-slate-500">دوربین</dt>
+              <dt className="text-[11px] font-semibold tracking-wide text-slate-500">{HSE_INCIDENT_DETAIL_COPY.camera}</dt>
               <dd className="mt-0.5 text-slate-900">
                 {camera?.name ?? incident.cameraId}
                 {camera ? (
@@ -146,19 +143,19 @@ export function IncidentDetailPage({ id }: { id: string }) {
             </div>
             <div>
               <dt className="text-[11px] font-semibold tracking-wide text-slate-500">
-                پیمانکار
+                {HSE_INCIDENT_DETAIL_COPY.contractor}
               </dt>
               <dd className="mt-0.5 text-slate-900">
-                {contractor?.name ?? 'تخصیص‌نشده / تیم کارگاهی'}
+                {contractor?.name ?? HSE_INCIDENT_DETAIL_COPY.unassignedTeam}
               </dd>
             </div>
             <div>
-              <dt className="text-[11px] font-semibold tracking-wide text-slate-500">مسئول</dt>
+              <dt className="text-[11px] font-semibold tracking-wide text-slate-500">{HSE_INCIDENT_DETAIL_COPY.assignee}</dt>
               <dd className="mt-0.5 text-slate-900">{incident.assignee ?? '—'}</dd>
             </div>
             <div>
               <dt className="text-[11px] font-semibold tracking-wide text-slate-500">
-                اطمینان لبه / دستگاه لبه
+                {HSE_INCIDENT_DETAIL_COPY.edgeConfidence}
               </dt>
               <dd className="mt-0.5 tabular-nums text-slate-900">
                 {Math.round(incident.confidence * 100)}٪
@@ -166,14 +163,14 @@ export function IncidentDetailPage({ id }: { id: string }) {
             </div>
             <div>
               <dt className="text-[11px] font-semibold tracking-wide text-slate-500">
-                مثبت کاذب
+                {HSE_INCIDENT_DETAIL_COPY.falsePositive}
               </dt>
-              <dd className="mt-0.5 text-slate-900">{incident.falsePositive ? 'بله' : 'خیر'}</dd>
+              <dd className="mt-0.5 text-slate-900">{incident.falsePositive ? HSE_COMMON_COPY.yes : HSE_COMMON_COPY.no}</dd>
             </div>
           </dl>
         </Panel>
 
-        <Panel title="قانون فعال‌شده" description="سیاست تشخیصی که شلیک کرده است">
+        <Panel title={HSE_INCIDENT_DETAIL_COPY.ruleTitle} description={HSE_INCIDENT_DETAIL_COPY.ruleDesc}>
           {rule ? (
             <div className="space-y-2 text-sm">
               <div className="flex flex-wrap items-center gap-2">
@@ -184,17 +181,20 @@ export function IncidentDetailPage({ id }: { id: string }) {
               <p className="font-semibold text-slate-900">{rule.name}</p>
               <p className="text-slate-700">{rule.description}</p>
               <p className="text-xs text-slate-500">
-                آستانه‌ها: اطمینان ≥ {Math.round(rule.confidenceThreshold * 100)}٪ · مدت ≥{' '}
-                {rule.durationThresholdSec}ث · دوره خنک‌سازی {rule.cooldownSec}ث
+                {HSE_INCIDENT_DETAIL_COPY.thresholds(
+                  Math.round(rule.confidenceThreshold * 100),
+                  rule.durationThresholdSec,
+                  rule.cooldownSec
+                )}
               </p>
             </div>
           ) : (
-            <EmptyRow>رکورد قانون موجود نیست.</EmptyRow>
+            <EmptyRow>{HSE_INCIDENT_DETAIL_COPY.noRule}</EmptyRow>
           )}
         </Panel>
       </div>
 
-      <Panel title="فریم‌های شواهد" description="تصاویر بافرشده از بسته لبه">
+      <Panel title={HSE_INCIDENT_DETAIL_COPY.evidenceTitle} description={HSE_INCIDENT_DETAIL_COPY.evidenceDesc}>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {incident.evidenceFrames.map((frame) => (
             <div
@@ -215,19 +215,19 @@ export function IncidentDetailPage({ id }: { id: string }) {
         </div>
       </Panel>
 
-      <Panel title="بافر کلیپ" description="کلیپ کوتاه محلی ارجاع‌شده در بسته شواهد">
+      <Panel title={HSE_INCIDENT_DETAIL_COPY.clipTitle} description={HSE_INCIDENT_DETAIL_COPY.clipDesc}>
         <div className="flex h-36 items-center justify-center rounded border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-600">
           {incident.clipPlaceholder}
         </div>
       </Panel>
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <Panel title="خلاصه و رأی هوش مصنوعی" description="خروجی تأیید فهرست کوتاه">
+        <Panel title={HSE_INCIDENT_DETAIL_COPY.aiTitle} description={HSE_INCIDENT_DETAIL_COPY.aiDesc}>
           <p className="text-sm text-slate-800">{incident.aiSummary}</p>
           <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
             <div className="rounded border border-slate-200 px-2.5 py-2">
               <dt className="text-[11px] font-semibold tracking-wide text-slate-500">
-                رأی
+                {HSE_INCIDENT_DETAIL_COPY.verdict}
               </dt>
               <dd className="mt-0.5 font-medium tracking-wide text-slate-900">
                 {VERDICT_LABEL[incident.aiVerdict]}
@@ -235,7 +235,7 @@ export function IncidentDetailPage({ id }: { id: string }) {
             </div>
             <div className="rounded border border-slate-200 px-2.5 py-2">
               <dt className="text-[11px] font-semibold tracking-wide text-slate-500">
-                اطمینان هوش مصنوعی
+                {HSE_INCIDENT_DETAIL_COPY.aiConfidence}
               </dt>
               <dd className="mt-0.5 font-semibold tabular-nums text-slate-900">
                 {Math.round(incident.aiConfidence * 100)}٪
@@ -244,9 +244,9 @@ export function IncidentDetailPage({ id }: { id: string }) {
           </dl>
         </Panel>
 
-        <Panel title="گزارش تصمیم / مسیر حسابرسی" description="اقدامات انسانی و سامانه‌ای به‌ترتیب زمان">
+        <Panel title={HSE_INCIDENT_DETAIL_COPY.decisionTitle} description={HSE_INCIDENT_DETAIL_COPY.decisionDesc}>
           {incident.decisionLog.length === 0 ? (
-            <EmptyRow>تصمیمی ثبت نشده است.</EmptyRow>
+            <EmptyRow>{HSE_INCIDENT_DETAIL_COPY.noDecision}</EmptyRow>
           ) : (
             <ol className="relative space-y-0 border-r border-slate-200 pr-4">
               {[...incident.decisionLog]
@@ -269,18 +269,18 @@ export function IncidentDetailPage({ id }: { id: string }) {
         </Panel>
       </div>
 
-      <Panel title="اقدامات اصلاحی" description="تعهدات پیگیری مرتبط با این حادثه">
+      <Panel title={HSE_INCIDENT_DETAIL_COPY.caTitle} description={HSE_INCIDENT_DETAIL_COPY.caDesc}>
         {incident.correctiveActions.length === 0 ? (
-          <EmptyRow>اقدام اصلاحی ثبت نشده است.</EmptyRow>
+          <EmptyRow>{HSE_INCIDENT_DETAIL_COPY.noCa}</EmptyRow>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-[11px] tracking-wide text-slate-500">
-                  <th className="pb-2 pl-3 font-semibold">اقدام</th>
-                  <th className="pb-2 pl-3 font-semibold">مالک</th>
-                  <th className="pb-2 pl-3 font-semibold">مهلت</th>
-                  <th className="pb-2 font-semibold">وضعیت</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_INCIDENT_DETAIL_COPY.colAction}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_INCIDENT_DETAIL_COPY.colOwner}</th>
+                  <th className="pb-2 pl-3 font-semibold">{HSE_INCIDENT_DETAIL_COPY.colDue}</th>
+                  <th className="pb-2 font-semibold">{HSE_INCIDENT_DETAIL_COPY.colStatus}</th>
                 </tr>
               </thead>
               <tbody>

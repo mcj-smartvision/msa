@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/access.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (access)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/dashboard, shared/lib/dashboard/roles
+ */
+
 import type { DashboardUserContext } from '@/shared/types/dashboard'
 import type { SiteRoleKey } from '@/shared/lib/dashboard/roles'
 

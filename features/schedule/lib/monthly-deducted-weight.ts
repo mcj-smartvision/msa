@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/monthly-deducted-weight.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (monthly-deducted-weight)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/dates
+ */
+
 import { toGregorian, toJalaali } from 'jalaali-js'
 import { toIsoDateOnly } from '@/features/schedule/lib/dates'
 

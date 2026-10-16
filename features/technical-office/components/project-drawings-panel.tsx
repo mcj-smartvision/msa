@@ -1,3 +1,11 @@
+/**
+ * @file features/technical-office/components/project-drawings-panel.tsx
+ * @purpose کامپوننت UI — دفتر فنی (project-drawings-panel)
+ * @safe-to-edit CAREFUL
+ * @affects دفتر فنی
+ * @depends-on shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/alert, features/technical-office/lib/drawings-shared, features/technical-office/lib/drawing-discipline, shared/components/ui/select, shared/lib/utils
+ */
+
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -20,6 +28,7 @@ SelectTrigger,
 SelectValue,
 } from '@/shared/components/ui/select'
 import { cn } from '@/shared/lib/utils'
+import { DRAWINGS_COPY } from '@/features/technical-office/config'
 
 const LIST_TAB_DISCIPLINES = DRAWING_LIST_TAB_DISCIPLINES
 
@@ -29,8 +38,8 @@ const FIELD_LABEL = 'mb-1 block text-xs font-semibold text-[#1e3a5f]'
 
 function listTabLabel(discipline: DrawingDiscipline, fa: boolean): string {
   if (!fa) return `${drawingDisciplineLabel(discipline)} drawings`
-  if (discipline === 'other') return 'نقشه‌های سایر'
-  return `نقشه‌های ${drawingDisciplineLabel(discipline)}`
+  if (discipline === 'other') return DRAWINGS_COPY.otherTab
+  return DRAWINGS_COPY.tabPrefix(drawingDisciplineLabel(discipline))
 }
 
 function formatSize(bytes: number | null) {
@@ -85,7 +94,7 @@ export function ProjectDrawingsPanel({
     const res = await fetch(`/api/technical-office/drawings?projectId=${projectId}`)
     const data = (await res.json().catch(() => ({}))) as { drawings?: ProjectDrawing[]; error?: string }
     if (!res.ok) {
-      setError(data.error || (fa ? 'بارگذاری نقشه‌ها انجام نشد.' : 'Could not load drawings.'))
+      setError(data.error || (fa ? DRAWINGS_COPY.loadFailed : 'Could not load drawings.'))
       setDrawings([])
       setLoading(false)
       return
@@ -124,7 +133,7 @@ export function ProjectDrawingsPanel({
     const res = await fetch('/api/technical-office/drawings', { method: 'POST', body })
     const data = (await res.json().catch(() => ({}))) as { error?: string; errors?: string[]; drawings?: ProjectDrawing[] }
     if (!res.ok) {
-      setError(data.error || data.errors?.join(' ') || (fa ? 'آپلود انجام نشد.' : 'Upload failed.'))
+      setError(data.error || data.errors?.join(' ') || (fa ? DRAWINGS_COPY.uploadFailed : 'Upload failed.'))
       setUploading(false)
       return
     }
@@ -135,7 +144,7 @@ export function ProjectDrawingsPanel({
     const extra = data.errors?.length ? ` ${data.errors.join(' ')}` : ''
     setMessage(
       fa
-        ? `${uploaded} نقشه بارگذاری شد. سرپرست کارگاه می‌تواند ببیند و دانلود کند.${extra}`
+        ? DRAWINGS_COPY.uploaded(uploaded, extra)
         : `${uploaded} drawing(s) uploaded.${extra}`
     )
     setUploading(false)
@@ -148,7 +157,7 @@ export function ProjectDrawingsPanel({
     const res = await fetch(`/api/technical-office/drawings/${encodeURIComponent(id)}`)
     const data = (await res.json().catch(() => ({}))) as { url?: string; fileName?: string; error?: string }
     if (!res.ok || !data.url) {
-      setError(data.error || (fa ? 'دانلود انجام نشد.' : 'Download failed.'))
+      setError(data.error || (fa ? DRAWINGS_COPY.downloadFailed : 'Download failed.'))
       return
     }
     const a = document.createElement('a')
@@ -164,23 +173,23 @@ export function ProjectDrawingsPanel({
     const res = await fetch(`/api/technical-office/drawings/${encodeURIComponent(id)}`, { method: 'DELETE' })
     const data = (await res.json().catch(() => ({}))) as { error?: string }
     if (!res.ok) {
-      setError(data.error || (fa ? 'حذف انجام نشد.' : 'Delete failed.'))
+      setError(data.error || (fa ? DRAWINGS_COPY.deleteFailed : 'Delete failed.'))
       return
     }
     await load()
   }
 
   if (!projectId) {
-    return <p className="text-sm text-slate-500">{fa ? 'ابتدا یک پروژه انتخاب کنید.' : 'Select a project first.'}</p>
+    return <p className="text-sm text-slate-500">{fa ? DRAWINGS_COPY.selectProject : 'Select a project first.'}</p>
   }
 
   return (
     <section className="space-y-4 rounded-[12px] border border-[#5a7088] bg-white p-5">
       <div>
-        <h2 className="text-base font-semibold text-slate-900">{fa ? 'نقشه‌های پروژه' : 'Project drawings'}</h2>
+        <h2 className="text-base font-semibold text-slate-900">{fa ? DRAWINGS_COPY.title : 'Project drawings'}</h2>
         <p className="mt-1 text-sm text-slate-500">
           {fa
-            ? 'PDF و DWG، تکی یا گروهی. سرپرست کارگاه همین نقشه‌ها را می‌بیند و می‌تواند دانلود کند.'
+            ? DRAWINGS_COPY.hint
             : 'PDF and DWG, single or batch. The site supervisor can view and download these files.'}
         </p>
       </div>
@@ -196,7 +205,7 @@ export function ProjectDrawingsPanel({
           >
             <div className={cn(FIELD_BOX, 'relative')}>
               <Label htmlFor="drawing-discipline" className={FIELD_LABEL}>
-                {fa ? 'رشته نقشه' : 'Discipline'}
+                {fa ? DRAWINGS_COPY.discipline : 'Discipline'}
               </Label>
               <div className="flex min-h-[1.5rem] flex-1 items-center justify-center">
                 <Select value={discipline} onValueChange={(v) => setDiscipline(v as DrawingDiscipline)}>
@@ -219,20 +228,20 @@ export function ProjectDrawingsPanel({
 
             <div className={FIELD_BOX}>
               <Label htmlFor="drawing-title" className={FIELD_LABEL}>
-                {fa ? 'عنوان (اختیاری)' : 'Title (optional)'}
+                {fa ? DRAWINGS_COPY.titleOptional : 'Title (optional)'}
               </Label>
               <Input
                 id="drawing-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder={fa ? 'پیشوند یا عنوان نقشه' : 'Title or prefix'}
+                placeholder={fa ? DRAWINGS_COPY.titlePh : 'Title or prefix'}
                 className="h-9 w-full border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
               />
             </div>
 
             <div className={FIELD_BOX}>
               <Label htmlFor="drawing-file" className={FIELD_LABEL}>
-                {fa ? 'فایل نقشه' : 'Drawing file'}
+                {fa ? DRAWINGS_COPY.fileLabel : 'Drawing file'}
               </Label>
               <input
                 ref={inputRef}
@@ -251,10 +260,10 @@ export function ProjectDrawingsPanel({
               >
                 {files.length > 0
                   ? fa
-                    ? `${files.length} فایل انتخاب شد`
+                    ? DRAWINGS_COPY.filesSelected(files.length)
                     : `${files.length} file(s) selected`
                   : fa
-                    ? 'انتخاب فایل'
+                    ? DRAWINGS_COPY.chooseFiles
                     : 'Choose files'}
               </Button>
             </div>
@@ -267,12 +276,12 @@ export function ProjectDrawingsPanel({
               <Upload className="h-4 w-4 shrink-0" />
               {uploading
                 ? fa
-                  ? 'در حال آپلود...'
+                  ? DRAWINGS_COPY.uploading
                   : 'Uploading...'
                 : fa
                   ? files.length > 1
-                    ? `آپلود ${files.length} نقشه`
-                    : 'آپلود نقشه'
+                    ? DRAWINGS_COPY.uploadMany(files.length)
+                    : DRAWINGS_COPY.uploadOne
                   : files.length > 1
                     ? `Upload ${files.length}`
                     : 'Upload'}
@@ -291,7 +300,7 @@ export function ProjectDrawingsPanel({
                     type="button"
                     className="text-slate-400 hover:text-slate-700"
                     onClick={() => setFiles((current) => current.filter((item) => item !== file))}
-                    aria-label={fa ? 'حذف فایل' : 'Remove file'}
+                    aria-label={fa ? DRAWINGS_COPY.removeFile : 'Remove file'}
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -314,10 +323,10 @@ export function ProjectDrawingsPanel({
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-slate-500">{fa ? 'در حال بارگذاری...' : 'Loading...'}</p>
+        <p className="text-sm text-slate-500">{fa ? DRAWINGS_COPY.loading : 'Loading...'}</p>
       ) : drawings.length === 0 ? (
         <p className="text-sm text-slate-500">
-          {fa ? 'هنوز نقشه‌ای برای این پروژه بارگذاری نشده است.' : 'No drawings uploaded for this project yet.'}
+          {fa ? DRAWINGS_COPY.empty : 'No drawings uploaded for this project yet.'}
         </p>
       ) : (
         <div className="space-y-3">
@@ -325,7 +334,7 @@ export function ProjectDrawingsPanel({
             className="flex flex-wrap gap-2 border-b border-slate-200 pb-2"
             role="tablist"
             dir={fa ? 'rtl' : 'ltr'}
-            aria-label={fa ? 'دسته نقشه‌ها' : 'Drawing categories'}
+            aria-label={fa ? DRAWINGS_COPY.categoriesAria : 'Drawing categories'}
           >
             {visibleTabs.map((tabDiscipline) => {
               const count = drawings.filter((d) => d.discipline === tabDiscipline).length
@@ -346,7 +355,7 @@ export function ProjectDrawingsPanel({
                   )}
                 >
                   <span className="font-semibold">{drawingDisciplineLabel(tabDiscipline)}</span>
-                  <span>{fa ? 'نقشه‌های' : 'drawings'}</span>
+                  <span>{fa ? DRAWINGS_COPY.drawingsWord : 'drawings'}</span>
                   <span
                     className={cn(
                       'rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums',
@@ -364,7 +373,7 @@ export function ProjectDrawingsPanel({
             {filteredDrawings.length === 0 ? (
               <p className="rounded-[10px] border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
                 {fa
-                  ? `در دسته «${drawingDisciplineLabel(listTab)}» نقشه‌ای ثبت نشده است.`
+                  ? DRAWINGS_COPY.emptyTab(drawingDisciplineLabel(listTab))
                   : `No drawings in ${drawingDisciplineLabel(listTab)}.`}
               </p>
             ) : (
@@ -389,7 +398,7 @@ export function ProjectDrawingsPanel({
                         className="border-transparent bg-[hsl(24_85%_45%)] text-white shadow-sm shadow-orange-900/15 hover:bg-[hsl(24_85%_40%)]"
                       >
                         <Download className="h-4 w-4" />
-                        {fa ? 'دانلود' : 'Download'}
+                        {fa ? DRAWINGS_COPY.download : 'Download'}
                       </Button>
                       {canUpload ? (
                         <Button

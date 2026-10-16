@@ -1,3 +1,11 @@
+/**
+ * @file features/project-manager/lib/pm-inbox/types.ts
+ * @purpose تعاریف نوع — اتاق فرمان مدیر پروژه و کارتابل (types)
+ * @safe-to-edit YES
+ * @affects اتاق فرمان مدیر پروژه و کارتابل
+ * @depends-on shared/types/project-controls
+ */
+
 import type { ControlsSnapshot, DataQuality, ExplainedKpi } from '@/shared/types/project-controls'
 
 export type InboxCategory = 'Financials' | 'LeanOps' | 'Controls' | 'Claims' | 'HSE'

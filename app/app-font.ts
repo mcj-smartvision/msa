@@ -1,3 +1,11 @@
+/**
+ * @file app/app-font.ts
+ * @purpose ماژول — مسیرها و layout (app-font)
+ * @safe-to-edit CAREFUL
+ * @affects مسیرها و layout
+ * @depends-on nothing
+ */
+
 import localFont from 'next/font/local'
 
 /** Single UI typeface for the whole app (Persian + Latin from Koloche). */

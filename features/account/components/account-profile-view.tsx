@@ -1,9 +1,17 @@
+/**
+ * @file features/account/components/account-profile-view.tsx
+ * @purpose کامپوننت UI — حساب کاربری (account-profile-view)
+ * @safe-to-edit CAREFUL
+ * @affects حساب کاربری
+ * @depends-on shared/lib/supabase/client, shared/lib/auth/login-identifier, features/account/lib/copy, shared/components/i18n/locale-provider, shared/components/ui/alert
+ */
+
 'use client'
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/shared/lib/supabase/client'
 import { formatLoginDisplay } from '@/shared/lib/auth/login-identifier'
-import { accountCopy } from '@/features/account/lib/copy'
+import { accountCopy } from '@/features/account/config'
 import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { Alert, AlertDescription } from '@/shared/components/ui/alert'
 
@@ -133,7 +141,7 @@ export function AccountProfileView() {
                 <p className="text-sm font-medium text-slate-800">{project.name}</p>
                 {project.positions.length > 0 ? (
                   <p className="mt-0.5 text-xs text-slate-500">
-                    {copy.positions}: {project.positions.join('، ')}
+                    {copy.positions}: {project.positions.join(copy.listSep)}
                   </p>
                 ) : null}
               </li>

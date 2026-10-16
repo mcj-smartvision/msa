@@ -1,3 +1,11 @@
+/**
+ * @file features/finance/lib/overhead-schedule-months.ts
+ * @purpose منطق دامنه — حسابداری، هزینه،overhead و صورت‌وضعیت (overhead-schedule-months)
+ * @safe-to-edit CAREFUL
+ * @affects حسابداری، هزینه،overhead و صورت‌وضعیت
+ * @depends-on features/schedule/lib/monthly-deducted-weight, features/workshop/lib/types
+ */
+
 import { toGregorian } from 'jalaali-js'
 import {
 enumerateProjectJalaliMonths,

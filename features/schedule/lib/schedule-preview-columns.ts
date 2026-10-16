@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/schedule-preview-columns.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (schedule-preview-columns)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on shared/types/schedule
+ */
+
 /** Schedule preview table columns — MSP import map + CPM fields */
 
 import type { ProjectTask } from '@/shared/types/schedule'

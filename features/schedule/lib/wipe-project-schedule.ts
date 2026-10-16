@@ -1,3 +1,11 @@
+/**
+ * @file features/schedule/lib/wipe-project-schedule.ts
+ * @purpose منطق دامنه — زمان‌بندی، WBS و گانت (wipe-project-schedule)
+ * @safe-to-edit CAREFUL
+ * @affects زمان‌بندی، WBS و گانت
+ * @depends-on features/schedule/lib/schedule-files
+ */
+
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { SCHEDULE_BUCKET, getScheduleStorage } from '@/features/schedule/lib/schedule-files'
 

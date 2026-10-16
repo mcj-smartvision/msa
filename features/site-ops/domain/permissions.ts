@@ -1,3 +1,11 @@
+/**
+ * @file features/site-ops/domain/permissions.ts
+ * @purpose منطق دامنه — عملیات کارگاه، دستورکار و برنامه روزانه (permissions)
+ * @safe-to-edit CAREFUL
+ * @affects عملیات کارگاه، دستورکار و برنامه روزانه
+ * @depends-on nothing
+ */
+
 import { SiteOpsError } from './errors'
 
 export const SITE_OPS_ROLES = [

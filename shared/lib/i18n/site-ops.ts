@@ -1,3 +1,11 @@
+/**
+ * @file shared/lib/i18n/site-ops.ts
+ * @purpose تنظیمات و برچسب‌ها — زیرساخت مشترک سامانه (site-ops)
+ * @safe-to-edit YES
+ * @affects زیرساخت مشترک سامانه
+ * @depends-on features/project-init/lib/i18n/types
+ */
+
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 
 const EN = {
@@ -43,6 +51,7 @@ const EN = {
   personDays: 'Person-days',
   exportCsv: 'Export CSV',
   loading: 'Loading…',
+  loadingOps: 'Loading site operations…',
   error: 'Something went wrong.',
   success: 'Saved.',
   planDate: 'Plan date',
@@ -94,6 +103,7 @@ const FA: typeof EN = {
   personDays: 'نفر-روز',
   exportCsv: 'خروجی CSV',
   loading: 'در حال بارگذاری…',
+  loadingOps: 'در حال بارگذاری عملیات کارگاه…',
   error: 'خطایی رخ داد.',
   success: 'ذخیره شد.',
   planDate: 'تاریخ برنامه',

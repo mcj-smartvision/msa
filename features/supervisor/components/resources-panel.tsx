@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/components/resources-panel.tsx
+ * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (resources-panel)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on shared/components/ui/card, shared/components/ui/button, shared/components/ui/badge, features/supervisor/components/traffic-light, features/supervisor/lib/types, shared/lib/i18n/site-supervisor
+ */
+
 'use client'
 
 import { Package, Users, Wrench } from 'lucide-react'
@@ -31,13 +39,13 @@ export function ResourcesPanel({ resources, labels, onRequestPurchase }: Resourc
           </CardHeader>
           <CardContent className="space-y-3">
             {materials.length === 0 ? (
-              <p className="text-xs text-muted-foreground">انباری متصل نیست.</p>
+              <p className="text-xs text-muted-foreground">{labels.warehouseNotConnected}</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-muted-foreground border-b">
-                      <th className="py-1 text-start">نام</th>
+                      <th className="py-1 text-start">{labels.name}</th>
                       <th className="py-1 text-start">{labels.stock}</th>
                       <th className="py-1 text-start">{labels.status}</th>
                     </tr>
@@ -78,11 +86,11 @@ export function ResourcesPanel({ resources, labels, onRequestPurchase }: Resourc
             <p className="text-xs text-muted-foreground mt-1">{labels.crews}</p>
             {shortage ? (
               <Badge variant="destructive" className="mt-2">
-                {manpower.shortage_note ?? 'کمبود'}
+                {manpower.shortage_note ?? labels.shortage}
               </Badge>
             ) : (
               <Badge variant="secondary" className="mt-2">
-                مناسب
+                {labels.adequate}
               </Badge>
             )}
           </CardContent>

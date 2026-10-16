@@ -1,3 +1,11 @@
+/**
+ * @file features/dashboard/components/widgets/widget-shell.tsx
+ * @purpose کامپوننت UI — داشبورد نقش‌ها و ویجت‌ها (widget-shell)
+ * @safe-to-edit CAREFUL
+ * @affects داشبورد نقش‌ها و ویجت‌ها
+ * @depends-on shared/components/ui/card, shared/lib/utils
+ */
+
 import type { ReactNode } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { cn } from '@/shared/lib/utils'

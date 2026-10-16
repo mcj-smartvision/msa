@@ -1,3 +1,11 @@
+/**
+ * @file features/qc/engine/activity-types.ts
+ * @purpose تعاریف نوع — کنترل کیفیت و عدم انطباق (activity-types)
+ * @safe-to-edit YES
+ * @affects کنترل کیفیت و عدم انطباق
+ * @depends-on nothing
+ */
+
 export const QC_ACTIVITY_TYPES = [
   'welding',
   'bracing',

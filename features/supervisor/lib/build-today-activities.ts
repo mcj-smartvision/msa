@@ -1,3 +1,11 @@
+/**
+ * @file features/supervisor/lib/build-today-activities.ts
+ * @purpose منطق دامنه — سرپرست کارگاه و گزارش روزانه (build-today-activities)
+ * @safe-to-edit CAREFUL
+ * @affects سرپرست کارگاه و گزارش روزانه
+ * @depends-on features/schedule/lib/wbs-utils, features/storekeeper/lib/types, features/workshop/lib/types, features/workshop/lib/wbs-numbering, shared/types/schedule, features/supervisor/lib/transforms, features/supervisor/lib/types, features/schedule/lib/task-view-date
+ */
+
 import { compareWbs } from '@/features/schedule/lib/wbs-utils'
 import type { InventoryItemRow } from '@/features/storekeeper/lib/types'
 import type { ScheduleTreeNode, WorkshopPackageNode } from '@/features/workshop/lib/types'
