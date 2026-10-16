@@ -640,7 +640,7 @@ export function ScheduleImportPanel({
         <Card className="w-full max-w-none shadow-sm overflow-hidden">
           <CardHeader className="border-b bg-muted/20 pb-3 px-4 py-3">
             <CardTitle className="text-base">
-              {copy.previewTitle(displayTasks.length}
+              {copy.previewTitle(displayTasks.length)}
               {taskCount > displayTasks.length ? copy.ofTotal(taskCount) : ''}
               {copy.previewTitleEnd}
             </CardTitle>
