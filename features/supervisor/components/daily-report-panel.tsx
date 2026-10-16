@@ -37,7 +37,6 @@ buildActivityProgressTimeline,
 checkPercentEntry,
 cumulativeBefore,
 entryOn,
-isSuspiciousWeeklyGain,
 mergeProgressHistory,
 progressAxis,
 SITE_WEEK_DAY_LABELS,
@@ -101,7 +100,7 @@ function ProgressBar({
 }) {
   const pct = Math.min(100, Math.max(0, value))
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200/80">
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200/80">
       <div
         className={cn(
           'h-full rounded-full transition-all duration-300',
@@ -119,7 +118,6 @@ const SHORT_DAY_LABELS = [t.shortSat, t.shortSun, t.shortMon, t.shortTue, t.shor
 
 const PERCENT_ERROR_TEXT = { max: t.percentMax, min: t.percentMin } as const
 const DECREASE_WARNING = t.decreaseWarning
-const WEEKLY_GAIN_WARNING = t.weeklyGainWarning
 
 function PercentEntryMessage({ check }: { check: PercentEntryCheck | null }) {
   if (check?.error) {
@@ -140,41 +138,34 @@ function PercentEntryMessage({ check }: { check: PercentEntryCheck | null }) {
   return null
 }
 
-function WeeklyGainFlag({ gain }: { gain: number | null }) {
-  if (!isSuspiciousWeeklyGain(gain)) return null
-  return (
-    <span title={WEEKLY_GAIN_WARNING} aria-label={WEEKLY_GAIN_WARNING} className="inline-flex align-middle">
-      <AlertTriangle className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
-    </span>
-  )
-}
-
 function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
   const [hover, setHover] = useState<number | null>(null)
-  const [boxW, setBoxW] = useState(300)
+  const [boxW, setBoxW] = useState(280)
   const boxRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = boxRef.current
     if (!el) return
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) setBoxW(Math.max(200, Math.round(entry.contentRect.width)))
+      if (entry) setBoxW(Math.max(160, Math.round(entry.contentRect.width)))
     })
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
 
   const dayLabels: readonly string[] = SITE_WEEK_DAY_LABELS
-  const days = weeks.flatMap((w, weekIndex) =>
+  /** Half-panel chart: last two site-weeks keep the sparkline readable. */
+  const chartWeeks = weeks.length > 2 ? weeks.slice(-2) : weeks
+  const days = chartWeeks.flatMap((w, weekIndex) =>
     w.days.map((d) => ({ ...d, weekIndex, dayIndex: dayLabels.indexOf(d.label) }))
   )
-  const weekStartCol = weeks.map((_, wi) => weeks.slice(0, wi).reduce((n, w) => n + w.days.length, 0))
-  const axisW = 36
-  const pad = 6
-  const H = 232
-  const top = 74
-  const bottom = H - 28
-  const colW = Math.max(40, (boxW - axisW - pad * 2) / days.length)
+  const weekStartCol = chartWeeks.map((_, wi) => chartWeeks.slice(0, wi).reduce((n, w) => n + w.days.length, 0))
+  const axisW = 26
+  const pad = 4
+  const H = 112
+  const top = 18
+  const bottom = H - 16
+  const colW = Math.max(14, (boxW - axisW - pad * 2) / Math.max(1, days.length))
   const W = Math.round(colW * days.length + pad * 2)
   const axis = progressAxis(
     days.filter((d) => !d.future && d.cumulative != null).map((d) => d.cumulative!)
@@ -200,80 +191,74 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
   }, [days.length, boxW])
 
   return (
-    <div className="rounded-lg border border-slate-100 bg-white p-3">
-      <p className="text-[11px] font-semibold text-slate-600">
-        {t.cumulativeTrendHint}
-      </p>
-      <div ref={boxRef} className="mt-1 flex" dir="ltr">
+    <div className="flex h-full min-h-[8.5rem] w-full flex-col" title={t.cumulativeTrendHint}>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="text-[10px] font-semibold text-slate-500">
+          {current.weekComplete ? t.weekEndCumulative : t.cumulativeToToday}
+        </span>
+        <span className="text-sm font-bold tabular-nums text-[#1e3a5f]">
+          {current.endCumulative == null ? '—' : SUPERVISOR_COPY.pct(faNum(current.endCumulative))}
+        </span>
+      </div>
+      <div ref={boxRef} className="flex min-h-0 flex-1" dir="ltr">
         <svg width={axisW} height={H} className="block shrink-0" aria-hidden>
-          {ticks.map((t) => (
-            <text key={t} x={axisW - 5} y={yOf(t) + 4} fontSize={11} fill="#475569" textAnchor="end" direction="ltr">
-              {SUPERVISOR_COPY.pct(t.toLocaleString('en-US'))}
+          {ticks.map((tick) => (
+            <text key={tick} x={axisW - 3} y={yOf(tick) + 3} fontSize={9} fill="#64748b" textAnchor="end" direction="ltr">
+              {tick}
             </text>
           ))}
-          <line x1={axisW - 0.5} x2={axisW - 0.5} y1={top - 4} y2={bottom} stroke="#94a3b8" />
+          <line x1={axisW - 0.5} x2={axisW - 0.5} y1={top - 1} y2={bottom} stroke="#cbd5e1" />
         </svg>
         <div ref={scrollRef} className="min-w-0 flex-1 overflow-x-auto">
           <div className="relative" style={{ width: W }} onMouseLeave={() => setHover(null)}>
             <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block" role="img" aria-label={t.dailyChartAria}>
-              {weeks.map((w, wi) => {
+              {chartWeeks.map((w, wi) => {
                 const x0 = pad + weekStartCol[wi]! * colW
                 const weekW = colW * w.days.length
-                const thuX = x0 + weekW - colW / 2
-                const badgeW = Math.max(colW - 4, 40)
                 return (
                   <g key={w.weekStart}>
                     {wi % 2 === 1 ? <rect x={x0} y={0} width={weekW} height={bottom} fill="#f8fafc" /> : null}
-                    {wi > 0 ? <line x1={x0} x2={x0} y1={0} y2={bottom + 6} stroke="#cbd5e1" strokeDasharray="4 3" /> : null}
-                    <text x={x0 + weekW / 2} y={13} textAnchor="middle" fontSize={11} fontWeight={700} fill="#475569">
+                    {wi > 0 ? <line x1={x0} x2={x0} y1={0} y2={bottom + 2} stroke="#e2e8f0" /> : null}
+                    <text x={x0 + weekW / 2} y={11} textAnchor="middle" fontSize={8} fontWeight={700} fill="#94a3b8">
                       {t.weekN(faNum(w.index))}
-                    </text>
-                    <rect x={thuX - badgeW / 2} y={20} width={badgeW} height={27} rx={6} fill={w.weekComplete ? '#1e3a5f' : '#ffffff'} stroke="#1e3a5f" strokeDasharray={w.weekComplete ? undefined : '3 2'} />
-                    <text x={thuX} y={31} textAnchor="middle" fontSize={9} fill={w.weekComplete ? '#cbd5e1' : '#64748b'}>
-                      {t.cumulativeShort}
-                    </text>
-                    <text x={thuX} y={43} textAnchor="middle" fontSize={11} fontWeight={700} fill={w.weekComplete ? '#ffffff' : '#1e3a5f'}>
-                      {w.endCumulative == null ? '—' : SUPERVISOR_COPY.pct(faNum(w.endCumulative))}
                     </text>
                   </g>
                 )
               })}
 
-              {ticks.map((t) => (
-                <line key={t} x1={0} x2={W} y1={yOf(t)} y2={yOf(t)} stroke={t === axis.min ? '#94a3b8' : '#e2e8f0'} strokeDasharray={t === axis.min ? undefined : '3 3'} />
+              {ticks.map((tick) => (
+                <line key={tick} x1={0} x2={W} y1={yOf(tick)} y2={yOf(tick)} stroke={tick === axis.min ? '#cbd5e1' : '#f1f5f9'} />
               ))}
 
               {hovered ? (
-                <rect x={hovered.x - colW / 2} y={top - 4} width={colW} height={bottom - top + 4} fill="#e2e8f0" fillOpacity={0.6} />
+                <rect x={hovered.x - colW / 2} y={top - 1} width={colW} height={bottom - top + 1} fill="#e2e8f0" fillOpacity={0.5} />
               ) : null}
 
               {area ? <path d={area} fill="#f59e0b" fillOpacity={0.12} /> : null}
               {drawn.length > 1 ? (
-                <polyline points={drawn.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#f59e0b" strokeWidth={2} strokeLinejoin="round" />
+                <polyline points={drawn.map((p) => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#f59e0b" strokeWidth={1.75} strokeLinejoin="round" />
               ) : null}
 
               {points.map((p, i) => (
                 <g key={p.date}>
-                  {p.y == null ? null : p.daily != null ? (
-                    <>
-                      <circle cx={p.x} cy={p.y} r={hover === i ? 6 : 4.5} fill="#f59e0b" stroke="#fff" strokeWidth={1.5} />
-                      <text x={p.x} y={p.y - 10} textAnchor="middle" fontSize={11} fontWeight={700} fill="#92400e">
-                        {SUPERVISOR_COPY.pct(faNum(p.cumulative ?? 0))}
-                      </text>
-                    </>
-                  ) : (
-                    <circle cx={p.x} cy={p.y} r={hover === i ? 4 : 2.5} fill="#fff" stroke="#f59e0b" strokeWidth={1.2} />
+                  {p.y == null ? null : (
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r={p.daily != null ? (hover === i ? 4 : 3) : hover === i ? 3 : 2}
+                      fill={p.daily != null ? '#f59e0b' : '#fff'}
+                      stroke="#f59e0b"
+                      strokeWidth={1.2}
+                    />
                   )}
-                  <line x1={p.x} x2={p.x} y1={bottom} y2={bottom + 3} stroke="#94a3b8" />
                   <text
                     x={p.x}
-                    y={H - 9}
+                    y={H - 4}
                     textAnchor="middle"
-                    fontSize={11}
-                    fontWeight={p.dayIndex === SITE_WEEK_DAY_LABELS.length - 1 ? 700 : 400}
-                    fill={p.future ? '#94a3b8' : '#334155'}
+                    fontSize={8}
+                    fill={p.future ? '#94a3b8' : '#64748b'}
                   >
-                    {colW >= 48 ? p.label : SHORT_DAY_LABELS[p.dayIndex]}
+                    {SHORT_DAY_LABELS[p.dayIndex]}
                   </text>
                   <rect
                     x={p.x - colW / 2}
@@ -292,76 +277,24 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
             {hovered ? (
               <div
                 dir="rtl"
-                className="pointer-events-none absolute z-10 w-44 -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px] leading-5 shadow-lg"
-                style={{ left: Math.min(W - 90, Math.max(90, hovered.x)), top: 4 }}
+                className="pointer-events-none absolute z-10 w-36 -translate-x-1/2 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[10px] leading-tight shadow-md"
+                style={{ left: Math.min(W - 70, Math.max(70, hovered.x)), top: 2 }}
               >
                 <p className="font-bold text-slate-800">
-                  {hovered.label} <span className="font-normal text-slate-500"><FormattedDate value={hovered.date} /></span>
+                  {hovered.label} <FormattedDate value={hovered.date} />
                 </p>
-                <p className="text-[10px] text-slate-500">{t.weekN(faNum(weeks[hovered.weekIndex]!.index))}</p>
+                <p className="text-slate-500">{t.weekN(faNum(chartWeeks[hovered.weekIndex]!.index))}</p>
                 {hovered.future ? (
                   <p className="text-slate-400">{t.notReachedYet}</p>
                 ) : (
-                  <>
-                    <p className="flex justify-between gap-2">
-                      <span className="text-slate-500">{t.dayProgress}</span>
-                      <span className="font-bold tabular-nums text-amber-700">{hovered.daily == null ? t.notRecorded : SUPERVISOR_COPY.pct(faNum(hovered.daily))}</span>
-                    </p>
-                    <p className="flex justify-between gap-2">
-                      <span className="text-slate-500">{t.cumulativeShort}</span>
-                      <span className="font-bold tabular-nums text-[#1e3a5f]">{hovered.cumulative == null ? '—' : SUPERVISOR_COPY.pct(faNum(hovered.cumulative))}</span>
-                    </p>
-                  </>
+                  <p className="tabular-nums text-[#1e3a5f]">
+                    {hovered.cumulative == null ? '—' : SUPERVISOR_COPY.pct(faNum(hovered.cumulative))}
+                  </p>
                 )}
               </div>
             ) : null}
           </div>
         </div>
-      </div>
-
-      <ol className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-1.5 border-t border-slate-100 pt-2">
-        {weeks.map((w) => {
-          const isCurrent = w === current
-          return (
-            <li
-              key={w.weekStart}
-              className={cn(
-                'rounded-md border px-2.5 py-1.5 text-[11px]',
-                isCurrent ? 'border-[#1e3a5f]/30 bg-sky-50/60' : 'border-slate-100 bg-slate-50/60'
-              )}
-            >
-              <p className="flex items-center justify-between gap-2">
-                <span className="font-bold text-slate-800">
-                  {t.weekN(faNum(w.index))}
-                  {isCurrent ? <span className="mr-1 font-normal text-sky-700">{t.currentParen}</span> : null}
-                </span>
-                <span className="text-[10px] text-slate-500">
-                  <FormattedDate value={w.days[0]?.date ?? w.weekStart} /> {t.until} <FormattedDate value={w.weekEnd} />
-                </span>
-              </p>
-              <p className="mt-0.5 flex items-center justify-between gap-2 tabular-nums">
-                <span className="text-slate-600">
-                  {t.weekProgressPrefix}{' '}
-                  <span className="font-bold text-amber-700">{w.gain == null ? t.notRecorded : SUPERVISOR_COPY.pct(faNum(w.gain))}</span>{' '}
-                  <WeeklyGainFlag gain={w.gain} />
-                </span>
-                <span className="text-slate-600">
-                  {t.cumulativeColon}{' '}
-                  <span className="font-bold text-[#1e3a5f]">{w.endCumulative == null ? '—' : SUPERVISOR_COPY.pct(faNum(w.endCumulative))}</span>
-                </span>
-              </p>
-            </li>
-          )
-        })}
-      </ol>
-
-      <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
-        <span className="text-[11px] text-slate-500">
-          {current.weekComplete ? t.weekEndCumulative : t.cumulativeToToday}
-        </span>
-        <span className="text-base font-bold tabular-nums text-[#1e3a5f]">
-          {current.endCumulative == null ? '—' : SUPERVISOR_COPY.pct(faNum(current.endCumulative))}
-        </span>
       </div>
     </div>
   )
@@ -369,7 +302,7 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
 
 function MetaPill({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-md border border-slate-200/80 bg-white px-2.5 py-1 text-sm font-medium text-slate-700">
+    <span className="inline-flex items-center rounded border border-slate-200/80 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-700">
       {children}
     </span>
   )
@@ -457,161 +390,106 @@ function ActivityProgressRow({
   return (
     <li
       className={cn(
-        'overflow-hidden rounded-xl border bg-white shadow-sm transition-colors',
+        'overflow-hidden rounded-lg border bg-white shadow-sm transition-colors',
         reportedToday ? 'border-emerald-200/90 ring-1 ring-emerald-100' : theme.card
       )}
     >
-      <div className={cn('border-b px-4 py-3', theme.header)}>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              {activity.wbs ? (
-                <span
-                  className={cn(
-                    'rounded-md px-2 py-0.5 font-mono text-[11px] font-bold tabular-nums text-white',
-                    theme.wbs
-                  )}
-                >
-                  {activity.wbs}
-                </span>
-              ) : null}
-              <p className="text-sm font-bold leading-snug text-slate-900">{activity.name}</p>
+      <div className={cn('border-b px-3 py-1.5', theme.header)}>
+        <div className="flex flex-wrap items-center justify-between gap-1.5">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+            {activity.wbs ? (
               <span
                 className={cn(
-                  'rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                  theme.badgeClass
+                  'rounded px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums text-white',
+                  theme.wbs
                 )}
               >
-                {theme.badge}
+                {activity.wbs}
               </span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {activity.quantity != null && activity.uom ? (
-                <MetaPill>
-                  {t.planQtyPrefix}{' '}
-                  <span className="font-semibold tabular-nums text-slate-800">
-                    <span className="inline-flex items-center gap-1">
-                      {faNum(activity.quantity)}
-                      <UomStack uom={activity.uom} />
-                    </span>
-                  </span>
-                </MetaPill>
-              ) : null}
+            ) : null}
+            <p className="text-[13px] font-bold leading-snug text-slate-900">{activity.name}</p>
+            <span className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-semibold', theme.badgeClass)}>
+              {theme.badge}
+            </span>
+            {activity.quantity != null && activity.uom ? (
               <MetaPill>
-                {t.start}: <FormattedDate value={activity.plannedStartDate} />
+                {t.planQtyPrefix}{' '}
+                <span className="inline-flex items-center gap-0.5 font-semibold tabular-nums text-slate-800">
+                  {faNum(activity.quantity)}
+                  <UomStack uom={activity.uom} />
+                </span>
               </MetaPill>
-              {activity.plannedFinishDate ? (
-                <MetaPill>
-                  {t.finish}: <FormattedDate value={activity.plannedFinishDate} />
-                </MetaPill>
-              ) : null}
-              {activity.location ? <MetaPill>{t.locationColon} {activity.location}</MetaPill> : null}
-            </div>
+            ) : null}
+            <MetaPill>
+              {t.start}: <FormattedDate value={activity.plannedStartDate} />
+            </MetaPill>
+            {activity.plannedFinishDate ? (
+              <MetaPill>
+                {t.finish}: <FormattedDate value={activity.plannedFinishDate} />
+              </MetaPill>
+            ) : null}
+            {activity.location ? <MetaPill>{t.locationColon} {activity.location}</MetaPill> : null}
           </div>
           {reportedToday ? (
-            <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-800">
+            <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-800">
               {t.recorded}
+              {todayIncrement != null ? ` · ${SUPERVISOR_COPY.pct(faNum(todayIncrement))}` : ''}
             </span>
           ) : null}
         </div>
       </div>
 
-      <div className="grid gap-3 p-4 md:grid-cols-[13.5rem_minmax(0,1fr)]">
-        <div className="flex flex-col gap-2">
-          <div className="rounded-lg border border-slate-100 bg-white p-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <Label htmlFor={`pct-${activity.id}`} className="text-[11px] font-semibold text-slate-600">
-                {t.todayCumulativeProgress}
-              </Label>
-              <span className={cn('text-lg font-bold tabular-nums', theme.progressAccent)}>
-                {SUPERVISOR_COPY.pct(faNum(cumulativeAfter))}
-              </span>
-            </div>
-            <ProgressBar value={cumulativeAfter} tone="amber" />
-            <p className="mt-1 text-[10px] text-slate-500">
-              {t.previousLabel}{' '}
-              <span className="font-semibold tabular-nums text-slate-700">
-                {SUPERVISOR_COPY.pct(faNum(base))}
-              </span>{' '}
-              — {t.todayProgressLabel}{' '}
-              <span className={cn('font-semibold tabular-nums', gainToday < 0 ? 'text-red-600' : 'text-slate-700')}>
-                {SUPERVISOR_COPY.pct(faNum(gainToday))}
-              </span>
-            </p>
-            <div className="mt-1.5 flex items-center gap-1.5">
-              <Input
-                id={`pct-${activity.id}`}
-                type="number"
-                min={0}
-                max={100}
-                value={rawInput ?? value ?? ''}
-                onChange={(e) => {
-                  const raw = e.target.value
-                  setRawInput(raw)
-                  if (raw.trim() === '') return
-                  const n = Number(raw)
-                  if (!Number.isNaN(n) && checkPercentEntry(n, null).error == null) onChange(n)
-                }}
-                aria-invalid={inputCheck?.error != null}
-                className={cn(
-                  'h-9 w-20 text-center text-base font-bold tabular-nums shrink-0',
-                  inputCheck?.error && 'border-red-400 focus-visible:ring-red-300'
-                )}
-                dir="ltr"
-              />
-              <Button
-                type="button"
-                size="sm"
-                className="h-9 shrink-0"
-                disabled={saving || value === undefined || inputCheck?.error != null}
-                onClick={() => void onSave()}
-              >
-                {saving ? '…' : t.save}
-              </Button>
-            </div>
-            <div className="mt-1">
-              <PercentEntryMessage check={inputCheck} />
-            </div>
+      <div className="grid grid-cols-1 items-stretch sm:grid-cols-2">
+        {/* RTL: first column = right half — entry / percent */}
+        <div className="flex min-h-[8.5rem] flex-col justify-center border-slate-100 p-3 sm:border-l">
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor={`pct-${activity.id}`} className="text-[11px] font-semibold text-slate-600">
+              {t.todayCumulativeProgress}
+            </Label>
+            <span className={cn('text-xl font-bold tabular-nums', theme.progressAccent)}>
+              {SUPERVISOR_COPY.pct(faNum(cumulativeAfter))}
+            </span>
           </div>
-
-          <div
-            className={cn(
-              'rounded-lg border p-2.5',
-              reportedToday
-                ? 'border-emerald-200 bg-emerald-50/50'
-                : 'border-dashed border-slate-200 bg-slate-50/30'
-            )}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <p className={cn('text-[11px] font-semibold', reportedToday ? 'text-emerald-800' : 'text-slate-400')}>
-                {t.recordToday}
-              </p>
-              {reportedToday ? (
-                <p className="text-lg font-bold tabular-nums leading-none text-emerald-800">
-                  {SUPERVISOR_COPY.pct(faNum(todayEntry.percentComplete))}
-                </p>
-              ) : null}
-            </div>
-            {reportedToday ? (
-              <div className="mt-1 space-y-1">
-                <ProgressBar value={todayEntry.percentComplete} tone="emerald" />
-                <p className="flex items-center justify-between gap-2 text-[10px] text-emerald-800/85">
-                  <span>
-                    {t.todayProgressLabel}{' '}
-                    <span className="font-semibold tabular-nums">
-                      {todayIncrement == null ? '—' : SUPERVISOR_COPY.pct(faNum(todayIncrement))}
-                    </span>
-                  </span>
-                  {todayEntry.savedAt ? (
-                    <span className="text-emerald-700/75">
-                      <FormattedDate value={todayEntry.savedAt} dateTime />
-                    </span>
-                  ) : null}
-                </p>
-              </div>
-            ) : (
-              <p className="mt-1 text-xs text-slate-400">{t.awaitingTodayRecord}</p>
-            )}
+          <ProgressBar value={cumulativeAfter} tone="amber" />
+          <p className="mt-1 text-[10px] text-slate-500">
+            {t.previousLabel}{' '}
+            <span className="font-semibold tabular-nums text-slate-700">{SUPERVISOR_COPY.pct(faNum(base))}</span>
+            {' — '}
+            {t.todayProgressLabel}{' '}
+            <span className={cn('font-semibold tabular-nums', gainToday < 0 ? 'text-red-600' : 'text-slate-700')}>
+              {SUPERVISOR_COPY.pct(faNum(gainToday))}
+            </span>
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <Input
+              id={`pct-${activity.id}`}
+              type="number"
+              min={0}
+              max={100}
+              value={rawInput ?? value ?? ''}
+              onChange={(e) => {
+                const raw = e.target.value
+                setRawInput(raw)
+                if (raw.trim() === '') return
+                const n = Number(raw)
+                if (!Number.isNaN(n) && checkPercentEntry(n, null).error == null) onChange(n)
+              }}
+              aria-invalid={inputCheck?.error != null}
+              className={cn(
+                'h-9 w-20 text-center text-base font-bold tabular-nums shrink-0',
+                inputCheck?.error && 'border-red-400 focus-visible:ring-red-300'
+              )}
+              dir="ltr"
+            />
+            <Button
+              type="button"
+              size="sm"
+              className="h-9 shrink-0"
+              disabled={saving || value === undefined || inputCheck?.error != null}
+              onClick={() => void onSave()}
+            >
+              {saving ? '…' : t.save}
+            </Button>
             <BoxEditor
               label={t.todayCumulativeLabel}
               initial={todayEntry?.percentComplete ?? cumulativeAfter}
@@ -623,9 +501,11 @@ function ActivityProgressRow({
               onSave={(v) => onSaveDay(reportDate, v)}
             />
           </div>
+          <PercentEntryMessage check={inputCheck} />
         </div>
 
-        <div className="min-w-0">
+        {/* RTL: second column = left half — chart */}
+        <div className="min-h-[8.5rem] min-w-0 border-t border-slate-100 p-3 sm:border-t-0">
           <ProgressTimelineChart weeks={timeline} />
         </div>
       </div>
@@ -682,7 +562,7 @@ function BoxEditor({
         type="button"
         size="sm"
         variant="outline"
-        className="mt-2 h-8"
+        className="h-8 px-2 text-[11px]"
         disabled={saving}
         onClick={() => {
           setDraft(String(Math.min(max, Math.max(min, initial))))
@@ -695,9 +575,9 @@ function BoxEditor({
   }
 
   return (
-    <div className="mt-2 space-y-1.5 rounded-md border border-slate-200 bg-white p-2">
-      <p className="text-[10px] font-semibold text-slate-500">{label}</p>
-      <div className="flex flex-wrap items-center gap-1.5">
+    <div className="space-y-1 rounded-md border border-slate-200 bg-slate-50/80 p-1.5">
+      <p className="text-[9px] font-semibold text-slate-500">{label}</p>
+      <div className="flex flex-wrap items-center gap-1">
         <Input
           type="text"
           inputMode="decimal"
@@ -791,10 +671,10 @@ function PastDaysEditor({
   if (days.length === 0) return null
 
   return (
-    <div className="border-t border-slate-100 px-4 py-2">
+    <div className="border-t border-slate-100 px-2.5 py-1">
       <button
         type="button"
-        className="text-[11px] font-semibold text-[#1e3a5f] hover:underline"
+        className="text-[10px] font-semibold text-[#1e3a5f] hover:underline"
         onClick={() => setOpen((v) => !v)}
       >
         {open ? t.closeEditPrevious : t.editPreviousDays(faNum(days.length))}
@@ -1223,7 +1103,7 @@ export function DailyReportPanel({
   }
 
   return (
-    <div className="space-y-5" dir="rtl" lang="fa">
+    <div className="space-y-3" dir="rtl" lang="fa">
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -1298,23 +1178,23 @@ export function DailyReportPanel({
                 : t.noEligible}
         </p>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-3">
           {displaySections.map((section) =>
             section.groups.length === 0 ? null : (
               <section
                 key={section.timing}
-                className={cn('space-y-4 rounded-2xl border p-4', section.shellClass)}
+                className={cn('space-y-2 rounded-xl border p-2.5', section.shellClass)}
               >
                 <div>
                   <h2 className={cn('text-sm font-bold', section.titleClass)}>{section.title}</h2>
-                  <p className="mt-1 text-xs text-slate-600">{section.description}</p>
+                  <p className="mt-0.5 text-[11px] text-slate-600">{section.description}</p>
                 </div>
-                <ul className="space-y-5">
+                <ul className="space-y-3">
                   {section.groups.map((group) => (
-                    <li key={`${section.timing}-${group.key}`} className="space-y-3">
+                    <li key={`${section.timing}-${group.key}`} className="space-y-2">
                       <div
                         className={cn(
-                          'rounded-xl border px-4 py-3 shadow-sm',
+                          'rounded-lg border px-3 py-1.5 shadow-sm',
                           section.timing === 'past'
                             ? 'border-amber-200 bg-amber-50/80'
                             : section.timing === 'upcoming'
@@ -1324,23 +1204,23 @@ export function DailyReportPanel({
                                 : 'border-[#1e3a5f]/25 bg-[#1e3a5f]/8'
                         )}
                       >
-                        <p
-                          className={cn(
-                            'text-[11px] font-semibold uppercase tracking-wide',
-                            section.timing === 'past'
-                              ? 'text-amber-800/70'
-                              : section.timing === 'upcoming'
-                                ? 'text-slate-500'
-                                : 'text-[#1e3a5f]/70'
-                          )}
-                        >
-                          {t.activityHeader}
-                        </p>
-                        <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                          <span
+                            className={cn(
+                              'text-[10px] font-semibold',
+                              section.timing === 'past'
+                                ? 'text-amber-800/70'
+                                : section.timing === 'upcoming'
+                                  ? 'text-slate-500'
+                                  : 'text-[#1e3a5f]/70'
+                            )}
+                          >
+                            {t.activityHeader}
+                          </span>
                           {group.parentTaskWbs ? (
                             <span
                               className={cn(
-                                'font-mono text-sm font-bold tabular-nums',
+                                'font-mono text-xs font-bold tabular-nums',
                                 section.timing === 'past'
                                   ? 'text-amber-900'
                                   : section.timing === 'upcoming'
@@ -1351,10 +1231,10 @@ export function DailyReportPanel({
                               {group.parentTaskWbs}
                             </span>
                           ) : null}
-                          <h3 className="text-base font-bold text-slate-900">{group.parentTaskName}</h3>
+                          <h3 className="text-sm font-bold text-slate-900">{group.parentTaskName}</h3>
                         </div>
                       </div>
-                      <ul className="space-y-3">
+                      <ul className="space-y-2">
                         {group.activities.map((activity) => (
                           <ActivityProgressRow
                             key={activity.id}
