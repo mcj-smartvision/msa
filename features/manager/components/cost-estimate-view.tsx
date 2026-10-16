@@ -9,7 +9,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { SECTIONS_COPY } from '@/features/manager/lib/ui-copy'
 import {
   AlertOctagon,
   AlertTriangle,
@@ -314,13 +313,13 @@ function toForm(s: CostEstimateSettings): FormState {
 }
 
 function fromForm(f: FormState): Record<EstimateField, unknown> {
-  const persianDigitRe = new RegExp(`[${SECTIONS_COPY.persianDigits}]`, 'g')
+  const persianDigitRe = new RegExp(`[${ESTIMATE_COPY.persianDigits}]`, 'g')
   const risk =
     f.riskMode === 'amount'
       ? moneyValue(f.riskValue)
       : f.riskValue.trim() === ''
         ? null
-        : Number(f.riskValue.replace(persianDigitRe, (d) => String(SECTIONS_COPY.persianDigits.indexOf(d))))
+        : Number(f.riskValue.replace(persianDigitRe, (d) => String(ESTIMATE_COPY.persianDigits.indexOf(d))))
   return {
     contractValue: moneyValue(f.contractValue),
     plannedStart: f.plannedStart || null,

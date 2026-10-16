@@ -31,7 +31,7 @@ export const WORKSHOP_COPY = {
   status: 'وضعیت',
   name: 'نام',
   unit: 'واحد',
-  weight: 'وزن',
+  weightLabel: 'وزن',
   wbs: 'WBS',
   refresh: 'بروزرسانی',
   saving: 'در حال ذخیره…',

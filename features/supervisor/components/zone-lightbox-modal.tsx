@@ -161,7 +161,7 @@ export function ZoneLightboxModal({
           ) : null}
           {zone.description?.trim() ? (
             <div className="sm:col-span-2">
-              <dt className="text-[11px] font-semibold text-slate-500">{t.description}</dt>
+              <dt className="text-[11px] font-semibold text-slate-500">{t.zoneDescription}</dt>
               <dd className="text-slate-700">{zone.description}</dd>
             </div>
           ) : null}

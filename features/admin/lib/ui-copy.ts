@@ -12,7 +12,10 @@ export {
   ADMIN_ACTUAL_START_COPY,
 } from '@/features/admin/lib/schedule-ui-copy'
 
-export function pickAdminLocale<T>(fa: boolean, pair: { readonly fa: T; readonly en: T }): T {
+export function pickAdminLocale<TFa, TEn>(
+  fa: boolean,
+  pair: { readonly fa: TFa; readonly en: TEn }
+): TFa | TEn {
   return fa ? pair.fa : pair.en
 }
 

@@ -31,8 +31,8 @@ export function AlertsPage() {
   const [routing, setRouting] = useState<AlertRouting[]>(() =>
     HSE_ALERT_ROUTING.map((r) => ({ ...r }))
   )
-  const [webhookUrl, setWebhookUrl] = useState(HSE_ALERTS_COPY.defaultWebhookUrl)
-  const [emailDigest, setEmailDigest] = useState(HSE_ALERTS_COPY.defaultEmailDigest)
+  const [webhookUrl, setWebhookUrl] = useState<string>(HSE_ALERTS_COPY.defaultWebhookUrl)
+  const [emailDigest, setEmailDigest] = useState<string>(HSE_ALERTS_COPY.defaultEmailDigest)
   const [testMessage, setTestMessage] = useState<string | null>(null)
   const [savedNote, setSavedNote] = useState<string | null>(null)
 

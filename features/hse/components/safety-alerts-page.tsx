@@ -28,6 +28,7 @@ import {
   type SafetyAlertMockItem,
   type SafetyQueueBucket,
 } from '@/features/hse/lib/safety-alert-mocks'
+import type { IncidentStatus, Severity } from '@/features/hse/lib/types'
 import { HSE_SAFETY_ALERTS_COPY } from '@/features/hse/config'
 
 export type { SafetyAlertMockItem, SafetyQueueBucket }

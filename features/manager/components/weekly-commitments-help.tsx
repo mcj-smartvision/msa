@@ -342,7 +342,7 @@ export function CommitmentsHelp({ ctx }: { ctx: HelpContext }) {
               {WEEKLY_HELP_COPY.greenTickBody}
             </>,
             <>
-              <b>{WEEKLY_HELP_COPY.red}</b>
+              <b>{WEEKLY_HELP_COPY.redLabel}</b>
               {WEEKLY_HELP_COPY.redBody}
             </>,
             WEEKLY_HELP_COPY.sorted,

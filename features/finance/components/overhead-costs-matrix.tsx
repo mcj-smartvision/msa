@@ -185,7 +185,7 @@ function widthFromDigits(text: string, padding = 2): number {
 
 function cloneCategories(
   source: OverheadCategory[] = OVERHEAD_CATEGORIES,
-  monthCount = DEFAULT_MONTH_COUNT
+  monthCount: number = DEFAULT_MONTH_COUNT
 ): OverheadCategory[] {
   return source.map((cat) => ({
     ...cat,

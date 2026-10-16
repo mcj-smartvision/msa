@@ -278,7 +278,7 @@ export function ZoneCreatePanel({
       <ZoneLevelsField levels={levels} onChange={setLevels} idPrefix="zone-draft-level" />
 
       <div className="space-y-1.5">
-        <Label htmlFor="zone-draft-description">{t.description}</Label>
+        <Label htmlFor="zone-draft-description">{t.zoneDescription}</Label>
         <Textarea
           id="zone-draft-description"
           value={description}

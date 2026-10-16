@@ -182,7 +182,10 @@ export interface HealthPillar {
   href?: string
 }
 
-function stateMissing(result: SectionResult<unknown> | undefined, unavailable = SECTIONS_COPY.missing.notConnected): string {
+function stateMissing(
+  result: SectionResult<unknown> | undefined,
+  unavailable: string = SECTIONS_COPY.missing.notConnected
+): string {
   if (!result) return SECTIONS_COPY.missing.loading
   if (result.status === 'unavailable') return unavailable
   if (result.status === 'error') return SECTIONS_COPY.missing.loadError
