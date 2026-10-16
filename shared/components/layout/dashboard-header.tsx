@@ -14,6 +14,7 @@ import { useLocale } from '@/shared/components/i18n/locale-provider'
 import type { RoleNavLink } from '@/shared/lib/dashboard/role-nav'
 import { BrandLogo } from '@/shared/components/brand/brand-logo'
 import { HeaderUserControls } from '@/shared/components/layout/header-user-controls'
+import { APP_NAME } from '@/shared/lib/brand'
 import { getChromeMessages } from '@/shared/lib/i18n/chrome'
 import { cn } from '@/shared/lib/utils'
 
@@ -64,7 +65,7 @@ export function DashboardHeader({
     <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 shadow-sm">
       <div className="container mx-auto flex h-14 items-center justify-between gap-4 px-4">
         <nav className="flex min-w-0 flex-1 items-center gap-1 sm:gap-2 overflow-x-auto">
-          <Link href={homeHref} className="flex items-center gap-2 font-bold shrink-0 mr-2">
+          <Link href={homeHref} className="flex items-center gap-2 font-bold shrink-0 me-2" aria-label={APP_NAME}>
             <BrandLogo size="sm" withName />
           </Link>
           {navItems.map((item) => {
