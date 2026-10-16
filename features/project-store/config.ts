@@ -34,9 +34,12 @@ export const WEEKLY_EVAL_COPY = {
     `تا این لحظه ${n} فعالیت سهم هفته را کامل کرده‌اند. ارزیابی پنج‌شنبه ساعت 16:00 باز می‌شود.`,
   closed: (n: string, ppc: string) => `${n} فعالیت سهم هفته را کامل کردند (PPC ${ppc}).`,
   ppcPct: (n: string) => `${n}٪`,
+  rncPageTitle: 'علت عدم تحقق',
   missedTitle: (week: string, open: string, total: string) =>
-    `علت عدم تحقق — هفتهٔ ${week} (${open} مورد بدون علت از ${total})`,
+    `هفتهٔ ${week} — ${open} مورد بدون علت از ${total}`,
   rncMissing: 'ثبت علت هنوز فعال نیست؛ مدیر سیستم باید فایل database/108-weekly-commitment-rnc.sql را اجرا کند.',
+  rncEmpty: 'فعلاً فعالیتی برای ثبت علت عدم تحقق نیست.',
+  notLoaded: 'تعهد هفته هنوز بارگذاری نشده است. پروژه را انتخاب کنید یا کمی صبر کنید.',
   share: (actual: string, target: string) => `${actual} از ${target} واحد سهم هفته`,
   recordedCause: 'علت ثبت‌شده: ',
   causeAria: 'علت عدم تحقق',

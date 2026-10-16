@@ -3,16 +3,14 @@
  * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (daily-report-panel)
  * @safe-to-edit CAREFUL
  * @affects سرپرست کارگاه و گزارش روزانه
- * @depends-on features/schedule/hooks/use-schedule-calendar, features/schedule/lib/dates, shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/skeleton, shared/components/ui/textarea, features/schedule/components/formatted-date, features/workshop/components/uom-display, features/supervisor/lib/daily-progress-storage
+ * @depends-on shared/components/ui/button, shared/components/ui/input, shared/components/ui/label, shared/components/ui/skeleton, shared/components/ui/textarea, features/schedule/components/formatted-date, features/workshop/components/uom-display, features/supervisor/lib/daily-progress-storage
  */
 
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, CalendarDays, ClipboardList, Loader2 } from 'lucide-react'
-import { useScheduleCalendar } from '@/features/schedule/hooks/use-schedule-calendar'
-import { formatScheduleDate } from '@/features/schedule/lib/dates'
+import { AlertTriangle, Loader2 } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
@@ -23,12 +21,10 @@ import { UomStack } from '@/features/workshop/components/uom-display'
 import { readProjectDailyProgress } from '@/features/supervisor/lib/daily-progress-storage'
 import { useProjectStore } from '@/features/project-store/use-project-store'
 import { useProjectStoreSync } from '@/features/project-store/use-project-store-sync'
-import { WeeklyEvaluationCard } from '@/features/project-store/components/weekly-evaluation-card'
 import {
 activitiesEligibleForDailyReport,
 buildDailyReportActivitiesFromTree,
 classifyDailyReportTiming,
-countRemainingForTodayReport,
 groupDailyReportActivitiesByParent,
 getLatestProgressForActivity,
 partitionEligibleByTiming,
@@ -53,7 +49,6 @@ import type { ParsedDailyReportVoice } from '@/features/supervisor/lib/parse-dai
 import { VoiceToTextButton } from '@/shared/components/common/voice-to-text-button'
 import { postDailyProgress } from '@/features/supervisor/lib/daily-progress-sync'
 import { cn } from '@/shared/lib/utils'
-import { DailyReportWeatherBanner } from '@/features/weather/components/daily-report-weather'
 import { useWeather } from '@/features/weather/hooks/use-weather'
 import { ensureWeatherLine, extractWeatherLine, formatWeatherReportLine, weatherSnapshotFromPayload } from '@/features/weather/lib/report-stamp'
 import { SUPERVISOR_COPY, SUPERVISOR_PUNCT } from '@/features/supervisor/config'
@@ -95,24 +90,6 @@ function todayIncrementOf(entry: DailyProgressEntry | null, previous: number | n
   if (!entry) return null
   if (entry.dailyIncrement != null) return entry.dailyIncrement
   return previous == null ? null : Math.round((entry.percentComplete - previous) * 100) / 100
-}
-
-function formatTodayHeading(calendar: 'jalali' | 'gregorian', iso: string): string {
-  const d = new Date(`${iso}T12:00:00`)
-  if (calendar === 'jalali') {
-    return d.toLocaleDateString('fa-IR-u-nu-latn', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
-  }
-  return d.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
 }
 
 function ProgressBar({
@@ -940,10 +917,6 @@ export function DailyReportPanel({
   useProjectStoreSync(projectId)
   const { data: weather } = useWeather(projectId)
   const reportDate = useProjectStore((s) => s.today)
-  const { calendar } = useScheduleCalendar()
-  const todayHeading = formatTodayHeading(calendar, reportDate)
-  const todayShort = formatScheduleDate(reportDate, calendar)
-
   const snapshot = useProjectStore((s) => (projectId && s.snapshot?.projectId === projectId ? s.snapshot : null))
   const localEntries = useProjectStore((s) => s.localEntries)
   const storeStatus = useProjectStore((s) => s.status)
@@ -1009,11 +982,6 @@ export function DailyReportPanel({
       upcoming: eligibleByTiming.upcoming.length,
     }),
     [eligibleByTiming]
-  )
-
-  const remainingCount = useMemo(
-    () => countRemainingForTodayReport(activities, history, reportDate),
-    [activities, history, reportDate]
   )
 
   const reportSections = useMemo(
@@ -1256,87 +1224,51 @@ export function DailyReportPanel({
 
   return (
     <div className="space-y-5" dir="rtl" lang="fa">
-      <div className="rounded-xl border-2 border-[#1e3a5f] bg-white px-4 py-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <CalendarDays className="h-8 w-8 text-[#1e3a5f]" aria-hidden="true" />
-            <div>
-              <p className="text-xs font-medium text-slate-500">{t.todayReportDateTitle}</p>
-              <p className="text-lg font-bold text-[#1e3a5f]">{todayHeading}</p>
-              <p className="text-xs text-slate-500 tabular-nums mt-0.5">{todayShort}</p>
-            </div>
-          </div>
-          <div className="min-w-[16rem] max-w-md flex-1">
-            <DailyReportWeatherBanner projectId={projectId} compact />
-          </div>
-          <div className="text-right text-sm">
-            <p className="text-slate-500">{t.reportableActivity}</p>
-            <p className="text-2xl font-bold tabular-nums text-[#1e3a5f]">
-              {faNum(eligible.length)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-[#1e3a5f]/20 bg-[#1e3a5f]/5 px-4 py-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <ClipboardList className="h-5 w-5 text-[#1e3a5f]" aria-hidden="true" />
-          <p className="text-sm font-bold text-slate-900">
-            {t.remainingToRecord(faNum(remainingCount))}
-          </p>
-        </div>
-        <p className="mt-2 text-xs leading-relaxed text-slate-600">
-          {t.eligibleIntroLead} <strong>{t.eligibleIntroEm}</strong> {t.eligibleIntroTail}
-          {t.eligibleIntroNext}
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-          <button
-            type="button"
-            onClick={() => setTimingFilter('all')}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-semibold transition-colors',
-              timingFilter === 'all'
-                ? 'border-[#1e3a5f] bg-[#1e3a5f] text-white'
-                : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-            )}
-          >
-            {t.allCount(faNum(eligible.length))}
-          </button>
-          <button
-            type="button"
-            onClick={() => setTimingFilter('current')}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-semibold transition-colors',
-              timingFilter === 'current'
-                ? 'border-sky-600 bg-sky-600 text-white'
-                : 'border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-100'
-            )}
-          >
-            <span className="h-2 w-2 rounded-full bg-current opacity-80" />
-            {t.currentPeriod} ({faNum(timingCounts.current)})
-          </button>
-          <button
-            type="button"
-            onClick={() => setTimingFilter('past')}
-            className={cn(
-              'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-semibold transition-colors',
-              timingFilter === 'past'
-                ? 'border-amber-600 bg-amber-600 text-white'
-                : 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100'
-            )}
-          >
-            <span className="h-2 w-2 rounded-full bg-current opacity-80" />
-            {t.previousWorkShort} ({faNum(timingCounts.past)})
-          </button>
-        </div>
-        <div className="mt-3">
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t.searchWbsPlaceholder}
-            className="h-9 bg-white text-sm"
-          />
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setTimingFilter('all')}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
+            timingFilter === 'all'
+              ? 'border-[#1e3a5f] bg-[#1e3a5f] text-white'
+              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+          )}
+        >
+          {t.allCount(faNum(eligible.length))}
+        </button>
+        <button
+          type="button"
+          onClick={() => setTimingFilter('current')}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
+            timingFilter === 'current'
+              ? 'border-sky-600 bg-sky-600 text-white'
+              : 'border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-100'
+          )}
+        >
+          <span className="h-2 w-2 rounded-full bg-current opacity-80" />
+          {t.currentPeriod} ({faNum(timingCounts.current)})
+        </button>
+        <button
+          type="button"
+          onClick={() => setTimingFilter('past')}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
+            timingFilter === 'past'
+              ? 'border-amber-600 bg-amber-600 text-white'
+              : 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100'
+          )}
+        >
+          <span className="h-2 w-2 rounded-full bg-current opacity-80" />
+          {t.previousWorkShort} ({faNum(timingCounts.past)})
+        </button>
+        <Input
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={t.searchWbsPlaceholder}
+          className="h-9 min-w-[12rem] flex-1 bg-white text-sm"
+        />
       </div>
 
       {activitiesError ? (
@@ -1344,8 +1276,6 @@ export function DailyReportPanel({
           {activitiesError}
         </p>
       ) : null}
-
-      <WeeklyEvaluationCard projectId={projectId} />
 
       {activities.length === 0 && !activitiesError ? (
         <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-600">

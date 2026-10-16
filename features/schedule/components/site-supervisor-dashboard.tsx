@@ -17,6 +17,7 @@ import { SupervisorDrawingsZoningPanel } from '@/features/supervisor/components/
 import { DailyReportPanel } from '@/features/supervisor/components/daily-report-panel'
 import { DailyReportBackgroundPanel } from '@/features/supervisor/components/daily-report-background-panel'
 import { StoreInspector } from '@/features/project-store/components/store-inspector'
+import { WeeklyEvaluationCard } from '@/features/project-store/components/weekly-evaluation-card'
 import { HolidaysPanel } from '@/features/holidays/components/holidays-panel'
 import { ScheduleDateInput } from '@/features/schedule/components/schedule-date-input'
 import { SupervisorOverviewPanel } from '@/features/supervisor/components/supervisor-overview-panel'
@@ -313,6 +314,16 @@ export function SiteSupervisorDashboard({
             hint: t.navDailyReportHint,
           },
           {
+            id: 'weekly-commitments',
+            label: t.navWeeklyCommitments,
+            hint: t.navWeeklyCommitmentsHint,
+          },
+          {
+            id: 'weekly-rnc',
+            label: t.navWeeklyRnc,
+            hint: t.navWeeklyRncHint,
+          },
+          {
             id: 'report-background',
             label: t.navReportBackground,
             hint: t.navReportBackgroundHint,
@@ -448,6 +459,14 @@ export function SiteSupervisorDashboard({
             projectId={projectId}
             projectName={projectOptions.find((p) => p.id === projectId)?.name ?? ''}
           />
+        ) : null}
+
+        {activeSection === 'weekly-commitments' ? (
+          <WeeklyEvaluationCard projectId={projectId} mode="commitments" />
+        ) : null}
+
+        {activeSection === 'weekly-rnc' ? (
+          <WeeklyEvaluationCard projectId={projectId} mode="rnc" />
         ) : null}
 
         {activeSection === 'report-background' ? <DailyReportBackgroundPanel projectId={projectId} isAdmin={initialContext.isSystemAdmin} /> : null}
