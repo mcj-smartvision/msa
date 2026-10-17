@@ -7,7 +7,11 @@
  */
 
 import { emptyLipartaDailyReport } from '@/features/site-report/lib/empty-report'
-import { SITE_VISIT_DISCLAIMER, type LipartaDailyReportData } from '@/features/site-report/lib/types'
+import {
+  SITE_VISIT_DISCLAIMER,
+  type LipartaDailyReportData,
+  type SiteReportCrewRow,
+} from '@/features/site-report/lib/types'
 
 function preferScalar<T>(prev: T, next: T): T {
   if (next == null) return prev
@@ -25,7 +29,7 @@ function mergeStringLists(prev: string[], next: unknown): string[] {
   return out
 }
 
-function mergeByKey<T extends Record<string, unknown>>(
+function mergeByKey<T extends object>(
   prev: T[],
   next: unknown,
   keyOf: (row: T) => string
@@ -39,17 +43,17 @@ function mergeByKey<T extends Record<string, unknown>>(
     const key = keyOf(row)
     if (!key) continue
     const existing = map.get(key)
-    map.set(key, existing ? ({ ...existing, ...stripNulls(row) } as T) : row)
+    map.set(key, existing ? ({ ...existing, ...stripNulls(row as Record<string, unknown>) } as T) : row)
   }
   return [...map.values()]
 }
 
-function stripNulls<T extends Record<string, unknown>>(row: T): Partial<T> {
+function stripNulls(row: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(row)) {
     if (v !== null && v !== undefined) out[k] = v
   }
-  return out as Partial<T>
+  return out
 }
 
 /** Deep-merge patch into base without wiping filled fields with null/empty. */
@@ -91,7 +95,7 @@ export function mergeLipartaDailyReport(
   }
 
   if (patch.crews_and_progress) {
-    const crewKey = (r: { wbs_code?: string | null; activity_name: string; contractor_or_crew: string }) =>
+    const crewKey = (r: SiteReportCrewRow) =>
       `${r.wbs_code ?? ''}|${r.activity_name}|${r.contractor_or_crew}`
     next.crews_and_progress = mergeByKey(next.crews_and_progress, patch.crews_and_progress, crewKey)
     if (Array.isArray(patch.crews_and_progress)) {

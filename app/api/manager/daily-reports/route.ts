@@ -127,11 +127,8 @@ export async function POST(request: NextRequest) {
     }
 
     const status = parseWorkflowStatus(report.workflow_status)
-    if (!canManagerApproveDailyReport(status) && status !== 'submitted') {
-      // If workflow column missing path already filtered; require submitted
-      if (status !== 'submitted') {
-        return NextResponse.json({ error: 'فقط گزارش ارسال‌شده قابل تأیید است' }, { status: 409 })
-      }
+    if (!canManagerApproveDailyReport(status)) {
+      return NextResponse.json({ error: 'فقط گزارش ارسال‌شده قابل تأیید است' }, { status: 409 })
     }
 
     await approveDailyReport(supabase, reportId, user.id)

@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    let rowsQuery = await supabase
+    const fullRows = await supabase
       .from('daily_report_photos')
       .select(
         'id, daily_report_id, report_date, storage_path, file_name, content_type, byte_size, created_at, caption, linked_activity_or_location'
@@ -128,14 +128,18 @@ export async function GET(request: NextRequest) {
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true })
 
-    if (rowsQuery.error && /caption|linked_activity_or_location|schema cache|column/i.test(rowsQuery.error.message)) {
-      rowsQuery = await supabase
-        .from('daily_report_photos')
-        .select('id, daily_report_id, report_date, storage_path, file_name, content_type, byte_size, created_at')
-        .eq('daily_report_id', draft.id)
-        .order('sort_order', { ascending: true })
-        .order('created_at', { ascending: true })
-    }
+    const rowsQuery =
+      fullRows.error &&
+      /caption|linked_activity_or_location|schema cache|column/i.test(fullRows.error.message)
+        ? await supabase
+            .from('daily_report_photos')
+            .select(
+              'id, daily_report_id, report_date, storage_path, file_name, content_type, byte_size, created_at'
+            )
+            .eq('daily_report_id', draft.id)
+            .order('sort_order', { ascending: true })
+            .order('created_at', { ascending: true })
+        : fullRows
 
     const { data: rows, error } = rowsQuery
 
@@ -162,10 +166,14 @@ export async function GET(request: NextRequest) {
         byteSize: typeof row.byte_size === 'number' ? row.byte_size : null,
         url,
         createdAt: String(row.created_at),
-        caption: typeof (row as { caption?: string }).caption === 'string' ? (row as { caption: string }).caption : null,
+        caption:
+          typeof (row as unknown as { caption?: string }).caption === 'string'
+            ? (row as unknown as { caption: string }).caption
+            : null,
         linkedActivityOrLocation:
-          typeof (row as { linked_activity_or_location?: string }).linked_activity_or_location === 'string'
-            ? (row as { linked_activity_or_location: string }).linked_activity_or_location
+          typeof (row as unknown as { linked_activity_or_location?: string }).linked_activity_or_location ===
+          'string'
+            ? (row as unknown as { linked_activity_or_location: string }).linked_activity_or_location
             : null,
       })
     }
