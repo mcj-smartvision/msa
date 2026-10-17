@@ -347,16 +347,41 @@ export async function submitOpenDraftToManager(
   if (params.structuredJson && typeof params.structuredJson === 'object') {
     updatePayload.structured_json = params.structuredJson
   }
-  let { error } = await supabase
-    .from('daily_reports')
-    .update(updatePayload as never)
-    .eq('id', header.id)
+
+  async function applyUpdate(payload: Record<string, unknown>) {
+    return supabase.from('daily_reports').update(payload as never).eq('id', header.id)
+  }
+
+  let { error } = await applyUpdate(updatePayload)
   if (error && STRUCTURED_MISSING.test(error.message) && updatePayload.structured_json) {
     const { structured_json: _s, ...withoutStructured } = updatePayload
-    ;({ error } = await supabase
-      .from('daily_reports')
-      .update(withoutStructured as never)
-      .eq('id', header.id))
+    ;({ error } = await applyUpdate(withoutStructured))
+  }
+  // Unique (project, date, supervisor) still present if migration 113 not run
+  if (error && (error as { code?: string }).code === '23505') {
+    const { report_date: _d, ...keepDate } = updatePayload
+    keepDate.report_date = header.reportDate
+    ;({ error } = await applyUpdate(keepDate))
+    if (!error) {
+      await supabase
+        .from('daily_report_photos')
+        .update({ report_date: header.reportDate } as never)
+        .eq('daily_report_id', header.id)
+      const verified = await supabase
+        .from('daily_reports')
+        .select('workflow_status, report_date')
+        .eq('id', header.id)
+        .maybeSingle()
+      const st = parseWorkflowStatus(verified.data?.workflow_status)
+      if (st !== 'submitted' && st !== 'approved') {
+        throw new Error('ارسال ثبت نشد — وضعیت گزارش به‌روز نشد')
+      }
+      return headerOf(
+        header.id,
+        String(verified.data?.report_date ?? header.reportDate),
+        reportNo
+      )
+    }
   }
   if (error) {
     if (WORKFLOW_MISSING.test(error.message)) {
@@ -365,12 +390,25 @@ export async function submitOpenDraftToManager(
     throw new Error(error.message)
   }
 
+  const verified = await supabase
+    .from('daily_reports')
+    .select('workflow_status, report_date')
+    .eq('id', header.id)
+    .maybeSingle()
+  const st = parseWorkflowStatus(verified.data?.workflow_status)
+  if (st !== 'submitted' && st !== 'approved') {
+    throw new Error(
+      'ارسال ثبت نشد — احتمالاً migrationهای database/112 و database/113 اجرا نشده‌اند'
+    )
+  }
+
+  const archivedDate = String(verified.data?.report_date ?? params.sendDate)
   await supabase
     .from('daily_report_photos')
-    .update({ report_date: params.sendDate } as never)
+    .update({ report_date: archivedDate } as never)
     .eq('daily_report_id', header.id)
 
-  return headerOf(header.id, params.sendDate, reportNo)
+  return headerOf(header.id, archivedDate, reportNo)
 }
 
 export async function upsertDailyReportMeta(

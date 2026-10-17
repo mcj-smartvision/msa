@@ -27,17 +27,13 @@ import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import {
-buildDayReports,
 extractAiHighlightNote,
 formatReportSavedTimestamp,
 formatReportTitle,
 HISTORY_PAGE_SIZE,
 } from '@/features/supervisor/lib/daily-report-history'
-import { readProjectDailyProgress } from '@/features/supervisor/lib/daily-progress-storage'
-import { ensureWeatherLine, extractWeatherLine, parseWeatherSnapshot } from '@/features/weather/lib/report-stamp'
-import type { DailyWeatherSnapshot } from '@/features/weather/lib/types'
-import { useStoreProgress } from '@/features/project-store/use-store-progress'
-import type { DailyProgressEntry } from '@/features/supervisor/lib/daily-report-activities'
+import type { ArchivedDailyReportRow } from '@/features/supervisor/lib/daily-report-archive'
+import { extractWeatherLine } from '@/features/weather/lib/report-stamp'
 import { cn } from '@/shared/lib/utils'
 import type { DailyReportPhotoItem } from '@/features/supervisor/lib/daily-report-photos'
 import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
@@ -52,22 +48,19 @@ export function DailyReportHistoryPage() {
   const searchParams = useSearchParams()
   const urlProjectId = searchParams.get('projectId')
   const projectId = useSyncedProjectId(urlProjectId) ?? urlProjectId ?? ''
-  const storeProgress = useStoreProgress(projectId || null)
   const urlName = searchParams.get('projectName') ?? ''
   const [projectName, setProjectName] = useState(urlName)
   const { calendar } = useScheduleCalendar()
   const supabase = useSupabase()
 
   const [loading, setLoading] = useState(true)
-  const [entries, setEntries] = useState<DailyProgressEntry[]>([])
-  const [notesByDate, setNotesByDate] = useState<Record<string, string>>({})
-  const [weatherByDate, setWeatherByDate] = useState<Record<string, DailyWeatherSnapshot>>({})
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [archiveRows, setArchiveRows] = useState<ArchivedDailyReportRow[]>([])
   const [photosByDate, setPhotosByDate] = useState<Record<string, DailyReportPhotoItem[]>>({})
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [monthFilter, setMonthFilter] = useState('')
   const [visibleCount, setVisibleCount] = useState(HISTORY_PAGE_SIZE)
-  const [statusByDate, setStatusByDate] = useState<Record<string, 'submitted' | 'approved'>>({})
 
   useEffect(() => {
     const timer = window.setTimeout(() => setSearch(searchInput), 300)
@@ -102,100 +95,68 @@ export function DailyReportHistoryPage() {
 
   const load = useCallback(async () => {
     if (!projectId) {
-      setEntries([])
-      setNotesByDate({})
-      setWeatherByDate({})
+      setArchiveRows([])
       setPhotosByDate({})
+      setLoadError(null)
       setLoading(false)
       return
     }
-    const stored = readProjectDailyProgress(projectId)
-    setEntries(storeProgress.entries ?? stored.entries)
-    setNotesByDate(stored.notesByDate)
 
     setLoading(true)
+    setLoadError(null)
     try {
-      const [progressRes, photosRes] = await Promise.all([
-        fetch(`/api/supervisor/daily-progress?projectId=${encodeURIComponent(projectId)}`, {
+      const [archiveRes, photosRes] = await Promise.all([
+        fetch(`/api/supervisor/daily-report-archive?projectId=${encodeURIComponent(projectId)}`, {
           cache: 'no-store',
         }),
         fetch(`/api/supervisor/daily-report-photos?projectId=${encodeURIComponent(projectId)}`, {
           cache: 'no-store',
         }),
       ])
-      const progressJson = await progressRes.json().catch(() => ({}))
-      if (progressRes.ok) {
-        const remoteNotes =
-          progressJson.notes && typeof progressJson.notes === 'object'
-            ? (progressJson.notes as Record<string, string>)
-            : {}
-        const remoteWeather =
-          progressJson.weather && typeof progressJson.weather === 'object'
-            ? (progressJson.weather as Record<string, unknown>)
-            : {}
-        const remoteStatus =
-          progressJson.statusByDate && typeof progressJson.statusByDate === 'object'
-            ? (progressJson.statusByDate as Record<string, 'submitted' | 'approved'>)
-            : {}
-        const parsedWeather: Record<string, DailyWeatherSnapshot> = {}
-        const notesWithWeather = { ...stored.notesByDate, ...remoteNotes }
-        for (const [date, value] of Object.entries(remoteWeather)) {
-          const snap = parseWeatherSnapshot(value)
-          if (!snap) continue
-          parsedWeather[date] = snap
-          notesWithWeather[date] = ensureWeatherLine(notesWithWeather[date] ?? '', snap.lineFa)
-        }
-        setWeatherByDate(parsedWeather)
-        setNotesByDate(notesWithWeather)
-        setStatusByDate(remoteStatus)
+      const archiveJson = (await archiveRes.json().catch(() => ({}))) as {
+        reports?: ArchivedDailyReportRow[]
+        error?: string
+        message?: string
       }
+      if (!archiveRes.ok) {
+        throw new Error(archiveJson.message || archiveJson.error || t.workflowLoadFailed)
+      }
+      setArchiveRows(Array.isArray(archiveJson.reports) ? archiveJson.reports : [])
+
       const photosJson = await photosRes.json().catch(() => ({}))
       if (photosRes.ok && photosJson.photosByDate && typeof photosJson.photosByDate === 'object') {
         setPhotosByDate(photosJson.photosByDate as Record<string, DailyReportPhotoItem[]>)
       } else {
         setPhotosByDate({})
       }
+    } catch (e) {
+      setArchiveRows([])
+      setLoadError(e instanceof Error ? e.message : t.workflowLoadFailed)
     } finally {
       setLoading(false)
     }
-  }, [projectId, storeProgress.entries])
+  }, [projectId])
 
   useEffect(() => {
     void load()
   }, [load])
 
-  useEffect(() => {
-    if (storeProgress.entries) setEntries(storeProgress.entries)
-  }, [storeProgress.entries])
-
-  const dayReports = useMemo(
-    () => buildDayReports(entries, notesByDate, Object.keys(photosByDate)),
-    [entries, notesByDate, photosByDate]
-  )
-
-  const archiveReports = useMemo(() => {
-    return dayReports.filter((day) => {
-      const hasNote = Boolean(extractAiHighlightNote(day.note) || day.note.trim())
-      const hasPhotos = (photosByDate[day.reportDate] ?? []).length > 0
-      return hasNote || hasPhotos
-    })
-  }, [dayReports, photosByDate])
-
   const filteredReports = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return archiveReports.filter((day) => {
-      if (monthFilter && !day.reportDate.startsWith(monthFilter)) return false
+    return archiveRows.filter((row) => {
+      if (monthFilter && !row.reportDate.startsWith(monthFilter)) return false
       if (!q) return true
-      if (day.note.toLowerCase().includes(q)) return true
-      const photos = photosByDate[day.reportDate] ?? []
+      if (row.note.toLowerCase().includes(q)) return true
+      if (row.reportNo.toLowerCase().includes(q)) return true
+      const photos = photosByDate[row.reportDate] ?? []
       return photos.some(
         (p) =>
+          p.dailyReportId === row.id ||
           p.reportNo.toLowerCase().includes(q) ||
-          p.fileName.toLowerCase().includes(q) ||
-          p.dailyReportId.toLowerCase().includes(q)
+          p.fileName.toLowerCase().includes(q)
       )
     })
-  }, [archiveReports, search, monthFilter, photosByDate])
+  }, [archiveRows, search, monthFilter, photosByDate])
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-100/80" dir="rtl" lang="fa">
@@ -212,7 +173,7 @@ export function DailyReportHistoryPage() {
             <div>
               <h1 className="text-2xl font-bold text-slate-900">{t.historyTitle}</h1>
               <p className="mt-1 text-sm text-slate-500">
-                {t.reportsRecorded(faNum(archiveReports.length))}
+                {t.reportsRecorded(faNum(archiveRows.length))}
                 {projectName ? (
                   <>
                     <span className="mx-1.5 text-slate-300">·</span>
@@ -258,7 +219,7 @@ export function DailyReportHistoryPage() {
                   setMonthFilter('')
                   return
                 }
-                const latest = archiveReports[0]?.reportDate
+                const latest = archiveRows[0]?.reportDate
                 if (latest) setMonthFilter(latest.slice(0, 7))
               }}
             >
@@ -267,6 +228,12 @@ export function DailyReportHistoryPage() {
             </Button>
           </div>
         </div>
+
+        {loadError ? (
+          <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            {loadError}
+          </p>
+        ) : null}
 
         {!projectId ? (
           <p className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-600">
@@ -290,27 +257,29 @@ export function DailyReportHistoryPage() {
           </ul>
         ) : filteredReports.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-600">
-            {archiveReports.length === 0 ? t.noReportsYet : t.noFilterResults}
+            {archiveRows.length === 0 ? t.noReportsYet : t.noFilterResults}
           </p>
         ) : (
           <>
             <ul className="space-y-4">
-              {filteredReports.slice(0, visibleCount).map((day) => {
+              {filteredReports.slice(0, visibleCount).map((row) => {
                 const { timeLabel } = formatReportSavedTimestamp(
-                  day.reportDate,
-                  day.savedAt,
+                  row.reportDate,
+                  row.submittedAt,
                   calendar
                 )
-                const title = formatReportTitle(day.reportDate, calendar)
-                const highlightNote = extractAiHighlightNote(day.note)
-                const weatherNote =
-                  weatherByDate[day.reportDate]?.lineFa ?? extractWeatherLine(day.note)
-                const photos = photosByDate[day.reportDate] ?? []
-                const reportNo = photos[0]?.reportNo
+                const title = formatReportTitle(row.reportDate, calendar)
+                const highlightNote = extractAiHighlightNote(row.note)
+                const weatherNote = row.weather?.lineFa ?? extractWeatherLine(row.note)
+                const photos = (photosByDate[row.reportDate] ?? []).filter(
+                  (p) => p.dailyReportId === row.id || !p.dailyReportId
+                )
+                const dayPhotos =
+                  photos.length > 0 ? photos : (photosByDate[row.reportDate] ?? [])
 
                 return (
                   <li
-                    key={day.reportDate}
+                    key={row.id}
                     className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 border-b border-slate-100">
@@ -327,29 +296,27 @@ export function DailyReportHistoryPage() {
                             {timeLabel ?? '—'}
                             <span className="mx-1.5 text-slate-300">·</span>
                             {t.supervisorRole}
-                            {reportNo ? (
-                              <>
-                                <span className="mx-1.5 text-slate-300">·</span>
-                                <span className="font-mono">{reportNo}</span>
-                              </>
-                            ) : null}
+                            <>
+                              <span className="mx-1.5 text-slate-300">·</span>
+                              <span className="font-mono">{row.reportNo}</span>
+                            </>
                           </p>
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        {statusByDate[day.reportDate] === 'approved' ? (
+                        {row.status === 'approved' ? (
                           <span className="rounded-full bg-emerald-50 border border-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">
                             {t.archiveStatusApproved}
                           </span>
-                        ) : statusByDate[day.reportDate] === 'submitted' ? (
+                        ) : (
                           <span className="rounded-full bg-amber-50 border border-amber-100 px-3 py-1 text-xs font-medium text-amber-900">
                             {t.archiveStatusAwaitingManager}
                           </span>
-                        ) : null}
-                        {photos.length > 0 ? (
+                        )}
+                        {dayPhotos.length > 0 ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 border border-violet-100 px-3 py-1 text-xs font-medium text-violet-800">
                             <ImageIcon className="h-3.5 w-3.5" aria-hidden />
-                            {t.photosAttached(faNum(photos.length))}
+                            {t.photosAttached(faNum(dayPhotos.length))}
                           </span>
                         ) : null}
                       </div>
@@ -371,14 +338,16 @@ export function DailyReportHistoryPage() {
                         <p className="text-sm text-slate-700 leading-relaxed">{highlightNote}</p>
                       </div>
                     ) : (
-                      <p className="mx-4 mt-3 mb-2 text-xs text-slate-400">{t.noNoteBody}</p>
+                      <p className="mx-4 mt-3 mb-2 text-xs text-slate-400 whitespace-pre-wrap">
+                        {row.note && row.note !== '—' ? row.note : t.noNoteBody}
+                      </p>
                     )}
 
-                    {photos.length > 0 ? (
+                    {dayPhotos.length > 0 ? (
                       <div className="mx-4 mb-4 space-y-2">
                         <p className="text-xs font-semibold text-slate-600">{t.photoSectionTitle}</p>
                         <ul className="grid grid-cols-3 gap-2">
-                          {photos.map((photo) => (
+                          {dayPhotos.map((photo) => (
                             <li key={photo.id} className="overflow-hidden rounded-lg border border-slate-200">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img

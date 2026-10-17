@@ -9,6 +9,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { Loader2, Send } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import {
@@ -58,6 +59,7 @@ export function DailyReportWorkflowBar({
   const [busy, setBusy] = useState<'save' | 'send' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [okMsg, setOkMsg] = useState<string | null>(null)
+  const [sentToArchive, setSentToArchive] = useState(false)
   const onNoteLoadedRef = useRef(onNoteLoaded)
   const onStructuredLoadedRef = useRef(onStructuredLoaded)
   const onReadyRef = useRef(onReady)
@@ -170,10 +172,12 @@ export function DailyReportWorkflowBar({
       if (action === 'send_to_manager' || data.openNewDraft) {
         setStatus('draft')
         setOkMsg(t.sendToManagerOk)
+        setSentToArchive(true)
         onArchivedRef.current?.(data.reportDate || reportDate)
       } else {
         setStatus(parseWorkflowStatus(data.workflowStatus))
         setOkMsg(t.saveDraftOk)
+        setSentToArchive(false)
         onSavedRef.current?.()
       }
     } catch (e) {
@@ -217,7 +221,20 @@ export function DailyReportWorkflowBar({
         </div>
       ) : null}
 
-      {okMsg ? <p className="text-sm font-medium text-emerald-700">{okMsg}</p> : null}
+      {okMsg ? (
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-emerald-700">{okMsg}</p>
+          {sentToArchive ? (
+            <Button type="button" variant="link" size="sm" className="h-auto p-0 text-emerald-800" asChild>
+              <Link
+                href={`/dashboard/site-supervisor/daily-reports?projectId=${encodeURIComponent(projectId)}`}
+              >
+                {t.workflowViewArchiveCta}
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       {error ? <p className="text-xs text-rose-700">{error}</p> : null}
     </div>
   )
