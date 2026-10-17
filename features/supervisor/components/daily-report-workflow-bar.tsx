@@ -18,8 +18,10 @@ import {
   parseWorkflowStatus,
   type DailyReportWorkflowStatus,
 } from '@/features/supervisor/lib/daily-report-workflow'
+import { formatMissingMandatoryFa } from '@/features/site-report/lib/mandatory-labels'
 import { parseLipartaDailyReport } from '@/features/site-report/lib/parse-structured'
 import { siteReportHasContent } from '@/features/site-report/lib/report-content'
+import { checkSiteReportReadyToSend } from '@/features/site-report/lib/validate-report'
 import type { LipartaDailyReportData } from '@/features/site-report/lib/types'
 import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
 import { cn } from '@/shared/lib/utils'
@@ -144,9 +146,24 @@ export function DailyReportWorkflowBar({
       setError(t.workflowContentRequired)
       return
     }
+    if (action === 'send_to_manager') {
+      const structured = structuredRef.current
+      const noteText = noteRef.current.replace(/\s+/g, ' ').trim()
+      if (structured && siteReportHasContent(structured) && !noteText) {
+        const readiness = checkSiteReportReadyToSend(structured)
+        if (!readiness.ok) {
+          setOkMsg(null)
+          setError(
+            `قبل از ارسال این بخش‌ها را کامل کنید: ${formatMissingMandatoryFa(readiness.missingMandatory)}`
+          )
+          return
+        }
+      }
+    }
     setBusy(action === 'save' ? 'save' : 'send')
     setError(null)
     setOkMsg(null)
+    setSentToArchive(false)
     try {
       const res = await fetch('/api/supervisor/daily-report-workflow', {
         method: 'POST',

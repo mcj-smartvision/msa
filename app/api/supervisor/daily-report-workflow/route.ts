@@ -20,6 +20,7 @@ import {
   findOpenDraftReport,
   submitOpenDraftToManager,
 } from '@/features/supervisor/lib/persist-daily-report-meta'
+import { formatMissingMandatoryFa } from '@/features/site-report/lib/mandatory-labels'
 import { parseLipartaDailyReport } from '@/features/site-report/lib/parse-structured'
 import {
   siteReportFallbackNote,
@@ -181,7 +182,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error: 'فرم ناقص است',
-            message: `قبل از ارسال این بخش‌ها را کامل کنید: ${readiness.missingMandatory.join('، ')}`,
+            message: `قبل از ارسال این بخش‌ها را کامل کنید: ${formatMissingMandatoryFa(readiness.missingMandatory)}`,
           },
           { status: 400 }
         )
