@@ -17,6 +17,7 @@ export const SITE_REPORT_COPY = {
   saveStructured: 'ذخیره ساختار',
   printPreview: 'پیش‌نمایش A4',
   printCta: 'چاپ A4',
+  printClose: 'بستن پیش‌نمایش',
   printEmpty: 'هنوز بخشی برای چاپ پر نشده — فرم را کامل کنید، سپس دوباره چاپ بگیرید.',
   mergeOk: 'اطلاعات صوت با گزارش ادغام شد.',
   analyzeFailed: 'تحلیل صوت ناموفق بود',

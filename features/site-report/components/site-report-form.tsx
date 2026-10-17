@@ -134,11 +134,15 @@ export function SiteReportForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount sync only
   }, [])
 
+  function openPreview() {
+    setShowPrint(true)
+  }
+
   function handlePrintA4() {
     setShowPrint(true)
     window.setTimeout(() => {
       window.print()
-    }, 150)
+    }, 200)
   }
 
   useEffect(() => {
@@ -214,7 +218,7 @@ export function SiteReportForm({
             prompt="گزارش روزانه کارگاه را بگو…"
             onTranscript={(text) => void analyzeTranscript(text)}
           />
-          <Button type="button" size="sm" variant="outline" onClick={() => setShowPrint((v) => !v)}>
+          <Button type="button" size="sm" variant="outline" onClick={openPreview}>
             {SITE_REPORT_COPY.printPreview}
           </Button>
           <Button type="button" size="sm" onClick={handlePrintA4}>
@@ -538,10 +542,32 @@ export function SiteReportForm({
 
       {showPrint ? (
         <div
-          id="site-report-print-root"
-          className="rounded-xl border border-slate-300 bg-white shadow-sm overflow-auto print:border-0 print:shadow-none print:rounded-none"
+          className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-slate-900/50 p-3 sm:p-6 print:static print:inset-auto print:bg-transparent print:p-0"
+          role="dialog"
+          aria-modal="true"
+          aria-label={SITE_REPORT_COPY.printPreview}
+          onClick={() => setShowPrint(false)}
         >
-          <PrintableDailyReport report={report} />
+          <div
+            className="my-4 w-full max-w-[220mm] rounded-xl border border-slate-300 bg-white shadow-xl print:my-0 print:max-w-none print:rounded-none print:border-0 print:shadow-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 print:hidden">
+              <p className="text-sm font-semibold text-slate-800">{SITE_REPORT_COPY.printPreview}</p>
+              <div className="flex gap-2">
+                <Button type="button" size="sm" onClick={handlePrintA4}>
+                  <Printer className="h-4 w-4 ml-1" aria-hidden />
+                  {SITE_REPORT_COPY.printCta}
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => setShowPrint(false)}>
+                  {SITE_REPORT_COPY.printClose}
+                </Button>
+              </div>
+            </div>
+            <div id="site-report-print-root" className="max-h-[80vh] overflow-auto print:max-h-none">
+              <PrintableDailyReport report={report} previewMode />
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -555,6 +581,8 @@ export function SiteReportForm({
                 position: absolute !important;
                 inset: 0 !important;
                 width: 100% !important;
+                max-height: none !important;
+                overflow: visible !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: white !important;

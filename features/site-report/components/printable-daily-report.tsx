@@ -21,8 +21,25 @@ function Section({ id, children }: { id: SiteReportSectionId; children: React.Re
   )
 }
 
-export function PrintableDailyReport({ report }: { report: LipartaDailyReportData }) {
-  const ids = sectionsForPrint(report)
+const PREVIEW_CORE: SiteReportSectionId[] = [
+  'weather',
+  'crews_and_progress',
+  'tomorrow_plan',
+  'free_notes',
+]
+
+export function PrintableDailyReport({
+  report,
+  previewMode = false,
+}: {
+  report: LipartaDailyReportData
+  /** When true, always show core sections (even if empty) so preview is never blank. */
+  previewMode?: boolean
+}) {
+  const filled = sectionsForPrint(report)
+  const ids = previewMode
+    ? Array.from(new Set<SiteReportSectionId>([...PREVIEW_CORE, ...filled]))
+    : filled
   const h = report.header
   const bodyIds = ids.filter((id) => id !== 'header')
 
@@ -47,7 +64,7 @@ export function PrintableDailyReport({ report }: { report: LipartaDailyReportDat
         </p>
       </header>
 
-      {bodyIds.length === 0 ? (
+      {!previewMode && bodyIds.length === 0 ? (
         <p className="text-sm text-slate-600">{SITE_REPORT_COPY.printEmpty}</p>
       ) : null}
 
@@ -72,43 +89,47 @@ export function PrintableDailyReport({ report }: { report: LipartaDailyReportDat
 
       {ids.includes('crews_and_progress') ? (
         <Section id="crews_and_progress">
-          <table className="w-full border-collapse text-[11px]">
-            <thead>
-              <tr className="border-b bg-slate-50 text-right">
-                <th className="p-1">اکیپ</th>
-                <th className="p-1">فعالیت</th>
-                <th className="p-1">محل</th>
-                <th className="p-1">نفر</th>
-                <th className="p-1">ساعت</th>
-                <th className="p-1">مقدار</th>
-                <th className="p-1">وضعیت</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.crews_and_progress.map((row, i) => {
-                const loc = row.location ?? {}
-                const done = row.work_done_today ?? { quantity: null, unit: null }
-                return (
-                  <tr key={i} className="border-b border-slate-100">
-                    <td className="p-1">{row.contractor_or_crew}</td>
-                    <td className="p-1">
-                      {row.wbs_code ? `${row.wbs_code} ` : ''}
-                      {row.activity_name}
-                    </td>
-                    <td className="p-1">
-                      {[loc.floor, loc.zone, loc.axis].filter(Boolean).join(' / ') || '—'}
-                    </td>
-                    <td className="p-1 tabular-nums">{row.headcount ?? '—'}</td>
-                    <td className="p-1 tabular-nums">{row.regular_hours ?? '—'}</td>
-                    <td className="p-1 tabular-nums">
-                      {done.quantity ?? '—'} {done.unit ?? ''}
-                    </td>
-                    <td className="p-1">{row.activity_status}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+          {report.crews_and_progress.length === 0 ? (
+            <p className="text-slate-500">—</p>
+          ) : (
+            <table className="w-full border-collapse text-[11px]">
+              <thead>
+                <tr className="border-b bg-slate-50 text-right">
+                  <th className="p-1">اکیپ</th>
+                  <th className="p-1">فعالیت</th>
+                  <th className="p-1">محل</th>
+                  <th className="p-1">نفر</th>
+                  <th className="p-1">ساعت</th>
+                  <th className="p-1">مقدار</th>
+                  <th className="p-1">وضعیت</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.crews_and_progress.map((row, i) => {
+                  const loc = row.location ?? {}
+                  const done = row.work_done_today ?? { quantity: null, unit: null }
+                  return (
+                    <tr key={i} className="border-b border-slate-100">
+                      <td className="p-1">{row.contractor_or_crew}</td>
+                      <td className="p-1">
+                        {row.wbs_code ? `${row.wbs_code} ` : ''}
+                        {row.activity_name}
+                      </td>
+                      <td className="p-1">
+                        {[loc.floor, loc.zone, loc.axis].filter(Boolean).join(' / ') || '—'}
+                      </td>
+                      <td className="p-1 tabular-nums">{row.headcount ?? '—'}</td>
+                      <td className="p-1 tabular-nums">{row.regular_hours ?? '—'}</td>
+                      <td className="p-1 tabular-nums">
+                        {done.quantity ?? '—'} {done.unit ?? ''}
+                      </td>
+                      <td className="p-1">{row.activity_status}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
         </Section>
       ) : null}
 
