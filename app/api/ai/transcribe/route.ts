@@ -97,7 +97,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ text })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Transcription failed'
+    const raw = err instanceof Error ? err.message : 'Transcription failed'
+    // Node undici often surfaces blocked/unreachable OpenAI as bare "fetch failed"
+    const message =
+      /fetch failed|ECONNREFUSED|ENOTFOUND|ETIMEDOUT|network/i.test(raw)
+        ? 'اتصال به سرویس تبدیل صدا برقرار نشد. اینترنت، VPN یا دسترسی به api.openai.com را بررسی کنید.'
+        : raw
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

@@ -65,16 +65,19 @@ export async function GET(request: NextRequest) {
 
     let notes: Record<string, string> = {}
     let weather: Record<string, unknown> = {}
+    let statusByDate: Record<string, 'submitted' | 'approved'> = {}
     try {
       const meta = await fetchDailyReportMeta(supabase, projectId)
       notes = meta.notes
       weather = meta.weather
+      statusByDate = meta.statusByDate
     } catch {
       notes = {}
       weather = {}
+      statusByDate = {}
     }
 
-    return NextResponse.json({ updates, packageUpdates, notes, weather })
+    return NextResponse.json({ updates, packageUpdates, notes, weather, statusByDate })
   } catch (error) {
     if (error instanceof WorkshopError) return workshopErrorResponse(error)
     const message = error instanceof Error ? error.message : 'خواندن گزارش روزانه ناموفق بود'

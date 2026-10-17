@@ -76,6 +76,16 @@ export function writeProjectDailyProgress(projectId: string, state: ProjectDaily
   }
 }
 
+/** Drops the local draft note for a day after it has been finalized into the archive. */
+export function clearProjectDailyNote(projectId: string, reportDate: string): Record<string, string> {
+  const stored = readProjectDailyProgress(projectId)
+  if (!(reportDate in stored.notesByDate)) return stored.notesByDate
+  const notesByDate = { ...stored.notesByDate }
+  delete notesByDate[reportDate]
+  writeProjectDailyProgress(projectId, { ...stored, notesByDate })
+  return notesByDate
+}
+
 export function upsertDailyEntries(
   existing: DailyProgressEntry[],
   newEntries: DailyProgressEntry[]

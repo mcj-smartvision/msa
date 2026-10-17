@@ -19,13 +19,20 @@ export type DayReport = {
 
 export function buildDayReports(
   entries: DailyProgressEntry[],
-  notesByDate: Record<string, string>
+  notesByDate: Record<string, string>,
+  extraDates: string[] = []
 ): DayReport[] {
   const byDate = new Map<string, DailyProgressEntry[]>()
   for (const e of entries) {
     const list = byDate.get(e.reportDate) ?? []
     list.push(e)
     byDate.set(e.reportDate, list)
+  }
+  for (const date of Object.keys(notesByDate)) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date) && !byDate.has(date)) byDate.set(date, [])
+  }
+  for (const date of extraDates) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date) && !byDate.has(date)) byDate.set(date, [])
   }
 
   return [...byDate.entries()]

@@ -135,6 +135,12 @@ export function buildManagerNav(context: DashboardUserContext): ManagerNavModel 
       href: '/site-ops/approvals',
       withProjectParam: true,
     })
+    groups.push({
+      key: 'daily-reports',
+      label: 'گزارش روزانه کارگاه',
+      icon: 'reports',
+      href: '/dashboard/manager/daily-reports',
+    })
   }
   if (schedule.length) {
     groups.push({ key: 'schedule', label: 'برنامه و پیشرفت', icon: 'schedule', children: schedule })

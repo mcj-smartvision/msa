@@ -19,6 +19,7 @@ export type SupervisorNavId =
   | 'drawings'
   | 'inspection'
   | 'today'
+  | 'daily-progress'
   | 'daily-report'
   | 'weekly-commitments'
   | 'weekly-rnc'

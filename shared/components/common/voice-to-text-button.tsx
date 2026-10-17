@@ -127,10 +127,11 @@ export function VoiceToTextButton({
       }
       setPendingText(text)
     } catch (err) {
+      const raw = err instanceof Error ? err.message : ''
       setError(
-        err instanceof Error && err.message
-          ? err.message
-          : voice.transcribeFailed
+        /fetch failed|Failed to fetch|NetworkError/i.test(raw)
+          ? 'ارتباط با سرور قطع شد یا تبدیل صدا در دسترس نیست. اتصال اینترنت و کلید OpenAI را چک کنید.'
+          : raw || voice.transcribeFailed
       )
     } finally {
       setBusy(false)

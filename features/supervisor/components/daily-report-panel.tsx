@@ -8,7 +8,7 @@
 
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
@@ -18,7 +18,10 @@ import { Skeleton } from '@/shared/components/ui/skeleton'
 import { Textarea } from '@/shared/components/ui/textarea'
 import { FormattedDate } from '@/features/schedule/components/formatted-date'
 import { UomStack } from '@/features/workshop/components/uom-display'
-import { readProjectDailyProgress } from '@/features/supervisor/lib/daily-progress-storage'
+import {
+  clearProjectDailyNote,
+  readProjectDailyProgress,
+} from '@/features/supervisor/lib/daily-progress-storage'
 import { useProjectStore } from '@/features/project-store/use-project-store'
 import { useProjectStoreSync } from '@/features/project-store/use-project-store-sync'
 import {
@@ -44,12 +47,14 @@ type PercentEntryCheck,
 type ActivityProgressWeek,
 type ActivityWeekProgress,
 } from '@/features/supervisor/lib/weekly-activity-progress'
-import type { ParsedDailyReportVoice } from '@/features/supervisor/lib/parse-daily-report-voice'
-import { VoiceToTextButton } from '@/shared/components/common/voice-to-text-button'
 import { postDailyProgress } from '@/features/supervisor/lib/daily-progress-sync'
 import { cn } from '@/shared/lib/utils'
 import { useWeather } from '@/features/weather/hooks/use-weather'
 import { ensureWeatherLine, extractWeatherLine, formatWeatherReportLine, weatherSnapshotFromPayload } from '@/features/weather/lib/report-stamp'
+import { DailyReportPhotosField } from '@/features/supervisor/components/daily-report-photos-field'
+import { DailyReportWorkflowBar } from '@/features/supervisor/components/daily-report-workflow-bar'
+import { SiteReportForm } from '@/features/site-report/components/site-report-form'
+import type { LipartaDailyReportData } from '@/features/site-report/lib/types'
 import { SUPERVISOR_COPY, SUPERVISOR_PUNCT } from '@/features/supervisor/config'
 import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
 
@@ -787,12 +792,17 @@ function PastDaysEditor({
   )
 }
 
+export type DailyReportPanelView = 'progress' | 'note'
+
 export function DailyReportPanel({
   projectId,
   projectName = '',
+  view = 'progress',
 }: {
   projectId: string | null
   projectName?: string
+  /** progress = activity percents; note = daily report note only */
+  view?: DailyReportPanelView
 }) {
   useProjectStoreSync(projectId)
   const { data: weather } = useWeather(projectId)
@@ -812,17 +822,54 @@ export function DailyReportPanel({
   const [notesByDate, setNotesByDate] = useState<Record<string, string>>({})
   const [formValues, setFormValues] = useState<Record<string, number>>({})
   const [note, setNote] = useState('')
+  const [structuredReport, setStructuredReport] = useState<LipartaDailyReportData | null>(null)
+  const [structuredFormKey, setStructuredFormKey] = useState(0)
   const [hydrated, setHydrated] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [savingActivityId, setSavingActivityId] = useState<string | null>(null)
   const [submitOk, setSubmitOk] = useState(false)
   const [savedActivityId, setSavedActivityId] = useState<string | null>(null)
-  const [organizeLoading, setOrganizeLoading] = useState(false)
-  const [organizeError, setOrganizeError] = useState<string | null>(null)
-  const [voiceParsed, setVoiceParsed] = useState<ParsedDailyReportVoice | null>(null)
-  const [organizedDraft, setOrganizedDraft] = useState('')
   const [timingFilter, setTimingFilter] = useState<'all' | DailyReportTiming>('current')
   const [searchQuery, setSearchQuery] = useState('')
+  const [photoRefreshKey, setPhotoRefreshKey] = useState(0)
+  const [noteReady, setNoteReady] = useState(false)
+  const weatherStampKey = useRef<string | null>(null)
+  const progressPushKey = useRef<string | null>(null)
+  const draftSession = useRef(0)
+
+  const archiveHref = projectId
+    ? `/dashboard/site-supervisor/daily-reports?projectId=${encodeURIComponent(projectId)}&projectName=${encodeURIComponent(projectName)}`
+    : '/dashboard/site-supervisor/daily-reports'
+
+  const handleNoteLoaded = useCallback((serverNote: string) => {
+    setNote((prev) => (prev.trim() ? prev : serverNote))
+    setNoteReady(true)
+  }, [])
+
+  const handleStructuredLoaded = useCallback((serverStructured: LipartaDailyReportData | null) => {
+    if (!serverStructured) return
+    setStructuredReport(serverStructured)
+    setStructuredFormKey((n) => n + 1)
+  }, [])
+
+  const handleDraftSaved = useCallback(() => {
+    setPhotoRefreshKey((n) => n + 1)
+  }, [])
+
+  /** After send-to-manager: clear compose surface and open a fresh blank report. */
+  const handleArchived = useCallback(() => {
+    draftSession.current += 1
+    setNote('')
+    setStructuredReport(null)
+    setStructuredFormKey((n) => n + 1)
+    weatherStampKey.current = null
+    if (projectId) {
+      const nextNotes = clearProjectDailyNote(projectId, reportDate)
+      setNotesByDate(nextNotes)
+    }
+    setPhotoRefreshKey((n) => n + 1)
+    setNoteReady(true)
+  }, [projectId, reportDate])
 
   /** Saved reports (database + this browser's copies): the history every view reads from the store. */
   const history = useMemo(() => mergeProgressHistory(snapshot?.history ?? [], localEntries), [snapshot, localEntries])
@@ -831,19 +878,24 @@ export function DailyReportPanel({
     if (!projectId) return
     const stored = readProjectDailyProgress(projectId)
     setNotesByDate(stored.notesByDate)
-    setNote(stored.notesByDate[reportDate] ?? '')
+    setNoteReady(false)
     setHydrated(true)
+    weatherStampKey.current = null
   }, [projectId, reportDate])
 
+  /** Stamp weather once per open draft session. */
   useEffect(() => {
-    if (!hydrated || !weather) return
+    if (!hydrated || !weather || !noteReady) return
+    const key = `${projectId ?? ''}:${reportDate}:${draftSession.current}`
+    if (weatherStampKey.current === key) return
     const line = formatWeatherReportLine(weather)
     setNote((prev) => {
       const existing = extractWeatherLine(prev)
       if (existing === line) return prev
       return ensureWeatherLine(prev, line)
     })
-  }, [hydrated, weather, reportDate])
+    weatherStampKey.current = key
+  }, [hydrated, weather, reportDate, projectId, noteReady])
 
   const eligible = useMemo(
     () => activitiesEligibleForDailyReport(activities, history, reportDate),
@@ -961,8 +1013,10 @@ export function DailyReportPanel({
   // Re-push local daily progress into Supabase after the schedule:uuid fix
   // so previously saved supervisor % lands in ویرایش/ارسال without retyping.
   // A newer server value (e.g. edited in the schedule) is not overwritten.
+  // Only on the progress tab — note tab must not fight the store refresh loop.
   const serverLoaded = snapshot != null
   useEffect(() => {
+    if (view !== 'progress') return
     if (!hydrated || !projectId || !snapshot || localEntries.length === 0) return
     const pending = localEntries.filter((e) => {
       if (e.reportDate !== reportDate) return false
@@ -970,6 +1024,13 @@ export function DailyReportPanel({
       return !server || (e.savedAt ?? '') > (server.savedAt ?? '')
     })
     if (pending.length === 0) return
+    const fingerprint = pending
+      .map((e) => `${e.activityId}:${e.percentComplete}:${e.savedAt ?? ''}`)
+      .sort()
+      .join('|')
+    const pushKey = `${projectId}:${reportDate}:${fingerprint}`
+    if (progressPushKey.current === pushKey) return
+    progressPushKey.current = pushKey
     let cancelled = false
     void (async () => {
       try {
@@ -979,6 +1040,7 @@ export function DailyReportPanel({
         void useProjectStore.getState().refresh()
       } catch (error) {
         if (!cancelled) {
+          progressPushKey.current = null
           console.error(error)
           setSaveError(error instanceof Error ? error.message : t.syncScheduleFailed)
         }
@@ -987,8 +1049,8 @@ export function DailyReportPanel({
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on open / day change
-  }, [hydrated, projectId, reportDate, serverLoaded])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on open / day change / tab
+  }, [hydrated, projectId, reportDate, serverLoaded, view])
 
   async function handleSaveSingle(activityId: string) {
     await handleSaveDay(activityId, reportDate, formValues[activityId] ?? 0)
@@ -1034,54 +1096,6 @@ export function DailyReportPanel({
     window.setTimeout(() => setSubmitOk(false), 4000)
   }
 
-  async function handleVoiceOrganize(transcript: string) {
-    setOrganizeError(null)
-    setOrganizeLoading(true)
-    setVoiceParsed(null)
-    try {
-      const res = await fetch('/api/supervisor/organize-daily-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: transcript,
-          activities: eligible.map((a) => ({
-            id: a.id,
-            wbs: a.wbs,
-            name: a.name,
-          })),
-        }),
-      })
-      const data = (await res.json()) as ParsedDailyReportVoice & { error?: string }
-      if (!res.ok) throw new Error(data.error || t.voiceProcessFailed)
-      setVoiceParsed(data)
-      setOrganizedDraft(data.organizedText)
-    } catch (e) {
-      setOrganizeError(e instanceof Error ? e.message : t.voiceProcessFailed)
-    } finally {
-      setOrganizeLoading(false)
-    }
-  }
-
-  function applyOrganizedReport() {
-    if (!voiceParsed) return
-    setFormValues((prev) => {
-      const next = { ...prev }
-      for (const item of voiceParsed.activities) {
-        if (item.percentComplete != null) {
-          next[item.activityId] = item.percentComplete
-        }
-      }
-      return next
-    })
-    setNote((prev) => {
-      const line = extractWeatherLine(prev) ?? (weather ? formatWeatherReportLine(weather) : '')
-      const body = organizedDraft.trim()
-      return line ? ensureWeatherLine(body, line) : body
-    })
-    setVoiceParsed(null)
-    setOrganizedDraft('')
-  }
-
   if (!projectId) {
     return (
       <p className="text-sm text-slate-500" dir="rtl" lang="fa">
@@ -1090,7 +1104,8 @@ export function DailyReportPanel({
     )
   }
 
-  if (!hydrated || activitiesLoading) {
+  /** Note tab only needs local note hydration — never unmount it while the schedule snapshot loads. */
+  if (!hydrated || (view === 'progress' && activitiesLoading)) {
     return (
       <div className="space-y-4" dir="rtl" aria-busy="true" aria-label={t.loadingScheduleReports}>
         <Skeleton className="h-24 w-full rounded-xl" />
@@ -1104,275 +1119,290 @@ export function DailyReportPanel({
 
   return (
     <div className="space-y-3" dir="rtl" lang="fa">
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setTimingFilter('all')}
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
-            timingFilter === 'all'
-              ? 'border-[#1e3a5f] bg-[#1e3a5f] text-white'
-              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-          )}
-        >
-          {t.allCount(faNum(eligible.length))}
-        </button>
-        <button
-          type="button"
-          onClick={() => setTimingFilter('current')}
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
-            timingFilter === 'current'
-              ? 'border-sky-600 bg-sky-600 text-white'
-              : 'border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-100'
-          )}
-        >
-          <span className="h-2 w-2 rounded-full bg-current opacity-80" />
-          {t.currentPeriod} ({faNum(timingCounts.current)})
-        </button>
-        <button
-          type="button"
-          onClick={() => setTimingFilter('past')}
-          className={cn(
-            'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
-            timingFilter === 'past'
-              ? 'border-amber-600 bg-amber-600 text-white'
-              : 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100'
-          )}
-        >
-          <span className="h-2 w-2 rounded-full bg-current opacity-80" />
-          {t.previousWorkShort} ({faNum(timingCounts.past)})
-        </button>
-        <Input
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={t.searchWbsPlaceholder}
-          className="h-9 min-w-[12rem] flex-1 bg-white text-sm"
-        />
-      </div>
+      {view === 'progress' ? (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTimingFilter('all')}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
+                timingFilter === 'all'
+                  ? 'border-[#1e3a5f] bg-[#1e3a5f] text-white'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              )}
+            >
+              {t.allCount(faNum(eligible.length))}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTimingFilter('current')}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
+                timingFilter === 'current'
+                  ? 'border-sky-600 bg-sky-600 text-white'
+                  : 'border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-100'
+              )}
+            >
+              <span className="h-2 w-2 rounded-full bg-current opacity-80" />
+              {t.currentPeriod} ({faNum(timingCounts.current)})
+            </button>
+            <button
+              type="button"
+              onClick={() => setTimingFilter('past')}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
+                timingFilter === 'past'
+                  ? 'border-amber-600 bg-amber-600 text-white'
+                  : 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100'
+              )}
+            >
+              <span className="h-2 w-2 rounded-full bg-current opacity-80" />
+              {t.previousWorkShort} ({faNum(timingCounts.past)})
+            </button>
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t.searchWbsPlaceholder}
+              className="h-9 min-w-[12rem] flex-1 bg-white text-sm"
+            />
+          </div>
 
-      {activitiesError ? (
-        <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-          {activitiesError}
-        </p>
-      ) : null}
+          {activitiesError ? (
+            <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+              {activitiesError}
+            </p>
+          ) : null}
 
-      {activities.length === 0 && !activitiesError ? (
-        <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-600">
-          {t.noWorkshopPackages}
-        </p>
-      ) : null}
+          {activities.length === 0 && !activitiesError ? (
+            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-600">
+              {t.noWorkshopPackages}
+            </p>
+          ) : null}
 
-      {eligible.length === 0 && activities.length > 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-600">
-          {t.noEligibleToday}
-        </p>
-      ) : displaySections.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-600">
-          {searchQuery.trim()
-            ? t.noSearchResults
-            : timingFilter === 'current'
-              ? t.noCurrentPeriod
-              : timingFilter === 'past'
-                ? t.noPreviousLeft
-                : t.noEligible}
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {displaySections.map((section) =>
-            section.groups.length === 0 ? null : (
-              <section
-                key={section.timing}
-                className={cn('space-y-2 rounded-xl border p-2.5', section.shellClass)}
-              >
-                <div>
-                  <h2 className={cn('text-sm font-bold', section.titleClass)}>{section.title}</h2>
-                  <p className="mt-0.5 text-[11px] text-slate-600">{section.description}</p>
-                </div>
-                <ul className="space-y-3">
-                  {section.groups.map((group) => (
-                    <li key={`${section.timing}-${group.key}`} className="space-y-2">
-                      <div
-                        className={cn(
-                          'rounded-lg border px-3 py-1.5 shadow-sm',
-                          section.timing === 'past'
-                            ? 'border-amber-200 bg-amber-50/80'
-                            : section.timing === 'upcoming'
-                              ? 'border-slate-200 bg-white'
-                              : section.timing === 'all'
-                                ? 'border-slate-200 bg-slate-50/80'
-                                : 'border-[#1e3a5f]/25 bg-[#1e3a5f]/8'
-                        )}
-                      >
-                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                          <span
+          {eligible.length === 0 && activities.length > 0 ? (
+            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-600">
+              {t.noEligibleToday}
+            </p>
+          ) : displaySections.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-12 text-center text-sm text-slate-600">
+              {searchQuery.trim()
+                ? t.noSearchResults
+                : timingFilter === 'current'
+                  ? t.noCurrentPeriod
+                  : timingFilter === 'past'
+                    ? t.noPreviousLeft
+                    : t.noEligible}
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {displaySections.map((section) =>
+                section.groups.length === 0 ? null : (
+                  <section
+                    key={section.timing}
+                    className={cn('space-y-2 rounded-xl border p-2.5', section.shellClass)}
+                  >
+                    <div>
+                      <h2 className={cn('text-sm font-bold', section.titleClass)}>{section.title}</h2>
+                      <p className="mt-0.5 text-[11px] text-slate-600">{section.description}</p>
+                    </div>
+                    <ul className="space-y-3">
+                      {section.groups.map((group) => (
+                        <li key={`${section.timing}-${group.key}`} className="space-y-2">
+                          <div
                             className={cn(
-                              'text-[10px] font-semibold',
+                              'rounded-lg border px-3 py-1.5 shadow-sm',
                               section.timing === 'past'
-                                ? 'text-amber-800/70'
+                                ? 'border-amber-200 bg-amber-50/80'
                                 : section.timing === 'upcoming'
-                                  ? 'text-slate-500'
-                                  : 'text-[#1e3a5f]/70'
+                                  ? 'border-slate-200 bg-white'
+                                  : section.timing === 'all'
+                                    ? 'border-slate-200 bg-slate-50/80'
+                                    : 'border-[#1e3a5f]/25 bg-[#1e3a5f]/8'
                             )}
                           >
-                            {t.activityHeader}
-                          </span>
-                          {group.parentTaskWbs ? (
-                            <span
-                              className={cn(
-                                'font-mono text-xs font-bold tabular-nums',
-                                section.timing === 'past'
-                                  ? 'text-amber-900'
-                                  : section.timing === 'upcoming'
-                                    ? 'text-slate-600'
-                                    : 'text-[#1e3a5f]'
-                              )}
-                            >
-                              {group.parentTaskWbs}
-                            </span>
-                          ) : null}
-                          <h3 className="text-sm font-bold text-slate-900">{group.parentTaskName}</h3>
-                        </div>
-                      </div>
-                      <ul className="space-y-2">
-                        {group.activities.map((activity) => (
-                          <ActivityProgressRow
-                            key={activity.id}
-                            activity={activity}
-                            history={history}
-                            reportDate={reportDate}
-                            timing={
-                              section.timing === 'all'
-                                ? classifyDailyReportTiming(activity, history, reportDate, activities)
-                                : section.timing
-                            }
-                            value={formValues[activity.id]}
-                            onChange={(pct) =>
-                              setFormValues((prev) => ({ ...prev, [activity.id]: pct }))
-                            }
-                            onSave={() => handleSaveSingle(activity.id)}
-                            onSaveDay={(date, percent) => handleSaveDay(activity.id, date, percent)}
-                            saving={savingActivityId === activity.id}
-                          />
-                        ))}
-                      </ul>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )
-          )}
-        </div>
-      )}
-
-      {savedActivityId ? (
-        <p className="text-sm font-medium text-emerald-700">{t.itemRecorded}</p>
-      ) : null}
-
-      {eligible.length > 0 ? (
-        <div className="sticky bottom-0 z-10 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur-sm">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              disabled={submitting}
-              onClick={handleSubmit}
-            >
-              {submitting ? t.submitting : t.submitTodayAll}
-            </Button>
-            <p className="text-xs text-slate-500">
-              {t.orSaveEach}
-            </p>
-            {submitOk ? (
-              <p className="text-sm font-medium text-emerald-700">{t.todayReportSaved}</p>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Label htmlFor="daily-report-note" className="text-sm font-semibold text-slate-800">
-            {t.dailyNoteLabel}
-          </Label>
-          <VoiceToTextButton
-            size="sm"
-            disabled={organizeLoading}
-            prompt={t.voicePrompt}
-            onTranscript={(text) => void handleVoiceOrganize(text)}
-          />
-        </div>
-
-        {organizeLoading ? (
-          <div className="flex items-center gap-2 text-xs text-slate-600">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-            {t.organizingVoice}
-          </div>
-        ) : null}
-
-        {organizeError ? <p className="text-sm text-rose-700">{organizeError}</p> : null}
-
-        {voiceParsed ? (
-          <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-3 space-y-2">
-            <p className="text-xs font-medium text-amber-950">{t.organizedPreview}</p>
-            <Textarea
-              rows={6}
-              value={organizedDraft}
-              onChange={(e) => setOrganizedDraft(e.target.value)}
-              className="text-sm leading-relaxed bg-white"
-            />
-            {voiceParsed.activities.some((a) => a.percentComplete != null) ? (
-              <p className="text-xs text-slate-600">
-                {t.detectedPercents}{' '}
-                {voiceParsed.activities
-                  .filter((a) => a.percentComplete != null)
-                  .map((a) => SUPERVISOR_COPY.labeledPct(a.wbs ?? a.name, a.percentComplete!))
-                  .join(SUPERVISOR_PUNCT.listSep)}
-              </p>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" size="sm" onClick={applyOrganizedReport}>
-                {t.applyToForm}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setVoiceParsed(null)
-                  setOrganizedDraft('')
-                }}
-              >
-                {t.cancel}
-              </Button>
+                            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                              <span
+                                className={cn(
+                                  'text-[10px] font-semibold',
+                                  section.timing === 'past'
+                                    ? 'text-amber-800/70'
+                                    : section.timing === 'upcoming'
+                                      ? 'text-slate-500'
+                                      : 'text-[#1e3a5f]/70'
+                                )}
+                              >
+                                {t.activityHeader}
+                              </span>
+                              {group.parentTaskWbs ? (
+                                <span
+                                  className={cn(
+                                    'font-mono text-xs font-bold tabular-nums',
+                                    section.timing === 'past'
+                                      ? 'text-amber-900'
+                                      : section.timing === 'upcoming'
+                                        ? 'text-slate-600'
+                                        : 'text-[#1e3a5f]'
+                                  )}
+                                >
+                                  {group.parentTaskWbs}
+                                </span>
+                              ) : null}
+                              <h3 className="text-sm font-bold text-slate-900">{group.parentTaskName}</h3>
+                            </div>
+                          </div>
+                          <ul className="space-y-2">
+                            {group.activities.map((activity) => (
+                              <ActivityProgressRow
+                                key={activity.id}
+                                activity={activity}
+                                history={history}
+                                reportDate={reportDate}
+                                timing={
+                                  section.timing === 'all'
+                                    ? classifyDailyReportTiming(activity, history, reportDate, activities)
+                                    : section.timing
+                                }
+                                value={formValues[activity.id]}
+                                onChange={(pct) =>
+                                  setFormValues((prev) => ({ ...prev, [activity.id]: pct }))
+                                }
+                                onSave={() => handleSaveSingle(activity.id)}
+                                onSaveDay={(date, percent) => handleSaveDay(activity.id, date, percent)}
+                                saving={savingActivityId === activity.id}
+                              />
+                            ))}
+                          </ul>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )
+              )}
             </div>
-          </div>
-        ) : null}
+          )}
 
-        <Textarea
-          id="daily-report-note"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          rows={3}
-          placeholder={t.fieldNotePlaceholder}
-          className="text-sm"
-        />
-      </div>
+          {savedActivityId ? (
+            <p className="text-sm font-medium text-emerald-700">{t.itemRecorded}</p>
+          ) : null}
 
-      <Button
-        type="button"
-        className="w-full shadow-sm"
-        asChild
-      >
-        <Link
-          href={
-            projectId
-              ? `/dashboard/site-supervisor/daily-reports?projectId=${encodeURIComponent(projectId)}&projectName=${encodeURIComponent(projectName)}`
-              : '/dashboard/site-supervisor/daily-reports'
-          }
-        >
-          {t.previousReports}
-        </Link>
-      </Button>
+          {eligible.length > 0 ? (
+            <div className="sticky bottom-0 z-10 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur-sm">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button type="button" disabled={submitting} onClick={handleSubmit}>
+                  {submitting ? t.submitting : t.submitTodayAll}
+                </Button>
+                <p className="text-xs text-slate-500">{t.orSaveEach}</p>
+                {submitOk ? (
+                  <p className="text-sm font-medium text-emerald-700">{t.todayReportSaved}</p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          <Button type="button" variant="outline" className="w-full shadow-sm bg-white" asChild>
+            <Link
+              href={
+                projectId
+                  ? `/dashboard/site-supervisor?section=report-background&projectId=${encodeURIComponent(projectId)}`
+                  : '/dashboard/site-supervisor?section=report-background'
+              }
+            >
+              {t.previousProgressHistory}
+            </Link>
+          </Button>
+        </>
+      ) : null}
+
+      {view === 'note' ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
+          {!noteReady ? (
+            <div className="space-y-3" aria-busy="true" aria-label={t.loading}>
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-28 w-full rounded-lg" />
+              <Skeleton className="h-10 w-full rounded-lg" />
+            </div>
+          ) : (
+            <>
+              <div className="border-b border-slate-100 pb-4">
+                <SiteReportForm
+                  key={structuredFormKey}
+                  projectName={projectName}
+                  dateShamsi={reportDate}
+                  liveWeather={weather}
+                  initial={structuredReport}
+                  activities={eligible.map((a) => ({
+                    id: a.id,
+                    wbs: a.wbs,
+                    name: a.name,
+                  }))}
+                  onChange={(structured) => {
+                    setStructuredReport(structured)
+                    if (structured.free_notes?.trim()) {
+                      setNote((prev) => {
+                        const body = structured.free_notes!.trim()
+                        if (prev.includes(body)) return prev
+                        const line = extractWeatherLine(prev)
+                        return line ? ensureWeatherLine(body, line) : body
+                      })
+                    }
+                  }}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="daily-report-note" className="text-sm font-semibold text-slate-800">
+                  {t.dailyNoteLabel}
+                </Label>
+                <Textarea
+                  id="daily-report-note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  rows={4}
+                  placeholder={t.fieldNotePlaceholder}
+                  className="mt-2 text-sm"
+                />
+              </div>
+
+              {projectId ? (
+                <DailyReportPhotosField
+                  projectId={projectId}
+                  reportDate={reportDate}
+                  note={note}
+                  refreshKey={photoRefreshKey}
+                  readOnly={false}
+                  weatherJson={
+                    weather
+                      ? JSON.stringify(weatherSnapshotFromPayload(weather, reportDate))
+                      : null
+                  }
+                />
+              ) : null}
+            </>
+          )}
+
+          {projectId ? (
+            <DailyReportWorkflowBar
+              projectId={projectId}
+              reportDate={reportDate}
+              note={note}
+              weather={weather ? weatherSnapshotFromPayload(weather, reportDate) : null}
+              structured={structuredReport}
+              onNoteLoaded={handleNoteLoaded}
+              onStructuredLoaded={handleStructuredLoaded}
+              onSaved={handleDraftSaved}
+              onArchived={handleArchived}
+              className={!noteReady ? 'sr-only' : undefined}
+            />
+          ) : null}
+
+          {noteReady ? (
+            <Button type="button" variant="ghost" size="sm" className="w-full text-slate-600" asChild>
+              <Link href={archiveHref}>{t.previousReports}</Link>
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }

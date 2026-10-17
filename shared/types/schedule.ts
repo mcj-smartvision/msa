@@ -207,6 +207,11 @@ export interface SiteDailyReport {
   approved_by_manager: boolean
   approved_at: string | null
   approved_by: string | null
+  /** draft (editable) → submitted (archived, date = send day) → approved; finalized = legacy open */
+  workflow_status?: 'draft' | 'finalized' | 'submitted' | 'approved' | null
+  report_no?: string | null
+  finalized_at?: string | null
+  submitted_to_manager_at?: string | null
   created_at: string
 }
 

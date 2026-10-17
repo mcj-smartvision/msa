@@ -117,16 +117,33 @@ export async function approveDailyReport(
   reportId: string,
   managerId: string
 ): Promise<SiteDailyReport> {
+  const patch = {
+    approved_by_manager: true,
+    approved_at: new Date().toISOString(),
+    approved_by: managerId,
+    workflow_status: 'approved',
+  }
   const { data, error } = await supabase
     .from('daily_reports')
-    .update({
-      approved_by_manager: true,
-      approved_at: new Date().toISOString(),
-      approved_by: managerId,
-    })
+    .update(patch as never)
     .eq('id', reportId)
     .select()
     .single()
+
+  if (error && /workflow_status|schema cache|column/i.test(error.message)) {
+    const { data: fallback, error: fallbackError } = await supabase
+      .from('daily_reports')
+      .update({
+        approved_by_manager: true,
+        approved_at: patch.approved_at,
+        approved_by: managerId,
+      })
+      .eq('id', reportId)
+      .select()
+      .single()
+    if (fallbackError) throw new Error(fallbackError.message)
+    return fallback as SiteDailyReport
+  }
 
   if (error) throw new Error(error.message)
   return data as SiteDailyReport

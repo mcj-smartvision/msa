@@ -102,7 +102,7 @@ export function SiteSupervisorDashboard({
   initialProjectId,
   initialTasks,
   initialAlerts,
-  initialSection = 'daily-report',
+  initialSection = 'daily-progress',
 }: SiteSupervisorDashboardProps) {
   const supabase = useSupabase()
   const { locale, dir } = useLocale()
@@ -167,7 +167,7 @@ export function SiteSupervisorDashboard({
   function selectSection(id: SupervisorNavId) {
     setActiveSection(id)
     const url = new URL(window.location.href)
-    if (id === 'daily-report') url.searchParams.delete('section')
+    if (id === 'daily-progress') url.searchParams.delete('section')
     else url.searchParams.set('section', id)
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
   }
@@ -309,6 +309,16 @@ export function SiteSupervisorDashboard({
         onSelect={selectSection}
         items={[
           {
+            id: 'daily-progress',
+            label: t.navDailyProgress,
+            hint: t.navDailyProgressHint,
+          },
+          {
+            id: 'report-background',
+            label: t.navReportBackground,
+            hint: t.navReportBackgroundHint,
+          },
+          {
             id: 'daily-report',
             label: t.navDailyReport,
             hint: t.navDailyReportHint,
@@ -322,11 +332,6 @@ export function SiteSupervisorDashboard({
             id: 'weekly-rnc',
             label: t.navWeeklyRnc,
             hint: t.navWeeklyRncHint,
-          },
-          {
-            id: 'report-background',
-            label: t.navReportBackground,
-            hint: t.navReportBackgroundHint,
           },
           {
             id: 'store',
@@ -454,10 +459,11 @@ export function SiteSupervisorDashboard({
           )
         ) : null}
 
-        {activeSection === 'daily-report' ? (
+        {activeSection === 'daily-progress' || activeSection === 'daily-report' ? (
           <DailyReportPanel
             projectId={projectId}
             projectName={projectOptions.find((p) => p.id === projectId)?.name ?? ''}
+            view={activeSection === 'daily-progress' ? 'progress' : 'note'}
           />
         ) : null}
 
