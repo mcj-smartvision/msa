@@ -33,6 +33,7 @@ formatReportTitle,
 HISTORY_PAGE_SIZE,
 } from '@/features/supervisor/lib/daily-report-history'
 import type { ArchivedDailyReportRow } from '@/features/supervisor/lib/daily-report-archive'
+import { ArchiveA4Preview } from '@/features/supervisor/components/archive-a4-preview'
 import { extractWeatherLine } from '@/features/weather/lib/report-stamp'
 import { cn } from '@/shared/lib/utils'
 import type { DailyReportPhotoItem } from '@/features/supervisor/lib/daily-report-photos'
@@ -360,6 +361,10 @@ export function DailyReportHistoryPage() {
                         </ul>
                       </div>
                     ) : null}
+
+                    <div className="mx-4 mb-4 border-t border-slate-100 pt-3">
+                      <ArchiveA4Preview row={row} projectName={projectName} />
+                    </div>
                   </li>
                 )
               })}

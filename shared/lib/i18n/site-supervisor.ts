@@ -406,7 +406,8 @@ const EN = {
   historyHint:
     'View only — notes and photos. Your final send confirms the report; the project manager approves it separately. Percents are in progress history.',
   archiveStatusAwaitingManager: 'Archived',
-  archiveStatusApproved: 'Approved by manager',
+  archiveStatusApproved: 'Archived',
+  archivePrintA4: 'Print A4',
   reportsRecorded: (n: string) => `${n} recorded reports`,
   projectUnknown: 'Project is not specified — enter from the supervisor dashboard.',
   supervisorRole: 'Site supervisor',
@@ -929,7 +930,8 @@ const FA: SiteSupervisorMessages = {
   historyHint:
     'فقط مشاهده — یادداشت و عکس. با ارسال نهایی شما گزارش را تأیید کرده‌اید؛ تأیید مدیر جداگانه است. درصدها در تاریخچه ثبت درصد هستند.',
   archiveStatusAwaitingManager: 'آرشیو شده',
-  archiveStatusApproved: 'تأییدشده توسط مدیر',
+  archiveStatusApproved: 'آرشیو شده',
+  archivePrintA4: 'چاپ A4',
   reportsRecorded: (n: string) => `${n} گزارش ثبت‌شده`,
   projectUnknown: 'پروژه مشخص نیست — از داشبورد سرپرست وارد شوید.',
   supervisorRole: 'سرپرست کارگاه',

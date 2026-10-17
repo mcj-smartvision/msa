@@ -20,6 +20,7 @@ export type ArchivedDailyReportRow = {
   status: 'submitted' | 'approved'
   submittedAt: string | null
   weather: DailyWeatherSnapshot | null
+  structuredJson: unknown | null
 }
 
 const WORKFLOW_MISSING = /workflow_status|schema cache|column/i
@@ -28,12 +29,17 @@ function archivedStatusOf(row: {
   workflow_status?: unknown
   approved_by_manager?: unknown
   submitted_to_manager_at?: unknown
+  finalized_at?: unknown
 }): 'submitted' | 'approved' | null {
   if (row.approved_by_manager === true) return 'approved'
   const status = parseWorkflowStatus(row.workflow_status)
   if (status === 'approved') return 'approved'
   if (status === 'submitted') return 'submitted'
   if (typeof row.submitted_to_manager_at === 'string' && row.submitted_to_manager_at.trim()) {
+    return 'submitted'
+  }
+  // Finalized-without-send legacy rows still belong in archive
+  if (status === 'finalized' || (typeof row.finalized_at === 'string' && row.finalized_at.trim())) {
     return 'submitted'
   }
   return null
@@ -46,9 +52,10 @@ export async function listArchivedDailyReports(
   supervisorId?: string
 ): Promise<ArchivedDailyReportRow[]> {
   const selectFull =
-    'id, report_no, report_date, raw_text, workflow_status, approved_by_manager, submitted_to_manager_at, finalized_at, weather_json, site_supervisor_id'
+    'id, report_no, report_date, raw_text, workflow_status, approved_by_manager, submitted_to_manager_at, finalized_at, weather_json, structured_json, site_supervisor_id'
   const selectLegacy =
     'id, report_no, report_date, raw_text, approved_by_manager, submitted_to_manager_at, finalized_at, weather_json, site_supervisor_id'
+  const STRUCTURED_MISSING = /structured_json|schema cache|column/i
 
   let built = supabase.from('daily_reports').select(selectFull).eq('project_id', projectId)
   if (supervisorId) built = built.eq('site_supervisor_id', supervisorId)
@@ -56,7 +63,7 @@ export async function listArchivedDailyReports(
     .order('report_date', { ascending: false })
     .order('submitted_to_manager_at', { ascending: false })
 
-  if (error && WORKFLOW_MISSING.test(error.message)) {
+  if (error && (WORKFLOW_MISSING.test(error.message) || STRUCTURED_MISSING.test(error.message))) {
     let legacy = supabase.from('daily_reports').select(selectLegacy).eq('project_id', projectId)
     if (supervisorId) legacy = legacy.eq('site_supervisor_id', supervisorId)
     ;({ data, error } = await legacy.order('report_date', { ascending: false }))
@@ -93,6 +100,7 @@ export async function listArchivedDailyReports(
       status,
       submittedAt,
       weather: parseWeatherSnapshot(row.weather_json),
+      structuredJson: (row as { structured_json?: unknown }).structured_json ?? null,
     })
   }
   return out
