@@ -1,12 +1,11 @@
 /**
  * @file features/site-report/lib/validate-report.ts
- * @purpose علامت‌گذاری requires_completion و بررسی الزامات قبل از ارسال
+ * @purpose علامت‌گذاری اختیاری requires_completion روی ردیف اکیپ (بدون بلاک ارسال)
  * @safe-to-edit YES
  * @affects فرم گزارش روزانه
- * @depends-on features/site-report/lib/types, features/site-report/lib/section-visibility
+ * @depends-on features/site-report/lib/types
  */
 
-import { isSiteReportSectionEmpty } from '@/features/site-report/lib/section-visibility'
 import type { LipartaDailyReportData, SiteReportCrewRow } from '@/features/site-report/lib/types'
 
 function markCrew(row: SiteReportCrewRow): SiteReportCrewRow {
@@ -18,7 +17,7 @@ function markCrew(row: SiteReportCrewRow): SiteReportCrewRow {
   return { ...row, requires_completion: missing }
 }
 
-/** Stamp requires_completion on crew rows with missing quantities/units. */
+/** Stamp requires_completion on crew rows with missing quantities/units (hint only). */
 export function stampRequiresCompletion(report: LipartaDailyReportData): LipartaDailyReportData {
   return {
     ...report,
@@ -32,16 +31,12 @@ export type SiteReportSubmitCheck = {
   incompleteCrewCount: number
 }
 
+/** No section is required — always ok for send. */
 export function checkSiteReportReadyToSend(report: LipartaDailyReportData): SiteReportSubmitCheck {
   const stamped = stampRequiresCompletion(report)
-  const missingMandatory: SiteReportSubmitCheck['missingMandatory'] = []
-  if (isSiteReportSectionEmpty(stamped, 'weather')) missingMandatory.push('weather')
-  if (isSiteReportSectionEmpty(stamped, 'crews_and_progress')) missingMandatory.push('crews_and_progress')
-  if (isSiteReportSectionEmpty(stamped, 'tomorrow_plan')) missingMandatory.push('tomorrow_plan')
-  const incompleteCrewCount = stamped.crews_and_progress.filter((r) => r.requires_completion).length
   return {
-    ok: missingMandatory.length === 0,
-    missingMandatory,
-    incompleteCrewCount,
+    ok: true,
+    missingMandatory: [],
+    incompleteCrewCount: stamped.crews_and_progress.filter((r) => r.requires_completion).length,
   }
 }

@@ -24,8 +24,7 @@ import { PrintableDailyReport } from '@/features/site-report/components/printabl
 import { WorkSummaryEditor } from '@/features/site-report/components/work-summary-editor'
 import { SITE_REPORT_COPY, SITE_REPORT_SECTION_LABELS } from '@/features/site-report/config'
 import { emptyLipartaDailyReport } from '@/features/site-report/lib/empty-report'
-import { formatMissingMandatoryFa } from '@/features/site-report/lib/mandatory-labels'
-import { stampRequiresCompletion, checkSiteReportReadyToSend } from '@/features/site-report/lib/validate-report'
+import { stampRequiresCompletion } from '@/features/site-report/lib/validate-report'
 import { siteReportWeatherFromPayload } from '@/features/site-report/lib/weather-from-site'
 import type { LipartaDailyReportData, SiteReportActivityRef, SiteReportSectionId } from '@/features/site-report/lib/types'
 import type { WeatherPayload } from '@/features/weather/lib/types'
@@ -201,7 +200,6 @@ export function SiteReportForm({
     }
   }
 
-  const readiness = checkSiteReportReadyToSend(report)
   const incompleteCrews = report.crews_and_progress.filter((c) => c.requires_completion).length
 
   return (
@@ -237,13 +235,6 @@ export function SiteReportForm({
       ) : null}
       {error ? <p className="text-xs text-rose-700">{error}</p> : null}
       {okMsg ? <p className="text-xs text-emerald-700">{okMsg}</p> : null}
-      {!readiness.ok ? (
-        <p className="rounded-md bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
-          {SITE_REPORT_COPY.incompleteForSend}{' '}
-          {formatMissingMandatoryFa(readiness.missingMandatory)}
-          {incompleteCrews > 0 ? ` · ${incompleteCrews} ردیف اکیپ ${SITE_REPORT_COPY.needsCompletion}` : ''}
-        </p>
-      ) : null}
 
       {COLLAPSE_ORDER.map((id) => (
         <Collapsible

@@ -20,13 +20,11 @@ import {
   findOpenDraftReport,
   submitOpenDraftToManager,
 } from '@/features/supervisor/lib/persist-daily-report-meta'
-import { formatMissingMandatoryFa } from '@/features/site-report/lib/mandatory-labels'
 import { parseLipartaDailyReport } from '@/features/site-report/lib/parse-structured'
 import {
   siteReportFallbackNote,
   siteReportHasContent,
 } from '@/features/site-report/lib/report-content'
-import { checkSiteReportReadyToSend } from '@/features/site-report/lib/validate-report'
 import { parseWeatherSnapshot } from '@/features/weather/lib/report-stamp'
 import { todayTehranIso } from '@/shared/lib/time/tehran'
 import { WorkshopError } from '@/features/workshop/lib/domain'
@@ -174,19 +172,6 @@ export async function POST(request: NextRequest) {
     const status = existing?.workflowStatus ?? 'draft'
     if (!canSendDailyReportToManager(status)) {
       return NextResponse.json({ error: 'گزارش قبلاً ارسال شده است' }, { status: 409 })
-    }
-
-    if (structured && siteReportHasContent(structured)) {
-      const readiness = checkSiteReportReadyToSend(structured)
-      if (!readiness.ok && !note.trim()) {
-        return NextResponse.json(
-          {
-            error: 'فرم ناقص است',
-            message: `قبل از ارسال این بخش‌ها را کامل کنید: ${formatMissingMandatoryFa(readiness.missingMandatory)}`,
-          },
-          { status: 400 }
-        )
-      }
     }
 
     const sendDate = todayTehranIso()

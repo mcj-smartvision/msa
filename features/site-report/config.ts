@@ -21,8 +21,8 @@ export const SITE_REPORT_COPY = {
   printEmpty: 'هنوز بخشی برای چاپ پر نشده — فرم را کامل کنید، سپس دوباره چاپ بگیرید.',
   mergeOk: 'اطلاعات صوت با گزارش ادغام شد.',
   analyzeFailed: 'تحلیل صوت ناموفق بود',
-  mandatoryHint: 'قبل از ارسال: آب‌وهوا، اکیپ و کار انجام‌شده، و برنامه فردا الزامی است.',
-  incompleteForSend: 'ناقص برای ارسال:',
+  mandatoryHint: 'همه بخش‌ها اختیاری‌اند — هر چه پر کردید ذخیره و ارسال می‌شود.',
+  incompleteForSend: 'پیشنهاد تکمیل:',
   eventOnlyHint: 'بخش‌های رویدادی فقط در صورت ذکر پر می‌شوند.',
   disclaimerVisits: 'ثبت گزارش سرپرست کارگاه - فاقد اثر دستور رسمی کارفرما',
   weatherFromSiteHint: 'از وضعیت هوای کارگاه خوانده شده — در صورت مغایرت ویرایش کنید.',
@@ -114,12 +114,8 @@ export const SITE_REPORT_SECTION_LABELS: Record<SiteReportSectionId, string> = {
   free_notes: 'توضیحات تکمیلی',
 }
 
-/** Mandatory before final send to manager. */
-export const SITE_REPORT_MANDATORY_SECTIONS: SiteReportSectionId[] = [
-  'weather',
-  'crews_and_progress',
-  'tomorrow_plan',
-]
+/** @deprecated No section is required before send — kept empty for older imports. */
+export const SITE_REPORT_MANDATORY_SECTIONS: SiteReportSectionId[] = []
 
 /** Only shown in print / export when they have data. */
 export const SITE_REPORT_EVENT_SECTIONS: SiteReportSectionId[] = [

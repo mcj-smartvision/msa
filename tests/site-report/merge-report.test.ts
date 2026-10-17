@@ -52,13 +52,11 @@ describe('mergeLipartaDailyReport', () => {
     expect(merged.crews_and_progress[0]?.location.zone).toBe('A')
   })
 
-  it('blocks send when mandatory sections empty', () => {
+  it('allows send with empty optional sections', () => {
     const report = emptyLipartaDailyReport()
     const check = checkSiteReportReadyToSend(report)
-    expect(check.ok).toBe(false)
-    expect(check.missingMandatory).toContain('weather')
-    expect(check.missingMandatory).toContain('crews_and_progress')
-    expect(check.missingMandatory).toContain('tomorrow_plan')
+    expect(check.ok).toBe(true)
+    expect(check.missingMandatory).toEqual([])
   })
 
   it('hides empty event sections from print list', () => {
