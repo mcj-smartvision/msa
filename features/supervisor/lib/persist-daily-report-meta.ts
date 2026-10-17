@@ -332,17 +332,20 @@ export async function submitOpenDraftToManager(
   if (curErr) throw new Error(curErr.message)
 
   const raw = (params.note?.trim() || String(current.raw_text ?? '').trim())
-  if (!raw) throw new Error('قبل از ارسال به مدیر، فرم یا یادداشت را پر کنید')
+  if (!raw) throw new Error('قبل از آرشیو، فرم یا یادداشت را پر کنید')
 
   const now = new Date().toISOString()
   const reportNo = buildDailyReportNo(params.sendDate, header.id)
+  // Manager approval temporarily skipped — archive as approved on send.
   const updatePayload: Record<string, unknown> = {
     raw_text: raw,
     report_date: params.sendDate,
     report_no: reportNo,
-    workflow_status: 'submitted',
+    workflow_status: 'approved',
     finalized_at: now,
     submitted_to_manager_at: now,
+    approved_by_manager: true,
+    approved_at: now,
   }
   if (params.structuredJson && typeof params.structuredJson === 'object') {
     updatePayload.structured_json = params.structuredJson
@@ -356,6 +359,16 @@ export async function submitOpenDraftToManager(
   if (error && STRUCTURED_MISSING.test(error.message) && updatePayload.structured_json) {
     const { structured_json: _s, ...withoutStructured } = updatePayload
     ;({ error } = await applyUpdate(withoutStructured))
+  }
+  // Older DBs may lack approved_at / approved_by_manager together with workflow
+  if (error && /approved_by_manager|approved_at|schema cache|column/i.test(error.message)) {
+    const {
+      approved_by_manager: _a,
+      approved_at: _b,
+      ...withoutApproveCols
+    } = updatePayload
+    withoutApproveCols.workflow_status = 'approved'
+    ;({ error } = await applyUpdate(withoutApproveCols))
   }
   // Unique (project, date, supervisor) still present if migration 113 not run
   if (error && (error as { code?: string }).code === '23505') {

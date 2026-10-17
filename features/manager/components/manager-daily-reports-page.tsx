@@ -107,6 +107,10 @@ export function ManagerDailyReportsPage({ initialProjectId }: { initialProjectId
           <p className="mt-1 text-sm text-slate-600">{t.hint}</p>
         </div>
 
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          {t.disabledBanner}
+        </p>
+
         {!projectId ? (
           <p className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-600">
             {t.selectProject}
@@ -122,54 +126,6 @@ export function ManagerDailyReportsPage({ initialProjectId }: { initialProjectId
             {error ? (
               <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</p>
             ) : null}
-            {okMsg ? (
-              <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                {okMsg}
-              </p>
-            ) : null}
-
-            <section className="rounded-2xl border border-sky-200 bg-sky-50/70 p-4 space-y-3">
-              <h2 className="text-sm font-bold text-sky-950">{t.pendingTitle}</h2>
-              {pending.length === 0 ? (
-                <p className="text-xs text-sky-900/80">{t.emptyPending}</p>
-              ) : (
-                <ul className="space-y-2">
-                  {pending.map((row) => (
-                    <li
-                      key={row.id}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-100 bg-white px-3 py-2"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 tabular-nums">
-                          {row.reportDate}
-                          {row.reportNo ? (
-                            <span className="mr-2 font-mono text-xs font-normal text-slate-500">
-                              · {row.reportNo}
-                            </span>
-                          ) : null}
-                        </p>
-                        <p className="mt-0.5 line-clamp-2 text-xs text-slate-600">
-                          {row.notePreview || t.noNote}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={approvingId === row.id}
-                        onClick={() => void approveReport(row.id)}
-                      >
-                        {approvingId === row.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin ml-1" />
-                        ) : (
-                          <CheckCircle2 className="h-4 w-4 ml-1" aria-hidden />
-                        )}
-                        {t.approveCta}
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
 
             <section className="space-y-3">
               <h2 className="text-sm font-bold text-slate-800">{t.archiveTitle}</h2>

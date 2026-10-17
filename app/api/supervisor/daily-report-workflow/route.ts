@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
         reportId: header.id,
         reportNo: header.reportNo,
         reportDate: header.reportDate,
-        workflowStatus: 'submitted' as const,
+        workflowStatus: 'approved' as const,
         archived: true,
         openNewDraft: true,
       })
