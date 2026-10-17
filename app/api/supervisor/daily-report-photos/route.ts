@@ -17,6 +17,7 @@ import {
   validateDailyReportPhotoFile,
   type DailyReportPhotoItem,
 } from '@/features/supervisor/lib/daily-report-photos'
+import { normalizeReportDate } from '@/features/supervisor/lib/normalize-report-date'
 import { canEditDailyReportContent, parseWorkflowStatus } from '@/features/supervisor/lib/daily-report-workflow'
 import {
   ensureOpenDraftReport,
@@ -28,15 +29,8 @@ import { workshopErrorResponse } from '@/features/workshop/lib/service'
 
 const TABLE_MISSING = /daily_report_photos|schema cache|does not exist/i
 
-async function signPhotoUrl(
-  supabase: ReturnType<typeof createClient>,
-  path: string
-): Promise<string> {
-  const { data, error } = await supabase.storage
-    .from(DAILY_REPORT_PHOTO_BUCKET)
-    .createSignedUrl(path, 60 * 60)
-  if (error || !data?.signedUrl) throw new Error(error?.message || 'signed url failed')
-  return data.signedUrl
+function photoApiUrl(photoId: string): string {
+  return `/api/supervisor/daily-report-photos/file?photoId=${encodeURIComponent(photoId)}`
 }
 
 /**
@@ -76,6 +70,7 @@ export async function GET(request: NextRequest) {
       }
 
       const photosByDate: Record<string, DailyReportPhotoItem[]> = {}
+      const photosByReportId: Record<string, DailyReportPhotoItem[]> = {}
       for (const row of rows ?? []) {
         const linked = row.daily_reports as
           | { report_no?: string | null; site_supervisor_id?: string | null; workflow_status?: string | null }
@@ -85,15 +80,17 @@ export async function GET(request: NextRequest) {
         if (header?.site_supervisor_id && header.site_supervisor_id !== user.id) continue
         const wf = header?.workflow_status
         if (wf === 'draft' || wf === 'finalized') continue
-        const date = String(row.report_date)
+        const date = normalizeReportDate(row.report_date) ?? String(row.report_date).slice(0, 10)
         const reportId = String(row.daily_report_id)
         const reportNo =
           typeof header?.report_no === 'string' && header.report_no.trim()
             ? header.report_no.trim()
             : `DR-${date.replace(/-/g, '')}-${reportId.replace(/-/g, '').slice(0, 8).toUpperCase()}`
-        const url = await signPhotoUrl(supabase, String(row.storage_path))
+        const photoId = String(row.id)
+        // Same-origin proxy is more reliable in archive/print than storage signed URLs
+        const url = photoApiUrl(photoId)
         const item: DailyReportPhotoItem = {
-          id: String(row.id),
+          id: photoId,
           dailyReportId: reportId,
           reportNo,
           reportDate: date,
@@ -104,8 +101,9 @@ export async function GET(request: NextRequest) {
           createdAt: String(row.created_at),
         }
         ;(photosByDate[date] ??= []).push(item)
+        ;(photosByReportId[reportId] ??= []).push(item)
       }
-      return NextResponse.json({ photosByDate })
+      return NextResponse.json({ photosByDate, photosByReportId })
     }
 
     // Compose page: photos belong to the open draft (not a locked day row)
@@ -155,16 +153,16 @@ export async function GET(request: NextRequest) {
 
     const photos: DailyReportPhotoItem[] = []
     for (const row of rows ?? []) {
-      const url = await signPhotoUrl(supabase, String(row.storage_path))
+      const photoId = String(row.id)
       photos.push({
-        id: String(row.id),
+        id: photoId,
         dailyReportId: String(row.daily_report_id),
         reportNo: draft.reportNo,
-        reportDate: String(row.report_date),
+        reportDate: normalizeReportDate(row.report_date) ?? draft.reportDate,
         fileName: String(row.file_name),
         contentType: row.content_type ? String(row.content_type) : null,
         byteSize: typeof row.byte_size === 'number' ? row.byte_size : null,
-        url,
+        url: photoApiUrl(photoId),
         createdAt: String(row.created_at),
         caption:
           typeof (row as unknown as { caption?: string }).caption === 'string'
@@ -306,7 +304,6 @@ export async function POST(request: NextRequest) {
       throw new Error(insertError.message)
     }
 
-    const url = await signPhotoUrl(supabase, path)
     const photo: DailyReportPhotoItem = {
       id: String(row.id),
       dailyReportId: header.id,
@@ -315,7 +312,7 @@ export async function POST(request: NextRequest) {
       fileName: String(row.file_name),
       contentType: row.content_type ? String(row.content_type) : null,
       byteSize: typeof row.byte_size === 'number' ? row.byte_size : null,
-      url,
+      url: photoApiUrl(String(row.id)),
       createdAt: String(row.created_at),
     }
 

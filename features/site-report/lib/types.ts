@@ -7,7 +7,7 @@
  */
 
 export type DayTypeFa = 'کاری' | 'تعطیل'
-export type ReportStatusFa = 'پیش‌نویس' | 'ارسال‌شده' | 'تأییدشده'
+export type ReportStatusFa = 'پیش‌نویس' | 'ارسال‌شده' | 'تأییدشده' | 'آرشیو شده'
 export type WeatherImpactFa = 'بدون اثر' | 'کاهش بازده' | 'توقف کامل'
 export type ActivityStatusFa = 'شروع شد' | 'در حال انجام' | 'تمام شد' | 'متوقف'
 export type EquipmentOwnershipFa = 'ملکی' | 'اجاره‌ای'

@@ -1,6 +1,6 @@
 /**
  * @file features/supervisor/components/archive-a4-preview.tsx
- * @purpose پیش‌نمایش و چاپ A4 از گزارش آرشیو
+ * @purpose نمایش کامل گزارش آرشیو + چاپ A4
  * @safe-to-edit YES
  * @affects صفحه آرشیو گزارش روزانه
  * @depends-on features/site-report/components/printable-daily-report, features/site-report/lib/report-from-archive
@@ -8,12 +8,12 @@
 
 'use client'
 
-import { useState } from 'react'
-import { Printer } from 'lucide-react'
+import { useId, useState } from 'react'
+import { ChevronDown, ChevronUp, Printer } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { PrintableDailyReport } from '@/features/site-report/components/printable-daily-report'
-import { SITE_REPORT_COPY } from '@/features/site-report/config'
 import { lipartaReportFromArchive } from '@/features/site-report/lib/report-from-archive'
+import type { SiteReportAttachedPhoto } from '@/features/site-report/lib/types'
 import type { ArchivedDailyReportRow } from '@/features/supervisor/lib/daily-report-archive'
 import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
 
@@ -22,11 +22,14 @@ const t = getSiteSupervisorMessages('fa')
 export function ArchiveA4Preview({
   row,
   projectName,
+  photos = [],
 }: {
   row: ArchivedDailyReportRow
   projectName?: string
+  photos?: SiteReportAttachedPhoto[]
 }) {
-  const [open, setOpen] = useState(false)
+  const printRootId = useId().replace(/:/g, '')
+  const [expanded, setExpanded] = useState(true)
 
   const report = lipartaReportFromArchive({
     projectName,
@@ -35,19 +38,24 @@ export function ArchiveA4Preview({
     note: row.note,
     structuredJson: row.structuredJson,
     weather: row.weather,
-    statusLabel: row.status,
+    statusLabel: 'archived',
   })
 
   function handlePrint() {
-    setOpen(true)
-    window.setTimeout(() => window.print(), 200)
+    setExpanded(true)
+    window.setTimeout(() => window.print(), 250)
   }
 
   return (
-    <>
+    <div className="space-y-3">
       <div className="flex flex-wrap gap-2 print:hidden">
-        <Button type="button" size="sm" variant="outline" onClick={() => setOpen(true)}>
-          {SITE_REPORT_COPY.printPreview}
+        <Button type="button" size="sm" variant="outline" onClick={() => setExpanded((v) => !v)}>
+          {expanded ? (
+            <ChevronUp className="h-4 w-4 ml-1" aria-hidden />
+          ) : (
+            <ChevronDown className="h-4 w-4 ml-1" aria-hidden />
+          )}
+          {expanded ? t.archiveHideReport : t.archiveShowReport}
         </Button>
         <Button type="button" size="sm" onClick={handlePrint}>
           <Printer className="h-4 w-4 ml-1" aria-hidden />
@@ -55,39 +63,12 @@ export function ArchiveA4Preview({
         </Button>
       </div>
 
-      {open ? (
+      {expanded ? (
         <div
-          className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-slate-900/50 p-3 sm:p-6 print:static print:bg-transparent print:p-0"
-          role="dialog"
-          aria-modal="true"
-          aria-label={SITE_REPORT_COPY.printPreview}
-          onClick={() => setOpen(false)}
+          id={`archive-print-${printRootId}`}
+          className="archive-print-root overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm print:overflow-visible print:rounded-none print:border-0 print:shadow-none"
         >
-          <div
-            className="my-4 w-full max-w-[220mm] rounded-xl border border-slate-300 bg-white shadow-xl print:my-0 print:max-w-none print:rounded-none print:border-0 print:shadow-none"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 print:hidden">
-              <p className="text-sm font-semibold text-slate-800">
-                {SITE_REPORT_COPY.printPreview} · {row.reportNo}
-              </p>
-              <div className="flex gap-2">
-                <Button type="button" size="sm" onClick={handlePrint}>
-                  <Printer className="h-4 w-4 ml-1" aria-hidden />
-                  {t.archivePrintA4}
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => setOpen(false)}>
-                  {SITE_REPORT_COPY.printClose}
-                </Button>
-              </div>
-            </div>
-            <div
-              id={`archive-print-${row.id}`}
-              className="archive-print-root max-h-[80vh] overflow-auto print:max-h-none"
-            >
-              <PrintableDailyReport report={report} previewMode />
-            </div>
-          </div>
+          <PrintableDailyReport report={report} previewMode photos={photos} />
         </div>
       ) : null}
 
@@ -95,9 +76,11 @@ export function ArchiveA4Preview({
         dangerouslySetInnerHTML={{
           __html: `
             @media print {
+              @page { size: A4; margin: 12mm; }
               body * { visibility: hidden !important; }
-              .archive-print-root, .archive-print-root * { visibility: visible !important; }
-              .archive-print-root {
+              #archive-print-${printRootId},
+              #archive-print-${printRootId} * { visibility: visible !important; }
+              #archive-print-${printRootId} {
                 position: absolute !important;
                 inset: 0 !important;
                 width: 100% !important;
@@ -109,6 +92,6 @@ export function ArchiveA4Preview({
           `,
         }}
       />
-    </>
+    </div>
   )
 }

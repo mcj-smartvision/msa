@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ImagePlus, Loader2, Trash2, X } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
+import { compressDailyReportPhoto } from '@/features/supervisor/lib/compress-daily-report-photo'
 import {
   DAILY_REPORT_PHOTO_LIMITS,
   type DailyReportPhotoItem,
@@ -20,6 +21,30 @@ import { cn } from '@/shared/lib/utils'
 
 const t = getSiteSupervisorMessages('fa')
 
+async function readApiJson(res: Response): Promise<{
+  reportId?: string
+  reportNo?: string
+  photo?: DailyReportPhotoItem
+  error?: string
+  message?: string
+}> {
+  const text = await res.text()
+  try {
+    return JSON.parse(text) as {
+      reportId?: string
+      reportNo?: string
+      photo?: DailyReportPhotoItem
+      error?: string
+      message?: string
+    }
+  } catch {
+    if (res.status === 413 || /request entity too large/i.test(text)) {
+      return { error: t.photoTooLarge }
+    }
+    return { error: t.photoUploadFailed }
+  }
+}
+
 export function DailyReportPhotosField({
   projectId,
   reportDate,
@@ -27,6 +52,7 @@ export function DailyReportPhotosField({
   weatherJson,
   refreshKey = 0,
   readOnly = false,
+  onPhotosChange,
   className,
 }: {
   projectId: string
@@ -35,6 +61,8 @@ export function DailyReportPhotosField({
   weatherJson?: string | null
   refreshKey?: number
   readOnly?: boolean
+  /** Notify parent so A4 preview can include photos */
+  onPhotosChange?: (photos: DailyReportPhotoItem[]) => void
   className?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -44,6 +72,20 @@ export function DailyReportPhotosField({
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const onPhotosChangeRef = useRef(onPhotosChange)
+  useEffect(() => {
+    onPhotosChangeRef.current = onPhotosChange
+  }, [onPhotosChange])
+
+  function commitPhotos(
+    next: DailyReportPhotoItem[] | ((prev: DailyReportPhotoItem[]) => DailyReportPhotoItem[])
+  ) {
+    setPhotos((prev) => {
+      const resolved = typeof next === 'function' ? next(prev) : next
+      onPhotosChangeRef.current?.(resolved)
+      return resolved
+    })
+  }
 
   const load = useCallback(async (opts?: { soft?: boolean }) => {
     const soft = Boolean(opts?.soft)
@@ -65,10 +107,10 @@ export function DailyReportPhotosField({
       }
       setReportId(data.reportId ?? null)
       setReportNo(data.reportNo ?? null)
-      setPhotos(data.photos ?? [])
+      commitPhotos(data.photos ?? [])
     } catch (e) {
       setError(e instanceof Error ? e.message : t.photoLoadFailed)
-      if (!soft) setPhotos([])
+      if (!soft) commitPhotos([])
     } finally {
       if (!soft) setLoading(false)
     }
@@ -89,8 +131,11 @@ export function DailyReportPhotosField({
     setUploading(true)
     setError(null)
     try {
-      for (const file of list) {
+      for (const original of list) {
         if (photos.length >= DAILY_REPORT_PHOTO_LIMITS.maxCount) break
+        const file = await compressDailyReportPhoto(original)
+        const invalid = file.size > DAILY_REPORT_PHOTO_LIMITS.maxBytes
+        if (invalid) throw new Error(t.photoTooLarge)
         const body = new FormData()
         body.set('projectId', projectId)
         body.set('reportDate', reportDate)
@@ -98,17 +143,11 @@ export function DailyReportPhotosField({
         if (weatherJson) body.set('weatherJson', weatherJson)
         body.set('file', file)
         const res = await fetch('/api/supervisor/daily-report-photos', { method: 'POST', body })
-        const data = (await res.json()) as {
-          reportId?: string
-          reportNo?: string
-          photo?: DailyReportPhotoItem
-          error?: string
-          message?: string
-        }
+        const data = await readApiJson(res)
         if (!res.ok) throw new Error(data.message || data.error || t.photoUploadFailed)
         if (data.reportId) setReportId(data.reportId)
         if (data.reportNo) setReportNo(data.reportNo)
-        if (data.photo) setPhotos((prev) => [...prev, data.photo!])
+        if (data.photo) commitPhotos((prev) => [...prev, data.photo!])
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : t.photoUploadFailed)
@@ -127,7 +166,7 @@ export function DailyReportPhotosField({
       )
       const data = (await res.json()) as { error?: string; message?: string }
       if (!res.ok) throw new Error(data.message || data.error || t.photoDeleteFailed)
-      setPhotos((prev) => prev.filter((p) => p.id !== id))
+      commitPhotos((prev) => prev.filter((p) => p.id !== id))
     } catch (e) {
       setError(e instanceof Error ? e.message : t.photoDeleteFailed)
     }

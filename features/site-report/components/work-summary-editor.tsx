@@ -14,6 +14,27 @@ import { SITE_REPORT_COPY } from '@/features/site-report/config'
 import { linesToText, textToLines } from '@/features/site-report/lib/lines'
 import type { SiteReportWorkSummary } from '@/features/site-report/lib/types'
 
+function parseOngoingLine(line: string): {
+  activity: string
+  cumulative_percent: number | null
+} {
+  const pipe = line.indexOf('|')
+  if (pipe < 0) return { activity: line, cumulative_percent: null }
+  const activity = line.slice(0, pipe)
+  const pctRaw = line.slice(pipe + 1).trim()
+  const n = pctRaw === '' ? null : Number(pctRaw)
+  return {
+    activity,
+    cumulative_percent: n != null && Number.isFinite(n) ? n : null,
+  }
+}
+
+function parseUnexecutedLine(line: string): { task: string; reason: string } {
+  const pipe = line.indexOf('|')
+  if (pipe < 0) return { task: line, reason: '' }
+  return { task: line.slice(0, pipe), reason: line.slice(pipe + 1) }
+}
+
 export function WorkSummaryEditor({
   value,
   onChange,
@@ -39,20 +60,13 @@ export function WorkSummaryEditor({
           rows={2}
           value={linesToText(
             value.ongoing_activities.map((a) =>
-              a.cumulative_percent != null ? `${a.activity} | ${a.cumulative_percent}` : a.activity
+              a.cumulative_percent != null ? `${a.activity}| ${a.cumulative_percent}` : a.activity
             )
           )}
           onChange={(e) =>
             onChange({
               ...value,
-              ongoing_activities: textToLines(e.target.value).map((line) => {
-                const [activity, pct] = line.split('|').map((s) => s.trim())
-                const n = pct != null && pct !== '' ? Number(pct) : null
-                return {
-                  activity,
-                  cumulative_percent: n != null && Number.isFinite(n) ? n : null,
-                }
-              }),
+              ongoing_activities: textToLines(e.target.value).map(parseOngoingLine),
             })
           }
         />
@@ -62,15 +76,14 @@ export function WorkSummaryEditor({
         <Textarea
           rows={2}
           value={linesToText(
-            value.unexecuted_planned_tasks.map((t) => `${t.task} | ${t.reason}`)
+            value.unexecuted_planned_tasks.map((t) =>
+              t.reason ? `${t.task}|${t.reason}` : t.task
+            )
           )}
           onChange={(e) =>
             onChange({
               ...value,
-              unexecuted_planned_tasks: textToLines(e.target.value).map((line) => {
-                const [task, ...rest] = line.split('|').map((s) => s.trim())
-                return { task, reason: rest.join(' | ') || '' }
-              }),
+              unexecuted_planned_tasks: textToLines(e.target.value).map(parseUnexecutedLine),
             })
           }
         />

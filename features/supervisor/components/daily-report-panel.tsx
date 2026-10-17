@@ -833,6 +833,9 @@ export function DailyReportPanel({
   const [timingFilter, setTimingFilter] = useState<'all' | DailyReportTiming>('current')
   const [searchQuery, setSearchQuery] = useState('')
   const [photoRefreshKey, setPhotoRefreshKey] = useState(0)
+  const [printPhotos, setPrintPhotos] = useState<
+    { url: string; caption: string; linked_activity_or_location?: string }[]
+  >([])
   const [noteReady, setNoteReady] = useState(false)
   const weatherStampKey = useRef<string | null>(null)
   const progressPushKey = useRef<string | null>(null)
@@ -872,11 +875,25 @@ export function DailyReportPanel({
     setPhotoRefreshKey((n) => n + 1)
   }, [])
 
+  const handlePhotosChange = useCallback(
+    (items: { url: string; fileName: string; caption?: string | null; linkedActivityOrLocation?: string | null }[]) => {
+      setPrintPhotos(
+        items.map((p) => ({
+          url: p.url,
+          caption: p.caption?.trim() || p.fileName || 'تصویر کارگاه',
+          linked_activity_or_location: p.linkedActivityOrLocation?.trim() || undefined,
+        }))
+      )
+    },
+    []
+  )
+
   /** After send-to-manager: clear compose surface and open a fresh blank report. */
   const handleArchived = useCallback(() => {
     draftSession.current += 1
     setNote('')
     setStructuredReport(null)
+    setPrintPhotos([])
     setStructuredFormKey((n) => n + 1)
     weatherStampKey.current = null
     if (projectId) {
@@ -1340,6 +1357,22 @@ export function DailyReportPanel({
             </div>
           ) : (
             <>
+              {projectId ? (
+                <DailyReportPhotosField
+                  projectId={projectId}
+                  reportDate={reportDate}
+                  note={note}
+                  refreshKey={photoRefreshKey}
+                  readOnly={false}
+                  onPhotosChange={handlePhotosChange}
+                  weatherJson={
+                    weather
+                      ? JSON.stringify(weatherSnapshotFromPayload(weather, reportDate))
+                      : null
+                  }
+                />
+              ) : null}
+
               <div className="border-b border-slate-100 pb-4">
                 <SiteReportForm
                   key={structuredFormKey}
@@ -1347,6 +1380,7 @@ export function DailyReportPanel({
                   dateShamsi={reportDate}
                   liveWeather={weather}
                   initial={structuredReport}
+                  photos={printPhotos}
                   activities={eligible.map((a) => ({
                     id: a.id,
                     wbs: a.wbs,
@@ -1369,21 +1403,6 @@ export function DailyReportPanel({
                   className="mt-2 text-sm"
                 />
               </div>
-
-              {projectId ? (
-                <DailyReportPhotosField
-                  projectId={projectId}
-                  reportDate={reportDate}
-                  note={note}
-                  refreshKey={photoRefreshKey}
-                  readOnly={false}
-                  weatherJson={
-                    weather
-                      ? JSON.stringify(weatherSnapshotFromPayload(weather, reportDate))
-                      : null
-                  }
-                />
-              ) : null}
             </>
           )}
 

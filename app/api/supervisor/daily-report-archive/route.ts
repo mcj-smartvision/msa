@@ -25,7 +25,9 @@ export async function GET(request: NextRequest) {
     const user = await requireUser(supabase)
     await assertProjectAccess(supabase, user.id, projectId)
 
-    const reports = await listArchivedDailyReports(supabase, projectId, user.id)
+    // List all archived reports on the project the user can access (not only own rows).
+    // Own-only filter hid rows when site_supervisor_id was null/mismatched on older data.
+    const reports = await listArchivedDailyReports(supabase, projectId)
     return NextResponse.json({ reports })
   } catch (error) {
     if (error instanceof WorkshopError) return workshopErrorResponse(error)

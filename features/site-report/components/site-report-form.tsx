@@ -24,9 +24,15 @@ import { PrintableDailyReport } from '@/features/site-report/components/printabl
 import { WorkSummaryEditor } from '@/features/site-report/components/work-summary-editor'
 import { SITE_REPORT_COPY, SITE_REPORT_SECTION_LABELS } from '@/features/site-report/config'
 import { emptyLipartaDailyReport } from '@/features/site-report/lib/empty-report'
+import { optionalText } from '@/features/site-report/lib/lines'
 import { stampRequiresCompletion } from '@/features/site-report/lib/validate-report'
 import { siteReportWeatherFromPayload } from '@/features/site-report/lib/weather-from-site'
-import type { LipartaDailyReportData, SiteReportActivityRef, SiteReportSectionId } from '@/features/site-report/lib/types'
+import type {
+  LipartaDailyReportData,
+  SiteReportActivityRef,
+  SiteReportAttachedPhoto,
+  SiteReportSectionId,
+} from '@/features/site-report/lib/types'
 import type { WeatherPayload } from '@/features/weather/lib/types'
 
 const COLLAPSE_ORDER: SiteReportSectionId[] = [
@@ -89,6 +95,7 @@ export function SiteReportForm({
   activities,
   liveWeather,
   initial,
+  photos,
   onChange,
   onPersist,
 }: {
@@ -99,6 +106,8 @@ export function SiteReportForm({
   activities: SiteReportActivityRef[]
   liveWeather?: WeatherPayload | null
   initial?: LipartaDailyReportData | null
+  /** Live uploaded photos for A4 preview */
+  photos?: SiteReportAttachedPhoto[]
   onChange?: (report: LipartaDailyReportData) => void
   onPersist?: (report: LipartaDailyReportData) => Promise<void>
 }) {
@@ -259,7 +268,7 @@ export function SiteReportForm({
                     onChange={(e) =>
                       update({
                         ...report,
-                        weather: { ...report.weather, location_name: e.target.value || null },
+                        weather: { ...report.weather, location_name: optionalText(e.target.value) },
                       })
                     }
                   />
@@ -271,7 +280,7 @@ export function SiteReportForm({
                     onChange={(e) =>
                       update({
                         ...report,
-                        weather: { ...report.weather, condition: e.target.value || null },
+                        weather: { ...report.weather, condition: optionalText(e.target.value) },
                       })
                     }
                   />
@@ -354,7 +363,7 @@ export function SiteReportForm({
                     onChange={(e) =>
                       update({
                         ...report,
-                        weather: { ...report.weather, notes: e.target.value || null },
+                        weather: { ...report.weather, notes: optionalText(e.target.value) },
                       })
                     }
                   />
@@ -467,10 +476,7 @@ export function SiteReportForm({
                     ...report,
                     tomorrow_plan: {
                       ...report.tomorrow_plan,
-                      planned_activities: e.target.value
-                        .split('\n')
-                        .map((s) => s.trim())
-                        .filter(Boolean),
+                      planned_activities: e.target.value.split('\n'),
                     },
                   })
                 }
@@ -483,7 +489,7 @@ export function SiteReportForm({
                     ...report,
                     tomorrow_plan: {
                       ...report.tomorrow_plan,
-                      required_materials: e.target.value || null,
+                      required_materials: optionalText(e.target.value),
                     },
                   })
                 }
@@ -496,7 +502,7 @@ export function SiteReportForm({
                     ...report,
                     tomorrow_plan: {
                       ...report.tomorrow_plan,
-                      required_manpower_and_equipment: e.target.value || null,
+                      required_manpower_and_equipment: optionalText(e.target.value),
                     },
                   })
                 }
@@ -512,7 +518,7 @@ export function SiteReportForm({
             <Textarea
               rows={3}
               value={report.free_notes ?? ''}
-              onChange={(e) => update({ ...report, free_notes: e.target.value || null })}
+              onChange={(e) => update({ ...report, free_notes: optionalText(e.target.value) })}
             />
           ) : null}
         </Collapsible>
@@ -558,7 +564,7 @@ export function SiteReportForm({
               </div>
             </div>
             <div id="site-report-print-root" className="max-h-[80vh] overflow-auto print:max-h-none">
-              <PrintableDailyReport report={report} previewMode />
+              <PrintableDailyReport report={report} previewMode photos={photos} />
             </div>
           </div>
         </div>
@@ -568,6 +574,7 @@ export function SiteReportForm({
         dangerouslySetInnerHTML={{
           __html: `
             @media print {
+              @page { size: A4; margin: 12mm; }
               body * { visibility: hidden !important; }
               #site-report-print-root, #site-report-print-root * { visibility: visible !important; }
               #site-report-print-root {

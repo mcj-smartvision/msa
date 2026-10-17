@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Loader2, Send } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import {
@@ -56,6 +57,7 @@ export function DailyReportWorkflowBar({
 }) {
   const [status, setStatus] = useState<DailyReportWorkflowStatus>('draft')
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
   const [busy, setBusy] = useState<'save' | 'send' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [okMsg, setOkMsg] = useState<string | null>(null)
@@ -175,6 +177,9 @@ export function DailyReportWorkflowBar({
         setOkMsg(t.sendToManagerOk)
         setSentToArchive(true)
         onArchivedRef.current?.(data.reportDate || reportDate)
+        router.push(
+          `/dashboard/site-supervisor/daily-reports?projectId=${encodeURIComponent(projectId)}`
+        )
       } else {
         setStatus(parseWorkflowStatus(data.workflowStatus))
         setOkMsg(t.saveDraftOk)

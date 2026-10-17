@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildDailyReportNo } from '@/features/supervisor/lib/daily-report-photos'
+import { normalizeReportDate } from '@/features/supervisor/lib/normalize-report-date'
 import { parseWorkflowStatus } from '@/features/supervisor/lib/daily-report-workflow'
 import { parseWeatherSnapshot } from '@/features/weather/lib/report-stamp'
 import type { DailyWeatherSnapshot } from '@/features/weather/lib/types'
@@ -17,32 +18,26 @@ export type ArchivedDailyReportRow = {
   reportNo: string
   reportDate: string
   note: string
-  status: 'submitted' | 'approved'
+  /** Always archived for UI — manager approval is not required. */
+  status: 'archived'
   submittedAt: string | null
   weather: DailyWeatherSnapshot | null
   structuredJson: unknown | null
 }
 
-const WORKFLOW_MISSING = /workflow_status|schema cache|column/i
+const COLUMN_MISSING = /schema cache|column|does not exist/i
 
-function archivedStatusOf(row: {
+function isArchivedRow(row: {
   workflow_status?: unknown
   approved_by_manager?: unknown
   submitted_to_manager_at?: unknown
   finalized_at?: unknown
-}): 'submitted' | 'approved' | null {
-  if (row.approved_by_manager === true) return 'approved'
+}): boolean {
+  if (row.approved_by_manager === true) return true
   const status = parseWorkflowStatus(row.workflow_status)
-  if (status === 'approved') return 'approved'
-  if (status === 'submitted') return 'submitted'
-  if (typeof row.submitted_to_manager_at === 'string' && row.submitted_to_manager_at.trim()) {
-    return 'submitted'
-  }
-  // Finalized-without-send legacy rows still belong in archive
-  if (status === 'finalized' || (typeof row.finalized_at === 'string' && row.finalized_at.trim())) {
-    return 'submitted'
-  }
-  return null
+  if (status === 'approved' || status === 'submitted' || status === 'finalized') return true
+  if (typeof row.submitted_to_manager_at === 'string' && row.submitted_to_manager_at.trim()) return true
+  return false
 }
 
 /** Submitted/approved daily reports for archive UI (one card per report row). */
@@ -51,41 +46,49 @@ export async function listArchivedDailyReports(
   projectId: string,
   supervisorId?: string
 ): Promise<ArchivedDailyReportRow[]> {
-  const selectFull =
-    'id, report_no, report_date, raw_text, workflow_status, approved_by_manager, submitted_to_manager_at, finalized_at, weather_json, structured_json, site_supervisor_id'
-  const selectLegacy =
-    'id, report_no, report_date, raw_text, approved_by_manager, submitted_to_manager_at, finalized_at, weather_json, site_supervisor_id'
-  const STRUCTURED_MISSING = /structured_json|schema cache|column/i
+  const attempts = [
+    'id, report_no, report_date, raw_text, workflow_status, approved_by_manager, submitted_to_manager_at, finalized_at, weather_json, structured_json, site_supervisor_id',
+    'id, report_no, report_date, raw_text, workflow_status, approved_by_manager, submitted_to_manager_at, finalized_at, weather_json, site_supervisor_id',
+    'id, report_no, report_date, raw_text, approved_by_manager, submitted_to_manager_at, finalized_at, weather_json, site_supervisor_id',
+    'id, report_no, report_date, raw_text, site_supervisor_id',
+  ]
 
-  let built = supabase.from('daily_reports').select(selectFull).eq('project_id', projectId)
-  if (supervisorId) built = built.eq('site_supervisor_id', supervisorId)
-  let { data, error } = await built
-    .order('report_date', { ascending: false })
-    .order('submitted_to_manager_at', { ascending: false })
+  let data: Record<string, unknown>[] | null = null
+  let lastError: { message: string } | null = null
 
-  if (error && (WORKFLOW_MISSING.test(error.message) || STRUCTURED_MISSING.test(error.message))) {
-    let legacy = supabase.from('daily_reports').select(selectLegacy).eq('project_id', projectId)
-    if (supervisorId) legacy = legacy.eq('site_supervisor_id', supervisorId)
-    ;({ data, error } = await legacy.order('report_date', { ascending: false }))
+  for (const select of attempts) {
+    let q = supabase.from('daily_reports').select(select).eq('project_id', projectId)
+    if (supervisorId) q = q.eq('site_supervisor_id', supervisorId)
+    const res = await q.order('report_date', { ascending: false })
+    if (!res.error) {
+      data = (res.data ?? []) as Record<string, unknown>[]
+      lastError = null
+      break
+    }
+    lastError = res.error
+    if (!COLUMN_MISSING.test(res.error.message)) break
   }
 
-  if (error) {
-    if (/daily_reports|schema cache|does not exist/i.test(error.message)) return []
-    throw new Error(error.message)
+  if (lastError) {
+    throw new Error(lastError.message)
   }
 
   const out: ArchivedDailyReportRow[] = []
   for (const row of data ?? []) {
-    const status = archivedStatusOf(row)
-    if (!status) continue
-    const reportDate = String(row.report_date ?? '')
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) continue
-    const id = String(row.id)
+    const hasWorkflowCols = 'workflow_status' in row || 'submitted_to_manager_at' in row
+    const reportDate = normalizeReportDate(row.report_date)
+    if (!reportDate) continue
+    const id = String(row.id ?? '')
+    if (!id) continue
+    const note = typeof row.raw_text === 'string' ? row.raw_text.trim() : ''
+
+    const archived = hasWorkflowCols ? isArchivedRow(row) : Boolean(note)
+    if (!archived) continue
+
     const reportNo =
       typeof row.report_no === 'string' && row.report_no.trim()
         ? row.report_no.trim()
         : buildDailyReportNo(reportDate, id)
-    const note = typeof row.raw_text === 'string' ? row.raw_text.trim() : ''
     const submittedAt =
       typeof row.submitted_to_manager_at === 'string'
         ? row.submitted_to_manager_at
@@ -97,11 +100,18 @@ export async function listArchivedDailyReports(
       reportNo,
       reportDate,
       note: note || '—',
-      status,
+      status: 'archived',
       submittedAt,
       weather: parseWeatherSnapshot(row.weather_json),
-      structuredJson: (row as { structured_json?: unknown }).structured_json ?? null,
+      structuredJson: row.structured_json ?? null,
     })
   }
+
+  out.sort((a, b) => {
+    const ta = a.submittedAt ? Date.parse(a.submittedAt) : 0
+    const tb = b.submittedAt ? Date.parse(b.submittedAt) : 0
+    if (tb !== ta) return tb - ta
+    return b.reportDate.localeCompare(a.reportDate) || b.reportNo.localeCompare(a.reportNo)
+  })
   return out
 }

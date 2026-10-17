@@ -96,6 +96,26 @@ export const SITE_REPORT_COPY = {
   tomorrowManpower: 'نفرات و تجهیزات',
 } as const
 
+/** Copy & tokens for A4 print / manager handoff. */
+export const SITE_REPORT_PRINT = {
+  brandTitle: 'گزارش روزانه کارگاه',
+  brandName: 'SitePilot',
+  metaProject: 'پروژه',
+  metaReportNo: 'شماره گزارش',
+  metaDate: 'تاریخ',
+  metaSupervisor: 'سرپرست کارگاه',
+  metaStatus: 'وضعیت',
+  metaDay: 'روز',
+  weatherTemp: 'دما',
+  weatherImpact: 'اثر بر کار',
+  weatherLost: 'ساعت از دست‌رفته',
+  photoCaptionFallback: 'تصویر کارگاه',
+  footerNote: 'ثبت گزارش سرپرست کارگاه — جهت اطلاع مدیر پروژه',
+  accentBar: 'bg-orange-500',
+  accentText: 'text-orange-700',
+  accentBorder: 'border-orange-500',
+} as const
+
 export const SITE_REPORT_SECTION_LABELS: Record<SiteReportSectionId, string> = {
   header: 'سربرگ',
   weather: '۱. آب‌وهوا',

@@ -24,7 +24,7 @@ export function lipartaReportFromArchive(input: {
     project_name: input.projectName ?? '',
     report_no: input.reportNo,
     date_shamsi: input.reportDate,
-    status: (input.statusLabel === 'approved' ? 'تأییدشده' : 'ارسال‌شده') as LipartaDailyReportData['header']['status'],
+    status: 'آرشیو شده' as LipartaDailyReportData['header']['status'],
   }
   const fromJson = parseLipartaDailyReport(input.structuredJson, header)
   const base = fromJson ?? emptyLipartaDailyReport(header)

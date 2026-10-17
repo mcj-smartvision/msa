@@ -13,7 +13,7 @@ import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { SITE_REPORT_COPY } from '@/features/site-report/config'
 import { emptyCrewRow } from '@/features/site-report/lib/empty-rows'
-import { parseNum } from '@/features/site-report/lib/lines'
+import { optionalText, parseNum } from '@/features/site-report/lib/lines'
 import type { ActivityStatusFa, SiteReportCrewRow } from '@/features/site-report/lib/types'
 import { cn } from '@/shared/lib/utils'
 
@@ -97,7 +97,7 @@ export function CrewProgressEditor({
                 onChange={(e) =>
                   patch(idx, {
                     ...row,
-                    location: { ...row.location, floor: e.target.value || null },
+                    location: { ...row.location, floor: optionalText(e.target.value) },
                   })
                 }
               />
@@ -108,7 +108,7 @@ export function CrewProgressEditor({
                 onChange={(e) =>
                   patch(idx, {
                     ...row,
-                    location: { ...row.location, zone: e.target.value || null },
+                    location: { ...row.location, zone: optionalText(e.target.value) },
                   })
                 }
               />
@@ -153,7 +153,7 @@ export function CrewProgressEditor({
                     ...row,
                     work_done_today: {
                       ...row.work_done_today,
-                      unit: e.target.value || null,
+                      unit: optionalText(e.target.value),
                     },
                   })
                 }

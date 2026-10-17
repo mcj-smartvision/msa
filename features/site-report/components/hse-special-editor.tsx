@@ -12,7 +12,7 @@ import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 import { Textarea } from '@/shared/components/ui/textarea'
 import { SITE_REPORT_COPY } from '@/features/site-report/config'
-import { linesToText, parseNum, textToLines } from '@/features/site-report/lib/lines'
+import { linesToText, optionalText, parseNum, textToLines } from '@/features/site-report/lib/lines'
 import type { SiteReportHse, SiteReportSpecialItems } from '@/features/site-report/lib/types'
 
 export function HseEditor({
@@ -68,7 +68,7 @@ export function HseEditor({
           onChange={(e) =>
             onChange({
               ...value,
-              toolbox_talk: { ...value.toolbox_talk, topic: e.target.value || null },
+              toolbox_talk: { ...value.toolbox_talk, topic: optionalText(e.target.value) },
             })
           }
         />
@@ -124,7 +124,7 @@ export function SpecialItemsEditor({
           <Label className="text-[11px]">{label}</Label>
           <Input
             value={value[key] ?? ''}
-            onChange={(e) => onChange({ ...value, [key]: e.target.value || null })}
+            onChange={(e) => onChange({ ...value, [key]: optionalText(e.target.value) })}
           />
         </div>
       ))}

@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildDailyReportNo } from '@/features/supervisor/lib/daily-report-photos'
+import { normalizeReportDate } from '@/features/supervisor/lib/normalize-report-date'
 import { parseWorkflowStatus } from '@/features/supervisor/lib/daily-report-workflow'
 import { parseWeatherSnapshot } from '@/features/weather/lib/report-stamp'
 import type { DailyWeatherSnapshot } from '@/features/weather/lib/types'
@@ -16,6 +17,7 @@ const WEATHER_COLUMN_MISSING = /weather_json|schema cache|column/i
 const REPORT_NO_COLUMN_MISSING = /report_no|schema cache|column/i
 const WORKFLOW_MISSING = /workflow_status|schema cache|column/i
 const STRUCTURED_MISSING = /structured_json|schema cache|column/i
+const SELECT_COLUMN_MISSING = /schema cache|column|does not exist/i
 
 export type DailyReportHeader = {
   id: string
@@ -83,8 +85,8 @@ export async function findOpenDraftReport(
   if (row.approved_by_manager) return null
   const status = parseWorkflowStatus(row.workflow_status)
   if (status !== 'draft' && status !== 'finalized') return null
-  const reportDate = String(row.report_date ?? '')
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(reportDate)) return null
+  const reportDate = normalizeReportDate(row.report_date)
+  if (!reportDate) return null
   return {
     ...headerOf(String(row.id), reportDate, row.report_no as string | null),
     note: typeof row.raw_text === 'string' ? row.raw_text : '',
@@ -356,12 +358,13 @@ export async function submitOpenDraftToManager(
   }
 
   let { error } = await applyUpdate(updatePayload)
+
   if (error && STRUCTURED_MISSING.test(error.message) && updatePayload.structured_json) {
     const { structured_json: _s, ...withoutStructured } = updatePayload
     ;({ error } = await applyUpdate(withoutStructured))
   }
   // Older DBs may lack approved_at / approved_by_manager together with workflow
-  if (error && /approved_by_manager|approved_at|schema cache|column/i.test(error.message)) {
+  if (error && /approved_by_manager|approved_at/i.test(error.message)) {
     const {
       approved_by_manager: _a,
       approved_at: _b,
@@ -372,30 +375,11 @@ export async function submitOpenDraftToManager(
   }
   // Unique (project, date, supervisor) still present if migration 113 not run
   if (error && (error as { code?: string }).code === '23505') {
-    const { report_date: _d, ...keepDate } = updatePayload
-    keepDate.report_date = header.reportDate
-    ;({ error } = await applyUpdate(keepDate))
-    if (!error) {
-      await supabase
-        .from('daily_report_photos')
-        .update({ report_date: header.reportDate } as never)
-        .eq('daily_report_id', header.id)
-      const verified = await supabase
-        .from('daily_reports')
-        .select('workflow_status, report_date')
-        .eq('id', header.id)
-        .maybeSingle()
-      const st = parseWorkflowStatus(verified.data?.workflow_status)
-      if (st !== 'submitted' && st !== 'approved') {
-        throw new Error('ارسال ثبت نشد — وضعیت گزارش به‌روز نشد')
-      }
-      return headerOf(
-        header.id,
-        String(verified.data?.report_date ?? header.reportDate),
-        reportNo
-      )
-    }
+    throw new Error(
+      'migration_required: محدودیت یک‌گزارش‌درروز هنوز فعال است — فایل database/113-daily-report-open-draft.sql را در Supabase اجرا کنید تا هر ارسال شمارهٔ جدا بگیرد'
+    )
   }
+
   if (error) {
     if (WORKFLOW_MISSING.test(error.message)) {
       throw new Error('migration_required: database/112-daily-report-workflow.sql و 113 را اجرا کنید')
@@ -403,19 +387,50 @@ export async function submitOpenDraftToManager(
     throw new Error(error.message)
   }
 
-  const verified = await supabase
-    .from('daily_reports')
-    .select('workflow_status, report_date')
-    .eq('id', header.id)
-    .maybeSingle()
-  const st = parseWorkflowStatus(verified.data?.workflow_status)
-  if (st !== 'submitted' && st !== 'approved') {
+  const verifySelects = [
+    'id, workflow_status, report_date, approved_by_manager, submitted_to_manager_at',
+    'id, workflow_status, report_date, submitted_to_manager_at',
+    'id, workflow_status, report_date',
+    'id, report_date',
+  ]
+  let verified: Record<string, unknown> | null = null
+  for (const select of verifySelects) {
+    const res = await supabase.from('daily_reports').select(select).eq('id', header.id).maybeSingle()
+    if (!res.error) {
+      verified = (res.data as Record<string, unknown> | null) ?? null
+      break
+    }
+    if (!SELECT_COLUMN_MISSING.test(res.error.message)) {
+      throw new Error(res.error.message)
+    }
+  }
+
+  if (!verified?.id) {
+    throw new Error('ارسال ثبت نشد — ردیف گزارش به‌روز نشد (دسترسی یا migration را بررسی کنید)')
+  }
+
+  const hasWorkflowCol = 'workflow_status' in verified
+  const st = parseWorkflowStatus(verified.workflow_status)
+  const markedApproved = verified.approved_by_manager === true
+  const hasSubmittedAt =
+    typeof verified.submitted_to_manager_at === 'string' &&
+    Boolean(String(verified.submitted_to_manager_at).trim())
+  if (
+    hasWorkflowCol &&
+    st !== 'submitted' &&
+    st !== 'approved' &&
+    !markedApproved &&
+    !hasSubmittedAt
+  ) {
     throw new Error(
       'ارسال ثبت نشد — احتمالاً migrationهای database/112 و database/113 اجرا نشده‌اند'
     )
   }
 
-  const archivedDate = String(verified.data?.report_date ?? params.sendDate)
+  const archivedDate =
+    normalizeReportDate(verified.report_date) ??
+    normalizeReportDate(params.sendDate) ??
+    params.sendDate
   await supabase
     .from('daily_report_photos')
     .update({ report_date: archivedDate } as never)
@@ -535,8 +550,8 @@ export async function fetchDailyReportMeta(
     if ((row as { approved_by_manager?: boolean }).approved_by_manager) status = 'approved'
     // Archive shows submitted/approved; skip open drafts so the compose page stays the source of truth
     if (status === 'draft' || status === 'finalized') continue
-    const date = String(row.report_date ?? '')
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
+    const date = normalizeReportDate(row.report_date)
+    if (!date) continue
     const raw = typeof row.raw_text === 'string' ? row.raw_text.trim() : ''
     if (raw && !notes[date]) notes[date] = raw
     if (!statusByDate[date] && (status === 'submitted' || status === 'approved')) {

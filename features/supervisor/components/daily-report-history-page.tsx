@@ -16,10 +16,8 @@ import { useSupabase } from '@/shared/hooks/use-supabase'
 import {
 ArrowRight,
 CalendarCheck,
-CloudSun,
 Filter,
 ImageIcon,
-MessageSquareText,
 Search,
 } from 'lucide-react'
 import { useScheduleCalendar } from '@/features/schedule/hooks/use-schedule-calendar'
@@ -27,14 +25,12 @@ import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import {
-extractAiHighlightNote,
 formatReportSavedTimestamp,
 formatReportTitle,
 HISTORY_PAGE_SIZE,
 } from '@/features/supervisor/lib/daily-report-history'
 import type { ArchivedDailyReportRow } from '@/features/supervisor/lib/daily-report-archive'
 import { ArchiveA4Preview } from '@/features/supervisor/components/archive-a4-preview'
-import { extractWeatherLine } from '@/features/weather/lib/report-stamp'
 import { cn } from '@/shared/lib/utils'
 import type { DailyReportPhotoItem } from '@/features/supervisor/lib/daily-report-photos'
 import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
@@ -48,7 +44,9 @@ function faNum(n: number): string {
 export function DailyReportHistoryPage() {
   const searchParams = useSearchParams()
   const urlProjectId = searchParams.get('projectId')
-  const projectId = useSyncedProjectId(urlProjectId) ?? urlProjectId ?? ''
+  // Prefer explicit URL project so archive matches the project that was just filed
+  const syncedProjectId = useSyncedProjectId(urlProjectId)
+  const projectId = (urlProjectId || syncedProjectId || '').trim()
   const urlName = searchParams.get('projectName') ?? ''
   const [projectName, setProjectName] = useState(urlName)
   const { calendar } = useScheduleCalendar()
@@ -57,7 +55,7 @@ export function DailyReportHistoryPage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [archiveRows, setArchiveRows] = useState<ArchivedDailyReportRow[]>([])
-  const [photosByDate, setPhotosByDate] = useState<Record<string, DailyReportPhotoItem[]>>({})
+  const [photosByReportId, setPhotosByReportId] = useState<Record<string, DailyReportPhotoItem[]>>({})
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [monthFilter, setMonthFilter] = useState('')
@@ -97,7 +95,7 @@ export function DailyReportHistoryPage() {
   const load = useCallback(async () => {
     if (!projectId) {
       setArchiveRows([])
-      setPhotosByDate({})
+      setPhotosByReportId({})
       setLoadError(null)
       setLoading(false)
       return
@@ -124,11 +122,23 @@ export function DailyReportHistoryPage() {
       }
       setArchiveRows(Array.isArray(archiveJson.reports) ? archiveJson.reports : [])
 
-      const photosJson = await photosRes.json().catch(() => ({}))
-      if (photosRes.ok && photosJson.photosByDate && typeof photosJson.photosByDate === 'object') {
-        setPhotosByDate(photosJson.photosByDate as Record<string, DailyReportPhotoItem[]>)
+      const photosJson = (await photosRes.json().catch(() => ({}))) as {
+        photosByReportId?: Record<string, DailyReportPhotoItem[]>
+        photosByDate?: Record<string, DailyReportPhotoItem[]>
+      }
+      if (photosRes.ok && photosJson.photosByReportId && typeof photosJson.photosByReportId === 'object') {
+        setPhotosByReportId(photosJson.photosByReportId)
+      } else if (photosRes.ok && photosJson.photosByDate && typeof photosJson.photosByDate === 'object') {
+        const byId: Record<string, DailyReportPhotoItem[]> = {}
+        for (const list of Object.values(photosJson.photosByDate)) {
+          for (const p of list) {
+            if (!p.dailyReportId) continue
+            ;(byId[p.dailyReportId] ??= []).push(p)
+          }
+        }
+        setPhotosByReportId(byId)
       } else {
-        setPhotosByDate({})
+        setPhotosByReportId({})
       }
     } catch (e) {
       setArchiveRows([])
@@ -149,19 +159,16 @@ export function DailyReportHistoryPage() {
       if (!q) return true
       if (row.note.toLowerCase().includes(q)) return true
       if (row.reportNo.toLowerCase().includes(q)) return true
-      const photos = photosByDate[row.reportDate] ?? []
+      const photos = photosByReportId[row.id] ?? []
       return photos.some(
-        (p) =>
-          p.dailyReportId === row.id ||
-          p.reportNo.toLowerCase().includes(q) ||
-          p.fileName.toLowerCase().includes(q)
+        (p) => p.reportNo.toLowerCase().includes(q) || p.fileName.toLowerCase().includes(q)
       )
     })
-  }, [archiveRows, search, monthFilter, photosByDate])
+  }, [archiveRows, search, monthFilter, photosByReportId])
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-100/80" dir="rtl" lang="fa">
-      <div className="mx-auto max-w-2xl space-y-5 px-4 py-6 pb-12">
+      <div className="mx-auto max-w-[220mm] space-y-5 px-4 py-6 pb-12">
         <div className="space-y-4">
           <Button type="button" variant="ghost" size="sm" className="-mr-2 text-slate-600" asChild>
             <Link href="/dashboard/site-supervisor?section=daily-report">
@@ -270,13 +277,7 @@ export function DailyReportHistoryPage() {
                   calendar
                 )
                 const title = formatReportTitle(row.reportDate, calendar)
-                const highlightNote = extractAiHighlightNote(row.note)
-                const weatherNote = row.weather?.lineFa ?? extractWeatherLine(row.note)
-                const photos = (photosByDate[row.reportDate] ?? []).filter(
-                  (p) => p.dailyReportId === row.id || !p.dailyReportId
-                )
-                const dayPhotos =
-                  photos.length > 0 ? photos : (photosByDate[row.reportDate] ?? [])
+                const reportPhotos = photosByReportId[row.id] ?? []
 
                 return (
                   <li
@@ -294,76 +295,40 @@ export function DailyReportHistoryPage() {
                         <div className="min-w-0">
                           <p className="font-bold text-slate-900 truncate">{title}</p>
                           <p className="text-xs text-slate-500 tabular-nums mt-0.5">
+                            <span className="font-mono font-semibold text-slate-700">{row.reportNo}</span>
+                            <span className="mx-1.5 text-slate-300">·</span>
                             {timeLabel ?? '—'}
                             <span className="mx-1.5 text-slate-300">·</span>
                             {t.supervisorRole}
-                            <>
-                              <span className="mx-1.5 text-slate-300">·</span>
-                              <span className="font-mono">{row.reportNo}</span>
-                            </>
                           </p>
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        {row.status === 'approved' ? (
-                          <span className="rounded-full bg-emerald-50 border border-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">
-                            {t.archiveStatusApproved}
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-amber-50 border border-amber-100 px-3 py-1 text-xs font-medium text-amber-900">
-                            {t.archiveStatusAwaitingManager}
-                          </span>
-                        )}
-                        {dayPhotos.length > 0 ? (
+                        <span className="rounded-full bg-emerald-50 border border-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800">
+                          {t.archiveStatusFiled}
+                        </span>
+                        {reportPhotos.length > 0 ? (
                           <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 border border-violet-100 px-3 py-1 text-xs font-medium text-violet-800">
                             <ImageIcon className="h-3.5 w-3.5" aria-hidden />
-                            {t.photosAttached(faNum(dayPhotos.length))}
+                            {t.photosAttached(faNum(reportPhotos.length))}
                           </span>
                         ) : null}
                       </div>
                     </div>
 
-                    {weatherNote ? (
-                      <div className="mx-4 mt-3 flex items-start gap-2 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-xs text-sky-900">
-                        <CloudSun className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                        <p className="leading-relaxed">{weatherNote}</p>
-                      </div>
-                    ) : null}
-
-                    {highlightNote ? (
-                      <div className="mx-4 mb-4 mt-3 rounded-xl bg-orange-50 border border-orange-100/80 px-4 py-3 flex gap-3">
-                        <MessageSquareText
-                          className="h-5 w-5 text-orange-400 shrink-0 mt-0.5"
-                          aria-hidden="true"
-                        />
-                        <p className="text-sm text-slate-700 leading-relaxed">{highlightNote}</p>
-                      </div>
-                    ) : (
-                      <p className="mx-4 mt-3 mb-2 text-xs text-slate-400 whitespace-pre-wrap">
-                        {row.note && row.note !== '—' ? row.note : t.noNoteBody}
-                      </p>
-                    )}
-
-                    {dayPhotos.length > 0 ? (
-                      <div className="mx-4 mb-4 space-y-2">
-                        <p className="text-xs font-semibold text-slate-600">{t.photoSectionTitle}</p>
-                        <ul className="grid grid-cols-3 gap-2">
-                          {dayPhotos.map((photo) => (
-                            <li key={photo.id} className="overflow-hidden rounded-lg border border-slate-200">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={photo.url}
-                                alt={photo.fileName}
-                                className="h-24 w-full object-cover"
-                              />
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
-
-                    <div className="mx-4 mb-4 border-t border-slate-100 pt-3">
-                      <ArchiveA4Preview row={row} projectName={projectName} />
+                    <div className="px-3 pb-4 pt-3">
+                      <ArchiveA4Preview
+                        row={row}
+                        projectName={projectName}
+                        photos={reportPhotos
+                          .filter((p) => Boolean(p.url))
+                          .map((p) => ({
+                            url: p.url,
+                            caption: p.caption?.trim() || p.fileName || 'تصویر کارگاه',
+                            linked_activity_or_location:
+                              p.linkedActivityOrLocation?.trim() || undefined,
+                          }))}
+                      />
                     </div>
                   </li>
                 )
