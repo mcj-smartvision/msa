@@ -119,15 +119,27 @@ export function SiteReportForm({
   const [persistBusy, setPersistBusy] = useState(false)
   const weatherSeeded = useRef(false)
   const hydrated = useRef(false)
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
 
-  const update = useCallback(
-    (next: LipartaDailyReportData) => {
-      const stamped = stampRequiresCompletion(next)
-      setReport(stamped)
-      onChange?.(stamped)
-    },
-    [onChange]
-  )
+  const update = useCallback((next: LipartaDailyReportData) => {
+    const stamped = stampRequiresCompletion(next)
+    setReport(stamped)
+    onChangeRef.current?.(stamped)
+  }, [])
+
+  /** Sync parent once on mount so ثبت always sees the latest form JSON. */
+  useEffect(() => {
+    onChangeRef.current?.(report)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount sync only
+  }, [])
+
+  function handlePrintA4() {
+    setShowPrint(true)
+    window.setTimeout(() => {
+      window.print()
+    }, 150)
+  }
 
   useEffect(() => {
     if (!initial || hydrated.current) return
@@ -195,7 +207,7 @@ export function SiteReportForm({
           <p className="text-[11px] text-slate-500">{SITE_REPORT_COPY.mandatoryHint}</p>
           <p className="text-[11px] text-slate-500">{SITE_REPORT_COPY.voiceOptionalHint}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 print:hidden">
           <VoiceToTextButton
             size="sm"
             disabled={busy}
@@ -203,8 +215,11 @@ export function SiteReportForm({
             onTranscript={(text) => void analyzeTranscript(text)}
           />
           <Button type="button" size="sm" variant="outline" onClick={() => setShowPrint((v) => !v)}>
-            <Printer className="h-4 w-4 ml-1" aria-hidden />
             {SITE_REPORT_COPY.printPreview}
+          </Button>
+          <Button type="button" size="sm" onClick={handlePrintA4}>
+            <Printer className="h-4 w-4 ml-1" aria-hidden />
+            {SITE_REPORT_COPY.printCta}
           </Button>
         </div>
       </div>
@@ -522,10 +537,32 @@ export function SiteReportForm({
       ) : null}
 
       {showPrint ? (
-        <div className="rounded-xl border border-slate-300 bg-white shadow-sm overflow-auto">
+        <div
+          id="site-report-print-root"
+          className="rounded-xl border border-slate-300 bg-white shadow-sm overflow-auto print:border-0 print:shadow-none print:rounded-none"
+        >
           <PrintableDailyReport report={report} />
         </div>
       ) : null}
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+            @media print {
+              body * { visibility: hidden !important; }
+              #site-report-print-root, #site-report-print-root * { visibility: visible !important; }
+              #site-report-print-root {
+                position: absolute !important;
+                inset: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+              }
+            }
+          `,
+        }}
+      />
     </div>
   )
 }

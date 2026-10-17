@@ -33,6 +33,7 @@ export function DailyReportWorkflowBar({
   structured,
   onNoteLoaded,
   onStructuredLoaded,
+  onReady,
   onSaved,
   onArchived,
   className,
@@ -45,6 +46,8 @@ export function DailyReportWorkflowBar({
   /** Server draft note when opening an existing open draft */
   onNoteLoaded?: (note: string) => void
   onStructuredLoaded?: (report: LipartaDailyReportData | null) => void
+  /** Always called when draft status fetch finishes (success or failure) */
+  onReady?: () => void
   onSaved?: () => void
   /** After send-to-manager — parent clears form and opens a new blank report */
   onArchived?: (archivedReportDate: string) => void
@@ -57,8 +60,11 @@ export function DailyReportWorkflowBar({
   const [okMsg, setOkMsg] = useState<string | null>(null)
   const onNoteLoadedRef = useRef(onNoteLoaded)
   const onStructuredLoadedRef = useRef(onStructuredLoaded)
+  const onReadyRef = useRef(onReady)
   const onSavedRef = useRef(onSaved)
   const onArchivedRef = useRef(onArchived)
+  const structuredRef = useRef(structured)
+  const noteRef = useRef(note)
   const loadGen = useRef(0)
 
   useEffect(() => {
@@ -68,11 +74,20 @@ export function DailyReportWorkflowBar({
     onStructuredLoadedRef.current = onStructuredLoaded
   }, [onStructuredLoaded])
   useEffect(() => {
+    onReadyRef.current = onReady
+  }, [onReady])
+  useEffect(() => {
     onSavedRef.current = onSaved
   }, [onSaved])
   useEffect(() => {
     onArchivedRef.current = onArchived
   }, [onArchived])
+  useEffect(() => {
+    structuredRef.current = structured
+  }, [structured])
+  useEffect(() => {
+    noteRef.current = note
+  }, [note])
 
   useEffect(() => {
     let cancelled = false
@@ -102,8 +117,12 @@ export function DailyReportWorkflowBar({
         if (cancelled || gen !== loadGen.current) return
         setError(e instanceof Error ? e.message : t.workflowLoadFailed)
         setStatus('draft')
+        onNoteLoadedRef.current?.('')
       } finally {
-        if (!cancelled && gen === loadGen.current) setLoading(false)
+        if (!cancelled && gen === loadGen.current) {
+          setLoading(false)
+          onReadyRef.current?.()
+        }
       }
     })()
 
@@ -112,7 +131,17 @@ export function DailyReportWorkflowBar({
     }
   }, [projectId])
 
+  function hasPersistableContent(): boolean {
+    const n = noteRef.current.replace(/\s+/g, ' ').trim()
+    return n.length > 0 || siteReportHasContent(structuredRef.current)
+  }
+
   async function run(action: 'save' | 'send_to_manager') {
+    if (!hasPersistableContent()) {
+      setOkMsg(null)
+      setError(t.workflowContentRequired)
+      return
+    }
     setBusy(action === 'save' ? 'save' : 'send')
     setError(null)
     setOkMsg(null)
@@ -124,9 +153,9 @@ export function DailyReportWorkflowBar({
           action,
           projectId,
           reportDate,
-          note,
+          note: noteRef.current,
           weather: weather ?? null,
-          structuredJson: structured ?? null,
+          structuredJson: structuredRef.current ?? null,
         }),
       })
       const data = (await res.json()) as {
@@ -155,8 +184,6 @@ export function DailyReportWorkflowBar({
   }
 
   const showActions = canSaveDailyReport(status) && canSendDailyReportToManager(status)
-  const contentReady =
-    note.replace(/\s+/g, ' ').trim().length > 0 || siteReportHasContent(structured)
 
   return (
     <div className={cn('space-y-2 border-t border-slate-100 pt-3', className)}>
@@ -168,7 +195,7 @@ export function DailyReportWorkflowBar({
             type="button"
             variant="outline"
             className="flex-1 bg-white"
-            disabled={busy != null || loading || !contentReady}
+            disabled={busy != null || loading}
             onClick={() => void run('save')}
           >
             {busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin ml-1" /> : null}
@@ -177,7 +204,7 @@ export function DailyReportWorkflowBar({
           <Button
             type="button"
             className="flex-1"
-            disabled={busy != null || loading || !contentReady}
+            disabled={busy != null || loading}
             onClick={() => void run('send_to_manager')}
           >
             {busy === 'send' ? (

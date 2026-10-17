@@ -54,6 +54,7 @@ import { ensureWeatherLine, extractWeatherLine, formatWeatherReportLine, weather
 import { DailyReportPhotosField } from '@/features/supervisor/components/daily-report-photos-field'
 import { DailyReportWorkflowBar } from '@/features/supervisor/components/daily-report-workflow-bar'
 import { SiteReportForm } from '@/features/site-report/components/site-report-form'
+import { siteReportHasContent } from '@/features/site-report/lib/report-content'
 import type { LipartaDailyReportData } from '@/features/site-report/lib/types'
 import { SUPERVISOR_COPY, SUPERVISOR_PUNCT } from '@/features/supervisor/config'
 import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
@@ -843,13 +844,28 @@ export function DailyReportPanel({
 
   const handleNoteLoaded = useCallback((serverNote: string) => {
     setNote((prev) => (prev.trim() ? prev : serverNote))
+  }, [])
+
+  const handleWorkflowReady = useCallback(() => {
     setNoteReady(true)
   }, [])
 
   const handleStructuredLoaded = useCallback((serverStructured: LipartaDailyReportData | null) => {
-    if (!serverStructured) return
+    if (!serverStructured || !siteReportHasContent(serverStructured)) return
     setStructuredReport(serverStructured)
     setStructuredFormKey((n) => n + 1)
+  }, [])
+
+  const handleStructuredChange = useCallback((structured: LipartaDailyReportData) => {
+    setStructuredReport(structured)
+    if (structured.free_notes?.trim()) {
+      setNote((prev) => {
+        const body = structured.free_notes!.trim()
+        if (prev.includes(body)) return prev
+        const line = extractWeatherLine(prev)
+        return line ? ensureWeatherLine(body, line) : body
+      })
+    }
   }, [])
 
   const handleDraftSaved = useCallback(() => {
@@ -1336,17 +1352,7 @@ export function DailyReportPanel({
                     wbs: a.wbs,
                     name: a.name,
                   }))}
-                  onChange={(structured) => {
-                    setStructuredReport(structured)
-                    if (structured.free_notes?.trim()) {
-                      setNote((prev) => {
-                        const body = structured.free_notes!.trim()
-                        if (prev.includes(body)) return prev
-                        const line = extractWeatherLine(prev)
-                        return line ? ensureWeatherLine(body, line) : body
-                      })
-                    }
-                  }}
+                  onChange={handleStructuredChange}
                 />
               </div>
 
@@ -1390,6 +1396,7 @@ export function DailyReportPanel({
               structured={structuredReport}
               onNoteLoaded={handleNoteLoaded}
               onStructuredLoaded={handleStructuredLoaded}
+              onReady={handleWorkflowReady}
               onSaved={handleDraftSaved}
               onArchived={handleArchived}
               className={!noteReady ? 'sr-only' : undefined}

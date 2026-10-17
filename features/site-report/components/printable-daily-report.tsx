@@ -8,7 +8,7 @@
 
 'use client'
 
-import { SITE_REPORT_SECTION_LABELS } from '@/features/site-report/config'
+import { SITE_REPORT_COPY, SITE_REPORT_SECTION_LABELS } from '@/features/site-report/config'
 import { sectionsForPrint } from '@/features/site-report/lib/section-visibility'
 import type { LipartaDailyReportData, SiteReportSectionId } from '@/features/site-report/lib/types'
 
@@ -24,6 +24,7 @@ function Section({ id, children }: { id: SiteReportSectionId; children: React.Re
 export function PrintableDailyReport({ report }: { report: LipartaDailyReportData }) {
   const ids = sectionsForPrint(report)
   const h = report.header
+  const bodyIds = ids.filter((id) => id !== 'header')
 
   return (
     <div
@@ -34,7 +35,7 @@ export function PrintableDailyReport({ report }: { report: LipartaDailyReportDat
       <header className="mb-4 border-b-2 border-slate-800 pb-3">
         <h1 className="text-lg font-bold">گزارش روزانه کارگاه — Liparta</h1>
         <p className="mt-1 tabular-nums">
-          {h.project_name}
+          {h.project_name || '—'}
           {h.report_no ? ` · ${h.report_no}` : ''}
           {h.date_shamsi ? ` · ${h.date_shamsi}` : ''}
           {h.day_of_week ? ` · ${h.day_of_week}` : ''}
@@ -45,6 +46,10 @@ export function PrintableDailyReport({ report }: { report: LipartaDailyReportDat
           {h.submission_time ? ` · ${h.submission_time}` : ''}
         </p>
       </header>
+
+      {bodyIds.length === 0 ? (
+        <p className="text-sm text-slate-600">{SITE_REPORT_COPY.printEmpty}</p>
+      ) : null}
 
       {ids.includes('weather') ? (
         <Section id="weather">
@@ -80,24 +85,28 @@ export function PrintableDailyReport({ report }: { report: LipartaDailyReportDat
               </tr>
             </thead>
             <tbody>
-              {report.crews_and_progress.map((row, i) => (
-                <tr key={i} className="border-b border-slate-100">
-                  <td className="p-1">{row.contractor_or_crew}</td>
-                  <td className="p-1">
-                    {row.wbs_code ? `${row.wbs_code} ` : ''}
-                    {row.activity_name}
-                  </td>
-                  <td className="p-1">
-                    {[row.location.floor, row.location.zone, row.location.axis].filter(Boolean).join(' / ') || '—'}
-                  </td>
-                  <td className="p-1 tabular-nums">{row.headcount ?? '—'}</td>
-                  <td className="p-1 tabular-nums">{row.regular_hours ?? '—'}</td>
-                  <td className="p-1 tabular-nums">
-                    {row.work_done_today.quantity ?? '—'} {row.work_done_today.unit ?? ''}
-                  </td>
-                  <td className="p-1">{row.activity_status}</td>
-                </tr>
-              ))}
+              {report.crews_and_progress.map((row, i) => {
+                const loc = row.location ?? {}
+                const done = row.work_done_today ?? { quantity: null, unit: null }
+                return (
+                  <tr key={i} className="border-b border-slate-100">
+                    <td className="p-1">{row.contractor_or_crew}</td>
+                    <td className="p-1">
+                      {row.wbs_code ? `${row.wbs_code} ` : ''}
+                      {row.activity_name}
+                    </td>
+                    <td className="p-1">
+                      {[loc.floor, loc.zone, loc.axis].filter(Boolean).join(' / ') || '—'}
+                    </td>
+                    <td className="p-1 tabular-nums">{row.headcount ?? '—'}</td>
+                    <td className="p-1 tabular-nums">{row.regular_hours ?? '—'}</td>
+                    <td className="p-1 tabular-nums">
+                      {done.quantity ?? '—'} {done.unit ?? ''}
+                    </td>
+                    <td className="p-1">{row.activity_status}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </Section>
