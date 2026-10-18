@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file features/supervisor/components/zone-create-panel.tsx
  * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (zone-create-panel)
  * @safe-to-edit CAREFUL
@@ -231,7 +231,7 @@ export function ZoneCreatePanel({
 
   if (drawings.length === 0) {
     return (
-      <p className="text-sm text-slate-600" dir="rtl" lang="fa">
+      <p className="text-sm text-slate-600">
         {drawingsLoading
           ? t.loadingDrawingsDots
           : t.toMustUploadFirst}
@@ -242,7 +242,7 @@ export function ZoneCreatePanel({
   if (!selectedDrawing) return null
 
   return (
-    <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/40 p-4" dir="rtl" lang="fa">
+    <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/40 p-4">
       <p className="text-sm font-semibold text-slate-800">{t.zoneFormTitle}</p>
 
       <div className="grid gap-3 sm:grid-cols-3">

@@ -74,31 +74,31 @@ import { MANAGER_PUNCT, MANAGER_UI_NUMBERS, SECTIONS_COPY } from '@/features/man
 
 export type Tone = 'good' | 'warn' | 'critical' | 'none'
 
-const TONE_STYLE: Record<Tone, { chip: string; dot: string; icon: ReactNode; label: string }> = {
+const TONE_STYLE: Record<Tone, { chip: string; dot: string; icon: ReactNode }> = {
   good: {
     chip: 'bg-emerald-500/10 text-emerald-700 ring-emerald-600/15',
     dot: 'bg-emerald-500 ring-4 ring-emerald-500/15',
     icon: <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />,
-    label: SECTIONS_COPY.tone.good,
   },
   warn: {
     chip: 'bg-amber-500/10 text-amber-700 ring-amber-600/15',
     dot: 'bg-amber-500 ring-4 ring-amber-500/15',
     icon: <AlertTriangle className="h-3.5 w-3.5" aria-hidden />,
-    label: SECTIONS_COPY.tone.warn,
   },
   critical: {
     chip: 'bg-rose-500/10 text-rose-700 ring-rose-600/15',
     dot: 'bg-rose-500 ring-4 ring-rose-500/15',
     icon: <OctagonAlert className="h-3.5 w-3.5" aria-hidden />,
-    label: SECTIONS_COPY.tone.critical,
   },
   none: {
     chip: 'bg-slate-500/10 text-slate-600 ring-slate-500/15',
     dot: 'bg-slate-300 ring-4 ring-slate-300/20',
     icon: <CircleSlash className="h-3.5 w-3.5" aria-hidden />,
-    label: SECTIONS_COPY.tone.none,
   },
+}
+
+function toneLabel(tone: Tone): string {
+  return SECTIONS_COPY.tone[tone]
 }
 
 export function StatusTag({ tone, label, className }: { tone: Tone; label?: string; className?: string }) {
@@ -112,7 +112,7 @@ export function StatusTag({ tone, label, className }: { tone: Tone; label?: stri
       )}
     >
       {style.icon}
-      {label ?? style.label}
+      {label ?? toneLabel(tone)}
     </span>
   )
 }
@@ -377,11 +377,15 @@ export function overallStatus(pillars: HealthPillar[]): { tone: Tone; label: str
   return { tone: 'none', label: SECTIONS_COPY.tone.none }
 }
 
-const PILLAR_TONE: Record<Tone, { card: string; color: string; text: string; badge: string }> = {
-  good: { card: 'from-emerald-50/70', color: '#10b981', text: 'text-emerald-600', badge: SECTIONS_COPY.badge.good },
-  warn: { card: 'from-amber-50/80', color: '#f59e0b', text: 'text-amber-600', badge: SECTIONS_COPY.badge.warn },
-  critical: { card: 'from-rose-50/90', color: '#f43f5e', text: 'text-rose-600', badge: SECTIONS_COPY.badge.critical },
-  none: { card: 'from-white', color: '#cbd5e1', text: 'text-slate-400', badge: SECTIONS_COPY.badge.none },
+const PILLAR_TONE: Record<Tone, { card: string; color: string; text: string }> = {
+  good: { card: 'from-emerald-50/70', color: '#10b981', text: 'text-emerald-600' },
+  warn: { card: 'from-amber-50/80', color: '#f59e0b', text: 'text-amber-600' },
+  critical: { card: 'from-rose-50/90', color: '#f43f5e', text: 'text-rose-600' },
+  none: { card: 'from-white', color: '#cbd5e1', text: 'text-slate-400' },
+}
+
+function pillarBadge(tone: Tone): string {
+  return SECTIONS_COPY.badge[tone]
 }
 
 const RING_COLORS: Record<RingTone, string> = {
@@ -514,7 +518,7 @@ function PillarCard({ pillar, loading }: { pillar: HealthPillar; loading: boolea
             loading && 'animate-pulse'
           )}
         >
-          {style.badge}
+          {pillarBadge(pillar.tone)}
         </span>
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file features/supervisor/components/supervisor-overview-panel.tsx
  * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (supervisor-overview-panel)
  * @safe-to-edit CAREFUL
@@ -514,7 +514,7 @@ export function SupervisorOverviewPanel({
   const healthBanner = HEALTH_BANNER[projectHealth]
 
   return (
-    <div className="space-y-5" dir="rtl" lang="fa">
+    <div className="space-y-5">
       <div
         className={cn(
           'flex items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-sm',

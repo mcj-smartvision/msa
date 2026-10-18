@@ -15,18 +15,19 @@ import { faNumber, jalaliDate } from '@/features/manager/lib/format'
 import type { CriticalFrontAction, ManagerCriticalDelay, ManagerCriticalDelays } from '@/features/manager/lib/overview-types'
 import { FRONTS_COPY, MANAGER_PUNCT, MANAGER_UI_NUMBERS } from '@/features/manager/config'
 
-const IMPORTANCE: Record<ManagerCriticalDelay['importance'], { label: string; cls: string }> = {
-  negative_float: { label: FRONTS_COPY.importance.negative_float, cls: 'bg-rose-500/10 text-rose-700 ring-rose-600/15' },
-  critical: { label: FRONTS_COPY.importance.critical, cls: 'bg-orange-500/10 text-orange-700 ring-orange-600/15' },
-  zero_float: { label: FRONTS_COPY.importance.zero_float, cls: 'bg-amber-500/10 text-amber-700 ring-amber-600/15' },
-  baseline_delay: { label: FRONTS_COPY.importance.baseline_delay, cls: 'bg-slate-500/10 text-slate-700 ring-slate-600/15' },
+const IMPORTANCE_CLS: Record<ManagerCriticalDelay['importance'], string> = {
+  negative_float: 'bg-rose-500/10 text-rose-700 ring-rose-600/15',
+  critical: 'bg-orange-500/10 text-orange-700 ring-orange-600/15',
+  zero_float: 'bg-amber-500/10 text-amber-700 ring-amber-600/15',
+  baseline_delay: 'bg-slate-500/10 text-slate-700 ring-slate-600/15',
 }
 
-const OWNER_FA: Record<CriticalFrontAction['owner_role'], string> = {
-  PM: FRONTS_COPY.owners.PM,
-  Planner: FRONTS_COPY.owners.Planner,
-  SiteManager: FRONTS_COPY.owners.SiteManager,
-  Procurement: FRONTS_COPY.owners.Procurement,
+function importanceLabel(key: ManagerCriticalDelay['importance']): string {
+  return FRONTS_COPY.importance[key]
+}
+
+function ownerLabel(owner: CriticalFrontAction['owner_role']): string {
+  return FRONTS_COPY.owners[owner]
 }
 
 type Toast = { text: string; payload: CriticalFrontAction['payload'] }
@@ -52,7 +53,6 @@ function ProgressBars({ planned, actual }: { planned: number; actual: number }) 
 
 function FrontRow({ item, mode, onDraft }: { item: ManagerCriticalDelay; mode: ManagerCriticalDelays['mode']; onDraft: (a: CriticalFrontAction) => void }) {
   const [open, setOpen] = useState(false)
-  const importance = IMPORTANCE[item.importance]
   const panelId = `front-actions-${item.id}`
   return (
     <li className="rounded-xl border border-slate-100 bg-white p-3 transition-colors hover:border-slate-200">
@@ -63,7 +63,9 @@ function FrontRow({ item, mode, onDraft }: { item: ManagerCriticalDelay; mode: M
             {item.name}
           </p>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-5 text-slate-500">
-            <span className={cn('rounded-full px-2 py-px font-semibold ring-1 ring-inset', importance.cls)}>{importance.label}</span>
+            <span className={cn('rounded-full px-2 py-px font-semibold ring-1 ring-inset', IMPORTANCE_CLS[item.importance])}>
+              {importanceLabel(item.importance)}
+            </span>
             {mode === 'cpm' ? (
               <span className="tabular-nums">
                 {FRONTS_COPY.totalFloat}{' '}
@@ -139,7 +141,7 @@ function FrontRow({ item, mode, onDraft }: { item: ManagerCriticalDelay; mode: M
                   {action.recommended ? (
                     <span className="rounded-full bg-orange-500/10 px-1.5 py-px text-[10px] font-semibold text-orange-700">{FRONTS_COPY.recommended}</span>
                   ) : null}
-                  <span className="ms-auto text-[10px] font-medium text-slate-400">{OWNER_FA[action.owner_role]}</span>
+                  <span className="ms-auto text-[10px] font-medium text-slate-400">{ownerLabel(action.owner_role)}</span>
                 </span>
                 <span className="mt-0.5 block text-[11px] leading-5 text-slate-600">{action.rationale_fa}</span>
               </button>
@@ -203,7 +205,7 @@ export function CriticalFrontsList({ data }: { data: ManagerCriticalDelays }) {
               mode={data.mode}
               onDraft={(action) =>
                 setToast({
-                  text: FRONTS_COPY.draftReady(action.label_fa, item.name, OWNER_FA[action.owner_role], jalaliDate(action.payload.due_date)),
+                  text: FRONTS_COPY.draftReady(action.label_fa, item.name, ownerLabel(action.owner_role), jalaliDate(action.payload.due_date)),
                   payload: action.payload,
                 })
               }

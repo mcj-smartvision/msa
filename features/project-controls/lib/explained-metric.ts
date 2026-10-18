@@ -6,21 +6,27 @@
  * @depends-on shared/types/project-controls
  */
 
-import type { DataQuality, ExplainedKpi, KpiStatus, RagStatus, SnapshotField } from '@/shared/types/project-controls';
+import type { DataQuality, ExplainedKpi, KpiStatus, RagStatus, SnapshotField } from '@/shared/types/project-controls'
+import { DATA_QUALITY_COPY, KPI_STATUS_LABELS } from '@/features/project-controls/lib/i18n/metric-labels'
 
-export const KPI_STATUS_TOKENS: Record<KpiStatus, { bg: string; text: string; border: string; label_fa: string }> = {
-  green: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label_fa: 'سالم' },
-  yellow: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label_fa: 'هشدار' },
-  red: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200', label_fa: 'بحرانی' },
-  gray: { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', label_fa: 'بدون وضعیت' },
+export const DATA_QUALITY_FA = DATA_QUALITY_COPY
+
+const KPI_STATUS_STYLE: Record<KpiStatus, { bg: string; text: string; border: string }> = {
+  green: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  yellow: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+  red: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+  gray: { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200' },
 }
 
-export const DATA_QUALITY_FA: Record<DataQuality, string> = {
-  ok: 'داده کامل',
-  missing: 'داده موجود نیست',
-  stale: 'داده قدیمی',
-  invalid: 'داده نامعتبر',
-}
+/** Style tokens + live status label (follows active locale via label_fa). */
+export const KPI_STATUS_TOKENS: Record<KpiStatus, { bg: string; text: string; border: string; label_fa: string }> =
+  new Proxy({} as Record<KpiStatus, { bg: string; text: string; border: string; label_fa: string }>, {
+    get(_t, status: string | symbol) {
+      if (typeof status !== 'string' || !(status in KPI_STATUS_STYLE)) return undefined
+      const key = status as KpiStatus
+      return { ...KPI_STATUS_STYLE[key], label_fa: KPI_STATUS_LABELS[key] }
+    },
+  })
 
 export function statusFromRag(rag: RagStatus | undefined): KpiStatus {
   if (rag === 'HEALTHY') return 'green'

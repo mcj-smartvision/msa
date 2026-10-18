@@ -48,8 +48,12 @@ const TONE_CHIP: Record<PpcTone, string> = {
   warn: 'bg-amber-50 text-amber-700',
   bad: 'bg-rose-50 text-rose-700',
 }
-const PPC_LABEL: Record<PpcTone, string> = WEEKLY_COPY.ppcTone
-const INDEX_LABEL: Record<PpcTone, string> = WEEKLY_COPY.indexTone
+function ppcLabel(tone: PpcTone): string {
+  return WEEKLY_COPY.ppcTone[tone]
+}
+function indexLabel(tone: PpcTone): string {
+  return WEEKLY_COPY.indexTone[tone]
+}
 
 const CAUSE_COLOR: Record<RootCauseCategory, string> = {
   materials: '#e5484d',
@@ -438,7 +442,6 @@ function RncDonut({ data }: { data: WeeklyCommitmentsData }) {
   )
 }
 
-const LOCKS_MISSING = WEEKLY_COPY.locksMissing
 
 function WeeklyCommitmentsBody({
   overview,
@@ -546,7 +549,7 @@ function WeeklyCommitmentsBody({
             title={WEEKLY_COPY.ppcTitle}
             en={WEEKLY_COPY.ppcEn}
             help={<PpcHelp ctx={helpCtx} />}
-            chip={ppcTn ? <Chip tone={ppcTn} label={PPC_LABEL[ppcTn]} /> : <Chip tone="none" label={WEEKLY_COPY.noData} />}
+            chip={ppcTn ? <Chip tone={ppcTn} label={ppcLabel(ppcTn)} /> : <Chip tone="none" label={WEEKLY_COPY.noData} />}
           />
           {wwp.state === 'loading' ? (
             <div className="mt-3">
@@ -584,7 +587,7 @@ function WeeklyCommitmentsBody({
             title={WEEKLY_COPY.spiTitle}
             en={WEEKLY_COPY.spiEn}
             help={<SpiHelp ctx={helpCtx} />}
-            chip={spi?.value != null ? <Chip tone={indexTone(spi.value)} label={INDEX_LABEL[indexTone(spi.value)]} /> : <Chip tone="none" label={WEEKLY_COPY.noData} />}
+            chip={spi?.value != null ? <Chip tone={indexTone(spi.value)} label={indexLabel(indexTone(spi.value))} /> : <Chip tone="none" label={WEEKLY_COPY.noData} />}
           />
           {controls.state === 'loading' ? (
             <div className="mt-3">
@@ -616,7 +619,7 @@ function WeeklyCommitmentsBody({
             title={WEEKLY_COPY.spitTitle}
             en={WEEKLY_COPY.spitEn}
             help={<SpiTHelp ctx={helpCtx} />}
-            chip={spiT?.value != null ? <Chip tone={indexTone(spiT.value)} label={INDEX_LABEL[indexTone(spiT.value)]} /> : <Chip tone="none" label={WEEKLY_COPY.noData} />}
+            chip={spiT?.value != null ? <Chip tone={indexTone(spiT.value)} label={indexLabel(indexTone(spiT.value))} /> : <Chip tone="none" label={WEEKLY_COPY.noData} />}
           />
           {controls.state === 'loading' ? (
             <div className="mt-3">
@@ -793,7 +796,7 @@ function WeeklyCommitmentsBody({
             sub={WEEKLY_COPY.locksAheadSub}
             help={<LocksHelp />}
           />
-          <Ghost reason={LOCKS_MISSING}>
+          <Ghost reason={WEEKLY_COPY.locksMissing}>
             <GhostLockBars />
           </Ghost>
         </div>

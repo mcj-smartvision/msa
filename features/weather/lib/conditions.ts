@@ -3,22 +3,19 @@
  * @purpose منطق دامنه — هوای کارگاه (conditions)
  * @safe-to-edit CAREFUL
  * @affects هوای کارگاه
- * @depends-on features/weather/lib/types
+ * @depends-on features/weather/lib/types, features/weather/lib/i18n/copy
  */
 
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
+import { conditionLabel, getWeatherRiskCopy } from '@/features/weather/lib/i18n/copy'
 import type { OutdoorAlert, OutdoorRiskLevel } from '@/features/weather/lib/types'
 
-/** OWM ids: 2xx thunder, 3xx drizzle, 5xx rain, 6xx snow, 7xx atmosphere, 800 clear, 80x clouds. */
+/** @deprecated Prefer conditionLabel(id, locale). Kept for existing FA call sites/tests. */
 export function conditionLabelFa(weatherId: number): string {
-  if (weatherId >= 200 && weatherId < 300) return 'رعدوبرق'
-  if (weatherId >= 300 && weatherId < 400) return 'نم‌نم باران'
-  if (weatherId >= 500 && weatherId < 600) return 'بارانی'
-  if (weatherId >= 600 && weatherId < 700) return 'برفی'
-  if (weatherId >= 700 && weatherId < 800) return 'مه‌آلود'
-  if (weatherId === 800) return 'آفتابی'
-  if (weatherId > 800 && weatherId < 900) return 'ابری'
-  return 'نامشخص'
+  return conditionLabel(weatherId, 'fa')
 }
+
+export { conditionLabel }
 
 export function wmoToOwmId(code: number): number {
   if (code === 0) return 800
@@ -56,11 +53,15 @@ const HEAVY_RAIN_IDS = new Set([502, 503, 504, 522, 531])
 const HEAVY_SNOW_IDS = new Set([602, 622])
 
 /** Strong wind ≈ 12 m/s (43 km/h). Caution from 8 m/s (29 km/h). */
-export function classifyOutdoorRisk(input: {
-  weatherId: number
-  windMs: number
-  rainMm?: number
-}): OutdoorAlert {
+export function classifyOutdoorRisk(
+  input: {
+    weatherId: number
+    windMs: number
+    rainMm?: number
+  },
+  locale: FormLocale = 'fa'
+): OutdoorAlert {
+  const t = getWeatherRiskCopy(locale)
   const reasons: string[] = []
   const id = input.weatherId
   const rainMm = input.rainMm ?? 0
@@ -71,33 +72,33 @@ export function classifyOutdoorRisk(input: {
   const anyPrecip = (id >= 300 && id < 700) || rainMm >= 1
   const windy = input.windMs >= 8
 
-  if (heavyRain) reasons.push('بارندگی شدید')
-  if (thunder) reasons.push('رعدوبرق')
-  if (strongWind) reasons.push('باد خیلی تند')
-  if (heavySnow) reasons.push('برف سنگین')
+  if (heavyRain) reasons.push(t.heavyRain)
+  if (thunder) reasons.push(t.thunder)
+  if (strongWind) reasons.push(t.veryStrongWind)
+  if (heavySnow) reasons.push(t.heavySnow)
 
   let level: OutdoorRiskLevel = 'ok'
   if (reasons.length > 0) {
     level = 'severe'
   } else {
-    if (anyPrecip) reasons.push(id >= 600 && id < 700 ? 'برف' : 'بارندگی')
-    if (windy) reasons.push('باد نسبتاً تند')
+    if (anyPrecip) reasons.push(id >= 600 && id < 700 ? t.snow : t.rain)
+    if (windy) reasons.push(t.moderateWind)
     if (reasons.length > 0) level = 'caution'
   }
 
   if (level === 'severe') {
     return {
       level,
-      title: 'هشدار کارهای فضای باز',
-      message: 'شرایط جوی نامساعد است. بتن‌ریزی، نما و سایر کارهای فضای باز را متوقف کنید.',
+      title: t.severeTitle,
+      message: t.severeMessage,
       reasons,
     }
   }
   if (level === 'caution') {
     return {
       level,
-      title: 'احتیاط کارهای فضای باز',
-      message: 'هوا برای بتن‌ریزی و کارهای فضای باز مساعد نیست؛ با احتیاط ادامه دهید یا برنامه را جابه‌جا کنید.',
+      title: t.cautionTitle,
+      message: t.cautionMessage,
       reasons,
     }
   }

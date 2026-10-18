@@ -17,6 +17,9 @@ import { loadScheduleCommitments } from '@/features/manager/lib/load-schedule-co
 import { ppcTrace } from '@/features/calc-trace/lib/build'
 import { attachTraceHistory } from '@/features/calc-trace/lib/history'
 import { workshopErrorResponse } from '@/features/workshop/lib/service'
+import { normalizeLocale } from '@/features/project-init/lib/i18n/utils'
+import { LOCALE_COOKIE } from '@/shared/lib/i18n/locale-cookie'
+import { getOverviewReasons } from '@/features/manager/lib/i18n/overview-alerts'
 
 /**
  * GET /api/manager/weekly-commitments?projectId= — PPC history and this week's commitments.
@@ -25,15 +28,17 @@ import { workshopErrorResponse } from '@/features/workshop/lib/service'
  */
 export async function GET(request: NextRequest) {
   try {
+    const locale = normalizeLocale(request.cookies.get(LOCALE_COOKIE)?.value)
+    const R = getOverviewReasons(locale)
     const projectId = request.nextUrl.searchParams.get('projectId') ?? ''
-    if (!projectId) throw new SiteOpsError('VALIDATION', 'projectId لازم است')
+    if (!projectId) throw new SiteOpsError('VALIDATION', R.projectIdRequired)
 
     const supabase = createClient()
     const user = await requireUser(supabase)
     await assertManagerAccess(supabase, user.id, projectId)
 
     const service = createServiceClient()
-    const result = await loadScheduleCommitments(supabase, service, projectId)
+    const result = await loadScheduleCommitments(supabase, service, projectId, locale)
     if (!(await isSystemAdmin(supabase, user.id))) {
       return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store, max-age=0' } })
     }

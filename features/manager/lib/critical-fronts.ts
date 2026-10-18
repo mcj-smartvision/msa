@@ -6,6 +6,8 @@
  * @depends-on features/schedule/lib/planned-progress, features/manager/lib/overview-types
  */
 
+import { getCriticalFrontsCopy } from '@/features/manager/lib/i18n/critical-fronts-copy'
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import { plannedPercentInWindow } from '@/features/schedule/lib/planned-progress'
 import type {
 CriticalFrontAction,
@@ -30,7 +32,7 @@ function dayDiff(a: string, b: string): number {
   return Math.round((Date.parse(`${a}T12:00:00Z`) - Date.parse(`${b}T12:00:00Z`)) / DAY_MS)
 }
 
-const fa = (value: number, digits = 0) =>
+const fmt = (value: number, digits = 0) =>
   value.toLocaleString('fa-IR-u-nu-latn', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 
 /** A CPM activity of `project_tasks` (summary rows are not scheduled by CPM). */
@@ -66,6 +68,7 @@ export interface CriticalFrontCauseInput extends CriticalFrontCause {
 export interface BuildCriticalFrontsInput {
   projectId: string
   today: string
+  locale?: FormLocale
   tasks: CriticalFrontTask[]
   /** null when `task_dependencies` could not be read (table missing). */
   dependencies: CriticalFrontDependency[] | null
@@ -85,33 +88,34 @@ export const CONTRACTOR_REVIEW_DELAY_DAYS = 14
 export const ACTION_DUE_DAYS = 2
 
 function resolveCpm(input: BuildCriticalFrontsInput, scheduled: CriticalFrontTask[]): CriticalFrontCpm {
+  const t = getCriticalFrontsCopy(input.locale ?? 'fa')
   const deps = input.dependencies
-  const withFloat = scheduled.filter((t) => t.totalFloatDays != null).length
+  const withFloat = scheduled.filter((task) => task.totalFloatDays != null).length
   const missing: { key: string; label_fa: string; detail_fa: string }[] = []
   if (deps == null) {
     missing.push({
       key: 'task_dependencies_table',
-      label_fa: 'جدول روابط پیش‌نیازی',
-      detail_fa: 'جدول task_dependencies در دیتابیس خوانده نشد؛ بدون آن شبکهٔ CPM ساخته نمی‌شود.',
+      label_fa: t.depsTable,
+      detail_fa: t.depsTableDetail,
     })
   } else if (deps.length === 0) {
     missing.push({
       key: 'dependencies',
-      label_fa: 'روابط پیش‌نیازی فعالیت‌ها',
-      detail_fa: 'هیچ رابطهٔ پیش‌نیازی (FS/SS/FF/SF) برای فعالیت‌ها ثبت نشده؛ آن‌ها را در برنامهٔ زمان‌بندی (یا فایل MSP) وارد کنید.',
+      label_fa: t.depsMissing,
+      detail_fa: t.depsMissingDetail,
     })
   }
   if (withFloat === 0) {
     missing.push({
       key: 'cpm_run',
-      label_fa: 'اجرای محاسبهٔ CPM',
-      detail_fa: 'Total Float هیچ فعالیتی محاسبه نشده؛ پس از ثبت روابط، محاسبهٔ CPM برنامه را اجرا کنید.',
+      label_fa: t.cpmRun,
+      detail_fa: t.cpmRunDetail,
     })
   }
   if (missing.length) {
     return {
       status: 'data_missing',
-      reason_fa: 'برنامهٔ CPM کامل نیست؛ مسیر بحرانی و Total Float قابل تعیین نیست و فهرست فقط بر اساس تأخیر نسبت به baseline است.',
+      reason_fa: t.cpmIncomplete,
       missing,
     }
   }
@@ -132,6 +136,7 @@ function resolveCpm(input: BuildCriticalFrontsInput, scheduled: CriticalFrontTas
 function buildActions(input: {
   projectId: string
   today: string
+  locale: FormLocale
   task: CriticalFrontTask
   delayDays: number
   plannedPercent: number
@@ -142,6 +147,7 @@ function buildActions(input: {
   forecastFinish: string
 }): CriticalFrontAction[] {
   const { task, delayDays, plannedPercent, causes, predecessors, successors, cpmOk } = input
+  const t = getCriticalFrontsCopy(input.locale)
   const gap = plannedPercent - task.percent
   const remaining = Math.max(0, 100 - task.percent)
   const materialCause = causes.find((c) => c.kind === 'material')
@@ -171,24 +177,24 @@ function buildActions(input: {
   const actions: CriticalFrontAction[] = [
     {
       kind: 'add_crew',
-      label_fa: 'افزایش اکیپ',
+      label_fa: t.addCrew,
       recommended: gap >= CREW_GAP_THRESHOLD,
       rationale_fa:
         gap > 0
-          ? `پیشرفت ${fa(task.percent)}٪ در برابر برنامهٔ ${fa(plannedPercent)}٪ (${fa(gap)} واحد درصد عقب)؛ ${fa(remaining)}٪ کار باقی است.`
-          : `پیشرفت از برنامه عقب نیست، اما ${fa(delayDays)} روز تأخیر نسبت به پایان مبنا دارد؛ ${fa(remaining)}٪ کار باقی است.`,
+          ? t.crewBehind(fmt(task.percent), fmt(plannedPercent), fmt(gap), fmt(remaining))
+          : t.crewDelayOnly(fmt(delayDays), fmt(remaining)),
       owner_role: 'SiteManager',
       payload: payloadOf('add_crew', 'SiteManager', { remainingPercent: remaining, progressGap: Math.round(gap * 10) / 10 }),
     },
     {
       kind: 'resequence',
-      label_fa: 'تغییر توالی',
+      label_fa: t.resequence,
       recommended: cpmOk && successors.length > 0,
       rationale_fa: cpmOk
         ? successors.length
-          ? `${fa(successors.length)} فعالیت پس‌نیاز منتظر این فعالیت‌اند؛ هم‌پوشانی (fast-track) یا شکستن فعالیت بررسی شود.`
-          : 'پس‌نیازی در شبکه ندارد؛ تغییر توالی اثر مستقیمی بر مسیر بحرانی ندارد.'
-        : 'روابط پیش‌نیازی ثبت نشده؛ اثر تغییر توالی بر مسیر بحرانی قابل سنجش نیست (پیش‌نویس با این هشدار ساخته می‌شود).',
+          ? t.reseqSuccessors(fmt(successors.length))
+          : t.reseqNoSuccessors
+        : t.reseqNoNetwork,
       owner_role: 'Planner',
       payload: payloadOf('resequence', 'Planner', {
         predecessorIds: predecessors,
@@ -198,21 +204,21 @@ function buildActions(input: {
     },
     {
       kind: 'material_supply',
-      label_fa: 'تأمین مصالح',
+      label_fa: t.materialSupply,
       recommended: Boolean(materialCause),
       rationale_fa: materialCause
-        ? `علت ثبت‌شده: ${materialCause.label_fa}`
-        : 'مانع مصالحی برای این فعالیت ثبت نشده؛ آمادگی مصالح باقی‌ماندهٔ کار بررسی شود.',
+        ? t.materialCause(materialCause.label_fa)
+        : t.materialNone,
       owner_role: 'Procurement',
       payload: payloadOf('material_supply', 'Procurement', { linkedCause: materialCause?.ref ?? null }),
     },
     {
       kind: 'contractor_review',
-      label_fa: 'بررسی پیمانکار',
+      label_fa: t.contractorReview,
       recommended: Boolean(task.contractor) && delayDays >= CONTRACTOR_REVIEW_DELAY_DAYS,
       rationale_fa: task.contractor
-        ? `پیمانکار «${task.contractor}»؛ ${fa(delayDays)} روز تأخیر — ظرفیت، منابع و تعهدات قراردادی بررسی شود.`
-        : 'پیمانکاری به این فعالیت تخصیص داده نشده؛ ابتدا مسئول اجرا مشخص شود.',
+        ? t.contractorDelay(task.contractor, fmt(delayDays))
+        : t.contractorNone,
       owner_role: 'PM',
       payload: payloadOf('contractor_review', 'PM', { contractor: task.contractor }),
     },
@@ -227,6 +233,7 @@ function buildActions(input: {
  */
 export function buildCriticalFronts(input: BuildCriticalFrontsInput): ManagerCriticalDelays {
   const { today } = input
+  const locale = input.locale ?? 'fa'
   const scheduled = input.tasks.filter((t) => !t.isSummary)
   const cpm = resolveCpm(input, scheduled)
   const cpmOk = cpm.status === 'ok'
@@ -282,6 +289,7 @@ export function buildCriticalFronts(input: BuildCriticalFrontsInput): ManagerCri
       actions: buildActions({
         projectId: input.projectId,
         today,
+        locale,
         task,
         delayDays,
         plannedPercent,

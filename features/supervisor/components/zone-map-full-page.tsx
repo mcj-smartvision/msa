@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file features/supervisor/components/zone-map-full-page.tsx
  * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (zone-map-full-page)
  * @safe-to-edit CAREFUL
@@ -67,7 +67,7 @@ export function ZoneMapFullPage({ zoneId }: { zoneId: string }) {
 
   if (!ready) {
     return (
-      <p className="p-8 text-sm text-slate-600" dir="rtl" lang="fa">
+      <p className="p-8 text-sm text-slate-600">
         {t.loading}
       </p>
     )
@@ -75,7 +75,7 @@ export function ZoneMapFullPage({ zoneId }: { zoneId: string }) {
 
   if (!snapshot) {
     return (
-      <div className="mx-auto max-w-lg space-y-4 p-8 text-center" dir="rtl" lang="fa">
+      <div className="mx-auto max-w-lg space-y-4 p-8 text-center">
         <p className="text-sm text-slate-700">
           {t.zoneMapUnavailableLong}
         </p>
@@ -89,7 +89,7 @@ export function ZoneMapFullPage({ zoneId }: { zoneId: string }) {
   const { zone, drawing } = snapshot
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-100" dir="rtl" lang="fa">
+    <div className="flex min-h-screen flex-col bg-slate-100">
       <header className="border-b border-slate-200 bg-white px-4 py-3 shadow-sm sm:px-6">
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3">
           <div>

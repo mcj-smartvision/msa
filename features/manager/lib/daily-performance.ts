@@ -7,7 +7,9 @@
  */
 
 import { faNumber } from '@/features/manager/lib/format'
+import { getBlockersCopy } from '@/features/manager/lib/i18n/blockers-copy'
 import { weightedPlannedPercent } from '@/features/schedule/lib/planned-progress'
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import type {
 ManagerBlocker,
 ManagerDailyDelta,
@@ -162,6 +164,7 @@ export function buildUpcomingDeadlines(rows: ScheduleTaskRow[], today: string, l
 /* ---------------------------------------------------------------- Blockers */
 
 export interface BlockerInputs {
+  locale?: FormLocale
   blockedWorkOrders: { id: string; taskName: string; wbs?: string | null; constraints: string[]; planDate: string }[]
   constraintNotes: { id: string; note: string; createdAt: string }[]
   stock: { id: string; name: string; current: number; min: number; unit: string | null; updatedAt: string | null }[]
@@ -170,15 +173,9 @@ export interface BlockerInputs {
   owners: { materials: string | null; quality: string | null; site: string | null }
 }
 
-const ALERT_IMPACT: Record<string, string> = {
-  delay_risk: 'ریسک تأخیر در شروع یا پایان فعالیت',
-  material_purchase: 'تأمین به‌موقع مصالح فعالیت در خطر است',
-  milestone_risk: 'تاریخ مایل‌استون در خطر است',
-  critical_path: 'روی مسیر بحرانی اثر مستقیم دارد',
-}
-
 /** Active site blockers, most severe and oldest first. */
 export function buildBlockers(input: BlockerInputs): ManagerBlocker[] {
+  const t = getBlockersCopy(input.locale ?? 'fa')
   const items: ManagerBlocker[] = []
 
   for (const wo of input.blockedWorkOrders) {
@@ -187,7 +184,9 @@ export function buildBlockers(input: BlockerInputs): ManagerBlocker[] {
       category: 'site',
       level: 'critical',
       title: wo.taskName,
-      impact: wo.constraints.length ? `محدودیت: ${wo.constraints.join('، ')}` : 'این جبهه در برنامهٔ روزانه «متوقف» ثبت شده است',
+      impact: wo.constraints.length
+        ? t.constraintPrefix(wo.constraints.join(t.listSep))
+        : t.woStopped,
       owner: input.owners.site,
       since: wo.planDate,
     })
@@ -199,7 +198,7 @@ export function buildBlockers(input: BlockerInputs): ManagerBlocker[] {
       category: 'site',
       level: 'warning',
       title: note.note,
-      impact: 'محدودیت ثبت‌شده در برنامهٔ روزانهٔ کارگاه',
+      impact: t.constraintNote,
       owner: input.owners.site,
       since: note.createdAt,
     })
@@ -212,10 +211,14 @@ export function buildBlockers(input: BlockerInputs): ManagerBlocker[] {
       id: `stock-${item.id}`,
       category: 'materials',
       level: empty ? 'critical' : 'warning',
-      title: empty ? `کسری ${item.name}` : `${item.name} زیر حداقل موجودی`,
+      title: empty ? t.stockShort(item.name) : t.stockBelowMin(item.name),
       impact: empty
-        ? 'موجودی صفر است؛ فعالیت‌های وابسته به این مصالح متوقف می‌شوند'
-        : `موجودی ${faNumber(item.current)}${item.unit ? ` ${item.unit}` : ''} از حداقل ${faNumber(item.min)}؛ در خطر توقف`,
+        ? t.stockZero
+        : t.stockAtRisk(
+            faNumber(item.current),
+            item.unit ? ` ${item.unit}` : '',
+            faNumber(item.min)
+          ),
       owner: input.owners.materials,
       since: item.updatedAt,
     })
@@ -226,8 +229,8 @@ export function buildBlockers(input: BlockerInputs): ManagerBlocker[] {
       id: `ncr-${ncr.id}`,
       category: 'quality',
       level: 'critical',
-      title: `عدم انطباق بحرانی ${ncr.label}`,
-      impact: 'کار در محدودهٔ NCR تا اقدام اصلاحی و بازرسی مجدد متوقف است',
+      title: t.criticalNcr(ncr.label),
+      impact: t.ncrImpact,
       owner: input.owners.quality,
       since: ncr.createdAt,
     })
@@ -239,7 +242,7 @@ export function buildBlockers(input: BlockerInputs): ManagerBlocker[] {
       category: 'schedule',
       level: alert.severity === 'critical' ? 'critical' : 'warning',
       title: alert.taskName ? `${alert.taskName}: ${alert.message}` : alert.message,
-      impact: ALERT_IMPACT[alert.type] ?? 'هشدار باز برنامه‌ریزی',
+      impact: t.alertImpact[alert.type] ?? t.openPlanningAlert,
       owner: null,
       since: alert.createdAt,
     })

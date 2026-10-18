@@ -15,6 +15,7 @@ import { useSyncedProjectId } from '@/shared/hooks/use-synced-project-id'
 import { Button } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import { MANAGER_DAILY_REPORTS_COPY as t } from '@/features/manager/lib/daily-reports-config'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { cn } from '@/shared/lib/utils'
 
 type ReportRow = {
@@ -27,6 +28,7 @@ type ReportRow = {
 }
 
 export function ManagerDailyReportsPage({ initialProjectId }: { initialProjectId: string | null }) {
+  const { dir, locale } = useLocale()
   const projectId = useSyncedProjectId(initialProjectId)
   const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState<ReportRow[]>([])
@@ -93,7 +95,7 @@ export function ManagerDailyReportsPage({ initialProjectId }: { initialProjectId
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-100/80" dir="rtl" lang="fa">
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-100/80" dir={dir} lang={locale}>
       <div className="mx-auto max-w-2xl space-y-5 px-4 py-6 pb-12">
         <Button type="button" variant="ghost" size="sm" className="-mr-2 text-slate-600" asChild>
           <Link href="/dashboard/manager">

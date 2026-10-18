@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file features/supervisor/components/supervisor-drawings-zoning-panel.tsx
  * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (supervisor-drawings-zoning-panel)
  * @safe-to-edit CAREFUL
@@ -353,14 +353,14 @@ export function SupervisorDrawingsZoningPanel({ projectId }: { projectId: string
 
   if (!projectId) {
     return (
-      <p className="text-sm text-slate-500" dir="rtl" lang="fa">
+      <p className="text-sm text-slate-500">
         {t.selectProjectFirst}
       </p>
     )
   }
 
   return (
-    <div className="space-y-5" dir="rtl" lang="fa">
+    <div className="space-y-5">
       {loadError ? (
         <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
           {loadError}

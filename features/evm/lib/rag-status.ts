@@ -53,6 +53,8 @@ export interface RagResult {
   evaluated: boolean
 }
 
+export type RagLocale = 'fa' | 'en' | 'de'
+
 function fmt(value: number): string {
   return value.toFixed(2)
 }
@@ -60,22 +62,34 @@ function fmt(value: number): string {
 function indexReasons(
   code: 'SPI' | 'CPI',
   value: number | null,
-  t: RagThresholds
+  t: RagThresholds,
+  locale: RagLocale
 ): RagReason | null {
   if (value == null || !Number.isFinite(value)) return null
-  const label = code === 'SPI' ? 'شاخص عملکرد زمانی (SPI)' : 'شاخص عملکرد هزینه (CPI)'
+  const en = locale !== 'fa'
+  const label = code === 'SPI'
+    ? en
+      ? 'Schedule Performance Index (SPI)'
+      : 'شاخص عملکرد زمانی (SPI)'
+    : en
+      ? 'Cost Performance Index (CPI)'
+      : 'شاخص عملکرد هزینه (CPI)'
   if (value < t.critical) {
     return {
       code: `${code}_CRITICAL`,
       level: 'RED',
-      messageFa: `${label} برابر ${fmt(value)} و کمتر از ${fmt(t.critical)} است.`,
+      messageFa: en
+        ? `${label} is ${fmt(value)}, below ${fmt(t.critical)}.`
+        : `${label} برابر ${fmt(value)} و کمتر از ${fmt(t.critical)} است.`,
     }
   }
   if (value < t.onTrack) {
     return {
       code: `${code}_WARNING`,
       level: 'AMBER',
-      messageFa: `${label} برابر ${fmt(value)} و بین ${fmt(t.critical)} و ${fmt(t.onTrack)} است.`,
+      messageFa: en
+        ? `${label} is ${fmt(value)}, between ${fmt(t.critical)} and ${fmt(t.onTrack)}.`
+        : `${label} برابر ${fmt(value)} و بین ${fmt(t.critical)} و ${fmt(t.onTrack)} است.`,
     }
   }
   return null
@@ -83,20 +97,25 @@ function indexReasons(
 
 export function evaluateRagStatus(
   input: RagInput,
-  thresholds: RagThresholds = DEFAULT_RAG_THRESHOLDS
+  thresholds: RagThresholds = DEFAULT_RAG_THRESHOLDS,
+  locale: RagLocale = 'fa'
 ): RagResult {
   const reasons: RagReason[] = []
+  const en = locale !== 'fa'
 
-  const spi = indexReasons('SPI', input.spi, thresholds)
+  const spi = indexReasons('SPI', input.spi, thresholds, locale)
   if (spi) reasons.push(spi)
-  const cpi = indexReasons('CPI', input.cpi, thresholds)
+  const cpi = indexReasons('CPI', input.cpi, thresholds, locale)
   if (cpi) reasons.push(cpi)
 
   if (input.criticalFloatDays != null && input.criticalFloatDays < 0) {
+    const days = Math.round(input.criticalFloatDays)
     reasons.push({
       code: 'NEGATIVE_CRITICAL_FLOAT',
       level: 'RED',
-      messageFa: `شناوری مسیر بحرانی منفی است (${Math.round(input.criticalFloatDays)} روز).`,
+      messageFa: en
+        ? `Critical-path float is negative (${days} days).`
+        : `شناوری مسیر بحرانی منفی است (${days} روز).`,
     })
   }
 
@@ -104,10 +123,13 @@ export function evaluateRagStatus(
     input.floatConsumptionPercent != null &&
     input.floatConsumptionPercent > thresholds.floatConsumptionAmber
   ) {
+    const pct = Math.round(input.floatConsumptionPercent)
     reasons.push({
       code: 'FLOAT_CONSUMPTION',
       level: 'AMBER',
-      messageFa: `${Math.round(input.floatConsumptionPercent)}٪ از شناوری مصرف شده است (آستانه ${thresholds.floatConsumptionAmber}٪).`,
+      messageFa: en
+        ? `${pct}% of float has been consumed (threshold ${thresholds.floatConsumptionAmber}%).`
+        : `${pct}٪ از شناوری مصرف شده است (آستانه ${thresholds.floatConsumptionAmber}٪).`,
     })
   }
 

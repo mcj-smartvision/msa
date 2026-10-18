@@ -7,14 +7,16 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import {
   classifyOutdoorRisk,
-  conditionLabelFa,
+  conditionLabel,
   owmIconFor,
   wmoToOwmId,
 } from '@/features/weather/lib/conditions'
+import { getWeatherUi } from '@/features/weather/lib/i18n/copy'
 import { weatherApiKey } from '@/features/weather/lib/api-key'
-import { resolveProjectWeatherLocation } from '@/features/weather/lib/resolve-location'
+import { resolveProjectWeatherLocation, TEHRAN_WEATHER } from '@/features/weather/lib/resolve-location'
 import type { CurrentWeather, WeatherDay, WeatherPayload } from '@/features/weather/lib/types'
 import { dayKind, weatherDateWindow } from '@/features/weather/lib/window'
 import { tehranDateIso, todayTehranIso } from '@/shared/lib/time/tehran'
@@ -71,12 +73,13 @@ function num(value: unknown, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
 
-function currentFromMeteo(json: OpenMeteoResponse): CurrentWeather | null {
+function currentFromMeteo(json: OpenMeteoResponse, locale: FormLocale): CurrentWeather | null {
   const row = json.current
   if (typeof row?.temperature_2m !== 'number') return null
   const weatherId = wmoToOwmId(num(row.weather_code, 0))
   const windMs = num(row.wind_speed_10m) / 3.6
   const rainMm = num(row.precipitation)
+  const label = conditionLabel(weatherId, locale)
   return {
     temp: row.temperature_2m,
     feelsLike: row.temperature_2m,
@@ -84,19 +87,20 @@ function currentFromMeteo(json: OpenMeteoResponse): CurrentWeather | null {
     windMs,
     rainMm,
     weatherId,
-    condition: conditionLabelFa(weatherId),
-    description: conditionLabelFa(weatherId),
+    condition: label,
+    description: label,
     icon: owmIconFor(weatherId),
-    risk: classifyOutdoorRisk({ weatherId, windMs, rainMm }),
+    risk: classifyOutdoorRisk({ weatherId, windMs, rainMm }, locale),
   }
 }
 
-function owmCurrentFrom(json: OwmCurrent): CurrentWeather {
+function owmCurrentFrom(json: OwmCurrent, locale: FormLocale): CurrentWeather {
   const blob = json.weather?.[0]
   const weatherId = blob?.id ?? 800
   const windMs = num(json.wind?.speed)
   const rainMm = num(json.rain?.['1h'] ?? json.rain?.['3h'])
-  const description = blob?.description?.trim() || conditionLabelFa(weatherId)
+  const fallback = conditionLabel(weatherId, locale)
+  const description = blob?.description?.trim() || fallback
   return {
     temp: num(json.main?.temp),
     feelsLike: num(json.main?.feels_like, num(json.main?.temp)),
@@ -104,14 +108,14 @@ function owmCurrentFrom(json: OwmCurrent): CurrentWeather {
     windMs,
     rainMm,
     weatherId,
-    condition: conditionLabelFa(weatherId),
+    condition: fallback,
     description,
     icon: blob?.icon || owmIconFor(weatherId),
-    risk: classifyOutdoorRisk({ weatherId, windMs, rainMm }),
+    risk: classifyOutdoorRisk({ weatherId, windMs, rainMm }, locale),
   }
 }
 
-function emptyDay(iso: string, today: string): WeatherDay {
+function emptyDay(iso: string, today: string, locale: FormLocale): WeatherDay {
   return {
     iso,
     kind: dayKind(iso, today),
@@ -122,23 +126,27 @@ function emptyDay(iso: string, today: string): WeatherDay {
     windMs: null,
     rainMm: 0,
     weatherId: 800,
-    condition: conditionLabelFa(800),
+    condition: conditionLabel(800, locale),
     icon: owmIconFor(800),
-    risk: classifyOutdoorRisk({ weatherId: 800, windMs: 0, rainMm: 0 }),
+    risk: classifyOutdoorRisk({ weatherId: 800, windMs: 0, rainMm: 0 }, locale),
   }
 }
 
-function finalizeDay(day: WeatherDay): WeatherDay {
+function finalizeDay(day: WeatherDay, locale: FormLocale): WeatherDay {
   const windMs = day.windMs ?? 0
   return {
     ...day,
-    condition: day.condition || conditionLabelFa(day.weatherId),
+    condition: day.condition || conditionLabel(day.weatherId, locale),
     icon: day.icon || owmIconFor(day.weatherId),
-    risk: classifyOutdoorRisk({ weatherId: day.weatherId, windMs, rainMm: day.rainMm }),
+    risk: classifyOutdoorRisk({ weatherId: day.weatherId, windMs, rainMm: day.rainMm }, locale),
   }
 }
 
-export function aggregateOwmForecast(slots: OwmForecastSlot[]): Map<string, Partial<WeatherDay>> {
+/** Aggregate forecast slots; condition text falls back with the given locale. */
+export function aggregateOwmForecast(
+  slots: OwmForecastSlot[],
+  locale: FormLocale = 'fa'
+): Map<string, Partial<WeatherDay>> {
   const byDay = new Map<
     string,
     { temps: number[]; humidity: number[]; wind: number[]; rain: number; noon: OwmForecastSlot | null; noonDelta: number }
@@ -177,7 +185,7 @@ export function aggregateOwmForecast(slots: OwmForecastSlot[]): Map<string, Part
       windMs: row.wind.length ? Math.max(...row.wind) : null,
       rainMm: Math.round(row.rain * 10) / 10,
       weatherId,
-      condition: blob?.description?.trim() || conditionLabelFa(weatherId),
+      condition: blob?.description?.trim() || conditionLabel(weatherId, locale),
       icon: blob?.icon || owmIconFor(weatherId),
     })
   }
@@ -190,10 +198,16 @@ async function fetchJson<T>(url: string): Promise<T> {
   return (await res.json()) as T
 }
 
-export async function loadWeather(supabase: SupabaseClient, projectId: string | null): Promise<WeatherPayload> {
+export async function loadWeather(
+  supabase: SupabaseClient,
+  projectId: string | null,
+  locale: FormLocale = 'fa'
+): Promise<WeatherPayload> {
+  const ui = getWeatherUi(locale)
+  const owmLang = locale === 'fa' ? 'fa' : 'en'
   const apiKey = weatherApiKey()
-  const location = { ...(await resolveProjectWeatherLocation(supabase, projectId, apiKey)) }
-  const cacheKey = `${location.lat.toFixed(3)},${location.lon.toFixed(3)}`
+  const location = { ...(await resolveProjectWeatherLocation(supabase, projectId, apiKey, locale)) }
+  const cacheKey = `${locale}:${location.lat.toFixed(3)},${location.lon.toFixed(3)}`
   const hit = cache.get(cacheKey)
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.payload
 
@@ -202,7 +216,7 @@ export async function loadWeather(supabase: SupabaseClient, projectId: string | 
   const lat = location.lat
   const lon = location.lon
   const owm = (path: string) =>
-    `https://api.openweathermap.org${path}${path.includes('?') ? '&' : '?'}appid=${apiKey}&units=metric&lang=fa`
+    `https://api.openweathermap.org${path}${path.includes('?') ? '&' : '?'}appid=${apiKey}&units=metric&lang=${owmLang}`
 
   const [currentRes, forecastRes, meteoRes] = await Promise.allSettled([
     apiKey
@@ -220,17 +234,23 @@ export async function loadWeather(supabase: SupabaseClient, projectId: string | 
   ])
 
   const current =
-    (currentRes.status === 'fulfilled' && currentRes.value ? owmCurrentFrom(currentRes.value) : null) ??
-    (meteoRes.status === 'fulfilled' ? currentFromMeteo(meteoRes.value) : null)
+    (currentRes.status === 'fulfilled' && currentRes.value
+      ? owmCurrentFrom(currentRes.value, locale)
+      : null) ??
+    (meteoRes.status === 'fulfilled' ? currentFromMeteo(meteoRes.value, locale) : null)
   if (!current) {
-    throw new WorkshopError('VALIDATION', 'خواندن وضعیت هوا ناموفق بود.')
+    throw new WorkshopError('VALIDATION', ui.loadFailed)
   }
-  if (currentRes.status === 'fulfilled' && currentRes.value?.name && location.name === 'تهران') {
+  if (
+    currentRes.status === 'fulfilled' &&
+    currentRes.value?.name &&
+    (location.name === TEHRAN_WEATHER.name || location.name === 'Tehran' || location.name === 'تهران')
+  ) {
     location.name = currentRes.value.name
   }
 
   const days = new Map<string, WeatherDay>()
-  for (const iso of window) days.set(iso, emptyDay(iso, today))
+  for (const iso of window) days.set(iso, emptyDay(iso, today, locale))
 
   if (meteoRes.status === 'fulfilled' && meteoRes.value.daily) {
     const daily = meteoRes.value.daily
@@ -246,28 +266,31 @@ export async function loadWeather(supabase: SupabaseClient, projectId: string | 
       const humidity = daily.relative_humidity_2m_mean[i]
       days.set(
         iso,
-        finalizeDay({
-          ...existing,
-          temp: tempMax != null && tempMin != null ? (tempMax + tempMin) / 2 : tempMax ?? tempMin,
-          tempMin,
-          tempMax,
-          humidity: typeof humidity === 'number' ? Math.round(humidity) : null,
-          windMs,
-          rainMm,
-          weatherId,
-          condition: conditionLabelFa(weatherId),
-          icon: owmIconFor(weatherId),
-        })
+        finalizeDay(
+          {
+            ...existing,
+            temp: tempMax != null && tempMin != null ? (tempMax + tempMin) / 2 : tempMax ?? tempMin,
+            tempMin,
+            tempMax,
+            humidity: typeof humidity === 'number' ? Math.round(humidity) : null,
+            windMs,
+            rainMm,
+            weatherId,
+            condition: conditionLabel(weatherId, locale),
+            icon: owmIconFor(weatherId),
+          },
+          locale
+        )
       )
     })
   }
 
   if (forecastRes.status === 'fulfilled' && forecastRes.value) {
-    const overlay = aggregateOwmForecast(forecastRes.value.list ?? [])
+    const overlay = aggregateOwmForecast(forecastRes.value.list ?? [], locale)
     for (const [iso, patch] of overlay) {
       const existing = days.get(iso)
       if (!existing) continue
-      days.set(iso, finalizeDay({ ...existing, ...patch, iso, kind: existing.kind }))
+      days.set(iso, finalizeDay({ ...existing, ...patch, iso, kind: existing.kind }, locale))
     }
   }
 
@@ -275,18 +298,21 @@ export async function loadWeather(supabase: SupabaseClient, projectId: string | 
   if (todayRow) {
     days.set(
       today,
-      finalizeDay({
-        ...todayRow,
-        temp: current.temp,
-        tempMin: todayRow.tempMin != null ? Math.min(todayRow.tempMin, current.temp) : current.temp,
-        tempMax: todayRow.tempMax != null ? Math.max(todayRow.tempMax, current.temp) : current.temp,
-        humidity: current.humidity,
-        windMs: current.windMs,
-        rainMm: Math.max(todayRow.rainMm, current.rainMm),
-        weatherId: current.weatherId,
-        condition: current.description,
-        icon: current.icon,
-      })
+      finalizeDay(
+        {
+          ...todayRow,
+          temp: current.temp,
+          tempMin: todayRow.tempMin != null ? Math.min(todayRow.tempMin, current.temp) : current.temp,
+          tempMax: todayRow.tempMax != null ? Math.max(todayRow.tempMax, current.temp) : current.temp,
+          humidity: current.humidity,
+          windMs: current.windMs,
+          rainMm: Math.max(todayRow.rainMm, current.rainMm),
+          weatherId: current.weatherId,
+          condition: current.condition,
+          icon: current.icon,
+        },
+        locale
+      )
     )
   }
 

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file features/supervisor/components/zone-levels-field.tsx
  * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (zone-levels-field)
  * @safe-to-edit CAREFUL
@@ -41,7 +41,7 @@ export function ZoneLevelsField({ levels, onChange, idPrefix = 'zone-level' }: Z
   }
 
   return (
-    <div className="space-y-2" dir="rtl" lang="fa">
+    <div className="space-y-2">
       <Label className="text-sm font-medium text-slate-700">{t.zoneLevel}</Label>
       <div className="space-y-2">
         {levels.map((level, index) => {

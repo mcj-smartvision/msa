@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file features/supervisor/components/daily-report-panel.tsx
  * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (daily-report-panel)
  * @safe-to-edit CAREFUL
@@ -1131,7 +1131,7 @@ export function DailyReportPanel({
 
   if (!projectId) {
     return (
-      <p className="text-sm text-slate-500" dir="rtl" lang="fa">
+      <p className="text-sm text-slate-500">
         {t.selectProjectFirst}
       </p>
     )
@@ -1151,7 +1151,7 @@ export function DailyReportPanel({
   }
 
   return (
-    <div className="space-y-3" dir="rtl" lang="fa">
+    <div className="space-y-3">
       {view === 'progress' ? (
         <>
           <div className="flex flex-wrap items-center gap-2">

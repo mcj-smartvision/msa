@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file features/supervisor/components/zone-map-editor.tsx
  * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (zone-map-editor)
  * @safe-to-edit CAREFUL
@@ -472,7 +472,7 @@ export function ZoneMapEditor({
         : 'cursor-default'
 
   return (
-    <div className="space-y-4" dir="rtl" lang="fa">
+    <div className="space-y-4">
       <div>
         <p className="mb-2 text-sm font-semibold text-slate-800">{ZONE_MAP_COPY.discipline}</p>
         <div className="flex flex-wrap gap-2">

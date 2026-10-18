@@ -11,6 +11,20 @@ import { getActiveLocale, liveMessages } from '@/shared/lib/i18n/active-locale'
 import { pickMessages } from '@/shared/lib/i18n/pick-messages'
 import { SECTIONS_DE } from '@/features/manager/lib/i18n/sections-de'
 import { SECTIONS_EN } from '@/features/manager/lib/i18n/sections-en'
+import { makeLiveCopy } from '@/shared/lib/i18n/make-live-copy'
+import {
+  PERIOD_EN,
+  CHART_EN,
+  DAILY_EN,
+  FRONTS_EN,
+  INBOX_EN,
+  CUMULATIVE_EN,
+  COST_PERF_EN,
+  ESTIMATE_EN,
+  WEEKLY_EN,
+  WEEKLY_HELP_EN,
+  BACKGROUND_EN,
+} from '@/features/manager/lib/i18n/panels-en'
 
 const SECTIONS_FA = {
   tone: {
@@ -217,7 +231,7 @@ export function getSectionsCopy(locale?: FormLocale): ManagerSectionsCopy {
 /** Live catalog — home sections follow the active UI locale. */
 export const SECTIONS_COPY = liveMessages(getSectionsCopy)
 
-export const PERIOD_COPY = {
+const PERIOD_FA = {
   title: 'مقایسهٔ عملکرد دوره‌ای',
   hint: 'هر بازه با همان مقدار زمان سپری‌شده از بازهٔ قبل مقایسه می‌شود (مثلاً امروز تا همین ساعت در برابر دیروز تا همان ساعت). رنگ سبز یعنی بهتر و قرمز یعنی بدتر، نه صرفاً افزایش یا کاهش. شاخصی که داده‌اش ثبت نشده خاکستری است و در شمارش حساب نمی‌شود.',
   loadFailed: 'بارگذاری مقایسهٔ دوره‌ای ناموفق بود',
@@ -285,7 +299,7 @@ export const PERIOD_COPY = {
   },
 } as const
 
-export const CHART_COPY = {
+const CHART_FA = {
   ranges: [
     { id: '1m' as const, label: '1 ماه اخیر' },
     { id: '6m' as const, label: '6 ماه' },
@@ -332,7 +346,7 @@ export const CHART_COPY = {
     'برنامه = میانگین وزنی درصد برنامه طبق baseline · EV = میانگین وزنی پیشرفت تأییدشده (وزن زمان‌بندی) · محور افقی ماه شمسی (از چپ به راست) · مقادیر امروز دقیقاً همان کارت‌های بالای صفحه‌اند.',
 } as const
 
-export const DAILY_COPY = {
+const DAILY_FA = {
   plannedToday: 'برنامهٔ مصوب امروز',
   actualToday: 'پیشرفت واقعی ثبت‌شده',
   deltaAria: 'انحراف روز: ',
@@ -379,7 +393,7 @@ export const DAILY_COPY = {
   delayedCritical: 'مهم‌ترین جبهه‌های تأخیردار در مسیر بحرانی',
 } as const
 
-export const FRONTS_COPY = {
+const FRONTS_FA = {
   importance: {
     negative_float: 'شناوری منفی',
     critical: 'مسیر بحرانی (CPM)',
@@ -423,7 +437,7 @@ export const FRONTS_COPY = {
   percent: (n: string) => `${n}٪`,
 } as const
 
-export const INBOX_COPY = {
+const INBOX_FA = {
   categories: {
     Controls: 'کنترل پروژه',
     LeanOps: 'عملیات ناب',
@@ -468,7 +482,7 @@ export const INBOX_COPY = {
   done: (label: string) => `«${label}» انجام شد.`,
 } as const
 
-export const CUMULATIVE_COPY = {
+const CUMULATIVE_FA = {
   sectionFormula: 'الف) فرمول',
   weightNote: (kind: string) =>
     `W = ${kind} · P(برنامه) = سهم سپری‌شدهٔ بازهٔ مبنا تا تاریخ محاسبه (روز تقویمی) · P(واقعی) = درصد فیزیکی تأییدشده`,
@@ -514,7 +528,7 @@ export const CUMULATIVE_COPY = {
   toman: (n: string) => `${n} تومان`,
 } as const
 
-export const COST_PERF_COPY = {
+const COST_PERF_FA = {
   cpiLabel: { good: 'سالم', warn: 'نیازمند توجه', bad: 'بحرانی', neutral: '' },
   tcpiLabel: { neutral: 'نیاز به بهبود ندارد', warn: 'نیازمند تلاش', bad: 'دور از دسترس', good: '' },
   noBudgetTitle: 'بودجهٔ پروژه (BAC) تعریف نشده است',
@@ -578,7 +592,7 @@ export const COST_PERF_COPY = {
   hint: 'CPI نشان می‌دهد تا امروز به‌ازای هر واحد هزینه چقدر کار انجام شده؛ TCPI نشان می‌دهد از امروز چقدر باید کارآمد باشیم تا در سقف بودجه تمام شود. اعداد از بودجهٔ برنامهٔ دفتر فنی، هزینه‌های ثبت‌شده و پیشرفت تأییدشدهٔ پروژه می‌آیند.',
 } as const
 
-export const ESTIMATE_COPY = {
+const ESTIMATE_FA = {
   status: {
     missing: 'نیازمند تکمیل تنظیمات',
     incomplete: 'برآورد ناقص',
@@ -740,7 +754,7 @@ export const ESTIMATE_COPY = {
   activity: 'فعالیت',
 } as const
 
-export const WEEKLY_COPY = {
+const WEEKLY_FA = {
   ppcTone: { good: 'در هدف', warn: 'زیر هدف', bad: 'پایین' },
   indexTone: { good: 'طبق برنامه', warn: 'کمی عقب', bad: 'عقب از برنامه' },
   httpError: (status: number) => `خطای ${status}`,
@@ -862,7 +876,7 @@ export const WEEKLY_COPY = {
   notLoaded: 'داده هنوز بارگذاری نشده است',
 } as const
 
-export const WEEKLY_HELP_COPY = {
+const WEEKLY_HELP_FA = {
   noNumbers: 'هنوز عددی برای نمایش نیست.',
   noData: 'هنوز داده‌ای نیست.',
   noWeek: 'هنوز هفته‌ای نیست.',
@@ -1020,7 +1034,7 @@ export const WEEKLY_HELP_COPY = {
     'در فاز اول تعهدات از برنامهٔ زمان‌بندی می‌آیند و هنوز جایی برای ثبت علت عدم تحقق نیست؛ برای همین این کادر خالی است. ثبت علت همراه با ورود برنامهٔ تعهدات هفتگی در فاز بعد اضافه می‌شود.',
 } as const
 
-export const BACKGROUND_COPY = {
+const BACKGROUND_FA = {
   httpError: (status: number) => `خطای ${status}`,
   network: 'خطای شبکه',
   basis: {
@@ -1147,3 +1161,20 @@ export const BACKGROUND_COPY = {
   pkgSupervisor: 'وزن بسته‌ها و پیشرفت سرپرست',
 } as const
 
+export const PERIOD_COPY = makeLiveCopy({ fa: PERIOD_FA, en: PERIOD_EN as unknown as typeof PERIOD_FA })
+export const CHART_COPY = makeLiveCopy({ fa: CHART_FA, en: CHART_EN as unknown as typeof CHART_FA })
+export const DAILY_COPY = makeLiveCopy({ fa: DAILY_FA, en: DAILY_EN as unknown as typeof DAILY_FA })
+export const FRONTS_COPY = makeLiveCopy({ fa: FRONTS_FA, en: FRONTS_EN as unknown as typeof FRONTS_FA })
+export const INBOX_COPY = makeLiveCopy({ fa: INBOX_FA, en: INBOX_EN as unknown as typeof INBOX_FA })
+export const CUMULATIVE_COPY = makeLiveCopy({ fa: CUMULATIVE_FA, en: CUMULATIVE_EN as unknown as typeof CUMULATIVE_FA })
+export const COST_PERF_COPY = makeLiveCopy({ fa: COST_PERF_FA, en: COST_PERF_EN as unknown as typeof COST_PERF_FA })
+export const ESTIMATE_COPY = makeLiveCopy({ fa: ESTIMATE_FA, en: ESTIMATE_EN as unknown as typeof ESTIMATE_FA })
+export const WEEKLY_COPY = makeLiveCopy({ fa: WEEKLY_FA, en: WEEKLY_EN as unknown as typeof WEEKLY_FA })
+export const WEEKLY_HELP_COPY = makeLiveCopy({
+  fa: WEEKLY_HELP_FA,
+  en: WEEKLY_HELP_EN as unknown as typeof WEEKLY_HELP_FA,
+})
+export const BACKGROUND_COPY = makeLiveCopy({
+  fa: BACKGROUND_FA,
+  en: BACKGROUND_EN as unknown as typeof BACKGROUND_FA,
+})

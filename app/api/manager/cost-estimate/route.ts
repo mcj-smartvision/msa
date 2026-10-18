@@ -25,6 +25,10 @@ import {
 } from '@/features/manager/lib/cost-estimate'
 import { attachTraceHistory } from '@/features/calc-trace/lib/history'
 import { workshopErrorResponse } from '@/features/workshop/lib/service'
+import { normalizeLocale } from '@/features/project-init/lib/i18n/utils'
+import { LOCALE_COOKIE } from '@/shared/lib/i18n/locale-cookie'
+import { getOverviewReasons } from '@/features/manager/lib/i18n/overview-alerts'
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 
 const NO_STORE = { 'Cache-Control': 'no-store, max-age=0' }
 
@@ -42,9 +46,10 @@ async function respond(
   projectId: string,
   today: string,
   canEdit: boolean,
-  admin: boolean
+  admin: boolean,
+  locale: FormLocale
 ) {
-  const overview = await loadCostEstimateOverview(supabase, service, projectId, today, canEdit, admin)
+  const overview = await loadCostEstimateOverview(supabase, service, projectId, today, canEdit, admin, locale)
   if (overview.traces) await attachTraceHistory(service, projectId, overview.traces, today)
   return NextResponse.json(overview, { headers: NO_STORE })
 }
@@ -52,14 +57,16 @@ async function respond(
 /** GET /api/manager/cost-estimate?projectId= — estimate settings, BAC breakdown, EVM and alerts. */
 export async function GET(request: NextRequest) {
   try {
+    const locale = normalizeLocale(request.cookies.get(LOCALE_COOKIE)?.value)
+    const R = getOverviewReasons(locale)
     const projectId = request.nextUrl.searchParams.get('projectId') ?? ''
-    if (!projectId) throw new SiteOpsError('VALIDATION', 'projectId لازم است')
+    if (!projectId) throw new SiteOpsError('VALIDATION', R.projectIdRequired)
 
     const supabase = createClient()
     const user = await requireUser(supabase)
     await assertManagerAccess(supabase, user.id, projectId)
     const { admin, canEdit } = await permissions(supabase, user.id, projectId)
-    return await respond(supabase, createServiceClient(), projectId, todayIsoTehran(), canEdit, admin)
+    return await respond(supabase, createServiceClient(), projectId, todayIsoTehran(), canEdit, admin, locale)
   } catch (error) {
     return workshopErrorResponse(error)
   }
@@ -72,6 +79,8 @@ export async function GET(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
+    const locale = normalizeLocale(request.cookies.get(LOCALE_COOKIE)?.value)
+    const R = getOverviewReasons(locale)
     const body = (await request.json().catch(() => null)) as {
       projectId?: string
       settings?: Record<string, unknown>
@@ -79,14 +88,17 @@ export async function PUT(request: NextRequest) {
       acknowledgeWarnings?: boolean
     } | null
     const projectId = body?.projectId ?? ''
-    if (!projectId) throw new SiteOpsError('VALIDATION', 'projectId لازم است')
+    if (!projectId) throw new SiteOpsError('VALIDATION', R.projectIdRequired)
 
     const supabase = createClient()
     const user = await requireUser(supabase)
     await assertManagerAccess(supabase, user.id, projectId)
     const { admin, canEdit } = await permissions(supabase, user.id, projectId)
     if (!canEdit) {
-      throw new SiteOpsError('FORBIDDEN', 'فقط مدیر پروژه می‌تواند تنظیمات مالی را تغییر دهد')
+      throw new SiteOpsError(
+        'FORBIDDEN',
+        locale === 'fa' ? 'فقط مدیر پروژه می‌تواند تنظیمات مالی را تغییر دهد' : 'Only the project manager can change financial settings'
+      )
     }
 
     const validation = validateEstimate(body?.settings ?? {})
@@ -142,7 +154,7 @@ export async function PUT(request: NextRequest) {
       throw new SiteOpsError('VALIDATION', error.message)
     }
 
-    return await respond(supabase, service, projectId, today, true, admin)
+    return await respond(supabase, service, projectId, today, true, admin, locale)
   } catch (error) {
     return workshopErrorResponse(error)
   }

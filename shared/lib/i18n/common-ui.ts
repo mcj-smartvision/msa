@@ -3,10 +3,12 @@
  * @purpose برچسب‌های مشترک همهٔ صفحات (بارگذاری، خالی، خطا)
  * @safe-to-edit YES
  * @affects تمام routeهای app/
- * @depends-on nothing
+ * @depends-on shared/lib/i18n/make-live-copy
  */
 
-export const COMMON_UI = {
+import { makeLiveCopy } from '@/shared/lib/i18n/make-live-copy'
+
+const FA = {
   loading: 'در حال بارگذاری…',
   loadingDots: 'در حال بارگذاری...',
   loadingDashboard: 'در حال بارگذاری داشبورد شما...',
@@ -22,3 +24,25 @@ export const COMMON_UI = {
   details: 'جزئیات',
   back: 'بازگشت',
 } as const
+
+const EN: { [K in keyof typeof FA]: (typeof FA)[K] } = {
+  loading: 'Loading…',
+  loadingDots: 'Loading...',
+  loadingDashboard: 'Loading your dashboard...',
+  loadingFailed: 'Failed to load',
+  error: 'Error',
+  noProject: 'No project selected.',
+  noActiveProject: 'No active project is assigned.',
+  retry: 'Try again',
+  retryAgain: 'Retry',
+  save: 'Save',
+  saving: 'Saving...',
+  cancel: 'Cancel',
+  details: 'Details',
+  back: 'Back',
+}
+
+export const COMMON_UI = makeLiveCopy({
+  fa: FA,
+  en: EN as unknown as typeof FA,
+})

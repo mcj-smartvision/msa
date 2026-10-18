@@ -3,10 +3,11 @@
  * @purpose تنظیمات و برچسب‌ها — داشبورد مدیر پروژه و KPI (pulse-config)
  * @safe-to-edit YES
  * @affects داشبورد مدیر پروژه و KPI
- * @depends-on features/manager/lib/overview-types
+ * @depends-on features/manager/lib/overview-types, shared/lib/i18n/make-live-copy
  */
 
 import type { ManagerPulseKey } from '@/features/manager/lib/overview-types'
+import { makeLiveCopy } from '@/shared/lib/i18n/make-live-copy'
 
 export const MANAGER_REMINDER_PREFIX = 'manager_reminder:'
 
@@ -21,7 +22,7 @@ export const PULSE_ROLES: Record<ManagerPulseKey, string[]> = {
   gate: ['security'],
 }
 
-export const REMINDER_COPY: Record<ManagerPulseKey, { title: string; body: string; href: string }> = {
+const REMINDER_FA: Record<ManagerPulseKey, { title: string; body: string; href: string }> = {
   daily_report: {
     title: 'یادآوری ثبت گزارش روزانه',
     body: 'مدیر پروژه درخواست کرده گزارش روزانهٔ کارگاه را ثبت کنید.',
@@ -43,6 +44,34 @@ export const REMINDER_COPY: Record<ManagerPulseKey, { title: string; body: strin
     href: '/dashboard/security',
   },
 }
+
+const REMINDER_EN: typeof REMINDER_FA = {
+  daily_report: {
+    title: 'Reminder: record daily report',
+    body: 'The project manager asked you to record the site daily report.',
+    href: '/dashboard/site-supervisor/daily-reports',
+  },
+  warehouse: {
+    title: 'Reminder: update warehouse stock',
+    body: 'The project manager asked you to update receipts, issues and warehouse stock.',
+    href: '/dashboard/storekeeper',
+  },
+  hse: {
+    title: 'Reminder: complete safety checklist',
+    body: 'The project manager asked you to complete today’s safety checklist.',
+    href: '/dashboard/hse',
+  },
+  gate: {
+    title: 'Reminder: record gate traffic',
+    body: 'The project manager asked you to review the gate and record person traffic.',
+    href: '/dashboard/security',
+  },
+}
+
+export const REMINDER_COPY = makeLiveCopy({
+  fa: REMINDER_FA,
+  en: REMINDER_EN as unknown as typeof REMINDER_FA,
+})
 
 export function isPulseKey(value: unknown): value is ManagerPulseKey {
   return typeof value === 'string' && value in PULSE_ROLES

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file features/supervisor/components/daily-report-history-page.tsx
  * @purpose آرشیو گزارش روزانه — فقط یادداشت و عکس (بدون درصد پیشرفت)
  * @safe-to-edit CAREFUL
@@ -167,7 +167,7 @@ export function DailyReportHistoryPage() {
   }, [archiveRows, search, monthFilter, photosByReportId])
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-100/80" dir="rtl" lang="fa">
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-100/80">
       <div className="mx-auto max-w-[220mm] space-y-5 px-4 py-6 pb-12">
         <div className="space-y-4">
           <Button type="button" variant="ghost" size="sm" className="-mr-2 text-slate-600" asChild>

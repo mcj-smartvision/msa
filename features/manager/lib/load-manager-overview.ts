@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file features/manager/lib/load-manager-overview.ts
  * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (load-manager-overview)
  * @safe-to-edit CAREFUL
@@ -57,6 +57,8 @@ ManagerQuality,
 ManagerResources,
 SectionResult,
 } from '@/features/manager/lib/overview-types'
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
+import { getOverviewReasons, getOverviewScheduleGroups } from '@/features/manager/lib/i18n/overview-alerts'
 
 type Row = Record<string, unknown>
 
@@ -68,10 +70,10 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback
 }
 
-const NOT_BUILT = 'جدول‌های این بخش هنوز در پایگاه داده ساخته نشده‌اند.'
-
 const DAY_MS = 86_400_000
 const HSE_WINDOW_DAYS = 30
+
+let activeReasons = getOverviewReasons('fa')
 
 async function section<T>(
   run: () => Promise<SectionResult<T>>,
@@ -81,7 +83,7 @@ async function section<T>(
     return await run()
   } catch (error) {
     const message = errorMessage(error, fallback)
-    if (isMissingRelation(message)) return { status: 'unavailable', reason: NOT_BUILT }
+    if (isMissingRelation(message)) return { status: 'unavailable', reason: activeReasons.notBuilt }
     return { status: 'error', message }
   }
 }
@@ -98,39 +100,6 @@ function str(value: unknown): string | null {
 
 /* ----------------------------------------------------------- Alert copy */
 
-const SCHEDULE_GROUPS: Array<{
-  severities: ScheduleAlertSeverity[]
-  level: ManagerAlert['level']
-  title: string
-  cause: string
-  impact: string
-  suggestion: string
-}> = [
-  {
-    severities: ['negative'],
-    level: 'critical',
-    title: 'شناوری منفی روی مسیر بحرانی',
-    cause: 'فعالیت‌هایی که شناوری آن‌ها منفی شده است.',
-    impact: 'تاریخ پایان پروژه با روند فعلی عقب می‌افتد.',
-    suggestion: 'برنامهٔ جبرانی (شیفت اضافه یا نیروی بیشتر) برای این فعالیت‌ها تصویب و با سرپرست کارگاه هماهنگ کنید.',
-  },
-  {
-    severities: ['urgent', 'critical'],
-    level: 'warning',
-    title: 'فعالیت‌های بحرانی با پیشرفت کند',
-    cause: 'فعالیت‌های مسیر بحرانی که نرخ پیشرفتشان از برنامه پایین‌تر است.',
-    impact: 'هر روز تأخیر این فعالیت‌ها مستقیماً پایان پروژه را عقب می‌اندازد.',
-    suggestion: 'علت کندی (نیرو، مصالح یا جبههٔ کاری) را از سرپرست کارگاه بپرسید و منابع را جابه‌جا کنید.',
-  },
-  {
-    severities: ['near_critical', 'fast_consumption'],
-    level: 'warning',
-    title: 'فعالیت‌های نزدیک به مسیر بحرانی',
-    cause: 'شناوری این فعالیت‌ها کم است یا سریع‌تر از حد مجاز مصرف می‌شود.',
-    impact: 'با چند روز تأخیر دیگر روی مسیر بحرانی قرار می‌گیرند.',
-    suggestion: 'پیش از ورود به مسیر بحرانی، توالی و منابع این فعالیت‌ها را بازبینی کنید.',
-  },
-]
 
 function sortAlerts(alerts: ManagerAlert[]): ManagerAlert[] {
   return alerts.sort((a, b) => {
@@ -152,8 +121,11 @@ interface MemberRow {
   positions: string[]
 }
 
-function positionLabel(key: string): string {
-  return POSITION_LABELS[key]?.fa ?? key
+function positionLabel(key: string, locale: FormLocale): string {
+  const entry = POSITION_LABELS[key]
+  if (!entry) return key
+  if (locale === 'en' || locale === 'de') return entry.en ?? entry.fa ?? key
+  return entry.fa ?? key
 }
 
 /* ---------------------------------------------------------------- Loader */
@@ -163,8 +135,12 @@ export async function loadManagerOverview(
   service: SupabaseClient,
   projectId: string,
   today: string,
-  options: { withTraces?: boolean } = {}
+  options: { withTraces?: boolean; locale?: FormLocale } = {}
 ): Promise<ManagerOverview> {
+  const locale = options.locale ?? 'fa'
+  activeReasons = getOverviewReasons(locale)
+  const SCHEDULE_GROUPS = getOverviewScheduleGroups(locale)
+  const R = activeReasons
   const now = Date.now()
 
   const projectPromise = service
@@ -173,9 +149,9 @@ export async function loadManagerOverview(
     .eq('id', projectId)
     .maybeSingle()
 
-  const evmSnapshotPromise = loadProjectEvm(service, projectId, { asOf: today, today }).then(
+  const evmSnapshotPromise = loadProjectEvm(service, projectId, { asOf: today, today, locale }).then(
     (snapshot) => ({ ok: true as const, snapshot }),
-    (error: unknown) => ({ ok: false as const, message: errorMessage(error, 'بارگذاری شاخص‌های EVM ناموفق بود') })
+    (error: unknown) => ({ ok: false as const, message: errorMessage(error, R.evmLoadFailed) })
   )
 
   const decisionsPromise = section(async () => {
@@ -190,21 +166,21 @@ export async function loadManagerOverview(
     const items: ManagerDecisionItem[] = ((data ?? []) as Row[]).map((row) => ({
       id: String(row.id),
       kind: row.approval_status === 'change_requested' ? 'change_request' : 'package_approval',
-      title: String(row.name ?? 'بستهٔ کاری بدون نام'),
+      title: String(row.name ?? R.unnamedPackage),
       subtitle: [str(row.location), str(row.crew)].filter(Boolean).join(' · ') || null,
       updatedAt: str(row.updated_at),
     }))
     return { status: 'ok' as const, data: { items, total: count ?? items.length } }
-  }, 'بارگذاری کارتابل ناموفق بود')
+  }, R.inboxLoadFailed)
 
   const scheduleAlertsPromise = listActiveScheduleAlerts(supabase, projectId).then(
     (alerts) => ({ ok: true as const, alerts }),
-    (error: unknown) => ({ ok: false as const, message: errorMessage(error, 'خطا') })
+    (error: unknown) => ({ ok: false as const, message: errorMessage(error, R.genericError) })
   )
 
   const attendancePromise = getAttendanceDashboard(supabase, projectId).then(
     (snapshot) => ({ ok: true as const, snapshot }),
-    (error: unknown) => ({ ok: false as const, message: errorMessage(error, 'بارگذاری تردد امروز ناموفق بود') })
+    (error: unknown) => ({ ok: false as const, message: errorMessage(error, R.attendanceLoadFailed) })
   )
 
   const inventoryPromise = service
@@ -228,7 +204,7 @@ export async function loadManagerOverview(
       .in('status', ['open', 'draft_by_ai'])
     if (legacy.error) throw new Error(legacy.error.message)
     return { status: 'ok', data: { rows: (legacy.data ?? []) as Row[], source: 'legacy' } }
-  }, 'بارگذاری NCR ناموفق بود')
+  }, R.ncrLoadFailed)
 
   const hsePromise = section<ManagerHse>(async () => {
     const { data, error } = await service
@@ -240,7 +216,7 @@ export async function loadManagerOverview(
     if (error) throw new Error(error.message)
     const rows = (data ?? []) as Row[]
     if (rows.length === 0) {
-      return { status: 'unavailable', reason: 'هنوز هشدار HSE از سرپرست کارگاه برای این پروژه ثبت نشده است.' }
+      return { status: 'unavailable', reason: R.hseMissing }
     }
     const windowStart = new Date(now - HSE_WINDOW_DAYS * DAY_MS).toISOString()
     const summary: ManagerHse = {
@@ -265,7 +241,7 @@ export async function loadManagerOverview(
       summary.daysSinceSerious = Math.max(0, Math.floor((now - Date.parse(summary.lastSeriousAt)) / DAY_MS))
     }
     return { status: 'ok', data: summary }
-  }, 'بارگذاری هشدارهای HSE ناموفق بود')
+  }, R.hseLoadFailed)
 
   const dailyReportPromise = service
     .from('daily_reports')
@@ -308,7 +284,7 @@ export async function loadManagerOverview(
     if (error) throw new Error(error.message)
     const rows = (data ?? []) as Row[]
     if (rows.length === 0) {
-      return { status: 'unavailable', reason: 'هنوز صورت‌وضعیتی برای کارفرما در این پروژه ثبت نشده است.' }
+      return { status: 'unavailable', reason: R.invoicesMissing }
     }
     const summary: ManagerInvoiceSummary = {
       count: rows.length,
@@ -343,7 +319,7 @@ export async function loadManagerOverview(
       if (date && (!summary.lastInvoiceDate || date > summary.lastInvoiceDate)) summary.lastInvoiceDate = date
     }
     return { status: 'ok', data: summary }
-  }, 'بارگذاری صورت‌وضعیت‌ها ناموفق بود')
+  }, R.invoicesLoadFailed)
 
   const snapshotsPromise = service
     .from('progress_snapshots')
@@ -420,7 +396,7 @@ export async function loadManagerOverview(
           const op = Array.isArray(task) ? task[0] : task
           return {
             id: String(row.id),
-            taskName: String(op?.name ?? 'دستور کار بدون نام'),
+            taskName: String(op?.name ?? R.unnamedWorkOrder),
             wbs: str(op?.wbs)?.trim() || null,
             constraints: Array.isArray(row.constraints) ? (row.constraints as unknown[]).map(String) : [],
             planDate: String(planRow.plan_date),
@@ -433,7 +409,7 @@ export async function loadManagerOverview(
         })),
       },
     }
-  }, 'بارگذاری برنامهٔ روزانهٔ کارگاه ناموفق بود')
+  }, R.sitePlanLoadFailed)
 
   const openAlertsPromise = service
     .from('alerts')
@@ -533,8 +509,8 @@ export async function loadManagerOverview(
       },
     }
   } else {
-    const message = 'message' in evmRes ? evmRes.message : 'خطا'
-    evm = isMissingRelation(message) ? { status: 'unavailable', reason: NOT_BUILT } : { status: 'error', message }
+    const message = 'message' in evmRes ? evmRes.message : R.genericError
+    evm = isMissingRelation(message) ? { status: 'unavailable', reason: activeReasons.notBuilt } : { status: 'error', message }
   }
 
   /* ----------------------------------------------------------- Curve */
@@ -542,7 +518,7 @@ export async function loadManagerOverview(
   let progress: SectionResult<ManagerCurve>
   const records: ProgressRecordRow[] = []
   if (!evmSnapshot || evm.status !== 'ok') {
-    progress = evm.status === 'ok' ? { status: 'unavailable', reason: 'شاخص‌های EVM در دسترس نیست.' } : evm
+    progress = evm.status === 'ok' ? { status: 'unavailable', reason: R.progressUnavailable } : evm
   } else {
     const snapshots: ProgressSnapshotRow[] = snapshotsRes.error
       ? []
@@ -570,6 +546,7 @@ export async function loadManagerOverview(
       earnedPercent: evm.data.earnedPercent,
       actualPercent: evm.data.actualPercent,
       today,
+      locale,
       snapshots,
       records,
       forecast: (dates) => {
@@ -581,7 +558,7 @@ export async function loadManagerOverview(
       ? { status: 'ok', data: curve }
       : {
           status: 'unavailable',
-          reason: 'برای رسم منحنی، فعالیت‌ها باید تاریخ baseline و بودجه (یا وزن) داشته باشند.',
+          reason: R.curveNeedsBaseline,
         }
   }
 
@@ -591,7 +568,7 @@ export async function loadManagerOverview(
     ? []
     : ((membersRes.data ?? []) as Row[]).map((row) => ({
         userId: String(row.user_id),
-        name: String(row.full_name || row.email || 'بدون نام'),
+        name: String(row.full_name || row.email || R.unnamedPerson),
         email: str(row.contact_email) ?? str(row.email),
         positions: ((row.positions as Array<{ key?: string; is_active?: boolean }> | null) ?? [])
           .filter((p) => p.key && p.is_active !== false)
@@ -619,16 +596,16 @@ export async function loadManagerOverview(
         },
       }
     : 'message' in attendanceRes && isMissingRelation(attendanceRes.message)
-      ? { status: 'unavailable', reason: NOT_BUILT }
-      : { status: 'error', message: 'message' in attendanceRes ? attendanceRes.message : 'خطا' }
+      ? { status: 'unavailable', reason: activeReasons.notBuilt }
+      : { status: 'error', message: 'message' in attendanceRes ? attendanceRes.message : R.genericError }
 
   const inventoryRows = inventoryRes.error ? [] : ((inventoryRes.data ?? []) as Row[])
   const inventory: ManagerOverview['site']['inventory'] = inventoryRes.error
     ? isMissingRelation(inventoryRes.error.message)
-      ? { status: 'unavailable', reason: NOT_BUILT }
+      ? { status: 'unavailable', reason: activeReasons.notBuilt }
       : { status: 'error', message: inventoryRes.error.message }
     : inventoryRows.length === 0
-      ? { status: 'unavailable', reason: 'هنوز کالایی در انبار این پروژه ثبت نشده است.' }
+      ? { status: 'unavailable', reason: R.inventoryMissing }
       : {
           status: 'ok',
           data: {
@@ -676,7 +653,7 @@ export async function loadManagerOverview(
           seen.add(key)
           return true
         })
-        .map((r) => ({ label: r.activityName?.trim() || 'فعالیت بدون نام', occurredAt: r.createdAt }))
+        .map((r) => ({ label: r.activityName?.trim() || R.unnamedActivity, occurredAt: r.createdAt }))
       alerts.push({
         id: `schedule-${group.severities[0]}`,
         level: group.level,
@@ -702,17 +679,13 @@ export async function loadManagerOverview(
         level: reason.level === 'RED' ? 'critical' : 'warning',
         domain: isCost ? 'cost' : 'schedule',
         title: isCost
-          ? 'هزینهٔ واقعی بیشتر از ارزش کار انجام‌شده'
+          ? R.costOverEarned
           : isFloat
-            ? 'مصرف شناوری مسیر بحرانی'
-            : 'عقب‌ماندگی کلی پروژه از برنامه',
+            ? R.criticalFloatBurn
+            : R.overallBehind,
         cause: reason.messageFa,
-        impact: isCost
-          ? 'با این روند، هزینهٔ تمام‌شدهٔ پروژه از بودجه عبور می‌کند.'
-          : 'با این روند، پروژه دیرتر از تاریخ قراردادی تمام می‌شود.',
-        suggestion: isCost
-          ? 'اسناد هزینه را با پیشرفت تأییدشده تطبیق دهید و هزینه‌های بدون پیشرفت متناظر را بررسی کنید.'
-          : 'فعالیت‌های عقب‌افتاده را اولویت‌بندی و برنامهٔ جبرانی را تصویب کنید.',
+        impact: isCost ? R.costOverBudgetTrend : R.scheduleSlipTrend,
+        suggestion: isCost ? R.costSuggestion : R.scheduleSuggestion,
         occurredAt: null,
         eventBased: false,
         items: [],
@@ -728,10 +701,10 @@ export async function loadManagerOverview(
         id: 'stock-empty',
         level: 'critical',
         domain: 'materials',
-        title: 'موجودی مصالح تمام شده است',
-        cause: 'موجودی انبار برای این اقلام به صفر رسیده است.',
-        impact: 'فعالیت‌های وابسته به این مصالح متوقف می‌شوند.',
-        suggestion: 'سفارش فوری خرید یا انتقال از انبار دیگر را با تدارکات پیگیری کنید.',
+        title: R.stockEmptyTitle,
+        cause: R.stockEmptyCause,
+        impact: R.stockEmptyImpact,
+        suggestion: R.stockEmptySuggestion,
         occurredAt: null,
         eventBased: false,
         items: empty.map((i) => ({ label: i.name, occurredAt: null })),
@@ -742,13 +715,16 @@ export async function loadManagerOverview(
         id: 'stock-low',
         level: 'warning',
         domain: 'materials',
-        title: 'مصالح زیر حداقل موجودی',
-        cause: 'موجودی این اقلام به حداقل مجاز رسیده است.',
-        impact: 'در صورت تأخیر در خرید، فعالیت‌های وابسته کند می‌شوند.',
-        suggestion: 'سفارش خرید را پیش از تمام‌شدن موجودی ثبت کنید.',
+        title: R.stockLowTitle,
+        cause: R.stockLowCause,
+        impact: R.stockLowImpact,
+        suggestion: R.stockLowSuggestion,
         occurredAt: null,
         eventBased: false,
-        items: low.map((i) => ({ label: `${i.name} (${faNumber(i.current)} از ${faNumber(i.min)})`, occurredAt: null })),
+        items: low.map((i) => ({
+          label: R.stockLowItem(i.name, faNumber(i.current), faNumber(i.min)),
+          occurredAt: null,
+        })),
       })
     }
   }
@@ -760,14 +736,14 @@ export async function loadManagerOverview(
         id: 'ncr-critical',
         level: 'critical',
         domain: 'quality',
-        title: 'عدم انطباق بحرانی باز',
-        cause: 'NCR با شدت بحرانی بسته نشده است.',
-        impact: 'ادامهٔ کار در محدودهٔ NCR ریسک کیفی و دوباره‌کاری دارد.',
-        suggestion: 'کار در محدودهٔ NCR را تا اقدام اصلاحی و بازرسی مجدد متوقف کنید.',
+        title: R.ncrCriticalTitle,
+        cause: R.ncrCriticalCause,
+        impact: R.ncrCriticalImpact,
+        suggestion: R.ncrCriticalSuggestion,
         occurredAt: str(critical[0].created_at),
         eventBased: true,
         items: critical.map((r) => ({
-          label: str(r.ncr_number) ? `NCR ${String(r.ncr_number)}` : 'NCR بدون شماره',
+          label: str(r.ncr_number) ? `NCR ${String(r.ncr_number)}` : R.ncrUnnumbered,
           occurredAt: str(r.created_at),
         })),
       })
@@ -830,16 +806,16 @@ export async function loadManagerOverview(
       reason = input.unavailableReason
     } else if (!input.lastActivityAt) {
       status = 'never'
-      reason = input.neverReason ?? 'هنوز فعالیتی ثبت نشده است.'
+      reason = input.neverReason ?? R.neverActivity
     } else {
       const ageHours = (now - new Date(input.lastActivityAt).getTime()) / 3_600_000
       status = ageHours > input.thresholdHours ? 'stale' : 'fresh'
     }
-    if (!reason && responsible.length === 0) reason = `هیچ عضوی با سمت «${positionLabel(roleKey)}» در این پروژه ثبت نشده است.`
+    if (!reason && responsible.length === 0) reason = R.noMemberWithRole(positionLabel(roleKey, locale))
     return {
       key: input.key,
       label: input.label,
-      roleLabel: positionLabel(roleKey),
+      roleLabel: positionLabel(roleKey, locale),
       status,
       lastActivityAt: input.lastActivityAt,
       thresholdHours: input.thresholdHours,
@@ -856,14 +832,14 @@ export async function loadManagerOverview(
   pulseSources.push(
     buildPulse({
       key: 'daily_report',
-      label: 'گزارش روزانهٔ سرپرست',
+      label: R.pulseDailyLabel,
       thresholdHours: 30,
       lastActivityAt: str(dailyRow?.created_at),
       detail: dailyRow
-        ? `گزارش ${jalaliDate(str(dailyRow.report_date))}${dailyRow.approved_by_manager ? ' · تأییدشده' : ' · منتظر تأیید'}`
+        ? R.pulseDailyDetail(jalaliDate(str(dailyRow.report_date)), Boolean(dailyRow.approved_by_manager))
         : null,
       unavailableReason: dailyReportRes.error ? dailyReportRes.error.message : null,
-      neverReason: 'هنوز گزارش روزانه‌ای برای این پروژه ثبت نشده است.',
+      neverReason: R.neverDaily,
     })
   )
 
@@ -874,23 +850,23 @@ export async function loadManagerOverview(
   pulseSources.push(
     buildPulse({
       key: 'warehouse',
-      label: 'موجودی انبار مرکزی',
+      label: R.pulseWarehouseLabel,
       thresholdHours: 48,
       lastActivityAt: lastInventoryUpdate,
-      detail: inventoryRows.length ? `${faNumber(inventoryRows.length)} قلم کالا` : null,
+      detail: inventoryRows.length ? R.pulseItemCount(faNumber(inventoryRows.length)) : null,
       unavailableReason: inventory.status === 'error' ? inventory.message : null,
-      neverReason: 'هنوز کالایی در انبار ثبت نشده است.',
+      neverReason: R.neverWarehouse,
     })
   )
 
   pulseSources.push(
     buildPulse({
       key: 'hse',
-      label: 'چک‌لیست ایمنی HSE',
+      label: R.pulseHseLabel,
       thresholdHours: 24,
       lastActivityAt: null,
       detail: null,
-      unavailableReason: 'ماژول HSE هنوز به دادهٔ واقعی متصل نشده است؛ صفحهٔ ایمنی فعلاً دادهٔ نمایشی دارد.',
+      unavailableReason: R.hseDemo,
     })
   )
 
@@ -899,12 +875,16 @@ export async function loadManagerOverview(
   pulseSources.push(
     buildPulse({
       key: 'gate',
-      label: 'گیت حراست و حضور و غیاب',
+      label: R.pulseGateLabel,
       thresholdHours: 24,
       lastActivityAt: lastTransit,
-      detail: gatesRes.error ? null : activeGates ? `${faNumber(activeGates)} گیت فعال` : 'گیتی تعریف نشده',
+      detail: gatesRes.error
+        ? null
+        : activeGates
+          ? R.pulseGatesActive(faNumber(activeGates))
+          : R.pulseNoGates,
       unavailableReason: lastTransitRes.error ? lastTransitRes.error.message : null,
-      neverReason: 'هنوز ترددی از گیت ثبت نشده است.',
+      neverReason: R.neverGate,
     })
   )
 
@@ -912,7 +892,7 @@ export async function loadManagerOverview(
 
   let resources: SectionResult<ManagerResources>
   if (!attendanceRes.ok) {
-    resources = attendance.status === 'ok' ? { status: 'error', message: 'خطا' } : attendance
+    resources = attendance.status === 'ok' ? { status: 'error', message: R.genericError } : attendance
   } else {
     const snap: AttendanceDashboardSnapshot = attendanceRes.snapshot
     const present = [...snap.inside, ...snap.outsideToday]
@@ -953,14 +933,14 @@ export async function loadManagerOverview(
   let daily: SectionResult<ManagerDailyDelta>
   if (progressUpdatesRes.error) {
     daily = isMissingRelation(progressUpdatesRes.error.message)
-      ? { status: 'unavailable', reason: NOT_BUILT }
+      ? { status: 'unavailable', reason: activeReasons.notBuilt }
       : { status: 'error', message: progressUpdatesRes.error.message }
   } else if (tasksRes.error) {
     daily = isMissingRelation(tasksRes.error.message)
-      ? { status: 'unavailable', reason: NOT_BUILT }
+      ? { status: 'unavailable', reason: activeReasons.notBuilt }
       : { status: 'error', message: tasksRes.error.message }
   } else if (!dailyScheduleRows.some((row) => row.weight > 0)) {
-    daily = { status: 'unavailable', reason: 'وزن فیزیکی فعالیت‌های برنامه تعریف نشده است.' }
+    daily = { status: 'unavailable', reason: R.physicalWeightMissing }
   } else {
     daily = {
       status: 'ok',
@@ -985,7 +965,7 @@ export async function loadManagerOverview(
   const taskRows = tasksRes.error ? [] : ((tasksRes.data ?? []) as Row[])
   const scheduleTaskRows = taskRows.map((row) => ({
     id: String(row.id),
-    name: String(row.name ?? 'فعالیت بدون نام'),
+    name: String(row.name ?? R.unnamedActivity),
     wbs: str(row.wbs_code),
     isCritical: row.is_critical === true,
     isSummary: row.is_summary === true,
@@ -998,12 +978,12 @@ export async function loadManagerOverview(
   let delays: SectionResult<ManagerCriticalDelays>
   if (tasksRes.error) {
     delays = isMissingRelation(tasksRes.error.message)
-      ? { status: 'unavailable', reason: NOT_BUILT }
+      ? { status: 'unavailable', reason: activeReasons.notBuilt }
       : { status: 'error', message: tasksRes.error.message }
   } else if (!taskRows.some((row) => row.baseline_finish)) {
     delays = {
       status: 'unavailable',
-      reason: 'برنامهٔ مبنا (baseline) برای فعالیت‌ها ثبت نشده است؛ تأخیر نسبت به برنامه قابل محاسبه نیست.',
+      reason: R.baselineMissing,
     }
   } else {
     delays = {
@@ -1012,6 +992,7 @@ export async function loadManagerOverview(
         criticalFrontsInput({
           projectId,
           today,
+          locale,
           taskRows,
           evmActivities: evmSnapshot?.activities ?? null,
           packageLinks: packageLinksRes.error ? null : ((packageLinksRes.data ?? []) as Row[]),
@@ -1026,36 +1007,37 @@ export async function loadManagerOverview(
   }
   const upcoming: SectionResult<ManagerUpcomingDeadline[]> = tasksRes.error
     ? isMissingRelation(tasksRes.error.message)
-      ? { status: 'unavailable', reason: NOT_BUILT }
+      ? { status: 'unavailable', reason: activeReasons.notBuilt }
       : { status: 'error', message: tasksRes.error.message }
     : { status: 'ok', data: buildUpcomingDeadlines(scheduleTaskRows, today) }
 
   const ownerNames = (keys: string[]): string | null => {
     const found = membersWith(keys)
-    return found.length ? found.slice(0, 2).map((m) => m.name).join('، ') : null
+    return found.length ? found.slice(0, 2).map((m) => m.name).join(R.listSep) : null
   }
   const taskNameById = new Map(taskRows.map((row) => [String(row.id), String(row.name ?? '')]))
   const checkedSources: string[] = []
   const blockerErrors: string[] = []
-  if (sitePlan.status === 'ok') checkedSources.push('برنامهٔ روزانهٔ کارگاه')
+  if (sitePlan.status === 'ok') checkedSources.push(R.sourceSitePlan)
   else if (sitePlan.status === 'error') blockerErrors.push(sitePlan.message)
-  if (inventory.status !== 'error') checkedSources.push('موجودی انبار')
+  if (inventory.status !== 'error') checkedSources.push(R.sourceInventory)
   else blockerErrors.push(inventory.message)
-  if (quality.status === 'ok') checkedSources.push('NCRهای باز')
+  if (quality.status === 'ok') checkedSources.push(R.sourceOpenNcrs)
   else if (quality.status === 'error') blockerErrors.push(quality.message)
-  if (!openAlertsRes.error) checkedSources.push('هشدارهای برنامه‌ریزی')
+  if (!openAlertsRes.error) checkedSources.push(R.sourcePlanningAlerts)
   else if (!isMissingRelation(openAlertsRes.error.message)) blockerErrors.push(openAlertsRes.error.message)
 
   const blockers: SectionResult<ManagerBlockers> =
     checkedSources.length === 0
       ? blockerErrors.length
         ? { status: 'error', message: blockerErrors[0] }
-        : { status: 'unavailable', reason: NOT_BUILT }
+        : { status: 'unavailable', reason: activeReasons.notBuilt }
       : {
           status: 'ok',
           data: {
             checkedSources,
             items: buildBlockers({
+              locale,
               blockedWorkOrders: sitePlan.status === 'ok' ? sitePlan.data.blocked : [],
               constraintNotes: sitePlan.status === 'ok' ? sitePlan.data.notes : [],
               stock: inventoryRows.map((row) => ({
@@ -1072,7 +1054,7 @@ export async function loadManagerOverview(
                       .filter((r) => r.severity === 'critical')
                       .map((r) => ({
                         id: String(r.id),
-                        label: str(r.ncr_number) ? `NCR ${String(r.ncr_number)}` : 'NCR بدون شماره',
+                        label: str(r.ncr_number) ? `NCR ${String(r.ncr_number)}` : R.ncrUnnumbered,
                         createdAt: str(r.created_at),
                       }))
                   : [],
@@ -1129,7 +1111,7 @@ export async function loadManagerOverview(
     alerts:
       scheduleAlerts.ok || evm.status === 'ok'
         ? { status: 'ok', data: alerts }
-        : { status: 'error', message: 'message' in scheduleAlerts ? scheduleAlerts.message : 'خطا' },
+        : { status: 'error', message: 'message' in scheduleAlerts ? scheduleAlerts.message : R.genericError },
     site: { date: today, attendance, inventory, quality: qualitySummary, hse },
     pulse: { status: 'ok', data: pulseSources },
     resources,
@@ -1153,6 +1135,7 @@ const ALERT_CAUSE_KIND: Record<string, CriticalFrontCauseInput['kind']> = {
 function criticalFrontsInput(input: {
   projectId: string
   today: string
+  locale: FormLocale
   taskRows: Row[]
   evmActivities: ProjectEvmSnapshot['activities'] | null
   packageLinks: Row[] | null
@@ -1195,7 +1178,7 @@ function criticalFrontsInput(input: {
     const contractorId = str(row.resolved_subcontractor_id) ?? str(row.subcontractor_id)
     return {
       id,
-      name: String(row.name ?? 'فعالیت بدون نام'),
+      name: String(row.name ?? activeReasons.unnamedActivity),
       wbs: str(row.wbs_code)?.trim() || null,
       isSummary: row.is_summary === true,
       isCritical: row.is_critical === true,
@@ -1213,7 +1196,7 @@ function criticalFrontsInput(input: {
   const causes: CriticalFrontCauseInput[] = []
   const causeSources: string[] = []
   if (input.alerts) {
-    causeSources.push('هشدارهای باز برنامه‌ریزی')
+    causeSources.push(activeReasons.openPlanningAlerts)
     for (const row of input.alerts) {
       if (!row.related_task_id) continue
       causes.push({
@@ -1221,15 +1204,16 @@ function criticalFrontsInput(input: {
         kind: ALERT_CAUSE_KIND[String(row.alert_type ?? '')] ?? 'schedule',
         source: 'alert',
         ref: `alert:${String(row.id)}`,
-        label_fa: String(row.message ?? 'هشدار باز برنامه‌ریزی'),
+        label_fa: String(row.message ?? activeReasons.openPlanningAlert),
         severity: row.severity === 'critical' ? 'critical' : 'warning',
         since: str(row.created_at),
       })
     }
   }
   if (input.blockedWorkOrders) {
-    causeSources.push('دستور کارهای متوقف برنامهٔ امروز کارگاه (تطبیق WBS)')
+    causeSources.push(activeReasons.stoppedWorkOrders)
     const taskIdByWbs = new Map(tasks.filter((t) => t.wbs).map((t) => [t.wbs!, t.id]))
+    const listSep = activeReasons.listSep
     for (const wo of input.blockedWorkOrders) {
       const taskId = wo.wbs ? taskIdByWbs.get(wo.wbs) : undefined
       if (!taskId) continue
@@ -1238,7 +1222,7 @@ function criticalFrontsInput(input: {
         kind: 'site',
         source: 'work_order',
         ref: `work_order:${wo.id}`,
-        label_fa: wo.constraints.length ? `دستور کار متوقف — ${wo.constraints.join('، ')}` : 'دستور کار امروز «متوقف» ثبت شده',
+        label_fa: activeReasons.stoppedWoLabel(wo.constraints.join(listSep)),
         severity: 'critical',
         since: wo.planDate,
       })
@@ -1248,6 +1232,7 @@ function criticalFrontsInput(input: {
   return {
     projectId: input.projectId,
     today: input.today,
+    locale: input.locale,
     tasks,
     dependencies: input.dependencies
       ? input.dependencies

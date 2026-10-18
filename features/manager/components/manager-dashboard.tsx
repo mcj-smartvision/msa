@@ -139,7 +139,7 @@ function usePeriodParam(): [ManagerPeriod, (next: ManagerPeriod) => void] {
   return [period, setPeriod]
 }
 
-function useManagerOverview(projectId: string | null) {
+function useManagerOverview(projectId: string | null, locale: string) {
   const [data, setData] = useState<ManagerOverview | null>(null)
   const [loading, setLoading] = useState(Boolean(projectId))
   const [error, setError] = useState<string | null>(null)
@@ -166,7 +166,7 @@ function useManagerOverview(projectId: string | null) {
     } finally {
       if (id === requestId.current) setLoading(false)
     }
-  }, [projectId])
+  }, [projectId, locale])
 
   useEffect(() => {
     setData(null)
@@ -625,7 +625,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
   const { locale, dir } = useLocale()
   const periodOptions = useMemo(() => getManagerPeriods(locale), [locale])
   const projectId = useSyncedProjectId(initialProjectId)
-  const { data: serverOverview, loading, error, reload } = useManagerOverview(projectId)
+  const { data: serverOverview, loading, error, reload } = useManagerOverview(projectId, locale)
   useProjectStoreSync(projectId)
   const storeEvm = useStoreEvm(projectId, { savedOnly: true })
   const data = useMemo(() => withStoreEvm(serverOverview, storeEvm), [serverOverview, storeEvm])
@@ -687,7 +687,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
     }
   }, [nav, projectId])
 
-  const helpLinks = useMemo<ManagerHelpLink[]>(() => buildManagerHelpLinks(hrefs), [hrefs])
+  const helpLinks = useMemo<ManagerHelpLink[]>(() => buildManagerHelpLinks(hrefs), [hrefs, locale])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

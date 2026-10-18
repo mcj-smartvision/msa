@@ -28,6 +28,7 @@ Zap,
 import { cn } from '@/shared/lib/utils'
 import { faNumber } from '@/features/manager/lib/format'
 import { MANAGER_HELP_COPY } from '@/features/manager/config'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
 
 export interface ManagerHelpLink {
   label: string
@@ -37,12 +38,16 @@ export interface ManagerHelpLink {
 
 type TabId = 'tour' | 'glossary' | 'colors' | 'shortcuts'
 
-const TABS: { id: TabId; label: string; icon: ComponentType<{ className?: string }> }[] = [
-  { id: 'tour', label: MANAGER_HELP_COPY.tabs.tour, icon: Rocket },
-  { id: 'glossary', label: MANAGER_HELP_COPY.tabs.glossary, icon: BookOpen },
-  { id: 'colors', label: MANAGER_HELP_COPY.tabs.colors, icon: Palette },
-  { id: 'shortcuts', label: MANAGER_HELP_COPY.tabs.shortcuts, icon: Zap },
+const TAB_META: { id: TabId; icon: ComponentType<{ className?: string }> }[] = [
+  { id: 'tour', icon: Rocket },
+  { id: 'glossary', icon: BookOpen },
+  { id: 'colors', icon: Palette },
+  { id: 'shortcuts', icon: Zap },
 ]
+
+function helpTabs() {
+  return TAB_META.map((t) => ({ ...t, label: MANAGER_HELP_COPY.tabs[t.id] }))
+}
 
 function Term({ abbr, name, title, children }: { abbr: string; name: string; title: string; children: ReactNode }) {
   return (
@@ -125,14 +130,18 @@ export function ManagerHelpPanel({
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  const { dir } = useLocale()
   if (!open) return null
 
+  const TABS = helpTabs()
   const onTabKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     const index = TABS.findIndex((t) => t.id === tab)
     let next = index
-    // RTL: the visually next tab sits to the left.
-    if (event.key === 'ArrowLeft') next = (index + 1) % TABS.length
-    else if (event.key === 'ArrowRight') next = (index - 1 + TABS.length) % TABS.length
+    // In RTL the visually next tab sits to the left.
+    const forward = dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight'
+    const backward = dir === 'rtl' ? 'ArrowRight' : 'ArrowLeft'
+    if (event.key === forward) next = (index + 1) % TABS.length
+    else if (event.key === backward) next = (index - 1 + TABS.length) % TABS.length
     else if (event.key === 'Home') next = 0
     else if (event.key === 'End') next = TABS.length - 1
     else return
@@ -142,7 +151,7 @@ export function ManagerHelpPanel({
   }
 
   return (
-    <div className="fixed inset-0 z-[70]" dir="rtl">
+    <div className="fixed inset-0 z-[70]" dir={dir}>
       <div
         aria-hidden
         onClick={onClose}

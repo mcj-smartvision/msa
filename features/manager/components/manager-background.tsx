@@ -30,6 +30,7 @@ import { resolveSiblingWeights, type WeightIssue } from '@/features/schedule/lib
 import type { EarnedScheduleSolution } from '@/features/project-controls/lib/earned-schedule'
 import type { ExplainedKpi } from '@/shared/types/project-controls'
 import { DATA_QUALITY_FA, KPI_STATUS_TOKENS } from '@/features/project-controls/lib/explained-metric'
+import { localizeKpiTitle, localizeKpiUnit } from '@/features/project-controls/lib/i18n/metric-labels'
 import { buildControlsSnapshot } from '@/features/project-controls/lib/controls-snapshot'
 import type { WeeklyPlanLoad } from '@/features/project-controls/lib/load-weekly-plan'
 import { buildEarnedScheduleKpis, buildPpcKpi, buildTcpiKpi, type EarnedScheduleKpiKey } from '@/features/project-controls/lib/kpis'
@@ -213,7 +214,7 @@ function CumulativeCard({
               <Num>{lat(result)}%</Num>
             </MathLine>
           ) : null}
-          <p dir="rtl" className="font-sans text-[11px] text-slate-500">{BACKGROUND_COPY.wpNote}</p>
+          <p  className="font-sans text-[11px] text-slate-500">{BACKGROUND_COPY.wpNote}</p>
         </MathBlock>
         <Table
           head={[BACKGROUND_COPY.cols.activity, BACKGROUND_COPY.cols.weight, BACKGROUND_COPY.cols.physical, BACKGROUND_COPY.cols.wxp]}
@@ -338,7 +339,7 @@ function EvmCard({ snapshot }: { snapshot: ProjectEvmSnapshot }) {
               </>
             ) : null}
           </MathLine>
-          <p dir="rtl" className="font-sans text-[11px] text-slate-500">
+          <p  className="font-sans text-[11px] text-slate-500">
             {BACKGROUND_COPY.evmNote}
           </p>
         </MathBlock>
@@ -437,7 +438,7 @@ function ForecastCard({ overview }: { overview: ManagerOverview }) {
                 </>
               ) : null}
             </MathLine>
-            <p dir="rtl" className="font-sans text-[11px] text-slate-500">
+            <p  className="font-sans text-[11px] text-slate-500">
               {BACKGROUND_COPY.forecastNote}
             </p>
           </MathBlock>
@@ -721,13 +722,13 @@ function KpiBlock({ kpi, math, digits }: { kpi: ExplainedKpi; math: ReactNode; d
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-semibold text-slate-800">
           {kpi.code ? <span className="text-slate-500">{kpi.code} · </span> : null}
-          {kpi.title_fa}
+          {localizeKpiTitle(kpi.key, kpi.title_fa)}
         </p>
         <StatusBadge kpi={kpi} />
       </div>
       <p className={`text-lg font-bold tabular-nums ${usable ? 'text-slate-900' : 'text-slate-400'}`}>
         {!usable ? DATA_QUALITY_FA[kpi.data_quality] : kpi.value == null ? BACKGROUND_COPY.undefined : faNumber(kpi.value, digits)}{' '}
-        {usable ? <span className="text-xs font-normal text-slate-500">{kpi.unit}</span> : null}
+        {usable ? <span className="text-xs font-normal text-slate-500">{localizeKpiUnit(kpi.unit)}</span> : null}
       </p>
       <MathBlock>{math}</MathBlock>
       <p className="text-xs leading-5 text-slate-700">{kpi.interpretation_fa}</p>
@@ -789,7 +790,7 @@ function TcpiMath({ metric }: { metric: ExplainedKpi }) {
           <span className="font-sans text-xs not-italic">{metric.substitution}</span>
         </MathLine>
       )}
-      <p dir="rtl" className="font-sans text-[11px] text-slate-500">
+      <p  className="font-sans text-[11px] text-slate-500">
         {BACKGROUND_COPY.tcpiNote}
       </p>
     </>
@@ -882,7 +883,7 @@ function DailyCard({ overview }: { overview: ManagerOverview }) {
               <Op>×</Op>
               <Num>100</Num>
             </MathLine>
-            <p dir="rtl" className="font-sans text-[11px] text-slate-500">{BACKGROUND_COPY.dailyNote}</p>
+            <p  className="font-sans text-[11px] text-slate-500">{BACKGROUND_COPY.dailyNote}</p>
           </MathBlock>
           <div className="grid gap-2 sm:grid-cols-4">
             <Result label={BACKGROUND_COPY.windowStart} value={jalaliDateTime(d.windowStart)} />
@@ -1003,7 +1004,7 @@ function SupervisorCard({
             <Op>=</Op>
             <Num>{lat(computed.value)}%</Num>
           </MathLine>
-          <p dir="rtl" className="font-sans text-[11px] text-slate-500">
+          <p  className="font-sans text-[11px] text-slate-500">
             {BACKGROUND_COPY.supervisorNote}
           </p>
         </MathBlock>

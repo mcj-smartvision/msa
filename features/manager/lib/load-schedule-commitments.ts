@@ -7,6 +7,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import { loadHolidays } from '@/features/holidays/lib/load-holidays'
 import { siteWorkCalendar } from '@/features/holidays/lib/work-calendar'
 import { loadCommitmentRnc, rncMap } from '@/features/project-store/lib/load-rnc'
@@ -23,7 +24,8 @@ import type { WeeklyCommitmentsResult } from './weekly-commitments'
 export async function loadScheduleCommitments(
   supabase: SupabaseClient,
   service: SupabaseClient,
-  projectId: string
+  projectId: string,
+  locale: FormLocale = 'fa'
 ): Promise<WeeklyCommitmentsResult> {
   const today = todayTehranIso()
   const [tree, entries, windowRows, holidays, rnc] = await Promise.all([
@@ -52,7 +54,13 @@ export async function loadScheduleCommitments(
     rnc: rncMap(rnc.rows),
   })
   if (!data) {
-    return { status: 'missing', reason_fa: 'هیچ فعالیتی با تاریخ برنامه‌ریزی‌شده در برنامهٔ زمان‌بندی نیست' }
+    return {
+      status: 'missing',
+      reason_fa:
+        locale === 'fa'
+          ? 'هیچ فعالیتی با تاریخ برنامه‌ریزی‌شده در برنامهٔ زمان‌بندی نیست'
+          : 'No activities with planned dates exist in the schedule',
+    }
   }
   return { status: 'ok', data }
 }

@@ -28,23 +28,33 @@ import { CHART_COPY, MANAGER_UI_NUMBERS } from '@/features/manager/config'
 
 type ChartRange = '1m' | '6m' | '12m' | 'all'
 
-const RANGES: { id: ChartRange; label: string }[] = CHART_COPY.ranges.map((r) => ({ id: r.id, label: r.label }))
-
 /** Months of plan shown after today in the windowed ranges. */
 const FORWARD_MONTHS = MANAGER_UI_NUMBERS.chartForwardMonths
 
 /** Recorded history shorter than this opens on the one-month range, where its points are readable. */
 const RECENT_HISTORY_DAYS = MANAGER_UI_NUMBERS.recentHistoryDays
 
-const SERIES = [
-  { key: 'planned', label: CHART_COPY.series.planned, color: '#1e3a8a', dash: undefined, width: 1.5, fill: 0.08 },
-  { key: 'actual', label: CHART_COPY.series.actual, color: '#10b981', dash: undefined, width: 1.5, fill: 0.1 },
-  { key: 'earned', label: CHART_COPY.series.earned, color: '#fb923c', dash: '5 4', width: 1.5, fill: 0.08 },
-] as const
+const SERIES_META = [
+  { key: 'planned' as const, color: '#1e3a8a', dash: undefined as string | undefined, width: 1.5, fill: 0.08 },
+  { key: 'actual' as const, color: '#10b981', dash: undefined as string | undefined, width: 1.5, fill: 0.1 },
+  { key: 'earned' as const, color: '#fb923c', dash: '5 4', width: 1.5, fill: 0.08 },
+]
 
-const FORECAST = { key: 'forecast', label: CHART_COPY.series.forecast, color: '#c2410c', dash: '2 5' } as const
+const FORECAST_META = { key: 'forecast' as const, color: '#c2410c', dash: '2 5' }
 
-type SeriesKey = (typeof SERIES)[number]['key'] | typeof FORECAST.key
+type SeriesKey = (typeof SERIES_META)[number]['key'] | typeof FORECAST_META.key
+
+function chartRanges(): { id: ChartRange; label: string }[] {
+  return CHART_COPY.ranges.map((r) => ({ id: r.id, label: r.label }))
+}
+
+function chartSeries() {
+  return SERIES_META.map((s) => ({ ...s, label: CHART_COPY.series[s.key] }))
+}
+
+function chartForecastSeries() {
+  return { ...FORECAST_META, label: CHART_COPY.series.forecast }
+}
 
 interface ChartDotProps {
   cx?: number
@@ -59,7 +69,7 @@ function renderDot(key: SeriesKey, color: string) {
   function ChartDot({ cx, cy, index, payload, value }: ChartDotProps) {
     const id = `${key}-${index ?? 0}`
     if (cx == null || cy == null || value == null) return <g key={id} />
-    if (key === FORECAST.key) {
+    if (key === FORECAST_META.key) {
       return payload?.kind === 'forecast' ? (
         <circle key={id} cx={cx} cy={cy} r={3} fill="#fff" stroke={color} strokeWidth={1.4} />
       ) : (
@@ -186,6 +196,9 @@ export function ManagerProgressChart({ curve }: { curve: ManagerCurve }) {
     [data, range]
   )
 
+  const SERIES = chartSeries()
+  const FORECAST = chartForecastSeries()
+  const RANGES = chartRanges()
   const visible = SERIES.filter((s) => !(sameLine && s.key === 'actual' && today?.actual != null && today.earned != null && Math.abs(today.actual - today.earned) < 0.05))
 
   return (

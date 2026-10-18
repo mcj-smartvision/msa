@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file features/supervisor/components/zone-lightbox-modal.tsx
  * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (zone-lightbox-modal)
  * @safe-to-edit CAREFUL
@@ -83,7 +83,7 @@ export function ZoneLightboxModal({
       className="sm:max-w-[min(98vw,1280px)] sm:rounded-xl"
       overlayClassName="p-1 sm:p-3"
     >
-      <div className="space-y-4" dir="rtl" lang="fa">
+      <div className="space-y-4">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_200px] lg:items-start">
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="aspect-[16/10] min-h-[min(60vh,560px)] w-full bg-slate-50">

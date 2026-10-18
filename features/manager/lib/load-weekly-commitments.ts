@@ -7,6 +7,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import {
 buildWeeklyCommitments,
 PPC_HISTORY_WEEKS,
@@ -20,8 +21,17 @@ function isMissingRelation(message: string | undefined): boolean {
   return /does not exist|schema cache|Could not find/i.test(message ?? '')
 }
 
-const MISSING_TABLES =
-  'جدول‌های برنامهٔ هفتگی متعهد (WWP) هنوز روی پایگاه داده اجرا نشده‌اند (database/100-weekly-work-plans.sql)'
+function missingTables(locale: FormLocale): string {
+  return locale === 'fa'
+    ? 'جدول‌های برنامهٔ هفتگی متعهد (WWP) هنوز روی پایگاه داده اجرا نشده‌اند (database/100-weekly-work-plans.sql)'
+    : 'Committed weekly plan (WWP) tables are not on the database yet (database/100-weekly-work-plans.sql)'
+}
+
+function noClosedWeeks(locale: FormLocale): string {
+  return locale === 'fa'
+    ? 'هنوز هیچ هفته‌ای از برنامهٔ هفتگی متعهد (WWP) بسته و ارزیابی نشده است'
+    : 'No committed weekly plan (WWP) week has been closed and scored yet'
+}
 
 const num = (value: unknown): number | null => {
   if (value == null) return null
@@ -30,7 +40,11 @@ const num = (value: unknown): number | null => {
 }
 
 /** Closed WWP weeks (PPC history), the latest week's commitments and the RNC window. Read-only. */
-export async function loadWeeklyCommitments(service: SupabaseClient, projectId: string): Promise<WeeklyCommitmentsResult> {
+export async function loadWeeklyCommitments(
+  service: SupabaseClient,
+  projectId: string,
+  locale: FormLocale = 'fa'
+): Promise<WeeklyCommitmentsResult> {
   const weeksRes = await service
     .from('wwp_weekly_ppc')
     .select('wwp_id, week_number, start_date, end_date, planned_count, completed_count')
@@ -38,7 +52,7 @@ export async function loadWeeklyCommitments(service: SupabaseClient, projectId: 
     .order('start_date', { ascending: false })
     .limit(PPC_HISTORY_WEEKS)
   if (weeksRes.error) {
-    if (isMissingRelation(weeksRes.error.message)) return { status: 'missing', reason_fa: MISSING_TABLES }
+    if (isMissingRelation(weeksRes.error.message)) return { status: 'missing', reason_fa: missingTables(locale) }
     throw new Error(weeksRes.error.message)
   }
 
@@ -51,7 +65,7 @@ export async function loadWeeklyCommitments(service: SupabaseClient, projectId: 
     completed: Number(row.completed_count) || 0,
   }))
   if (weeks.length === 0) {
-    return { status: 'missing', reason_fa: 'هنوز هیچ هفته‌ای از برنامهٔ هفتگی متعهد (WWP) بسته و ارزیابی نشده است' }
+    return { status: 'missing', reason_fa: noClosedWeeks(locale) }
   }
 
   const windowIds = weeks.slice(0, RNC_WINDOW_WEEKS).map((w) => w.wwpId)

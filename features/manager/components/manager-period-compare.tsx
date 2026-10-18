@@ -34,6 +34,7 @@ PeriodComparison,
 } from '@/features/manager/lib/overview-types'
 import { EmptyNote, InfoHint, LoadingRows, SectionCard, Spinner } from './manager-ui'
 import { MANAGER_PUNCT, PERIOD_COPY, PERIOD_REPORT_TITLES, PERIOD_WORDS } from '@/features/manager/config'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
 
 const COLORS = { current: '#d9601a', previous: '#2f6fed', planned: '#111827' } as const
 
@@ -610,6 +611,7 @@ function pointTitle(period: ManagerPeriod, detail: ComparisonPointDetail | null,
 }
 
 function ChartTooltip({ active, payload, period, words }: TooltipProps) {
+  const { dir } = useLocale()
   const point = payload?.[0]?.payload
   if (!active || !point) return null
   const cur = point.currentDetail
@@ -622,8 +624,8 @@ function ChartTooltip({ active, payload, period, words }: TooltipProps) {
   const activities = cur?.activities.length ? cur.activities : []
   return (
     <div
-      dir="rtl"
-      className="w-[min(320px,calc(100vw-48px))] rounded-xl border border-slate-200 bg-white p-3 text-right text-xs leading-6 text-slate-700 shadow-elevated"
+      dir={dir}
+      className="w-[min(320px,calc(100vw-48px))] rounded-xl border border-slate-200 bg-white p-3 text-start text-xs leading-6 text-slate-700 shadow-elevated"
     >
       <p className="font-bold text-slate-900">{pointTitle(period, cur, point.label)}</p>
       {period !== 'today' && prev ? (

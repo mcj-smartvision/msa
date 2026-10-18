@@ -12,6 +12,7 @@ import type { ProjectEvmActivityRow } from '@/features/evm/lib/load-project-evm'
 import { DAYS_PER_UNIT, solveEarnedSchedule } from '@/features/project-controls/lib/earned-schedule'
 import { buildBaselinePVCurve } from '@/features/project-controls/lib/pv-curve'
 import type { EvForecast } from '@/features/project-controls/lib/ev-forecast'
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import type { ManagerCurve, ManagerCurvePoint, ManagerScheduleForecast } from '@/features/manager/lib/overview-types'
 
 const DAY_MS = 86_400_000
@@ -151,12 +152,14 @@ export function buildProgressCurve(input: {
   earnedPercent: number
   actualPercent: number | null
   today: string
+  locale?: FormLocale
   snapshots: ProgressSnapshotRow[]
   records?: ProgressRecordRow[]
   /** Explainable-engine EV forecast, sampled on the given Jalali month ends (see `buildEvForecast`). */
   forecast?: (dates: string[]) => EvForecast
 }): ManagerCurve | null {
   const { today } = input
+  const en = (input.locale ?? 'fa') !== 'fa'
   const basis = resolveProgressBasis(input.activities)
   const activities = input.activities.filter((a) => progressWeightOf(a, basis) > 0)
   const totalWeight = activities.reduce((s, a) => s + progressWeightOf(a, basis), 0)
@@ -235,9 +238,19 @@ export function buildProgressCurve(input: {
 
   let forecast: EvForecast = input.forecast
     ? input.forecast(monthEndsFrom(today, 240))
-    : { status: 'unavailable', reason_fa: 'شاخص‌های Earned Schedule برای پیش‌بینی در دسترس نیست' }
+    : {
+        status: 'unavailable',
+        reason_fa: en
+          ? 'Earned Schedule metrics are not available for forecasting'
+          : 'شاخص‌های Earned Schedule برای پیش‌بینی در دسترس نیست',
+      }
   if (forecast.status === 'ok' && forecast.asOf !== today) {
-    forecast = { status: 'unavailable', reason_fa: `تاریخ وضعیت شاخص‌ها (${forecast.asOf}) با امروز (${today}) یکی نیست` }
+    forecast = {
+      status: 'unavailable',
+      reason_fa: en
+        ? `Metric status date (${forecast.asOf}) does not match today (${today})`
+        : `تاریخ وضعیت شاخص‌ها (${forecast.asOf}) با امروز (${today}) یکی نیست`,
+    }
   }
   const forecastAt = new Map<string, number>()
   if (forecast.status === 'ok') {

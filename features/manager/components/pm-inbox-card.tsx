@@ -21,28 +21,26 @@ import { faNumber, jalaliDate } from '@/features/manager/lib/format'
 import { cn } from '@/shared/lib/utils'
 import type { ManagerHrefs } from './manager-sections'
 import { INBOX_COPY, MANAGER_UI_NUMBERS } from '@/features/manager/config'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
 
-const CATEGORY_FA: Record<InboxCategory, string> = {
-  Controls: INBOX_COPY.categories.Controls,
-  LeanOps: INBOX_COPY.categories.LeanOps,
-  Financials: INBOX_COPY.categories.Financials,
-  Claims: INBOX_COPY.categories.Claims,
-  HSE: INBOX_COPY.categories.HSE,
-}
-const CATEGORIES = Object.keys(CATEGORY_FA) as InboxCategory[]
+const CATEGORIES = ['Controls', 'LeanOps', 'Financials', 'Claims', 'HSE'] as const satisfies readonly InboxCategory[]
 
-const OWNER_FA: Record<InboxOwnerRole, string> = {
-  PM: INBOX_COPY.owners.PM,
-  Planner: INBOX_COPY.owners.Planner,
-  QS: INBOX_COPY.owners.QS,
-  SiteManager: INBOX_COPY.owners.SiteManager,
-  HSE: INBOX_COPY.owners.HSE,
+function categoryLabel(cat: InboxCategory): string {
+  return INBOX_COPY.categories[cat]
 }
 
-const SEVERITY_STYLE: Record<InboxSeverity, { dot: string; chip: string; label: string }> = {
-  critical: { dot: 'bg-rose-600', chip: 'bg-rose-50 text-rose-700 ring-rose-200', label: INBOX_COPY.severity.critical },
-  warning: { dot: 'bg-amber-500', chip: 'bg-amber-50 text-amber-800 ring-amber-200', label: INBOX_COPY.severity.warning },
-  info: { dot: 'bg-sky-500', chip: 'bg-sky-50 text-sky-700 ring-sky-200', label: INBOX_COPY.severity.info },
+function ownerLabel(owner: InboxOwnerRole): string {
+  return INBOX_COPY.owners[owner]
+}
+
+const SEVERITY_STYLE: Record<InboxSeverity, { dot: string; chip: string }> = {
+  critical: { dot: 'bg-rose-600', chip: 'bg-rose-50 text-rose-700 ring-rose-200' },
+  warning: { dot: 'bg-amber-500', chip: 'bg-amber-50 text-amber-800 ring-amber-200' },
+  info: { dot: 'bg-sky-500', chip: 'bg-sky-50 text-sky-700 ring-sky-200' },
+}
+
+function severityLabel(severity: InboxSeverity): string {
+  return INBOX_COPY.severity[severity]
 }
 
 type ControlsLoad = { state: 'loading' } | { state: 'ok'; snapshot: ControlsSnapshot; kpis: Record<string, ExplainedKpi> } | { state: 'error'; message: string }
@@ -145,10 +143,12 @@ function InboxRow({ item, onAction, busy }: { item: InboxItem; onAction: (item: 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <p className="text-sm font-bold text-slate-800">{item.title_fa}</p>
-            <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset', sev.chip)}>{sev.label}</span>
+            <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset', sev.chip)}>
+              {severityLabel(item.severity)}
+            </span>
           </div>
           <p className="mt-0.5 text-[11px] text-slate-500">
-            {INBOX_COPY.meta(CATEGORY_FA[item.category], OWNER_FA[item.owner_role], jalaliDate(item.due_date))}
+            {INBOX_COPY.meta(categoryLabel(item.category), ownerLabel(item.owner_role), jalaliDate(item.due_date))}
           </p>
           <p className="mt-1 text-xs leading-5 text-slate-600">{item.description_fa}</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -195,6 +195,7 @@ export function PmInboxCard({
   hrefs: ManagerHrefs
 }) {
   const router = useRouter()
+  const { locale } = useLocale()
   const controls = useControls(projectId, overview?.generatedAt ?? null)
   const [filter, setFilter] = useState<InboxCategory | 'all'>('all')
   const [toast, setToast] = useState<Toast | null>(null)
@@ -202,14 +203,17 @@ export function PmInboxCard({
 
   const items = useMemo(() => {
     if (controls.state !== 'ok' || !projectId) return null
-    return buildPmInboxItems({
-      projectId,
-      today: overview?.site.date ?? controls.snapshot.asOf,
-      controls: controls.snapshot,
-      kpis: controls.kpis,
-      dailyReport: dailyReportPulse(overview),
-    })
-  }, [controls, overview, projectId])
+    return buildPmInboxItems(
+      {
+        projectId,
+        today: overview?.site.date ?? controls.snapshot.asOf,
+        controls: controls.snapshot,
+        kpis: controls.kpis,
+        dailyReport: dailyReportPulse(overview),
+      },
+      locale
+    )
+  }, [controls, overview, projectId, locale])
 
   useEffect(() => {
     if (!toast) return
@@ -315,7 +319,7 @@ export function PmInboxCard({
                     filter === cat ? 'bg-slate-800 text-white ring-slate-800' : 'bg-white text-slate-600 ring-slate-200 hover:bg-slate-50'
                   )}
                 >
-                  {cat === 'all' ? INBOX_COPY.all : CATEGORY_FA[cat]} {faNumber(n)}
+                  {cat === 'all' ? INBOX_COPY.all : categoryLabel(cat)} {faNumber(n)}
                 </button>
               )
             })}

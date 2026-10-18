@@ -16,7 +16,7 @@ export default async function ManagerDailyReportsRoute() {
   return (
     <Suspense
       fallback={
-        <div className="py-16 text-center text-sm text-slate-600" dir="rtl" lang="fa">
+        <div className="py-16 text-center text-sm text-slate-600">
           {MANAGER_DAILY_REPORTS_COPY.loading}
         </div>
       }

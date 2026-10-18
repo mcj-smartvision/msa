@@ -3,8 +3,10 @@
  * @purpose منطق دامنه — برنامه هفتگی متعهد (WWP) (policy)
  * @safe-to-edit CAREFUL
  * @affects برنامه هفتگی متعهد (WWP)
- * @depends-on nothing
+ * @depends-on shared/lib/i18n/make-live-copy
  */
+
+import { makeLiveCopy } from '@/shared/lib/i18n/make-live-copy'
 
 /**
  * Weekly Work Plan governance (Last Planner). Mirrors the triggers in
@@ -52,7 +54,7 @@ export const ROOT_CAUSE_CATEGORIES = [
 
 export type RootCauseCategory = (typeof ROOT_CAUSE_CATEGORIES)[number]
 
-export const ROOT_CAUSE_FA: Record<RootCauseCategory, string> = {
+const ROOT_CAUSE_LABELS_FA: Record<RootCauseCategory, string> = {
   materials: 'مصالح',
   crew: 'اکیپ / نیروی انسانی',
   equipment: 'تجهیزات',
@@ -65,6 +67,26 @@ export const ROOT_CAUSE_FA: Record<RootCauseCategory, string> = {
   qc_rework: 'رفع عیب (QC)',
   other: 'سایر',
 }
+
+const ROOT_CAUSE_LABELS_EN: Record<RootCauseCategory, string> = {
+  materials: 'Materials',
+  crew: 'Crew / labor',
+  equipment: 'Equipment',
+  permit_approval: 'Permit / approval',
+  design_info: 'Drawings / tech ambiguity',
+  prerequisite_work: 'Predecessor unfinished',
+  weather: 'Weather',
+  site_access: 'Site access',
+  payment: 'Payment',
+  qc_rework: 'QC rework',
+  other: 'Other',
+}
+
+/** Live catalog — follows active UI locale. */
+export const ROOT_CAUSE_FA = makeLiveCopy({
+  fa: ROOT_CAUSE_LABELS_FA,
+  en: ROOT_CAUSE_LABELS_EN as unknown as typeof ROOT_CAUSE_LABELS_FA,
+})
 
 export type PolicyResult = { ok: true } | { ok: false; reason_fa: string; code: 'FORBIDDEN' | 'VALIDATION' }
 

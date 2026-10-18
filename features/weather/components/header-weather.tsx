@@ -17,9 +17,12 @@ import type { OutdoorRiskLevel, WeatherDay } from '@/features/weather/lib/types'
 import { faNumber } from '@/features/manager/lib/format'
 import { HEADER_CHIP } from '@/shared/components/layout/header-chip'
 import { PERSIAN_MONTHS, isoToJalali } from '@/shared/lib/time/jalali-month'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { useSyncedProjectId } from '@/shared/hooks/use-synced-project-id'
 import { cn } from '@/shared/lib/utils'
 import { WEATHER_COPY } from '@/features/weather/config'
+
+const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
 
 function tempLabel(value: number | null | undefined): string {
   if (value == null || Number.isNaN(value)) return '—'
@@ -42,13 +45,19 @@ function riskDot(level: OutdoorRiskLevel) {
   return null
 }
 
-function dayLabel(day: WeatherDay): string {
+function dayLabel(day: WeatherDay, locale: 'fa' | 'en' | 'de'): string {
   if (day.kind === 'today') return WEATHER_COPY.today
-  const { jm, jd } = isoToJalali(day.iso)
-  return `${jd} ${PERSIAN_MONTHS[jm - 1]}`
+  if (locale === 'fa') {
+    const { jm, jd } = isoToJalali(day.iso)
+    return `${jd} ${PERSIAN_MONTHS[jm - 1]}`
+  }
+  const parts = day.iso.split('-').map(Number)
+  const m = parts[1] ?? 1
+  const d = parts[2] ?? 1
+  return `${EN_MONTHS[m - 1]} ${d}`
 }
 
-function DayRow({ day }: { day: WeatherDay }) {
+function DayRow({ day, locale }: { day: WeatherDay; locale: 'fa' | 'en' | 'de' }) {
   return (
     <li
       className={cn(
@@ -56,7 +65,7 @@ function DayRow({ day }: { day: WeatherDay }) {
         day.kind === 'today' && 'bg-sky-50 ring-1 ring-sky-100'
       )}
     >
-      <span className="tabular-nums text-slate-500">{dayLabel(day)}</span>
+      <span className="tabular-nums text-slate-500">{dayLabel(day, locale)}</span>
       <span className="flex min-w-0 items-center gap-1.5 text-slate-800">
         <WeatherIcon weatherId={day.weatherId} />
         <span className="truncate">{day.condition}</span>
@@ -71,6 +80,7 @@ function DayRow({ day }: { day: WeatherDay }) {
 }
 
 export function HeaderWeather({ className }: { className?: string }) {
+  const { locale, dir } = useLocale()
   const projectId = useSyncedProjectId(null)
   const { data, error, loading } = useWeather(projectId)
   const [open, setOpen] = useState(false)
@@ -124,7 +134,7 @@ export function HeaderWeather({ className }: { className?: string }) {
           ) : !data ? (
             <p className="text-xs text-slate-500">{WEATHER_COPY.loading}</p>
           ) : (
-            <div className="space-y-3 text-right">
+            <div className="space-y-3" dir={dir}>
               <div>
                 <p className="text-[11px] font-medium text-slate-500">{data.location.name}</p>
                 <p className="mt-0.5 flex items-center gap-2 text-sm font-semibold text-slate-900">
@@ -159,19 +169,27 @@ export function HeaderWeather({ className }: { className?: string }) {
 
               <section>
                 <h3 className="mb-1 text-[11px] font-semibold text-slate-500">{WEATHER_COPY.past7}</h3>
-                <ul className="space-y-0.5">{past.map((day) => <DayRow key={day.iso} day={day} />)}</ul>
+                <ul className="space-y-0.5">
+                  {past.map((day) => (
+                    <DayRow key={day.iso} day={day} locale={locale} />
+                  ))}
+                </ul>
               </section>
               {today ? (
                 <section>
                   <h3 className="mb-1 text-[11px] font-semibold text-slate-500">{WEATHER_COPY.today}</h3>
                   <ul>
-                    <DayRow day={today} />
+                    <DayRow day={today} locale={locale} />
                   </ul>
                 </section>
               ) : null}
               <section>
                 <h3 className="mb-1 text-[11px] font-semibold text-slate-500">{WEATHER_COPY.next7}</h3>
-                <ul className="space-y-0.5">{future.map((day) => <DayRow key={day.iso} day={day} />)}</ul>
+                <ul className="space-y-0.5">
+                  {future.map((day) => (
+                    <DayRow key={day.iso} day={day} locale={locale} />
+                  ))}
+                </ul>
               </section>
             </div>
           )}

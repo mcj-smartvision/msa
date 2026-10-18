@@ -12,6 +12,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { faNumber } from '@/features/manager/lib/format'
 import { MANAGER_TOUR_COPY, MANAGER_UI_NUMBERS } from '@/features/manager/config'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
 
 export interface ManagerTourStep {
   /** Matches `data-tour` on the target; the first visible match is used. */
@@ -59,6 +60,7 @@ export function ManagerTour({
   steps: ManagerTourStep[]
   onClose: (completed: boolean) => void
 }) {
+  const { dir } = useLocale()
   const [index, setIndex] = useState(0)
   const [rect, setRect] = useState<DOMRect | null>(null)
   const [viewport, setViewport] = useState({ w: 0, h: 0 })
@@ -100,14 +102,16 @@ export function ManagerTour({
 
   useEffect(() => {
     if (!open) return
+    const nextKey = dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight'
+    const prevKey = dir === 'rtl' ? 'ArrowRight' : 'ArrowLeft'
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose(false)
-      if (event.key === 'ArrowLeft' && !last) setIndex((i) => i + 1)
-      if (event.key === 'ArrowRight' && index > 0) setIndex((i) => i - 1)
+      if (event.key === nextKey && !last) setIndex((i) => i + 1)
+      if (event.key === prevKey && index > 0) setIndex((i) => i - 1)
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [open, index, last, onClose])
+  }, [open, index, last, onClose, dir])
 
   if (!open || !step) return null
 
@@ -136,7 +140,7 @@ export function ManagerTour({
   }
 
   return (
-    <div className="fixed inset-0 z-[80]" dir="rtl">
+    <div className="fixed inset-0 z-[80]" dir={dir}>
       <div className="absolute inset-0" aria-hidden onClick={(event) => event.stopPropagation()} />
       {rect ? (
         <div

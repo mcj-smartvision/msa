@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic'
 
 function TechnicalOfficeDashboardFallback() {
   return (
-    <div className="py-16 text-center text-sm text-slate-600" dir="rtl" lang="fa">
+    <div className="py-16 text-center text-sm text-slate-600">
       {COMMON_UI.loading}
     </div>
   )

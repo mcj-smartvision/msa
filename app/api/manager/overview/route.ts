@@ -16,12 +16,17 @@ import { assertManagerAccess, todayIsoTehran } from '@/features/manager/lib/acce
 import { loadManagerOverview } from '@/features/manager/lib/load-manager-overview'
 import { attachTraceHistory } from '@/features/calc-trace/lib/history'
 import { workshopErrorResponse } from '@/features/workshop/lib/service'
+import { LOCALE_COOKIE } from '@/shared/lib/i18n/locale-cookie'
+import { normalizeLocale } from '@/features/project-init/lib/i18n/utils'
+import { getOverviewReasons } from '@/features/manager/lib/i18n/overview-alerts'
 
 /** GET /api/manager/overview?projectId= — decision-focused summary for the manager dashboard. */
 export async function GET(request: NextRequest) {
+  const locale = normalizeLocale(request.cookies.get(LOCALE_COOKIE)?.value)
+  const R = getOverviewReasons(locale)
   try {
     const projectId = request.nextUrl.searchParams.get('projectId') ?? ''
-    if (!projectId) throw new SiteOpsError('VALIDATION', 'projectId لازم است')
+    if (!projectId) throw new SiteOpsError('VALIDATION', R.projectIdRequired)
 
     const supabase = createClient()
     const user = await requireUser(supabase)
@@ -30,7 +35,10 @@ export async function GET(request: NextRequest) {
 
     const service = createServiceClient()
     const today = todayIsoTehran()
-    const overview = await loadManagerOverview(supabase, service, projectId, today, { withTraces: admin })
+    const overview = await loadManagerOverview(supabase, service, projectId, today, {
+      withTraces: admin,
+      locale,
+    })
     if (overview.traces) await attachTraceHistory(service, projectId, overview.traces, today)
     return NextResponse.json(overview, { headers: { 'Cache-Control': 'no-store, max-age=0' } })
   } catch (error) {

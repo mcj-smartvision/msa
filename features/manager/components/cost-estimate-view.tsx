@@ -51,32 +51,37 @@ import { ManagerProgressChart } from './manager-progress-chart'
 import { CalcTraceProvider, CalcTraceTrigger } from '@/features/calc-trace/components/calc-trace'
 import { ESTIMATE_COPY } from '@/features/manager/config'
 
-const STATUS_META: Record<EstimateStatus, { label: string; className: string }> = {
-  missing: { label: ESTIMATE_COPY.status.missing, className: 'bg-amber-50 text-amber-800 ring-amber-200' },
-  incomplete: { label: ESTIMATE_COPY.status.incomplete, className: 'bg-amber-50 text-amber-800 ring-amber-200' },
-  draft: { label: ESTIMATE_COPY.status.draft, className: 'bg-sky-50 text-sky-800 ring-sky-200' },
-  approved: { label: ESTIMATE_COPY.status.approved, className: 'bg-emerald-50 text-emerald-800 ring-emerald-200' },
+const STATUS_CLS: Record<EstimateStatus, string> = {
+  missing: 'bg-amber-50 text-amber-800 ring-amber-200',
+  incomplete: 'bg-amber-50 text-amber-800 ring-amber-200',
+  draft: 'bg-sky-50 text-sky-800 ring-sky-200',
+  approved: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
 }
 
-const LEVEL_META: Record<EstimateAlertLevel, { label: string; bar: string; badge: string; icon: ReactNode }> = {
+function statusMeta(status: EstimateStatus): { label: string; className: string } {
+  return { label: ESTIMATE_COPY.status[status], className: STATUS_CLS[status] }
+}
+
+const LEVEL_STYLE: Record<EstimateAlertLevel, { bar: string; badge: string; icon: ReactNode }> = {
   critical: {
-    label: ESTIMATE_COPY.level.critical,
     bar: 'border-r-rose-500',
     badge: 'bg-rose-50 text-rose-700 ring-rose-200',
     icon: <AlertOctagon className="h-4 w-4 text-rose-600" aria-hidden />,
   },
   warning: {
-    label: ESTIMATE_COPY.level.warning,
     bar: 'border-r-amber-400',
     badge: 'bg-amber-50 text-amber-800 ring-amber-200',
     icon: <AlertTriangle className="h-4 w-4 text-amber-600" aria-hidden />,
   },
   info: {
-    label: ESTIMATE_COPY.level.info,
     bar: 'border-r-sky-400',
     badge: 'bg-sky-50 text-sky-700 ring-sky-200',
     icon: <Info className="h-4 w-4 text-sky-600" aria-hidden />,
   },
+}
+
+function levelMeta(level: EstimateAlertLevel) {
+  return { ...LEVEL_STYLE[level], label: ESTIMATE_COPY.level[level] }
 }
 
 function toman(value: number | null | undefined): string {
@@ -149,7 +154,7 @@ function Figure({
 }
 
 function Headline({ data }: { data: CostEstimateOverview }) {
-  const meta = STATUS_META[data.status]
+  const meta = statusMeta(data.status)
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -198,7 +203,7 @@ function Headline({ data }: { data: CostEstimateOverview }) {
 
 function AlertItem({ alert }: { alert: EstimateAlert }) {
   const [open, setOpen] = useState(false)
-  const meta = LEVEL_META[alert.level]
+  const meta = levelMeta(alert.level)
   return (
     <li className={cn('rounded-xl border border-slate-100 border-r-4 bg-white p-3.5', meta.bar)}>
       <div className="flex items-start gap-2.5">

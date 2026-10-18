@@ -7,6 +7,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import { loadProjectEvm } from '@/features/evm/lib/load-project-evm'
 import { buildLiveWorkshopCostModel } from '@/features/finance/lib/live-workshop-cost'
 import { loadLiveCostInputs } from '@/features/finance/lib/load-live-cost-inputs'
@@ -111,14 +112,18 @@ function pvPercents(points: { cumulativePV: number }[]): number[] {
   return total > 0 ? points.map((p) => (p.cumulativePV / total) * 100) : []
 }
 
-function ppcSignal(result: WeeklyCommitmentsResult | null): PpcSignal | null {
+function ppcSignal(result: WeeklyCommitmentsResult | null, locale: FormLocale): PpcSignal | null {
   if (!result || result.status !== 'ok') return null
   const week = result.data.weeks.filter((w) => !w.live).at(-1)
   if (!week || week.ppc == null) return null
   const missed = Math.max(0, week.planned - week.completed)
+  const weekLabel =
+    locale === 'fa'
+      ? `هفتهٔ ${jalaliDate(week.start)} تا ${jalaliDate(week.end)}`
+      : `Week ${jalaliDate(week.start)} – ${jalaliDate(week.end)}`
   return {
     ppc: week.ppc,
-    weekLabel: `هفتهٔ ${jalaliDate(week.start)} تا ${jalaliDate(week.end)}`,
+    weekLabel,
     missed,
     // Weekly work plans cannot close with a missed commitment that has no reason (DB constraint).
     missedWithoutReason: result.data.source === 'schedule' ? missed : 0,
@@ -126,15 +131,20 @@ function ppcSignal(result: WeeklyCommitmentsResult | null): PpcSignal | null {
   }
 }
 
-async function loadPpc(supabase: SupabaseClient, service: SupabaseClient, projectId: string): Promise<WeeklyCommitmentsResult | null> {
+async function loadPpc(
+  supabase: SupabaseClient,
+  service: SupabaseClient,
+  projectId: string,
+  locale: FormLocale
+): Promise<WeeklyCommitmentsResult | null> {
   try {
-    const wwp = await loadWeeklyCommitments(service, projectId)
+    const wwp = await loadWeeklyCommitments(service, projectId, locale)
     if (wwp.status === 'ok') return wwp
   } catch {
     /* weekly work plans optional */
   }
   try {
-    return await loadScheduleCommitments(supabase, service, projectId)
+    return await loadScheduleCommitments(supabase, service, projectId, locale)
   } catch {
     return null
   }
@@ -147,17 +157,19 @@ export async function loadCostEstimateOverview(
   projectId: string,
   today: string,
   canEdit: boolean,
-  withTraces = false
+  withTraces = false,
+  locale: FormLocale = 'fa'
 ): Promise<CostEstimateOverview> {
+  const insufficient = locale === 'fa' ? 'داده کافی نیست' : 'Insufficient data'
   const [estimateRes, projectRes, inputs, snapshot, entries, ppcResult] = await Promise.all([
     service.from('project_cost_estimates').select('*').eq('project_id', projectId).maybeSingle(),
     service.from('projects').select('name, start_date, end_date').eq('id', projectId).maybeSingle(),
     loadLiveCostInputs(service, projectId, today),
-    loadProjectEvm(service, projectId, { asOf: today, today }),
+    loadProjectEvm(service, projectId, { asOf: today, today, locale }),
     fetchProgressHistory(service, projectId).catch(() => []),
-    loadPpc(supabase, service, projectId),
+    loadPpc(supabase, service, projectId, locale),
   ])
-  const ppc = ppcSignal(ppcResult)
+  const ppc = ppcSignal(ppcResult, locale)
 
   let tableMissing = false
   if (estimateRes.error) {
@@ -244,7 +256,7 @@ export async function loadCostEstimateOverview(
   const controls = buildControlsSnapshot({ evm: snapshot, periodUnit: 'months' })
   const es = buildEarnedScheduleKpis(controls)
   const kpi = (k: { value: number | null; reason_fa?: string }): IndexValue =>
-    k.value == null ? { value: null, reason: k.reason_fa ?? 'داده کافی نیست' } : { value: k.value }
+    k.value == null ? { value: null, reason: k.reason_fa ?? insufficient } : { value: k.value }
   const eacMonths = kpi(es.eac_t)
   const delay = kpi(es.delay_forecast)
   const baselineStart = controls.projectStart.value
@@ -252,7 +264,7 @@ export async function loadCostEstimateOverview(
     spiT: kpi(es.spi_t),
     plannedDurationMonths:
       controls.plannedDuration.value == null
-        ? { value: null, reason: controls.plannedDuration.reason_fa ?? 'داده کافی نیست' }
+        ? { value: null, reason: controls.plannedDuration.reason_fa ?? insufficient }
         : { value: controls.plannedDuration.value },
     eacMonths,
     delayDays: delay,

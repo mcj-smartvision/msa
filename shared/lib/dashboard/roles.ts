@@ -22,7 +22,7 @@ export const SITE_ROLES = {
 
 export type SiteRoleKey = (typeof SITE_ROLES)[keyof typeof SITE_ROLES]
 
-export const SITE_ROLE_LABELS: Record<SiteRoleKey, string> = {
+const SITE_ROLE_LABELS_FA: Record<SiteRoleKey, string> = {
   project_manager: 'مدیر پروژه',
   site_supervisor: 'سرپرست کارگاه',
   technical_office: 'دفتر فنی',
@@ -33,6 +33,27 @@ export const SITE_ROLE_LABELS: Record<SiteRoleKey, string> = {
   security: 'حراست',
   client: 'کارفرما',
   project_accountant: 'حسابدار پروژه',
+}
+
+const SITE_ROLE_LABELS_EN: Record<SiteRoleKey, string> = {
+  project_manager: 'Project manager',
+  site_supervisor: 'Site supervisor',
+  technical_office: 'Technical office',
+  storekeeper: 'Storekeeper',
+  procurement_officer: 'Procurement',
+  qa_qc_inspector: 'QA/QC inspector',
+  hse_officer: 'HSE officer',
+  security: 'Security',
+  client: 'Client',
+  project_accountant: 'Project accountant',
+}
+
+/** Default FA map kept for server code that does not yet pass locale. */
+export const SITE_ROLE_LABELS = SITE_ROLE_LABELS_FA
+
+export function getSiteRoleLabel(role: SiteRoleKey, locale: string = 'fa'): string {
+  if (locale === 'en' || locale === 'de') return SITE_ROLE_LABELS_EN[role] ?? role
+  return SITE_ROLE_LABELS_FA[role] ?? role
 }
 
 /** Higher index = lower priority when resolving a primary role. */

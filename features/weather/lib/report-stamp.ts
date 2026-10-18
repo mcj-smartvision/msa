@@ -3,36 +3,50 @@
  * @purpose منطق دامنه — هوای کارگاه (report-stamp)
  * @safe-to-edit CAREFUL
  * @affects هوای کارگاه
- * @depends-on features/manager/lib/format, shared/types, features/weather/lib/types
+ * @depends-on features/manager/lib/format, shared/types, features/weather/lib/types, features/weather/lib/i18n/copy
  */
 
 import { faNumber } from '@/features/manager/lib/format'
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
+import { getActiveLocale } from '@/shared/lib/i18n/active-locale'
 import type { WeatherAirAnalysis } from '@/shared/types'
+import { getWeatherStampCopy, getWeatherUi } from '@/features/weather/lib/i18n/copy'
 import type { DailyWeatherSnapshot, WeatherPayload } from '@/features/weather/lib/types'
+
+const NOTE_PREFIXES = ['وضعیت هوا:', 'Weather:'] as const
 
 export const WEATHER_NOTE_PREFIX = 'وضعیت هوا:'
 
-export function formatWeatherReportLine(payload: WeatherPayload): string {
+export function formatWeatherReportLine(
+  payload: WeatherPayload,
+  locale: FormLocale = getActiveLocale()
+): string {
+  const t = getWeatherStampCopy(locale)
+  const ui = getWeatherUi(locale)
   const current = payload.current
   const temp = `${faNumber(Math.round(current.temp))}°`
-  const humidity = `${faNumber(Math.round(current.humidity))}٪`
-  const wind = `${faNumber(Math.round(current.windMs * 3.6))} کیلومتر/ساعت`
+  const humidity = ui.humidityPct(faNumber(Math.round(current.humidity)))
+  const wind = t.windKmh(faNumber(Math.round(current.windMs * 3.6)))
   const risk = current.risk.level !== 'ok' ? ` — ${current.risk.message}` : ''
-  return `${WEATHER_NOTE_PREFIX} ${payload.location.name} · ${current.description} · ${temp} · رطوبت ${humidity} · باد ${wind}${risk}`
+  return `${t.prefix} ${payload.location.name} · ${current.description} · ${temp} · ${t.humidity(humidity)} · ${t.wind(wind)}${risk}`
+}
+
+function startsWithWeatherPrefix(row: string): boolean {
+  return NOTE_PREFIXES.some((prefix) => row.startsWith(prefix))
 }
 
 export function extractWeatherLine(note: string): string | null {
   const line = note
     .split('\n')
     .map((row) => row.trim())
-    .find((row) => row.startsWith(WEATHER_NOTE_PREFIX))
+    .find((row) => startsWithWeatherPrefix(row))
   return line || null
 }
 
 export function stripWeatherLine(note: string): string {
   return note
     .split('\n')
-    .filter((row) => !row.trim().startsWith(WEATHER_NOTE_PREFIX))
+    .filter((row) => !startsWithWeatherPrefix(row.trim()))
     .join('\n')
     .trim()
 }
@@ -55,24 +69,29 @@ export function weatherApparentFromId(weatherId: number): string {
   return 'unknown'
 }
 
-export function weatherAirFromPayload(payload: WeatherPayload): WeatherAirAnalysis {
+export function weatherAirFromPayload(
+  payload: WeatherPayload,
+  locale: FormLocale = getActiveLocale()
+): WeatherAirAnalysis {
+  const t = getWeatherStampCopy(locale)
   const current = payload.current
   return {
     weather_apparent: weatherApparentFromId(current.weatherId),
-    weather_fa: `${current.description}، ${faNumber(Math.round(current.temp))} درجه`,
+    weather_fa: t.weatherDeg(current.description, faNumber(Math.round(current.temp))),
     visibility:
       current.humidity >= 90 || (current.weatherId >= 700 && current.weatherId < 800) ? 'fair' : 'good',
-    wind_signs_fa: `باد ${faNumber(Math.round(current.windMs * 3.6))} کیلومتر بر ساعت`,
-    notes_fa: formatWeatherReportLine(payload),
+    wind_signs_fa: t.windSigns(faNumber(Math.round(current.windMs * 3.6))),
+    notes_fa: formatWeatherReportLine(payload, locale),
   }
 }
 
 /** Live station data wins over a photo guess; air-quality from the photo is kept. */
 export function overlayWeatherAir(
   guessed: WeatherAirAnalysis | undefined,
-  payload: WeatherPayload
+  payload: WeatherPayload,
+  locale: FormLocale = getActiveLocale()
 ): WeatherAirAnalysis {
-  const live = weatherAirFromPayload(payload)
+  const live = weatherAirFromPayload(payload, locale)
   return {
     ...live,
     air_quality_apparent: guessed?.air_quality_apparent,
@@ -82,7 +101,8 @@ export function overlayWeatherAir(
 
 export function weatherSnapshotFromPayload(
   payload: WeatherPayload,
-  reportDate: string
+  reportDate: string,
+  locale: FormLocale = getActiveLocale()
 ): DailyWeatherSnapshot {
   const current = payload.current
   return {
@@ -104,7 +124,7 @@ export function weatherSnapshotFromPayload(
     riskLevel: current.risk.level,
     riskTitle: current.risk.title,
     riskMessage: current.risk.message,
-    lineFa: formatWeatherReportLine(payload),
+    lineFa: formatWeatherReportLine(payload, locale),
   }
 }
 

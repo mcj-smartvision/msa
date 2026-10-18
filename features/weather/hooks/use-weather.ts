@@ -3,13 +3,16 @@
  * @purpose هوک — هوای کارگاه (use-weather)
  * @safe-to-edit CAREFUL
  * @affects هوای کارگاه
- * @depends-on features/weather/lib/types
+ * @depends-on features/weather/lib/types, shared/components/i18n/locale-provider, features/weather/config
  */
 
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import type { WeatherPayload } from '@/features/weather/lib/types'
+import { WEATHER_COPY } from '@/features/weather/config'
 
 interface WeatherState {
   data: WeatherPayload | null
@@ -21,8 +24,8 @@ const cache = new Map<string, WeatherPayload>()
 const inflight = new Map<string, Promise<void>>()
 const listeners = new Map<string, Set<(state: WeatherState) => void>>()
 
-function keyOf(projectId: string | null): string {
-  return projectId || 'tehran'
+function keyOf(projectId: string | null, locale: FormLocale): string {
+  return `${locale}:${projectId || 'tehran'}`
 }
 
 function emit(key: string, state: WeatherState) {
@@ -31,24 +34,27 @@ function emit(key: string, state: WeatherState) {
   for (const listener of set) listener(state)
 }
 
-export function reloadWeather(projectId: string | null): Promise<void> {
-  const key = keyOf(projectId)
+export function reloadWeather(projectId: string | null, locale: FormLocale = 'fa'): Promise<void> {
+  const key = keyOf(projectId, locale)
   const existing = inflight.get(key)
   if (existing) return existing
 
   emit(key, { data: cache.get(key) ?? null, error: null, loading: true })
-  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : ''
+  const params = new URLSearchParams()
+  if (projectId) params.set('projectId', projectId)
+  params.set('locale', locale)
+  const query = `?${params.toString()}`
   const task = fetch(`/api/weather${query}`, { cache: 'no-store' })
     .then(async (res) => {
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'خواندن وضعیت هوا ناموفق بود')
+      if (!res.ok) throw new Error(json.error || WEATHER_COPY.loadFailed)
       cache.set(key, json as WeatherPayload)
       emit(key, { data: json as WeatherPayload, error: null, loading: false })
     })
     .catch((err) => {
       emit(key, {
         data: cache.get(key) ?? null,
-        error: err instanceof Error ? err.message : 'خواندن وضعیت هوا ناموفق بود',
+        error: err instanceof Error ? err.message : WEATHER_COPY.loadFailed,
         loading: false,
       })
     })
@@ -60,7 +66,8 @@ export function reloadWeather(projectId: string | null): Promise<void> {
 }
 
 export function useWeather(projectId: string | null) {
-  const key = keyOf(projectId)
+  const { locale } = useLocale()
+  const key = keyOf(projectId, locale)
   const [state, setState] = useState<WeatherState>({
     data: cache.get(key) ?? null,
     error: null,
@@ -76,13 +83,13 @@ export function useWeather(projectId: string | null) {
     }
     bucket.add(next)
     if (cache.has(key)) setState({ data: cache.get(key) ?? null, error: null, loading: false })
-    else void reloadWeather(projectId)
-    const timer = setInterval(() => void reloadWeather(projectId), 10 * 60 * 1000)
+    else void reloadWeather(projectId, locale)
+    const timer = setInterval(() => void reloadWeather(projectId, locale), 10 * 60 * 1000)
     return () => {
       bucket?.delete(next)
       clearInterval(timer)
     }
-  }, [key, projectId])
+  }, [key, projectId, locale])
 
-  return { ...state, reload: () => reloadWeather(projectId) }
+  return { ...state, reload: () => reloadWeather(projectId, locale) }
 }

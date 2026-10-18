@@ -9,8 +9,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
 import { requireUser } from '@/features/site-ops/lib/auth'
+import { normalizeLocale } from '@/features/project-init/lib/i18n/utils'
 import { loadWeather } from '@/features/weather/lib/fetch-weather'
 import { workshopErrorResponse } from '@/features/workshop/lib/service'
+import { LOCALE_COOKIE } from '@/shared/lib/i18n/locale-cookie'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -21,7 +23,14 @@ export async function GET(request: NextRequest) {
     const supabase = createClient()
     await requireUser(supabase)
     const projectId = request.nextUrl.searchParams.get('projectId')
-    const payload = await loadWeather(supabase, projectId && projectId !== 'all' ? projectId : null)
+    const locale = normalizeLocale(
+      request.nextUrl.searchParams.get('locale') ?? request.cookies.get(LOCALE_COOKIE)?.value
+    )
+    const payload = await loadWeather(
+      supabase,
+      projectId && projectId !== 'all' ? projectId : null,
+      locale
+    )
     return NextResponse.json(payload, { headers: { 'Cache-Control': 'private, max-age=60' } })
   } catch (error) {
     return workshopErrorResponse(error)

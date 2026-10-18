@@ -8,8 +8,10 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/shared/lib/supabase/server'
+import { normalizeLocale } from '@/features/project-init/lib/i18n/utils'
 import { loadWeather } from '@/features/weather/lib/fetch-weather'
 import { overlayWeatherAir } from '@/features/weather/lib/report-stamp'
+import { LOCALE_COOKIE } from '@/shared/lib/i18n/locale-cookie'
 
 const SYSTEM_PROMPT = `You are an expert construction site safety and progress inspector analyzing photos for field supervisors in Iran.
 
@@ -109,9 +111,10 @@ export async function POST(request: NextRequest) {
     let weatherAir = parsed.weather_air
     if (typeof projectId === 'string' && projectId.trim()) {
       try {
+        const locale = normalizeLocale(request.cookies.get(LOCALE_COOKIE)?.value)
         const supabase = createClient()
-        const live = await loadWeather(supabase, projectId.trim())
-        weatherAir = overlayWeatherAir(parsed.weather_air, live)
+        const live = await loadWeather(supabase, projectId.trim(), locale)
+        weatherAir = overlayWeatherAir(parsed.weather_air, live, locale)
       } catch {
         /* keep the photo-based guess if live weather is unavailable */
       }

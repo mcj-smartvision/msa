@@ -11,7 +11,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/shared/lib/supabase/server'
 import { loadRolePageData } from '@/shared/lib/dashboard/load-role-page'
 import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
-import { SITE_ROLE_LABELS } from '@/shared/lib/dashboard/roles'
+import { getSiteRoleLabel } from '@/shared/lib/dashboard/roles'
 import { buildManagerNav, type ManagerNavModel } from '@/features/manager/lib/manager-nav'
 import { getManagerNavCopy } from '@/features/manager/lib/i18n/nav-copy'
 import { LOCALE_COOKIE } from '@/shared/lib/i18n/locale-cookie'
@@ -45,7 +45,7 @@ export async function loadManagerPageProps(): Promise<ManagerPageProps> {
   const roleLabel =
     !context.positionKeys.includes('project_manager') && context.isSystemAdmin
       ? navCopy.systemAdminRole
-      : SITE_ROLE_LABELS.project_manager
+      : getSiteRoleLabel('project_manager', locale)
 
   return {
     user: {

@@ -422,7 +422,7 @@ async function loadFloatHealth(
 export async function loadProjectEvm(
   service: SupabaseClient,
   projectId: string,
-  options: { asOf: string; today: string }
+  options: { asOf: string; today: string; locale?: 'fa' | 'en' | 'de' }
 ): Promise<ProjectEvmSnapshot> {
   const [tasks, packages, project] = await Promise.all([
     optionalRows(service.from('project_tasks').select('*').eq('project_id', projectId)),
@@ -446,12 +446,16 @@ export async function loadProjectEvm(
     budgetBasis: basis,
   })
 
-  const rag = evaluateRagStatus({
-    spi: metrics.spi,
-    cpi: metrics.cpi,
-    criticalFloatDays: float.criticalFloatDays,
-    floatConsumptionPercent: float.floatConsumptionPercent,
-  })
+  const rag = evaluateRagStatus(
+    {
+      spi: metrics.spi,
+      cpi: metrics.cpi,
+      criticalFloatDays: float.criticalFloatDays,
+      floatConsumptionPercent: float.floatConsumptionPercent,
+    },
+    undefined,
+    options.locale ?? 'fa'
+  )
 
   const tasksById = new Map(tasks.map((t) => [String(t.id), t]))
   const taskRef = (id: string | null): FloatTaskRef | null => {
