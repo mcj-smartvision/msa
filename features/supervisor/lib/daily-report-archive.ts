@@ -61,7 +61,7 @@ export async function listArchivedDailyReports(
     if (supervisorId) q = q.eq('site_supervisor_id', supervisorId)
     const res = await q.order('report_date', { ascending: false })
     if (!res.error) {
-      data = (res.data ?? []) as Record<string, unknown>[]
+      data = (res.data ?? []) as unknown as Record<string, unknown>[]
       lastError = null
       break
     }
