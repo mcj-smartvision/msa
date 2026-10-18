@@ -3,10 +3,16 @@
  * @purpose برچسب‌ها و متن UI داشبورد مدیر — overflow از config.ts
  * @safe-to-edit YES
  * @affects features/manager/components
- * @depends-on nothing
+ * @depends-on shared/lib/i18n/active-locale, shared/lib/i18n/pick-messages, features/manager/lib/i18n/sections-en, features/manager/lib/i18n/sections-de
  */
 
-export const SECTIONS_COPY = {
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
+import { getActiveLocale, liveMessages } from '@/shared/lib/i18n/active-locale'
+import { pickMessages } from '@/shared/lib/i18n/pick-messages'
+import { SECTIONS_DE } from '@/features/manager/lib/i18n/sections-de'
+import { SECTIONS_EN } from '@/features/manager/lib/i18n/sections-en'
+
+const SECTIONS_FA = {
   tone: {
     good: 'پایدار',
     warn: 'نیازمند توجه',
@@ -197,6 +203,19 @@ export const SECTIONS_COPY = {
     lastInvoice: (date: string) => ` · آخرین صورت‌وضعیت: ${date}`,
   },
 } as const
+
+export type ManagerSectionsCopy = typeof SECTIONS_FA
+
+export function getSectionsCopy(locale?: FormLocale): ManagerSectionsCopy {
+  return pickMessages(locale ?? getActiveLocale(), {
+    en: SECTIONS_EN as unknown as ManagerSectionsCopy,
+    fa: SECTIONS_FA,
+    de: SECTIONS_DE as unknown as ManagerSectionsCopy,
+  })
+}
+
+/** Live catalog — home sections follow the active UI locale. */
+export const SECTIONS_COPY = liveMessages(getSectionsCopy)
 
 export const PERIOD_COPY = {
   title: 'مقایسهٔ عملکرد دوره‌ای',

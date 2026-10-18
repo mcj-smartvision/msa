@@ -50,7 +50,8 @@ import { useSyncedProjectId } from '@/shared/hooks/use-synced-project-id'
 import { writeProjectCookie } from '@/shared/lib/project/project-cookie'
 import type { ManagerNavGroup, ManagerNavIcon, ManagerNavModel } from '@/features/manager/lib/manager-nav'
 import type { ManagerAlert, ManagerAlertDomain, ManagerOverview, ManagerPeriod } from '@/features/manager/lib/overview-types'
-import { MANAGER_PERIODS } from '@/features/manager/lib/alert-period'
+import { getManagerPeriods, MANAGER_PERIODS } from '@/features/manager/lib/alert-period'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { useStoreEvm } from '@/features/project-store/use-project-store'
 import { useProjectStoreSync } from '@/features/project-store/use-project-store-sync'
 import { withStoreEvm } from '@/features/project-store/lib/overview-overlay'
@@ -621,6 +622,8 @@ interface ManagerDashboardProps {
 }
 
 export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, view }: ManagerDashboardProps) {
+  const { locale, dir } = useLocale()
+  const periodOptions = useMemo(() => getManagerPeriods(locale), [locale])
   const projectId = useSyncedProjectId(initialProjectId)
   const { data: serverOverview, loading, error, reload } = useManagerOverview(projectId)
   useProjectStoreSync(projectId)
@@ -747,12 +750,13 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
   return (
     <CalcTraceProvider traces={data?.traces}>
     <div
-      dir="rtl"
-      lang="fa"
+      dir={dir}
+      lang={locale}
       style={{ '--font-sans': managerFont.style.fontFamily } as CSSProperties}
       className={cn(
         managerFont.variable,
-        'manager-dashboard flex min-h-screen bg-slate-50 font-sans text-right text-slate-900 antialiased [font-feature-settings:normal]'
+        'manager-dashboard flex min-h-screen bg-slate-50 font-sans text-slate-900 antialiased [font-feature-settings:normal]',
+        dir === 'rtl' ? 'text-right' : 'text-left'
       )}
     >
       {/* Desktop / tablet sidebar: 240px, or a 56px icon strip when collapsed */}
@@ -889,7 +893,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
             )}
 
             <div role="radiogroup" aria-label={MANAGER_DASHBOARD_COPY.periodGroup} className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-0.5">
-              {MANAGER_PERIODS.map((option) => (
+              {periodOptions.map((option) => (
                 <button
                   key={option.id}
                   type="button"

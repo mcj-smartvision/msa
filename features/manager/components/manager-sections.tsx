@@ -1358,13 +1358,35 @@ export function DecisionsSection({
 
 /* ------------------------------------------------------------ Alerts */
 
-export const DOMAIN_META: Record<ManagerAlertDomain, { label: string; icon: ComponentType<{ className?: string }> }> = {
-  schedule: { label: SECTIONS_COPY.domains.schedule, icon: CalendarClock },
-  cost: { label: SECTIONS_COPY.domains.cost, icon: Wallet },
-  safety: { label: SECTIONS_COPY.domains.safety, icon: HardHat },
-  materials: { label: SECTIONS_COPY.domains.materials, icon: Package },
-  quality: { label: SECTIONS_COPY.domains.quality, icon: ShieldCheck },
+const DOMAIN_ICONS: Record<ManagerAlertDomain, ComponentType<{ className?: string }>> = {
+  schedule: CalendarClock,
+  cost: Wallet,
+  safety: HardHat,
+  materials: Package,
+  quality: ShieldCheck,
 }
+
+/** Locale-aware domain labels (read SECTIONS_COPY on each call). */
+export function getDomainMeta(): Record<
+  ManagerAlertDomain,
+  { label: string; icon: ComponentType<{ className?: string }> }
+> {
+  return {
+    schedule: { label: SECTIONS_COPY.domains.schedule, icon: DOMAIN_ICONS.schedule },
+    cost: { label: SECTIONS_COPY.domains.cost, icon: DOMAIN_ICONS.cost },
+    safety: { label: SECTIONS_COPY.domains.safety, icon: DOMAIN_ICONS.safety },
+    materials: { label: SECTIONS_COPY.domains.materials, icon: DOMAIN_ICONS.materials },
+    quality: { label: SECTIONS_COPY.domains.quality, icon: DOMAIN_ICONS.quality },
+  }
+}
+
+/** @deprecated Prefer getDomainMeta() — kept for gradual migration. */
+export const DOMAIN_META = new Proxy({} as ReturnType<typeof getDomainMeta>, {
+  get(_t, prop: string | symbol) {
+    if (typeof prop !== 'string') return undefined
+    return getDomainMeta()[prop as ManagerAlertDomain]
+  },
+})
 
 export function AlertCard({
   alert,

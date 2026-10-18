@@ -3,11 +3,13 @@
  * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (manager-nav)
  * @safe-to-edit CAREFUL
  * @affects داشبورد مدیر پروژه و KPI
- * @depends-on shared/types/dashboard, features/schedule/lib/access
+ * @depends-on shared/types/dashboard, features/schedule/lib/access, features/manager/lib/i18n/nav-copy
  */
 
 import type { DashboardUserContext } from '@/shared/types/dashboard'
 import { hasRoleDashboardAccess } from '@/features/schedule/lib/access'
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
+import { getManagerNavCopy } from '@/features/manager/lib/i18n/nav-copy'
 
 export type ManagerNavIcon =
   | 'home'
@@ -46,13 +48,14 @@ export interface ManagerNavModel {
 }
 
 /** Sidebar built only from pages that exist and whose guards this user passes. */
-export function buildManagerNav(context: DashboardUserContext): ManagerNavModel {
+export function buildManagerNav(
+  context: DashboardUserContext,
+  locale: FormLocale | string = 'fa'
+): ManagerNavModel {
+  const t = getManagerNavCopy(locale)
   const has = (key: string) => context.isSystemAdmin || context.positionKeys.includes(key)
   const pm = has('project_manager')
-  const unavailable: string[] = [
-    'ماشین‌آلات و تجهیزات (ماژول آن هنوز در سامانه ساخته نشده است)',
-    'دعاوی و مکاتبات قراردادی (ماژول آن هنوز در سامانه ساخته نشده است)',
-  ]
+  const unavailable: string[] = [t.unavailableMachines, t.unavailableClaims]
 
   const pick = (
     allowed: boolean,
@@ -60,106 +63,101 @@ export function buildManagerNav(context: DashboardUserContext): ManagerNavModel 
     missingLabel: string
   ): ManagerNavLink[] => {
     if (allowed) return [link]
-    unavailable.push(`${missingLabel} (دسترسی این نقش تعریف نشده است)`)
+    unavailable.push(t.missingAccess(missingLabel))
     return []
   }
 
   const schedule = [
     ...pick(
       pm || has('technical_office'),
-      { label: 'تحلیل زمان‌بندی و مسیر بحرانی', href: '/dashboard/schedule-intelligence' },
-      'تحلیل زمان‌بندی'
+      { label: t.scheduleIntel, href: '/dashboard/schedule-intelligence' },
+      t.missingScheduleIntel
     ),
     ...pick(
       hasRoleDashboardAccess(context, 'project-manager'),
-      { label: 'شاخص‌های ارزش کسب‌شده (EVM)', href: '/dashboard/project-manager' },
-      'شاخص‌های EVM'
+      { label: t.evm, href: '/dashboard/project-manager' },
+      t.missingEvm
     ),
     ...pick(
       hasRoleDashboardAccess(context, 'technical-office'),
-      { label: 'برنامهٔ زمان‌بندی کارگاه', href: '/dashboard/technical-office' },
-      'برنامهٔ زمان‌بندی دفتر فنی'
+      { label: t.workshopSchedule, href: '/dashboard/technical-office' },
+      t.missingWorkshopSchedule
     ),
   ]
 
   const site = [
     ...pick(
       hasRoleDashboardAccess(context, 'security'),
-      { label: 'منابع انسانی و تردد', href: '/dashboard/security' },
-      'منابع انسانی و تردد'
+      { label: t.hrGate, href: '/dashboard/security' },
+      t.missingHrGate
     ),
-    ...pick(
-      has('storekeeper'),
-      { label: 'انبار و مصالح', href: '/dashboard/storekeeper' },
-      'انبار و مصالح'
-    ),
+    ...pick(has('storekeeper'), { label: t.warehouse, href: '/dashboard/storekeeper' }, t.missingWarehouse),
   ]
 
   const quality = [
     ...pick(
       hasRoleDashboardAccess(context, 'qc'),
-      { label: 'کنترل کیفیت و NCR', href: '/dashboard/qc' },
-      'کنترل کیفیت و NCR'
+      { label: t.qcNcr, href: '/dashboard/qc' },
+      t.missingQc
     ),
     ...pick(
       hasRoleDashboardAccess(context, 'hse'),
-      { label: 'HSE و نظارت تصویری', href: '/dashboard/hse' },
-      'HSE و نظارت تصویری'
+      { label: t.hseCctv, href: '/dashboard/hse' },
+      t.missingHse
     ),
   ]
 
   const finance = [
     ...pick(
       pm || hasRoleDashboardAccess(context, 'accountant'),
-      { label: 'هزینه‌های واقعی پروژه', href: '/finance/costs' },
-      'هزینه‌های واقعی پروژه'
+      { label: t.actualCosts, href: '/finance/costs' },
+      t.missingActualCosts
     ),
     ...pick(
       hasRoleDashboardAccess(context, 'accountant'),
-      { label: 'صورت‌وضعیت‌های کارفرما', href: '/dashboard/accountant' },
-      'صورت‌وضعیت‌های کارفرما'
+      { label: t.employerInvoices, href: '/dashboard/accountant' },
+      t.missingInvoices
     ),
   ]
 
   const groups: ManagerNavGroup[] = [
-    { key: 'home', label: 'خانه', icon: 'home', href: '/dashboard/manager' },
-    { key: 'alerts', label: 'همهٔ هشدارها', icon: 'alerts', href: '/dashboard/manager/alerts' },
-    { key: 'estimate', label: 'برآورد و کنترل هزینه', icon: 'estimate', href: '/dashboard/manager/estimate' },
+    { key: 'home', label: t.home, icon: 'home', href: '/dashboard/manager' },
+    { key: 'alerts', label: t.alerts, icon: 'alerts', href: '/dashboard/manager/alerts' },
+    { key: 'estimate', label: t.estimate, icon: 'estimate', href: '/dashboard/manager/estimate' },
   ]
 
   if (pm) {
     groups.push({
       key: 'inbox',
-      label: 'کارتابل من',
+      label: t.inbox,
       icon: 'inbox',
       href: '/site-ops/approvals',
       withProjectParam: true,
     })
-    // Manager daily-report approval temporarily disabled — supervisor archives on send.
   }
   if (schedule.length) {
-    groups.push({ key: 'schedule', label: 'برنامه و پیشرفت', icon: 'schedule', children: schedule })
+    groups.push({ key: 'schedule', label: t.schedule, icon: 'schedule', children: schedule })
   }
   if (site.length) {
-    groups.push({ key: 'site', label: 'اجرای کارگاه', icon: 'site', children: site })
+    groups.push({ key: 'site', label: t.site, icon: 'site', children: site })
   }
   if (quality.length) {
-    groups.push({ key: 'quality', label: 'کیفیت و ایمنی', icon: 'quality', children: quality })
+    groups.push({ key: 'quality', label: t.quality, icon: 'quality', children: quality })
   }
   if (finance.length) {
-    groups.push({ key: 'finance', label: 'مالی و هزینه‌ها', icon: 'finance', children: finance })
+    groups.push({ key: 'finance', label: t.finance, icon: 'finance', children: finance })
   }
   if (hasRoleDashboardAccess(context, 'project-manager') || has('finance_admin')) {
     groups.push({
       key: 'contracts',
-      label: 'قراردادها و پیمانکاران',
+      label: t.contracts,
       icon: 'contracts',
       href: '/project/subcontractors',
     })
   }
-  groups.push({ key: 'reports', label: 'گزارش‌ها', icon: 'reports', href: '/reports' })
-  groups.push({ key: 'background', label: 'بک‌گراند محاسبات', icon: 'background', href: '/dashboard/manager/background' })
-  groups.push({ key: 'store', label: 'جدول داده‌ها (Store)', icon: 'store', href: '/dashboard/manager/store' })
+  groups.push({ key: 'reports', label: t.reports, icon: 'reports', href: '/reports' })
+  groups.push({ key: 'background', label: t.background, icon: 'background', href: '/dashboard/manager/background' })
+  groups.push({ key: 'store', label: t.store, icon: 'store', href: '/dashboard/manager/store' })
 
   return { groups, unavailable }
 }

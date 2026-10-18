@@ -3,17 +3,25 @@
  * @purpose منطق دامنه — داشبورد مدیر پروژه و KPI (alert-period)
  * @safe-to-edit CAREFUL
  * @affects داشبورد مدیر پروژه و KPI
- * @depends-on features/manager/lib/overview-types, shared/lib/time/tehran
+ * @depends-on features/manager/lib/overview-types, shared/lib/time/tehran, features/manager/lib/i18n/dashboard-copy
  */
 
-import type { ManagerAlert, ManagerPeriod } from '@/features/manager/lib/overview-types';
-import { tehranPeriodStartMs } from '@/shared/lib/time/tehran';
+import type { ManagerAlert, ManagerPeriod } from '@/features/manager/lib/overview-types'
+import { tehranPeriodStartMs } from '@/shared/lib/time/tehran'
+import { getManagerDashboardCopy } from '@/features/manager/lib/i18n/dashboard-copy'
+import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 
-export const MANAGER_PERIODS: { id: ManagerPeriod; label: string }[] = [
-  { id: 'today', label: 'امروز' },
-  { id: 'week', label: 'هفتهٔ جاری' },
-  { id: 'month', label: 'ماه جاری' },
-]
+export function getManagerPeriods(locale?: FormLocale | string): { id: ManagerPeriod; label: string }[] {
+  const t = getManagerDashboardCopy(locale as FormLocale | undefined)
+  return [
+    { id: 'today', label: t.periodToday },
+    { id: 'week', label: t.periodWeek },
+    { id: 'month', label: t.periodMonth },
+  ]
+}
+
+/** Default FA labels for static id helpers; UI should call getManagerPeriods(locale). */
+export const MANAGER_PERIODS: { id: ManagerPeriod; label: string }[] = getManagerPeriods('fa')
 
 /** Start of today, of the Iranian week (Saturday) or of the current Jalali month, in Tehran time. */
 export function periodStartMs(period: ManagerPeriod, now = new Date()): number {
