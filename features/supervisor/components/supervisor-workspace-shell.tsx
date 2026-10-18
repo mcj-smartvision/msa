@@ -3,43 +3,18 @@
  * @purpose کامپوننت UI — سرپرست کارگاه و گزارش روزانه (supervisor-workspace-shell)
  * @safe-to-edit CAREFUL
  * @affects سرپرست کارگاه و گزارش روزانه
- * @depends-on shared/lib/utils, shared/components/layout/last-presence-sidebar-footer
+ * @depends-on shared/lib/utils, shared/components/layout/last-presence-sidebar-footer, features/supervisor/components/supervisor-mobile-nav
  */
 
 'use client'
 
 import { cn } from '@/shared/lib/utils'
 import { LastPresenceSidebarFooter } from '@/shared/components/layout/last-presence-sidebar-footer'
+import { SupervisorMobileNav } from '@/features/supervisor/components/supervisor-mobile-nav'
+import type { SupervisorNavId, SupervisorNavItem } from '@/features/supervisor/lib/nav-types'
 import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
 
-export type SupervisorNavId =
-  | 'safety'
-  | 'overview'
-  | 'workshop'
-  | 'drawings'
-  | 'inspection'
-  | 'today'
-  | 'daily-progress'
-  | 'daily-report'
-  | 'weekly-commitments'
-  | 'weekly-rnc'
-  | 'report-background'
-  | 'store'
-  | 'holidays'
-  | 'lookahead'
-  | 'issues'
-  | 'resources'
-  | 'ai'
-
-export type SupervisorNavItem = {
-  id: SupervisorNavId
-  label: string
-  hint?: string
-  badge?: number
-  badgeTone?: 'danger' | 'neutral'
-  /** Tooltip and accessible name of the badge. */
-  badgeTitle?: string
-}
+export type { SupervisorNavId, SupervisorNavItem }
 
 export function SupervisorWorkspaceShell({
   items,
@@ -60,24 +35,24 @@ export function SupervisorWorkspaceShell({
   return (
     <div
       className={cn(
-        'grid gap-3 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start',
+        'grid gap-2 lg:grid-cols-[240px_minmax(0,1fr)] lg:items-start lg:gap-3',
+        'pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-0',
         className
       )}
       dir="rtl"
     >
-      {/* سمت راست: تیترها */}
-      <div className="flex flex-col gap-2 lg:sticky lg:top-3">
+      <div className="hidden flex-col gap-2 lg:sticky lg:top-3 lg:flex">
         <nav
           aria-label={t.navAria}
           className="rounded-lg border border-slate-200 bg-white p-2 shadow-sm"
         >
           <p className="mb-2 px-2 text-[11px] font-semibold text-slate-500">{t.sectionsList}</p>
-          <ul className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
+          <ul className="flex flex-col gap-1">
             {items.map((item) => {
               const selected = item.id === activeId
               const showBadge = typeof item.badge === 'number' && item.badge > 0
               return (
-                <li key={item.id} className="shrink-0 lg:w-full">
+                <li key={item.id} className="w-full">
                   <button
                     type="button"
                     onClick={() => onSelect(item.id)}
@@ -116,14 +91,17 @@ export function SupervisorWorkspaceShell({
         <LastPresenceSidebarFooter />
       </div>
 
-      {/* سمت چپ: محتوا */}
-      <section className="min-w-0 rounded-lg border border-slate-200 bg-white shadow-sm">
-        <header className="border-b border-slate-200 px-4 py-3">
+      <section className="min-w-0 rounded-none border-0 bg-transparent shadow-none lg:rounded-lg lg:border lg:border-slate-200 lg:bg-white lg:shadow-sm">
+        <header className="border-b border-slate-200/80 bg-white px-3 py-2.5 lg:rounded-t-lg lg:px-4 lg:py-3">
           <h2 className="text-base font-semibold text-slate-900">{active?.label}</h2>
-          {active?.hint ? <p className="mt-0.5 text-xs text-slate-500">{active.hint}</p> : null}
+          {active?.hint ? (
+            <p className="mt-0.5 hidden text-xs text-slate-500 sm:block">{active.hint}</p>
+          ) : null}
         </header>
-        <div className="p-3 sm:p-4">{children}</div>
+        <div className="bg-white p-2 sm:p-3 lg:rounded-b-lg lg:p-4">{children}</div>
       </section>
+
+      <SupervisorMobileNav items={items} activeId={activeId} onSelect={onSelect} />
     </div>
   )
 }

@@ -29,6 +29,7 @@ export function DashboardLayoutShell({
   const isAdminRoute = pathname.startsWith('/admin')
   const ownsChrome = pathname.startsWith('/dashboard/manager')
   const wideScheduleLayout = pathname.includes('/dashboard/technical-office')
+  const siteSupervisorMobile = pathname.startsWith('/dashboard/site-supervisor')
 
   if (isAdminRoute || ownsChrome) {
     return <>{children}</>
@@ -46,7 +47,9 @@ export function DashboardLayoutShell({
         className={
           wideScheduleLayout
             ? 'w-full max-w-none px-2 sm:px-3 py-6'
-            : 'container mx-auto px-4 py-8'
+            : siteSupervisorMobile
+              ? 'container mx-auto px-2 py-3 sm:px-4 sm:py-6'
+              : 'container mx-auto px-4 py-8'
         }
       >
         {children}

@@ -193,7 +193,13 @@ export function DailyReportWorkflowBar({
   const showActions = canSaveDailyReport(status) && canSendDailyReportToManager(status)
 
   return (
-    <div className={cn('space-y-2 border-t border-slate-100 pt-3', className)}>
+    <div
+      className={cn(
+        'space-y-2 border-t border-slate-100 pt-3',
+        'sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 -mx-2 bg-white/95 px-2 pb-2 backdrop-blur-sm sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:backdrop-blur-none lg:bottom-auto',
+        className
+      )}
+    >
       <p className="text-[11px] text-slate-500">{t.workflowHint}</p>
 
       {showActions ? (
@@ -201,7 +207,7 @@ export function DailyReportWorkflowBar({
           <Button
             type="button"
             variant="outline"
-            className="flex-1 bg-white"
+            className="h-11 flex-1 bg-white sm:h-10"
             disabled={busy != null || loading}
             onClick={() => void run('save')}
           >
@@ -210,7 +216,7 @@ export function DailyReportWorkflowBar({
           </Button>
           <Button
             type="button"
-            className="flex-1"
+            className="h-11 flex-1 sm:h-10"
             disabled={busy != null || loading}
             onClick={() => void run('send_to_manager')}
           >

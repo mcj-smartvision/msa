@@ -482,15 +482,16 @@ function ActivityProgressRow({
               }}
               aria-invalid={inputCheck?.error != null}
               className={cn(
-                'h-9 w-20 text-center text-base font-bold tabular-nums shrink-0',
+                'h-11 w-24 text-center text-base font-bold tabular-nums shrink-0 sm:h-9 sm:w-20',
                 inputCheck?.error && 'border-red-400 focus-visible:ring-red-300'
               )}
               dir="ltr"
+              inputMode="decimal"
             />
             <Button
               type="button"
               size="sm"
-              className="h-9 shrink-0"
+              className="h-11 shrink-0 px-4 sm:h-9"
               disabled={saving || value === undefined || inputCheck?.error != null}
               onClick={() => void onSave()}
             >
@@ -1320,9 +1321,9 @@ export function DailyReportPanel({
           ) : null}
 
           {eligible.length > 0 ? (
-            <div className="sticky bottom-0 z-10 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur-sm">
-              <div className="flex flex-wrap items-center gap-3">
-                <Button type="button" disabled={submitting} onClick={handleSubmit}>
+            <div className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 -mx-2 rounded-none border-t border-slate-200 bg-white/95 p-3 shadow-[0_-4px_12px_-4px_rgba(15,23,42,0.12)] backdrop-blur-sm sm:mx-0 sm:rounded-xl sm:border sm:shadow-lg lg:bottom-0">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                <Button type="button" className="h-11 w-full sm:h-10 sm:w-auto" disabled={submitting} onClick={handleSubmit}>
                   {submitting ? t.submitting : t.submitTodayAll}
                 </Button>
                 <p className="text-xs text-slate-500">{t.orSaveEach}</p>
@@ -1348,7 +1349,7 @@ export function DailyReportPanel({
       ) : null}
 
       {view === 'note' ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-4">
+        <div className="space-y-4 rounded-none border-0 bg-transparent p-0 shadow-none sm:rounded-xl sm:border sm:border-slate-200 sm:bg-white sm:p-4 sm:shadow-sm">
           {!noteReady ? (
             <div className="space-y-3" aria-busy="true" aria-label={t.loading}>
               <Skeleton className="h-5 w-40" />

@@ -294,12 +294,13 @@ export function SiteSupervisorDashboard({
   }
 
   return (
-    <div className={cn('space-y-8', isRtl && 'text-right')}>
-
-      <PageHeader
-        title={t.title}
-        description={t.description}
-      />
+    <div className={cn('space-y-3 sm:space-y-6 lg:space-y-8', isRtl && 'text-right')}>
+      <div className="lg:hidden">
+        <h1 className="text-lg font-extrabold tracking-tight text-white drop-shadow-sm">{t.title}</h1>
+      </div>
+      <div className="hidden lg:block">
+        <PageHeader title={t.title} description={t.description} />
+      </div>
 
       {loading && tasks.length === 0 ? <LoadingBlock label={t.saving} /> : null}
       {error ? <ErrorBlock message={error} onRetry={() => void loadData()} /> : null}
