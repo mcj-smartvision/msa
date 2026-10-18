@@ -1,6 +1,6 @@
 /**
  * @file features/supervisor/components/archive-a4-preview.tsx
- * @purpose نمایش کامل گزارش آرشیو + چاپ A4
+ * @purpose دکمه مشاهده / چاپ گزارش کامل A4 با عکس در آرشیو
  * @safe-to-edit YES
  * @affects صفحه آرشیو گزارش روزانه
  * @depends-on features/site-report/components/printable-daily-report, features/site-report/lib/report-from-archive
@@ -8,10 +8,11 @@
 
 'use client'
 
-import { useId, useState } from 'react'
-import { ChevronDown, ChevronUp, Printer } from 'lucide-react'
+import { useEffect, useId, useState } from 'react'
+import { Eye, Printer, X } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
 import { PrintableDailyReport } from '@/features/site-report/components/printable-daily-report'
+import { SITE_REPORT_COPY } from '@/features/site-report/config'
 import { lipartaReportFromArchive } from '@/features/site-report/lib/report-from-archive'
 import type { SiteReportAttachedPhoto } from '@/features/site-report/lib/types'
 import type { ArchivedDailyReportRow } from '@/features/supervisor/lib/daily-report-archive'
@@ -29,7 +30,7 @@ export function ArchiveA4Preview({
   photos?: SiteReportAttachedPhoto[]
 }) {
   const printRootId = useId().replace(/:/g, '')
-  const [expanded, setExpanded] = useState(true)
+  const [open, setOpen] = useState(false)
 
   const report = lipartaReportFromArchive({
     projectName,
@@ -41,34 +42,69 @@ export function ArchiveA4Preview({
     statusLabel: 'archived',
   })
 
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
   function handlePrint() {
-    setExpanded(true)
-    window.setTimeout(() => window.print(), 250)
+    setOpen(true)
+    window.setTimeout(() => window.print(), 300)
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <div className="flex flex-wrap gap-2 print:hidden">
-        <Button type="button" size="sm" variant="outline" onClick={() => setExpanded((v) => !v)}>
-          {expanded ? (
-            <ChevronUp className="h-4 w-4 ml-1" aria-hidden />
-          ) : (
-            <ChevronDown className="h-4 w-4 ml-1" aria-hidden />
-          )}
-          {expanded ? t.archiveHideReport : t.archiveShowReport}
+        <Button type="button" size="sm" className="min-h-10 flex-1 sm:flex-none" onClick={() => setOpen(true)}>
+          <Eye className="h-4 w-4 ml-1" aria-hidden />
+          {t.archiveViewA4WithPhotos}
         </Button>
-        <Button type="button" size="sm" onClick={handlePrint}>
+        <Button type="button" size="sm" variant="outline" className="min-h-10" onClick={handlePrint}>
           <Printer className="h-4 w-4 ml-1" aria-hidden />
           {t.archivePrintA4}
         </Button>
       </div>
+      <p className="text-[11px] text-slate-500 print:hidden">{t.archiveA4Hint}</p>
 
-      {expanded ? (
+      {open ? (
         <div
-          id={`archive-print-${printRootId}`}
-          className="archive-print-root overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm print:overflow-visible print:rounded-none print:border-0 print:shadow-none"
+          className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-slate-900/55 p-3 sm:p-6 print:static print:inset-auto print:bg-transparent print:p-0"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t.archiveViewA4WithPhotos}
+          onClick={() => setOpen(false)}
         >
-          <PrintableDailyReport report={report} previewMode photos={photos} />
+          <div
+            className="my-4 w-full max-w-[220mm] rounded-xl border border-slate-300 bg-white shadow-xl print:my-0 print:max-w-none print:rounded-none print:border-0 print:shadow-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur print:hidden">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900">{t.archiveViewA4WithPhotos}</p>
+                <p className="truncate font-mono text-[11px] text-slate-500">{row.reportNo}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" size="sm" onClick={handlePrint}>
+                  <Printer className="h-4 w-4 ml-1" aria-hidden />
+                  {t.archivePrintA4}
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => setOpen(false)}>
+                  <X className="h-4 w-4 ml-1" aria-hidden />
+                  {SITE_REPORT_COPY.printClose}
+                </Button>
+              </div>
+            </div>
+            <div
+              id={`archive-print-${printRootId}`}
+              className="archive-print-root max-h-[80vh] overflow-auto print:max-h-none"
+            >
+              <PrintableDailyReport report={report} previewMode photos={photos} />
+            </div>
+          </div>
         </div>
       ) : null}
 

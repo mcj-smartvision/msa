@@ -316,7 +316,28 @@ export function DailyReportHistoryPage() {
                       </div>
                     </div>
 
-                    <div className="px-3 pb-4 pt-3">
+                    {row.note && row.note !== '—' ? (
+                      <p className="mx-4 mt-3 line-clamp-3 text-sm text-slate-700 whitespace-pre-wrap">
+                        {row.note}
+                      </p>
+                    ) : null}
+
+                    {reportPhotos.length > 0 ? (
+                      <ul className="mx-4 mt-3 grid grid-cols-3 gap-2">
+                        {reportPhotos.slice(0, 3).map((photo) => (
+                          <li key={photo.id} className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={photo.url}
+                              alt={photo.fileName}
+                              className="h-20 w-full object-cover"
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+
+                    <div className="mx-4 mb-4 mt-4 border-t border-slate-100 pt-3">
                       <ArchiveA4Preview
                         row={row}
                         projectName={projectName}
