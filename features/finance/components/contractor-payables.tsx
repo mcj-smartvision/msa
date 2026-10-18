@@ -8,6 +8,8 @@
 
 'use client'
 
+import { isFaLocale } from '@/shared/lib/i18n/pick-messages'
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, Loader2, Plus, Wallet } from 'lucide-react'
@@ -114,7 +116,7 @@ export function ContractorPayables({
   const { locale, dir } = useLocale()
   const t = getPayableMessages(locale)
   const isRtl = dir === 'rtl'
-  const isFa = locale === 'fa' || locale === 'ar'
+  const isFa = isFaLocale(locale)
   const money = (n: number) => formatRial(n, isFa ? 'fa' : 'en')
 
   const projectId = useSyncedProjectId(initialProjectId)

@@ -170,11 +170,9 @@ export const CURRENCIES = [
 ] as const
 
 export const LANGUAGES = [
-  { value: 'en', label: 'English' },
-  { value: 'ar', label: 'Arabic (العربية)' },
   { value: 'fa', label: 'Persian (فارسی)' },
+  { value: 'en', label: 'English' },
   { value: 'de', label: 'German (Deutsch)' },
-  { value: 'fr', label: 'French (Français)' },
 ] as const
 
 /** Languages shown on step 1 — same set as project settings */

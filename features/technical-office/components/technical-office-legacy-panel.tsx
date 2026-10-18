@@ -8,6 +8,8 @@
 
 'use client'
 
+import { isFaLocale } from '@/shared/lib/i18n/pick-messages'
+
 import { useEffect, useMemo, useState } from 'react'
 import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { getTechnicalOfficeMessages } from '@/shared/lib/i18n/technical-office'
@@ -32,7 +34,7 @@ type PackageRow = {
 export function TechnicalOfficeLegacyPanel({ projectId }: { projectId: string }) {
   const { locale } = useLocale()
   const t = getTechnicalOfficeMessages(locale)
-  const fa = locale === 'fa' || locale === 'ar'
+  const fa = isFaLocale(locale)
   const [packages, setPackages] = useState<PackageRow[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)

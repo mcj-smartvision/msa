@@ -135,7 +135,7 @@ const FA = {
 }
 
 export function getStorekeeperMessages(locale: FormLocale): typeof EN {
-  if (locale === 'fa' || locale === 'ar') return FA as typeof EN
+  if (locale === 'fa') return FA as typeof EN
   return EN
 }
 

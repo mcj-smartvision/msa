@@ -11,6 +11,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { APP_SHELL } from '@/shared/lib/i18n/app-shell'
+import { setActiveLocale } from '@/shared/lib/i18n/active-locale'
 import { LOCALE_COOKIE, readStoredLocale, writeLocaleCookie } from '@/shared/lib/i18n/locale-cookie'
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 import { isRtlLocale, normalizeLocale } from '@/features/project-init/lib/i18n/utils'
@@ -40,24 +41,22 @@ export function LocaleProvider({
 
   const setLocale = useCallback(
     (next: FormLocale) => {
-      setLocaleState(next)
-      writeLocaleCookie(next)
-      document.documentElement.lang = next
-      document.documentElement.dir = isRtlLocale(next) ? 'rtl' : 'ltr'
+      const normalized = normalizeLocale(next)
+      setActiveLocale(normalized)
+      setLocaleState(normalized)
+      writeLocaleCookie(normalized)
+      document.documentElement.lang = normalized
+      document.documentElement.dir = isRtlLocale(normalized) ? 'rtl' : 'ltr'
       router.refresh()
     },
     [router]
   )
 
   useEffect(() => {
-    // Temporary: force Persian UI across the app (cleanup later)
-    if (locale !== 'fa') {
-      setLocale('fa')
-      return
-    }
+    setActiveLocale(locale)
     document.documentElement.lang = locale
     document.documentElement.dir = dir
-  }, [locale, dir, setLocale])
+  }, [locale, dir])
 
   const value = useMemo<LocaleContextValue>(
     () => ({

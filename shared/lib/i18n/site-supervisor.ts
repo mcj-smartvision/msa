@@ -7,6 +7,9 @@
  */
 
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
+import { getActiveLocale, liveMessages } from '@/shared/lib/i18n/active-locale'
+import { SITE_SUPERVISOR_DE } from '@/shared/lib/i18n/site-supervisor-de'
+import { pickMessages } from '@/shared/lib/i18n/pick-messages'
 
 const EN = {
   title: 'Site Supervisor Dashboard',
@@ -1075,7 +1078,9 @@ const FA: SiteSupervisorMessages = {
   until: 'تا',
 }
 
-export function getSiteSupervisorMessages(locale: FormLocale): SiteSupervisorMessages {
-  if (locale === 'fa' || locale === 'ar') return FA
-  return EN
+export function getSiteSupervisorMessages(locale?: FormLocale): SiteSupervisorMessages {
+  return pickMessages(locale ?? getActiveLocale(), { en: EN, fa: FA, de: SITE_SUPERVISOR_DE })
 }
+
+/** Module-level labels that follow the active UI locale (via LocaleProvider). */
+export const siteSupervisorT = liveMessages(getSiteSupervisorMessages)

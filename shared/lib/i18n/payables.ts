@@ -156,14 +156,14 @@ const METHOD_EN: Record<PaymentMethod, string> = {
 }
 
 export function getPayableMessages(locale: FormLocale) {
-  if (locale === 'fa' || locale === 'ar') return FA
+  if (locale === 'fa') return FA
   return EN
 }
 
 export type PayableMessages = typeof EN
 
 export function getPayableStatusLabel(status: string, locale: FormLocale): string {
-  const map = locale === 'fa' || locale === 'ar' ? STATUS_FA : STATUS_EN
+  const map = locale === 'fa' ? STATUS_FA : STATUS_EN
   if (status in map) return map[status as PayableStatus]
   // Legacy
   if (status === 'Unpaid') return map.open
@@ -173,11 +173,11 @@ export function getPayableStatusLabel(status: string, locale: FormLocale): strin
 }
 
 export function getPayableTypeLabel(type: PayableType, locale: FormLocale): string {
-  if (locale === 'fa' || locale === 'ar') return TYPE_FA[type]
+  if (locale === 'fa') return TYPE_FA[type]
   return TYPE_EN[type]
 }
 
 export function getPaymentMethodLabel(method: PaymentMethod, locale: FormLocale): string {
-  if (locale === 'fa' || locale === 'ar') return METHOD_FA[method]
+  if (locale === 'fa') return METHOD_FA[method]
   return METHOD_EN[method]
 }

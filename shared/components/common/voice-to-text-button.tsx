@@ -8,6 +8,8 @@
 
 'use client'
 
+import { isFaLocale } from '@/shared/lib/i18n/pick-messages'
+
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, Mic, Square } from 'lucide-react'
 import { Button } from '@/shared/components/ui/button'
@@ -41,7 +43,7 @@ export function VoiceToTextButton({
   prompt,
 }: VoiceToTextButtonProps) {
   const { locale } = useLocale()
-  const fa = locale === 'fa' || locale === 'ar'
+  const fa = isFaLocale(locale)
   const voice = getChromeMessages(locale).voice
   const [recording, setRecording] = useState(false)
   const [busy, setBusy] = useState(false)

@@ -8,6 +8,8 @@
 
 'use client'
 
+import { isFaLocale } from '@/shared/lib/i18n/pick-messages'
+
 import { useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useLocale } from '@/shared/components/i18n/locale-provider'
@@ -55,7 +57,7 @@ export function TechnicalOfficeDashboard({
   const router = useRouter()
   const searchParams = useSearchParams()
   const projectId = useSyncedProjectId(initialProjectId) ?? projectOptions[0]?.id ?? ''
-  const fa = locale === 'fa' || locale === 'ar'
+  const fa = isFaLocale(locale)
   const asSupervisor = searchParams.get('as') === 'supervisor'
   const rawSection = searchParams.get('section')
   const section: OfficeSection =

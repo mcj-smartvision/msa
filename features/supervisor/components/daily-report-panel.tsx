@@ -57,9 +57,9 @@ import { SiteReportForm } from '@/features/site-report/components/site-report-fo
 import { siteReportHasContent } from '@/features/site-report/lib/report-content'
 import type { LipartaDailyReportData } from '@/features/site-report/lib/types'
 import { SUPERVISOR_COPY, SUPERVISOR_PUNCT } from '@/features/supervisor/config'
-import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { siteSupervisorT } from '@/shared/lib/i18n/site-supervisor'
 
-const t = getSiteSupervisorMessages('fa')
+const t = siteSupervisorT
 
 function faNum(n: number): string {
   return n.toLocaleString('fa-IR-u-nu-latn')
@@ -120,16 +120,15 @@ function ProgressBar({
   )
 }
 
-const SHORT_DAY_LABELS = [t.shortSat, t.shortSun, t.shortMon, t.shortTue, t.shortWed, t.shortThu]
-
-const PERCENT_ERROR_TEXT = { max: t.percentMax, min: t.percentMin } as const
-const DECREASE_WARNING = t.decreaseWarning
+function shortDayLabels() {
+  return [t.shortSat, t.shortSun, t.shortMon, t.shortTue, t.shortWed, t.shortThu]
+}
 
 function PercentEntryMessage({ check }: { check: PercentEntryCheck | null }) {
   if (check?.error) {
     return (
       <p role="alert" className="text-[10px] font-semibold text-red-600">
-        {PERCENT_ERROR_TEXT[check.error]}
+        {check.error === 'max' ? t.percentMax : t.percentMin}
       </p>
     )
   }
@@ -137,7 +136,7 @@ function PercentEntryMessage({ check }: { check: PercentEntryCheck | null }) {
     return (
       <p role="alert" className="flex items-start gap-1 text-[10px] font-semibold leading-4 text-red-600">
         <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-        {DECREASE_WARNING}
+        {t.decreaseWarning}
       </p>
     )
   }
@@ -264,7 +263,7 @@ function ProgressTimelineChart({ weeks }: { weeks: ActivityProgressWeek[] }) {
                     fontSize={8}
                     fill={p.future ? '#94a3b8' : '#64748b'}
                   >
-                    {SHORT_DAY_LABELS[p.dayIndex]}
+                    {shortDayLabels()[p.dayIndex]}
                   </text>
                   <rect
                     x={p.x - colW / 2}

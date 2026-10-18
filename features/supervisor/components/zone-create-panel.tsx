@@ -26,9 +26,9 @@ pickStructureDrawing,
 ZONE_COLOR_PRESETS,
 } from '@/features/supervisor/lib/drawings-zoning-mock'
 import type { ProjectDrawing } from '@/features/technical-office/lib/drawings-shared'
-import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { siteSupervisorT } from '@/shared/lib/i18n/site-supervisor'
 
-const t = getSiteSupervisorMessages('fa')
+const t = siteSupervisorT
 
 type ZoneCreatePanelProps = {
   drawings: ProjectDrawing[]

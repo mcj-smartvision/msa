@@ -8,6 +8,8 @@
 
 'use client'
 
+import { isFaLocale } from '@/shared/lib/i18n/pick-messages'
+
 import { useRouter } from 'next/navigation'
 import { Monitor, Smartphone } from 'lucide-react'
 import { useLocale } from '@/shared/components/i18n/locale-provider'
@@ -22,7 +24,7 @@ import { cn } from '@/shared/lib/utils'
 export function ChooseAccountantShellClient() {
   const router = useRouter()
   const { locale, dir } = useLocale()
-  const isFa = locale === 'fa' || locale === 'ar'
+  const isFa = isFaLocale(locale)
 
   const copy = isFa
     ? ACCOUNTANT_SHELL_COPY

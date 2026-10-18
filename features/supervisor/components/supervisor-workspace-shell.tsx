@@ -12,7 +12,8 @@ import { cn } from '@/shared/lib/utils'
 import { LastPresenceSidebarFooter } from '@/shared/components/layout/last-presence-sidebar-footer'
 import { SupervisorMobileNav } from '@/features/supervisor/components/supervisor-mobile-nav'
 import type { SupervisorNavId, SupervisorNavItem } from '@/features/supervisor/lib/nav-types'
-import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { siteSupervisorT } from '@/shared/lib/i18n/site-supervisor'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
 
 export type { SupervisorNavId, SupervisorNavItem }
 
@@ -29,7 +30,8 @@ export function SupervisorWorkspaceShell({
   children: React.ReactNode
   className?: string
 }) {
-  const t = getSiteSupervisorMessages('fa')
+  const { dir } = useLocale()
+  const t = siteSupervisorT
   const active = items.find((i) => i.id === activeId)
 
   return (
@@ -39,7 +41,7 @@ export function SupervisorWorkspaceShell({
         'pb-[calc(4.75rem+env(safe-area-inset-bottom))] lg:pb-0',
         className
       )}
-      dir="rtl"
+      dir={dir}
     >
       <div className="hidden flex-col gap-2 lg:sticky lg:top-3 lg:flex">
         <nav

@@ -16,9 +16,9 @@ import { SITE_REPORT_COPY } from '@/features/site-report/config'
 import { lipartaReportFromArchive } from '@/features/site-report/lib/report-from-archive'
 import type { SiteReportAttachedPhoto } from '@/features/site-report/lib/types'
 import type { ArchivedDailyReportRow } from '@/features/supervisor/lib/daily-report-archive'
-import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { siteSupervisorT } from '@/shared/lib/i18n/site-supervisor'
 
-const t = getSiteSupervisorMessages('fa')
+const t = siteSupervisorT
 
 export function ArchiveA4Preview({
   row,

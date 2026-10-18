@@ -248,7 +248,7 @@ const STATUS_EN: Record<AccountingDocumentStatus, string> = {
 }
 
 export function getExpenseMessages(locale: FormLocale) {
-  if (locale === 'fa' || locale === 'ar') return FA
+  if (locale === 'fa') return FA
   return EN
 }
 
@@ -258,6 +258,6 @@ export function getExpenseStatusLabel(
   status: AccountingDocumentStatus,
   locale: FormLocale
 ): string {
-  if (locale === 'fa' || locale === 'ar') return STATUS_FA[status]
+  if (locale === 'fa') return STATUS_FA[status]
   return STATUS_EN[status]
 }

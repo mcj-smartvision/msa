@@ -217,8 +217,7 @@ export const ADMIN_MEMBER: Record<'en' | 'fa' | 'fr' | 'de', AdminMemberMessages
 }
 
 export function getAdminMemberMessages(locale: string): AdminMemberMessages {
-  if (locale === 'fa' || locale === 'fr' || locale === 'de') {
-    return ADMIN_MEMBER[locale]
-  }
+  if (locale === 'fa' || locale === 'de') return ADMIN_MEMBER[locale]
+  if (locale === 'fr') return ADMIN_MEMBER.fr
   return ADMIN_MEMBER.en
 }

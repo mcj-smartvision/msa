@@ -16,10 +16,10 @@ import {
   DAILY_REPORT_PHOTO_LIMITS,
   type DailyReportPhotoItem,
 } from '@/features/supervisor/lib/daily-report-photos'
-import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { siteSupervisorT } from '@/shared/lib/i18n/site-supervisor'
 import { cn } from '@/shared/lib/utils'
 
-const t = getSiteSupervisorMessages('fa')
+const t = siteSupervisorT
 
 async function readApiJson(res: Response): Promise<{
   reportId?: string

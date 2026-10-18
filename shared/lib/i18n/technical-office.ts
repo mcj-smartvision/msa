@@ -79,6 +79,6 @@ const FA: typeof EN = {
 }
 
 export function getTechnicalOfficeMessages(locale: FormLocale | string) {
-  if (locale === 'fa' || locale === 'ar') return FA
+  if (locale === 'fa') return FA
   return EN
 }

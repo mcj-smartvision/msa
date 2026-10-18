@@ -33,9 +33,9 @@ import type { ArchivedDailyReportRow } from '@/features/supervisor/lib/daily-rep
 import { ArchiveA4Preview } from '@/features/supervisor/components/archive-a4-preview'
 import { cn } from '@/shared/lib/utils'
 import type { DailyReportPhotoItem } from '@/features/supervisor/lib/daily-report-photos'
-import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { siteSupervisorT } from '@/shared/lib/i18n/site-supervisor'
 
-const t = getSiteSupervisorMessages('fa')
+const t = siteSupervisorT
 
 function faNum(n: number): string {
   return n.toLocaleString('fa-IR-u-nu-latn')

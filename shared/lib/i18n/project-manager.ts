@@ -43,6 +43,6 @@ const FA: ProjectManagerMessages = {
 }
 
 export function getProjectManagerMessages(locale: FormLocale): ProjectManagerMessages {
-  if (locale === 'fa' || locale === 'ar') return FA
+  if (locale === 'fa') return FA
   return EN
 }

@@ -15,7 +15,8 @@ import {
   isSupervisorMobilePrimary,
 } from '@/features/supervisor/lib/mobile-nav-config'
 import type { SupervisorNavId, SupervisorNavItem } from '@/features/supervisor/lib/nav-types'
-import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { siteSupervisorT, type SiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { cn } from '@/shared/lib/utils'
 
 const PRIMARY_ICONS = {
@@ -24,7 +25,7 @@ const PRIMARY_ICONS = {
   safety: ShieldAlert,
 } as const
 
-function shortLabel(id: (typeof SUPERVISOR_MOBILE_PRIMARY_IDS)[number], t: ReturnType<typeof getSiteSupervisorMessages>) {
+function shortLabel(id: (typeof SUPERVISOR_MOBILE_PRIMARY_IDS)[number], t: SiteSupervisorMessages) {
   if (id === 'daily-progress') return t.shortNavProgress
   if (id === 'daily-report') return t.shortNavReport
   return t.shortNavSafety
@@ -39,7 +40,8 @@ export function SupervisorMobileNav({
   activeId: SupervisorNavId
   onSelect: (id: SupervisorNavId) => void
 }) {
-  const t = getSiteSupervisorMessages('fa')
+  useLocale()
+  const t = siteSupervisorT
   const [moreOpen, setMoreOpen] = useState(false)
   const titleId = useId()
   const byId = new Map(items.map((item) => [item.id, item]))

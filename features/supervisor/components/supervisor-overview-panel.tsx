@@ -45,9 +45,9 @@ type ProjectProgressSeriesPoint,
 } from '@/features/supervisor/lib/daily-report-activities'
 import type { ScheduleTreeNode, WorkshopPackageNode } from '@/features/workshop/lib/types'
 import { SUPERVISOR_COPY } from '@/features/supervisor/config'
-import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { siteSupervisorT } from '@/shared/lib/i18n/site-supervisor'
 
-const t = getSiteSupervisorMessages('fa')
+const t = siteSupervisorT
 
 ChartJS.register(
   ArcElement,

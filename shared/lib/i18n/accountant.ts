@@ -220,14 +220,14 @@ const INVOICE_STATUS_EN: Record<FinancialInvoiceStatus, string> = {
 }
 
 export function getAccountantMessages(locale: FormLocale) {
-  if (locale === 'fa' || locale === 'ar') return FA
+  if (locale === 'fa') return FA
   return EN
 }
 
 export type AccountantMessages = typeof EN
 
 export function getInvoiceStatusLabel(status: FinancialInvoiceStatus, locale: FormLocale): string {
-  if (locale === 'fa' || locale === 'ar') return INVOICE_STATUS_FA[status]
+  if (locale === 'fa') return INVOICE_STATUS_FA[status]
   return INVOICE_STATUS_EN[status]
 }
 

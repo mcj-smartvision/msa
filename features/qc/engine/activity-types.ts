@@ -345,14 +345,14 @@ export function matchQcActivity(text: string): QcActivityType | null {
 
 export function qcActivityLabel(type: string, locale?: string) {
   if (!isQcActivityType(type)) return type
-  const persian = locale !== 'en' && locale !== 'de' && locale !== 'fr'
+  const persian = locale !== 'en' && locale !== 'de'
   return persian ? QC_ACTIVITY_META[type].fa : QC_ACTIVITY_META[type].en
 }
 
 export function qcActivityGroupLabel(group: QcActivityGroup, locale?: string) {
   const row = QC_ACTIVITY_GROUPS.find((item) => item.key === group)
   if (!row) return group
-  const persian = locale !== 'en' && locale !== 'de' && locale !== 'fr'
+  const persian = locale !== 'en' && locale !== 'de'
   return persian ? row.fa : row.en
 }
 

@@ -9,14 +9,13 @@
 import type { FormDictionary, FormLocale, OptionMap } from './types'
 import { en } from './locales/en'
 import { de } from './locales/de'
-import { fr } from './locales/fr'
-import { ar } from './locales/ar'
 import { fa } from './locales/fa'
 
-const dictionaries: Record<FormLocale, FormDictionary> = { en, de, fr, ar, fa }
+const dictionaries: Record<FormLocale, FormDictionary> = { en, de, fa }
 
+/** Normalize cookie/query values; unknown and legacy fr/ar → Persian default. */
 export function normalizeLocale(value?: string): FormLocale {
-  if (value === 'de' || value === 'fr' || value === 'ar' || value === 'en') return value
+  if (value === 'de' || value === 'en' || value === 'fa') return value
   return 'fa'
 }
 
@@ -25,8 +24,7 @@ export function getDictionary(locale?: string): FormDictionary {
 }
 
 export function isRtlLocale(locale?: string): boolean {
-  const l = normalizeLocale(locale)
-  return l === 'ar' || l === 'fa'
+  return normalizeLocale(locale) === 'fa'
 }
 
 export function localizeOptions(

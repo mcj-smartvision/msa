@@ -22,10 +22,10 @@ import {
 import { parseLipartaDailyReport } from '@/features/site-report/lib/parse-structured'
 import { resolveDailyReportNote, siteReportHasContent } from '@/features/site-report/lib/report-content'
 import type { LipartaDailyReportData } from '@/features/site-report/lib/types'
-import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { siteSupervisorT } from '@/shared/lib/i18n/site-supervisor'
 import { cn } from '@/shared/lib/utils'
 
-const t = getSiteSupervisorMessages('fa')
+const t = siteSupervisorT
 
 export function DailyReportWorkflowBar({
   projectId,

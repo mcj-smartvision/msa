@@ -92,7 +92,7 @@ const FA = {
 } as const satisfies Record<keyof typeof EN, string>
 
 export function getProcurementMessages(locale: FormLocale): typeof EN {
-  if (locale === 'fa' || locale === 'ar') return FA as typeof EN
+  if (locale === 'fa') return FA as typeof EN
   return EN
 }
 

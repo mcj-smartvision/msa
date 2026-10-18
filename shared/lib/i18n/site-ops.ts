@@ -115,6 +115,6 @@ const FA: typeof EN = {
 export type SiteOpsMessages = typeof EN
 
 export function getSiteOpsMessages(locale: FormLocale | string): SiteOpsMessages {
-  if (locale === 'fa' || locale === 'ar') return FA
+  if (locale === 'fa') return FA
   return EN
 }

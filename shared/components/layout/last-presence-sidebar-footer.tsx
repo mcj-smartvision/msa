@@ -14,6 +14,7 @@ import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { useScheduleCalendar } from '@/features/schedule/hooks/use-schedule-calendar'
 import { formatScheduleDateTime } from '@/features/schedule/lib/dates'
 import { getChromeMessages } from '@/shared/lib/i18n/chrome'
+import { isFaLocale } from '@/shared/lib/i18n/pick-messages'
 
 function formatSiteLoginAt(value: string, fa: boolean, calendar: 'jalali' | 'gregorian') {
   const d = new Date(value)
@@ -36,8 +37,8 @@ function formatSiteLoginAt(value: string, fa: boolean, calendar: 'jalali' | 'gre
 export function LastPresenceSidebarFooter() {
   const { locale } = useLocale()
   const { calendar } = useScheduleCalendar()
-  const fa = locale === 'fa' || locale === 'ar'
-  const chrome = getChromeMessages('fa')
+  const fa = isFaLocale(locale)
+  const chrome = getChromeMessages(locale)
   const [lastLoginAt, setLastLoginAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -66,8 +67,8 @@ export function LastPresenceSidebarFooter() {
   return (
     <div
       className="rounded-lg border border-slate-300 bg-white px-3 py-3 text-center shadow-sm"
-      dir="rtl"
-      lang="fa"
+      dir={fa ? 'rtl' : 'ltr'}
+      lang={locale}
     >
       <p className="text-sm font-bold text-slate-900">{chrome.lastLogin}</p>
       {loading ? (

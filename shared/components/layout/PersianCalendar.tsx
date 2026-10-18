@@ -14,6 +14,7 @@ import { JalaliMonthGrid } from '@/features/holidays/components/jalali-month-gri
 import { useDismiss } from '@/features/holidays/hooks/use-dismiss'
 import { useHolidays } from '@/features/holidays/hooks/use-holidays'
 import { holidaysOn } from '@/features/holidays/lib/work-calendar'
+import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { HEADER_CHIP } from '@/shared/components/layout/header-chip'
 import { getChromeMessages } from '@/shared/lib/i18n/chrome'
 import { formatJalaliLong, isoToJalali } from '@/shared/lib/time/jalali-month'
@@ -22,7 +23,8 @@ import { cn } from '@/shared/lib/utils'
 
 /** Today's Jalali date in the header; opens a month calendar with Fridays and registered holidays. */
 export function PersianCalendar({ className }: { className?: string }) {
-  const chrome = getChromeMessages('fa')
+  const { locale } = useLocale()
+  const chrome = getChromeMessages(locale)
   const [today, setToday] = useState(todayTehranIso)
   const [open, setOpen] = useState(false)
   const [view, setView] = useState(() => isoToJalali(todayTehranIso()))

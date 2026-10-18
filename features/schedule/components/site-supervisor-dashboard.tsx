@@ -8,6 +8,8 @@
 
 'use client'
 
+import { isFaLocale } from '@/shared/lib/i18n/pick-messages'
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Bot, Loader2 } from 'lucide-react'
@@ -108,7 +110,7 @@ export function SiteSupervisorDashboard({
   const { locale, dir } = useLocale()
   const t = getSiteSupervisorMessages(locale)
   const isRtl = dir === 'rtl'
-  const isFa = locale === 'fa' || locale === 'ar'
+  const isFa = isFaLocale(locale)
   const { viewDate } = useScheduleViewDate()
 
   function labelsForAction(type: AiActionType | 'daily_report'): AiDraftLabels {

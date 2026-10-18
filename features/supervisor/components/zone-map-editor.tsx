@@ -49,9 +49,9 @@ import { drawingDisciplineLabel } from '@/features/technical-office/lib/drawing-
 import type { ProjectDrawing } from '@/features/technical-office/lib/drawings-shared'
 import { ZONE_MAP_COPY } from '@/features/supervisor/config'
 import { cn } from '@/shared/lib/utils'
-import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { siteSupervisorT } from '@/shared/lib/i18n/site-supervisor'
 
-const t = getSiteSupervisorMessages('fa')
+const t = siteSupervisorT
 
 const DISCIPLINE_ICONS = {
   structure: Building2,

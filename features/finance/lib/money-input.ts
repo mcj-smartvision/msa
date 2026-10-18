@@ -6,6 +6,7 @@
  * @depends-on features/project-init/lib/i18n/types
  */
 
+import { isFaLocale } from '@/shared/lib/i18n/pick-messages'
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
 
 const PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹'
@@ -58,7 +59,7 @@ export function formatMoneyInput(raw: string, locale: FormLocale = 'fa'): string
   if (!digits) return ''
   const n = Number(digits)
   if (!Number.isFinite(n)) return ''
-  const usePersian = locale === 'fa' || locale === 'ar'
+  const usePersian = isFaLocale(locale)
   return new Intl.NumberFormat(usePersian ? 'fa-IR-u-nu-latn' : 'en-US', {
     maximumFractionDigits: 0,
     useGrouping: true,

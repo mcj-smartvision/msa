@@ -17,9 +17,9 @@ import { prefetchDrawingPreview } from '@/features/supervisor/components/drawing
 import { Button } from '@/shared/components/ui/button'
 import type { DefinedZone } from '@/features/supervisor/lib/drawings-zoning-mock'
 import type { ProjectDrawing } from '@/features/technical-office/lib/drawings-shared'
-import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { siteSupervisorT } from '@/shared/lib/i18n/site-supervisor'
 
-const t = getSiteSupervisorMessages('fa')
+const t = siteSupervisorT
 
 type ZoneLightboxModalProps = {
   open: boolean

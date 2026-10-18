@@ -11,12 +11,13 @@
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/shared/lib/supabase/client';
 import { Button } from '@/shared/components/ui/button';
+import { useLocale } from '@/shared/components/i18n/locale-provider';
 import { getChromeMessages } from '@/shared/lib/i18n/chrome';
 
-const DEFAULT_LOGOUT_LABEL = getChromeMessages('fa').signOut
-
-export function LogoutButton({ label = DEFAULT_LOGOUT_LABEL, className }: { label?: string; className?: string }) {
+export function LogoutButton({ label, className }: { label?: string; className?: string }) {
   const router = useRouter()
+  const { locale } = useLocale()
+  const text = label ?? getChromeMessages(locale).signOut
 
   async function handleLogout() {
     const supabase = createClient()
@@ -27,7 +28,7 @@ export function LogoutButton({ label = DEFAULT_LOGOUT_LABEL, className }: { labe
 
   return (
     <Button variant="outline" size="sm" onClick={handleLogout} className={className}>
-      {label}
+      {text}
     </Button>
   )
 }

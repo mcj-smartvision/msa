@@ -31,9 +31,9 @@ export function DashboardHeader({
   roleNavLinks = [],
   projectOptions = [],
 }: DashboardHeaderProps) {
-  const { app } = useLocale()
+  const { app, locale } = useLocale()
   const pathname = usePathname()
-  const chrome = getChromeMessages('fa')
+  const chrome = getChromeMessages(locale)
 
   const baseNav = isAdmin
     ? [

@@ -23,9 +23,9 @@ readProjectZones,
 readZoneMapViewSnapshot,
 type ZoneMapViewSnapshot,
 } from '@/features/supervisor/lib/zone-session-storage'
-import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { siteSupervisorT } from '@/shared/lib/i18n/site-supervisor'
 
-const t = getSiteSupervisorMessages('fa')
+const t = siteSupervisorT
 
 export function ZoneMapFullPage({ zoneId }: { zoneId: string }) {
   const searchParams = useSearchParams()

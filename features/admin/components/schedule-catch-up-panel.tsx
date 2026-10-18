@@ -8,6 +8,8 @@
 
 'use client'
 
+import { isFaLocale } from '@/shared/lib/i18n/pick-messages'
+
 import { useEffect, useMemo, useState } from 'react'
 import {
 Check,
@@ -55,7 +57,7 @@ export function ScheduleCatchUpPanel({
   onTasksUpdated,
 }: ScheduleCatchUpPanelProps) {
   const { locale, dir } = useLocale()
-  const fa = locale === 'fa' || locale === 'ar'
+  const fa = isFaLocale(locale)
   const copy = pickAdminLocale(fa, ADMIN_CATCH_UP_COPY)
   const isRtl = dir === 'rtl'
   const asOf = todayIso()

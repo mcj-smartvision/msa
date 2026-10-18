@@ -3,10 +3,11 @@
  * @purpose برچسب هدر، سوییچر پروژه، تقویم، آخرین ورود و ضبط صدا
  * @safe-to-edit YES
  * @affects shared layout/chrome components
- * @depends-on features/project-init/lib/i18n/types
+ * @depends-on features/project-init/lib/i18n/types, shared/lib/i18n/pick-messages
  */
 
 import type { FormLocale } from '@/features/project-init/lib/i18n/types'
+import { pickMessages } from '@/shared/lib/i18n/pick-messages'
 
 const EN = {
   controlCenter: 'Control Center',
@@ -72,12 +73,43 @@ const FA: typeof EN = {
   },
 }
 
+const DE: typeof EN = {
+  controlCenter: 'Leitstelle',
+  members: 'Mitglieder',
+  projects: 'Projekte',
+  dashboard: 'Dashboard',
+  allProjects: 'Alle Projekte',
+  loadingProjects: 'Projekte werden geladen',
+  project: 'Projekt',
+  selectProject: 'Projekt wählen',
+  calendar: 'Kalender',
+  listSep: ', ',
+  lastLogin: 'Letzte Anmeldung',
+  lastLoginLoading: 'Wird geladen...',
+  lastLoginUnset: 'Nicht erfasst',
+  signOut: 'Abmelden',
+  voice: {
+    noAudio: 'Keine Audioaufnahme. Bitte erneut versuchen.',
+    recordFailed: 'Aufnahme fehlgeschlagen.',
+    micDenied: 'Mikrofonzugriff verweigert. Bitte Browserberechtigung prüfen.',
+    transcribeFailed: 'Transkription fehlgeschlagen.',
+    noSpeech: 'Keine Sprache erkannt. Bitte erneut versuchen.',
+    transcribing: 'Wird transkribiert…',
+    voiceInput: 'Spracheingabe',
+    stopConvert: 'Stoppen & umwandeln',
+    recording: 'Aufnahme läuft…',
+    appendHint: 'Text wird angehängt',
+    reviewHint: 'Transkription prüfen und bei Bedarf bearbeiten:',
+    confirmInsert: 'Bestätigen & einfügen',
+    discard: 'Verwerfen',
+  },
+}
+
 export type ChromeMessages = typeof EN
 
 /**
  * Header, calendar, logout, project switcher, and voice-to-text labels.
  */
 export function getChromeMessages(locale: FormLocale | string): ChromeMessages {
-  if (locale === 'fa' || locale === 'ar') return FA
-  return EN
+  return pickMessages(locale, { en: EN, fa: FA, de: DE })
 }

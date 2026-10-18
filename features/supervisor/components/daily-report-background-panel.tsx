@@ -52,11 +52,13 @@ import { CalcTraceProvider, CalcTraceTrigger } from '@/features/calc-trace/compo
 import type { CalcTraceMap } from '@/features/calc-trace/lib/types'
 import { activityProgressTrace, weightRollupTrace } from '@/features/supervisor/lib/supervisor-traces'
 import { SUPERVISOR_COPY, SUPERVISOR_PUNCT } from '@/features/supervisor/config'
-import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { siteSupervisorT } from '@/shared/lib/i18n/site-supervisor'
 
-const t = getSiteSupervisorMessages('fa')
+const t = siteSupervisorT
 
-const WEEKDAY_SHORT = [t.tinySat, t.tinySun, t.tinyMon, t.tinyTue, t.tinyWed, t.tinyThu, t.tinyFri]
+function weekdayShort() {
+  return [t.tinySat, t.tinySun, t.tinyMon, t.tinyTue, t.tinyWed, t.tinyThu, t.tinyFri]
+}
 const NAME_COL = 280
 const TOTAL_COL = 64
 
@@ -443,7 +445,7 @@ export function DailyReportBackgroundPanel({ projectId, isAdmin = false }: { pro
                     )}
                     title={[formatScheduleDate(d, calendar), ...holidayTitles].join(' — ')}
                   >
-                    <div>{WEEKDAY_SHORT[wd]}</div>
+                    <div>{weekdayShort()[wd]}</div>
                     <div dir="ltr">{label.length === 3 ? `${label[1]}/${label[2]}` : label.join('/')}</div>
                   </th>
                 )

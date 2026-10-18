@@ -8,6 +8,8 @@
 
 'use client'
 
+import { isFaLocale } from '@/shared/lib/i18n/pick-messages'
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
@@ -151,7 +153,7 @@ export function ExpenseManagement({
   const { calendar } = useScheduleCalendar()
   const t = getExpenseMessages(locale)
   const isRtl = dir === 'rtl'
-  const isFa = locale === 'fa' || locale === 'ar'
+  const isFa = isFaLocale(locale)
   const money = (n: number) => formatRial(n, isFa ? 'fa' : 'en')
 
   const projectId = useSyncedProjectId(initialProjectId)

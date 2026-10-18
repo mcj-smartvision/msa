@@ -6,11 +6,13 @@
  * @depends-on nothing
  */
 
-export type FormLocale = 'en' | 'de' | 'fr' | 'ar' | 'fa'
+/** App UI locales — Persian default; English and German also supported. */
+export type FormLocale = 'en' | 'de' | 'fa'
 
-export const FORM_LOCALES: FormLocale[] = ['en', 'de', 'fr', 'ar', 'fa']
+/** Display order in the language switcher (default fa first). */
+export const FORM_LOCALES: FormLocale[] = ['fa', 'en', 'de']
 
-export const RTL_LOCALES: FormLocale[] = ['ar', 'fa']
+export const RTL_LOCALES: FormLocale[] = ['fa']
 
 export type OptionMap = Record<string, string>
 

@@ -8,6 +8,8 @@
 
 'use client'
 
+import { isFaLocale } from '@/shared/lib/i18n/pick-messages'
+
 import { Component, useState, type ReactNode } from 'react'
 import { useLocale } from '@/shared/components/i18n/locale-provider'
 import { EmptyState, PageHeader } from '@/features/admin/components/shared'
@@ -37,7 +39,7 @@ export function AccountantDashboard({
 }: AccountantDashboardProps) {
   const { locale, dir } = useLocale()
   const t = getAccountantMessages(locale)
-  const fa = locale === 'fa' || locale === 'ar'
+  const fa = isFaLocale(locale)
   const projectId = useSyncedProjectId(initialProjectId)
 
   const [tab, setTab] = useState<AccountantTab>('live-costs')

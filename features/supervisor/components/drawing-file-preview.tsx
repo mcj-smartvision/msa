@@ -15,9 +15,9 @@ import { fetchDrawingBytes, sniffDrawingKind } from '@/features/qc/engine/drawin
 import { renderPdfPage } from '@/features/qc/engine/pdfjs'
 import { DRAWING_PREVIEW_COPY } from '@/features/supervisor/config'
 import { cn } from '@/shared/lib/utils'
-import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
+import { siteSupervisorT } from '@/shared/lib/i18n/site-supervisor'
 
-const DRAWING_FALLBACK = getSiteSupervisorMessages('fa').drawingFallback
+const drawingFallback = () => siteSupervisorT.drawingFallback
 
 /** کیفیت سریع برای علامت‌گذاری — ابتدا نمایش، بعد ارتقا */
 const MARKING_QUICK_DIM = 640
@@ -297,7 +297,7 @@ export function DrawingFilePreview({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={rasterSrc}
-            alt={title ?? DRAWING_FALLBACK}
+            alt={title ?? drawingFallback()}
             className={mediaClass}
             style={blockPointer}
             draggable={false}
@@ -328,7 +328,7 @@ export function DrawingFilePreview({
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={src}
-        alt={title ?? DRAWING_FALLBACK}
+        alt={title ?? drawingFallback()}
         className={cn(mediaClass, 'object-contain')}
         style={blockPointer}
         draggable={false}

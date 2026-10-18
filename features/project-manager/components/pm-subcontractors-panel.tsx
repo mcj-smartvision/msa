@@ -8,6 +8,8 @@
 
 'use client'
 
+import { isFaLocale } from '@/shared/lib/i18n/pick-messages'
+
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { FileText, Loader2, Plus, Upload, Users } from 'lucide-react'
@@ -49,7 +51,7 @@ export function PmSubcontractorsPanel({
   const supabase = useSupabase()
   const { locale } = useLocale()
   const { calendar } = useScheduleCalendar()
-  const fa = locale === 'fa' || locale === 'ar'
+  const fa = isFaLocale(locale)
   const t = fa ? PM_SUBCONTRACTORS_COPY.fa : PM_SUBCONTRACTORS_COPY.en
 
   const [rows, setRows] = useState<ProjectSubcontractor[]>([])

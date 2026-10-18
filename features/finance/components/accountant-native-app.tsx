@@ -8,6 +8,8 @@
 
 'use client'
 
+import { isFaLocale } from '@/shared/lib/i18n/pick-messages'
+
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
 AlertTriangle,
@@ -123,7 +125,7 @@ export function AccountantNativeApp({
   const supabase = useSupabase()
   const { locale, dir } = useLocale()
   const t = getAccountantMessages(locale)
-  const isFa = locale === 'fa' || locale === 'ar'
+  const isFa = isFaLocale(locale)
 
   const [tab, setTab] = useState<TabId>('home')
   const [projectId, setProjectId] = useState<string | null>(initialProjectId)
