@@ -47,10 +47,27 @@ export function LocaleProvider({
       writeLocaleCookie(normalized)
       document.documentElement.lang = normalized
       document.documentElement.dir = isRtlLocale(normalized) ? 'rtl' : 'ltr'
+      // Soft refresh so server components pick up the cookie without remounting away from client state.
       router.refresh()
     },
     [router]
   )
+
+  // After hydration, prefer the client-stored locale (cookie/localStorage) over a stale SSR default.
+  useEffect(() => {
+    const stored = readStoredLocale()
+    if (stored && stored !== locale) {
+      setActiveLocale(stored)
+      setLocaleState(stored)
+      document.documentElement.lang = stored
+      document.documentElement.dir = isRtlLocale(stored) ? 'rtl' : 'ltr'
+    } else {
+      setActiveLocale(locale)
+      document.documentElement.lang = locale
+      document.documentElement.dir = dir
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once after mount
+  }, [])
 
   useEffect(() => {
     setActiveLocale(locale)
@@ -68,7 +85,13 @@ export function LocaleProvider({
     [locale, dir, setLocale]
   )
 
-  return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>
+  return (
+    <LocaleContext.Provider value={value}>
+      <div key={locale} lang={locale} dir={dir} className="contents">
+        {children}
+      </div>
+    </LocaleContext.Provider>
+  )
 }
 
 export function useLocale() {

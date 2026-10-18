@@ -91,6 +91,7 @@ export function DashboardHeader({
         <HeaderUserControls
           email={email}
           allowAllProject={isAdmin}
+          showLanguage
           projectOptions={projectOptions}
         />
       </div>

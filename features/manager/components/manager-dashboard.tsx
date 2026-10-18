@@ -43,6 +43,7 @@ import { cn } from '@/shared/lib/utils'
 import { EmptyState } from '@/features/admin/components/shared'
 import { BrandLogo } from '@/shared/components/brand/brand-logo'
 import { HeaderUserMenu } from '@/features/account/components/header-user-menu'
+import { HeaderLanguageSwitcher } from '@/shared/components/i18n/header-language-switcher'
 import { PersianCalendar } from '@/shared/components/layout/PersianCalendar'
 import { HeaderWeather } from '@/features/weather/components/header-weather'
 import { useSyncedProjectId } from '@/shared/hooks/use-synced-project-id'
@@ -926,6 +927,7 @@ export function ManagerDashboard({ user, nav, projectOptions, initialProjectId, 
               </button>
 
               <PersianCalendar className="hidden sm:block" />
+              <HeaderLanguageSwitcher />
               <HeaderWeather />
 
               <NotificationsMenu overview={data} critical={criticalAlerts} inboxHref={hrefs.inbox} />

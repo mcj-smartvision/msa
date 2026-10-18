@@ -18,7 +18,7 @@ import { HeaderWeather } from '@/features/weather/components/header-weather'
 export function HeaderUserControls({
   email,
   allowAllProject = false,
-  showLanguage = false,
+  showLanguage = true,
   projectOptions = [],
 }: {
   email?: string
