@@ -418,7 +418,7 @@ export async function submitOpenDraftToManager(
   for (const select of verifySelects) {
     const res = await supabase.from('daily_reports').select(select).eq('id', header.id).maybeSingle()
     if (!res.error) {
-      verified = (res.data as Record<string, unknown> | null) ?? null
+      verified = (res.data as unknown as Record<string, unknown> | null) ?? null
       break
     }
     if (!SELECT_COLUMN_MISSING.test(res.error.message)) {
