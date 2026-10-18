@@ -22,7 +22,7 @@ import {
 } from '@/features/supervisor/lib/persist-daily-report-meta'
 import { parseLipartaDailyReport } from '@/features/site-report/lib/parse-structured'
 import {
-  siteReportFallbackNote,
+  resolveDailyReportNote,
   siteReportHasContent,
 } from '@/features/site-report/lib/report-content'
 import { parseWeatherSnapshot } from '@/features/weather/lib/report-stamp'
@@ -118,9 +118,7 @@ export async function POST(request: NextRequest) {
     const user = await requireUser(supabase)
     await assertProjectAccess(supabase, user.id, projectId)
 
-    const resolvedNote =
-      note.trim() ||
-      (structured && siteReportHasContent(structured) ? siteReportFallbackNote(structured) : '')
+    const resolvedNote = resolveDailyReportNote(note, structured)
 
     // legacy alias: finalize → save (no longer locks)
     if (action === 'save' || action === 'finalize') {

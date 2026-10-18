@@ -7,6 +7,8 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { resolveDailyReportNote, siteReportHasContent } from '@/features/site-report/lib/report-content'
+import { parseLipartaDailyReport } from '@/features/site-report/lib/parse-structured'
 import { buildDailyReportNo } from '@/features/supervisor/lib/daily-report-photos'
 import { normalizeReportDate } from '@/features/supervisor/lib/normalize-report-date'
 import { parseWorkflowStatus } from '@/features/supervisor/lib/daily-report-workflow'
@@ -110,14 +112,22 @@ export async function ensureOpenDraftReport(
     structuredJson?: unknown | null
   }
 ): Promise<DailyReportHeader> {
-  const note = params.note?.trim() || ''
   const weather = params.weather ? parseWeatherSnapshot(params.weather) : null
   const structured =
-    params.structuredJson && typeof params.structuredJson === 'object' ? params.structuredJson : null
+    parseLipartaDailyReport(params.structuredJson) ??
+    (params.structuredJson && typeof params.structuredJson === 'object'
+      ? (params.structuredJson as never)
+      : null)
+  const note =
+    resolveDailyReportNote(params.note, structured) ||
+    (typeof params.note === 'string' ? params.note.trim() : '')
 
   const existing = await findOpenDraftReport(supabase, params.projectId, params.supervisorId)
   if (existing) {
-    const rawText = note || existing.note.trim() || weather?.lineFa || '—'
+    const rawText =
+      resolveDailyReportNote(note || existing.note, structured) ||
+      weather?.lineFa ||
+      '—'
     const { data: full } = await supabase
       .from('daily_reports')
       .select('ai_parsed')
@@ -328,12 +338,21 @@ export async function submitOpenDraftToManager(
 
   const { data: current, error: curErr } = await supabase
     .from('daily_reports')
-    .select('id, raw_text, report_no')
+    .select('id, raw_text, report_no, structured_json')
     .eq('id', header.id)
     .single()
   if (curErr) throw new Error(curErr.message)
 
-  const raw = (params.note?.trim() || String(current.raw_text ?? '').trim())
+  const structured =
+    parseLipartaDailyReport(params.structuredJson) ??
+    parseLipartaDailyReport((current as { structured_json?: unknown }).structured_json)
+  const raw = resolveDailyReportNote(
+    params.note?.trim() || String(current.raw_text ?? ''),
+    structured
+  )
+  if (!raw && !siteReportHasContent(structured)) {
+    throw new Error('قبل از آرشیو، فرم یا یادداشت را پر کنید')
+  }
   if (!raw) throw new Error('قبل از آرشیو، فرم یا یادداشت را پر کنید')
 
   const now = new Date().toISOString()
@@ -349,7 +368,9 @@ export async function submitOpenDraftToManager(
     approved_by_manager: true,
     approved_at: now,
   }
-  if (params.structuredJson && typeof params.structuredJson === 'object') {
+  if (structured) {
+    updatePayload.structured_json = structured
+  } else if (params.structuredJson && typeof params.structuredJson === 'object') {
     updatePayload.structured_json = params.structuredJson
   }
 

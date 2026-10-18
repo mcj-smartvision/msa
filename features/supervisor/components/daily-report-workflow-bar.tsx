@@ -20,7 +20,7 @@ import {
   type DailyReportWorkflowStatus,
 } from '@/features/supervisor/lib/daily-report-workflow'
 import { parseLipartaDailyReport } from '@/features/site-report/lib/parse-structured'
-import { siteReportHasContent } from '@/features/site-report/lib/report-content'
+import { resolveDailyReportNote, siteReportHasContent } from '@/features/site-report/lib/report-content'
 import type { LipartaDailyReportData } from '@/features/site-report/lib/types'
 import { getSiteSupervisorMessages } from '@/shared/lib/i18n/site-supervisor'
 import { cn } from '@/shared/lib/utils'
@@ -86,12 +86,9 @@ export function DailyReportWorkflowBar({
   useEffect(() => {
     onArchivedRef.current = onArchived
   }, [onArchived])
-  useEffect(() => {
-    structuredRef.current = structured
-  }, [structured])
-  useEffect(() => {
-    noteRef.current = note
-  }, [note])
+  // Keep refs in sync during render so Save/Send never races behind useEffect
+  structuredRef.current = structured
+  noteRef.current = note
 
   useEffect(() => {
     let cancelled = false
@@ -158,7 +155,7 @@ export function DailyReportWorkflowBar({
           action,
           projectId,
           reportDate,
-          note: noteRef.current,
+          note: resolveDailyReportNote(noteRef.current, structuredRef.current),
           weather: weather ?? null,
           structuredJson: structuredRef.current ?? null,
         }),
