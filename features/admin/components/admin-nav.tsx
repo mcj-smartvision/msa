@@ -34,12 +34,9 @@ useControlCenterDetailsOptional,
 ControlCenterDataProvider,
 type DetailKey,
 } from '@/features/admin/components/control-center-details-context'
-import {
-groupMembersByRoleDashboard,
-memberWorkspaceHref,
-} from '@/features/admin/lib/role-dashboard-routes'
+import { groupMembersByRoleDashboard } from '@/features/admin/lib/role-dashboard-routes'
 import { getPositionLabel } from '@/shared/lib/i18n/position-labels'
-import { isAllProjectsScope, writeProjectCookie } from '@/shared/lib/project/project-cookie'
+import { isAllProjectsScope } from '@/shared/lib/project/project-cookie'
 import { ADMIN_NAV_COPY } from '@/features/admin/config'
 
 const NAV_ROW =
@@ -120,9 +117,7 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
     if (allProjects) return projects
     return projects.filter((p) => p.id === ctx?.scope)
   }, [allProjects, ctx?.projects, ctx?.scope])
-  const projectNames = useMemo(() => new Map((ctx?.projects ?? []).map((p) => [p.id, p.name])), [ctx?.projects])
   const roleGroups = useMemo(() => groupMembersByRoleDashboard(scopedMembers), [scopedMembers])
-  const multiProject = allProjects && new Set(scopedMembers.map((m) => m.project_id)).size > 1
 
   const toggleGroup = useCallback((key: string) => {
     setOpenGroups((current) => ({ ...current, [key]: !current[key] }))
@@ -203,38 +198,20 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
       <NavGroup
         label={loc.memberDashboards}
         icon={Users}
-        count={scopedMembers.length}
+        count={roleGroups.length}
         active={openDetail === 'dashboards' || roleGroups.some((g) => linkActive(g.href))}
         open={dashboardsOpen}
         onToggle={() => toggleGroup('dashboards')}
       >
         {roleGroups.map((group) => {
           const title = getPositionLabel({ key: group.roleKey, title: group.roleKey }, fa ? 'fa' : 'en')
-          const roleActive = linkActive(group.href)
           return (
-            <div key={group.roleKey} className="space-y-0.5">
-              <NestedLink
-                href={group.href}
-                label={title}
-                active={roleActive}
-                count={group.members.length}
-              />
-              {group.members.map((member) => {
-                const projectName = multiProject ? projectNames.get(member.project_id) : undefined
-                return (
-                  <NestedLink
-                    key={member.id}
-                    href={memberWorkspaceHref(member)}
-                    label={member.full_name || member.email}
-                    hint={projectName}
-                    active={false}
-                    indent
-                    muted={!member.is_active}
-                    onNavigate={() => writeProjectCookie(member.project_id)}
-                  />
-                )
-              })}
-            </div>
+            <NestedLink
+              key={group.roleKey}
+              href={group.href}
+              label={title}
+              active={linkActive(group.href)}
+            />
           )
         })}
         <button
