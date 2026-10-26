@@ -35,30 +35,15 @@ export function DashboardHeader({
   const pathname = usePathname()
   const chrome = getChromeMessages(locale)
 
-  const baseNav = isAdmin
-    ? [
-        { href: '/admin', label: chrome.controlCenter },
-        { href: '/admin/members', label: chrome.members },
-        { href: '/admin/projects', label: chrome.projects },
-      ]
-    : []
-
   const roleNav = roleNavLinks.map((link) => ({ href: link.href, label: link.label }))
   const homeHref = isAdmin ? '/admin' : roleNav[0]?.href ?? '/dashboard'
-  const tailNav = [{ href: '/settings', label: app.settings }]
-
-  const adminNav = [...baseNav]
-  for (const link of roleNav) {
-    if (!adminNav.some((item) => item.href === link.href)) {
-      adminNav.push(link)
-    }
-  }
+  const settingsLink = { href: '/settings', label: app.settings }
 
   const navItems = isAdmin
-    ? [...adminNav, ...tailNav]
+    ? [{ href: '/admin', label: chrome.controlCenter }]
     : [
         ...(roleNav.length > 0 ? roleNav : [{ href: '/dashboard', label: chrome.dashboard }]),
-        ...tailNav,
+        settingsLink,
       ]
 
   return (

@@ -68,7 +68,7 @@ export const ADMIN_NAV_COPY = {
   routing: 'اعلان‌ها',
   widgets: 'نمایش',
   fa: {
-    controlCenter: 'کنترل سنتر',
+    controlCenter: 'Control Center',
     manager: 'مدیر',
     projects: 'پروژه‌ها',
     allProjects: 'همه پروژه‌ها',

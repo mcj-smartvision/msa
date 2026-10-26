@@ -120,7 +120,7 @@ export function SiteReportForm({
         date_shamsi: dateShamsi ?? '',
       })
   )
-  const [openId, setOpenId] = useState<SiteReportSectionId | null>('weather')
+  const [openId, setOpenId] = useState<SiteReportSectionId | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [okMsg, setOkMsg] = useState<string | null>(null)

@@ -17,10 +17,6 @@ Users,
 FolderKanban,
 Settings,
 MessageSquare,
-AlertCircle,
-ClipboardCheck,
-CalendarRange,
-Briefcase,
 ChevronDown,
 type LucideIcon,
 } from 'lucide-react'
@@ -155,12 +151,6 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
         active={pathname === '/admin' && openDetail === null}
         onClick={goControlCenter}
       />
-      <FlatLink
-        href="/dashboard/manager"
-        label={loc.manager}
-        icon={Briefcase}
-        active={linkActive('/dashboard/manager')}
-      />
       <NavGroup
         label={loc.projects}
         icon={FolderKanban}
@@ -183,26 +173,23 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
           active={pathname === '/admin/projects'}
         />
       </NavGroup>
-      <FlatLink
-        href="/dashboard/qc"
-        label={loc.qualityControl}
-        icon={ClipboardCheck}
-        active={linkActive('/dashboard/qc')}
-      />
-      <FlatLink
-        href="/dashboard/schedule-intelligence"
-        label={loc.scheduleIntelligence}
-        icon={CalendarRange}
-        active={linkActive('/dashboard/schedule-intelligence')}
-      />
       <NavGroup
         label={loc.memberDashboards}
         icon={Users}
-        count={roleGroups.length}
-        active={openDetail === 'dashboards' || roleGroups.some((g) => linkActive(g.href))}
+        count={roleGroups.length + 1}
+        active={
+          openDetail === 'dashboards' ||
+          linkActive('/dashboard/manager') ||
+          roleGroups.some((g) => linkActive(g.href))
+        }
         open={dashboardsOpen}
         onToggle={() => toggleGroup('dashboards')}
       >
+        <NestedLink
+          href="/dashboard/manager"
+          label={loc.manager}
+          active={linkActive('/dashboard/manager')}
+        />
         {roleGroups.map((group) => {
           const title = getPositionLabel({ key: group.roleKey, title: group.roleKey }, fa ? 'fa' : 'en')
           return (
@@ -228,14 +215,6 @@ function AdminFlatNav({ compact }: { compact?: boolean }) {
         count={feeds?.tickets.length}
         active={openDetail === 'messages'}
         onClick={() => selectDetail('messages')}
-      />
-      <FlatAction
-        label={loc.criticalAlerts}
-        icon={AlertCircle}
-        count={feeds?.alerts.length}
-        warn={(feeds?.alerts.length ?? 0) > 0}
-        active={openDetail === 'alerts'}
-        onClick={() => selectDetail('alerts')}
       />
       <FlatLink
         href="/settings"

@@ -42,7 +42,7 @@ const EN = {
 }
 
 const FA: typeof EN = {
-  controlCenter: 'کنترل سنتر',
+  controlCenter: 'Control Center',
   members: 'اعضا',
   projects: 'پروژه‌ها',
   dashboard: 'داشبورد',
@@ -74,7 +74,7 @@ const FA: typeof EN = {
 }
 
 const DE: typeof EN = {
-  controlCenter: 'Leitstelle',
+  controlCenter: 'Control Center',
   members: 'Mitglieder',
   projects: 'Projekte',
   dashboard: 'Dashboard',
